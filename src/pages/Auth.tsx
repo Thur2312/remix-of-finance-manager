@@ -8,14 +8,62 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Checkbox } from '@/components/ui/checkbox';
 import { toast } from 'sonner';
-import { TrendingUp, DollarSign, BarChart3, Eye, EyeOff, Sparkles, ArrowUpRight, PieChart } from 'lucide-react';
-import { z } from 'zod';
+import { TrendingUp, DollarSign, BarChart3, Eye, EyeOff, Sparkles, ArrowUpRight, PieChart, AlertCircle, CheckCircle2 } from 'lucide-react';
 
-const emailSchema = z.string().email('Email inválido');
-const passwordSchema = z.string()
-  .min(8, 'Mínimo 8 caracteres')
-  .regex(/[A-Z]/, 'Deve ter letra maiúscula')
-  .regex(/[0-9]/, 'Deve ter número');
+// Domínios de email válidos
+const VALID_EMAIL_DOMAINS = [
+  'gmail.com', 'hotmail.com', 'outlook.com', 'yahoo.com', 'icloud.com',
+  'live.com', 'msn.com', 'aol.com', 'protonmail.com', 'zoho.com',
+  'uol.com.br', 'bol.com.br', 'terra.com.br', 'ig.com.br', 'globo.com'
+];
+
+interface ValidationErrors {
+  email?: string;
+  password?: string;
+  fullName?: string;
+}
+
+interface ValidationStatus {
+  email?: boolean;
+  password?: boolean;
+  fullName?: boolean;
+}
+
+const validateEmail = (email: string): string | null => {
+  if (!email) return 'Email é obrigatório';
+  if (!email.includes('@')) return 'Email deve conter @';
+  
+  const [, domain] = email.split('@');
+  if (!domain) return 'Email inválido';
+  
+  const isValidDomain = VALID_EMAIL_DOMAINS.some(d => 
+    domain.toLowerCase() === d || domain.toLowerCase().endsWith('.' + d)
+  );
+  
+  if (!isValidDomain) {
+    return 'Use um email válido (Gmail, Hotmail, Outlook, etc.)';
+  }
+  
+  // Basic email format validation
+  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  if (!emailRegex.test(email)) return 'Formato de email inválido';
+  
+  return null;
+};
+
+const validatePassword = (password: string): string | null => {
+  if (!password) return 'Senha é obrigatória';
+  if (password.length < 8) return 'Senha deve ter no mínimo 8 caracteres';
+  if (!/[A-Z]/.test(password)) return 'Senha deve ter pelo menos uma letra maiúscula';
+  if (!/[0-9]/.test(password)) return 'Senha deve ter pelo menos um número';
+  return null;
+};
+
+const validateFullName = (name: string): string | null => {
+  if (!name) return 'Nome é obrigatório';
+  if (name.trim().length < 4) return 'Nome deve ter no mínimo 4 caracteres';
+  return null;
+};
 
 export default function Auth() {
   const [email, setEmail] = useState('');
@@ -24,6 +72,10 @@ export default function Auth() {
   const [isLoading, setIsLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [rememberMe, setRememberMe] = useState(false);
+  const [errors, setErrors] = useState<ValidationErrors>({});
+  const [touched, setTouched] = useState<ValidationStatus>({});
+  const [valid, setValid] = useState<ValidationStatus>({});
+
   const {
     signIn,
     signUp,
@@ -38,17 +90,54 @@ export default function Auth() {
     }
   }, [user, navigate]);
 
+  // Real-time validation
+  useEffect(() => {
+    if (touched.email) {
+      const error = validateEmail(email);
+      setErrors(prev => ({ ...prev, email: error || undefined }));
+      setValid(prev => ({ ...prev, email: !error && email.length > 0 }));
+    }
+  }, [email, touched.email]);
+
+  useEffect(() => {
+    if (touched.password) {
+      const error = validatePassword(password);
+      setErrors(prev => ({ ...prev, password: error || undefined }));
+      setValid(prev => ({ ...prev, password: !error && password.length > 0 }));
+    }
+  }, [password, touched.password]);
+
+  useEffect(() => {
+    if (touched.fullName) {
+      const error = validateFullName(fullName);
+      setErrors(prev => ({ ...prev, fullName: error || undefined }));
+      setValid(prev => ({ ...prev, fullName: !error && fullName.length > 0 }));
+    }
+  }, [fullName, touched.fullName]);
+
+  const handleBlur = (field: keyof ValidationStatus) => {
+    setTouched(prev => ({ ...prev, [field]: true }));
+  };
+
   const handleSignIn = async (e: React.FormEvent) => {
     e.preventDefault();
-    setIsLoading(true);
     
-    const emailResult = emailSchema.safeParse(email);
-    if (!emailResult.success) {
-      toast.error(emailResult.error.errors[0].message);
-      setIsLoading(false);
+    // Mark all fields as touched
+    setTouched({ email: true, password: true });
+    
+    const emailError = validateEmail(email);
+    
+    if (emailError) {
+      setErrors(prev => ({ ...prev, email: emailError }));
       return;
     }
     
+    if (!password) {
+      setErrors(prev => ({ ...prev, password: 'Senha é obrigatória' }));
+      return;
+    }
+    
+    setIsLoading(true);
     const { error } = await signIn(email, password);
     if (error) {
       if (error.message.includes('Invalid login credentials')) {
@@ -65,22 +154,25 @@ export default function Auth() {
 
   const handleSignUp = async (e: React.FormEvent) => {
     e.preventDefault();
+    
+    // Mark all fields as touched
+    setTouched({ email: true, password: true, fullName: true });
+    
+    const emailError = validateEmail(email);
+    const passwordError = validatePassword(password);
+    const nameError = validateFullName(fullName);
+    
+    const newErrors: ValidationErrors = {};
+    if (emailError) newErrors.email = emailError;
+    if (passwordError) newErrors.password = passwordError;
+    if (nameError) newErrors.fullName = nameError;
+    
+    if (Object.keys(newErrors).length > 0) {
+      setErrors(newErrors);
+      return;
+    }
+    
     setIsLoading(true);
-    
-    const emailResult = emailSchema.safeParse(email);
-    if (!emailResult.success) {
-      toast.error(emailResult.error.errors[0].message);
-      setIsLoading(false);
-      return;
-    }
-    
-    const passwordResult = passwordSchema.safeParse(password);
-    if (!passwordResult.success) {
-      toast.error(passwordResult.error.errors[0].message);
-      setIsLoading(false);
-      return;
-    }
-    
     const { error } = await signUp(email, password, fullName);
     if (error) {
       if (error.message.includes('already registered')) {
@@ -106,6 +198,12 @@ export default function Auth() {
 
   const handleForgotPassword = () => {
     toast.info('Funcionalidade em desenvolvimento. Entre em contato com o suporte.');
+  };
+
+  const InputIcon = ({ isValid, hasError }: { isValid?: boolean; hasError?: boolean }) => {
+    if (hasError) return <AlertCircle className="h-4 w-4 text-destructive" />;
+    if (isValid) return <CheckCircle2 className="h-4 w-4 text-green-500" />;
+    return null;
   };
 
   return (
@@ -287,18 +385,31 @@ export default function Auth() {
                     </div>
                   </div>
 
-                  <form onSubmit={handleSignIn} className="space-y-4">
+                  <form onSubmit={handleSignIn} className="space-y-4" noValidate>
                     <div className="space-y-2">
                       <Label htmlFor="email-login">Email</Label>
-                      <Input 
-                        id="email-login" 
-                        type="email" 
-                        placeholder="exemplo@email.com" 
-                        className="h-11 placeholder:text-muted-foreground/40"
-                        value={email} 
-                        onChange={e => setEmail(e.target.value)} 
-                        required 
-                      />
+                      <div className="relative">
+                        <Input 
+                          id="email-login" 
+                          type="email" 
+                          placeholder="exemplo@gmail.com" 
+                          className={`h-11 pr-10 placeholder:text-muted-foreground/40 ${
+                            errors.email && touched.email ? 'border-destructive focus-visible:ring-destructive' : ''
+                          } ${valid.email ? 'border-green-500 focus-visible:ring-green-500' : ''}`}
+                          value={email} 
+                          onChange={e => setEmail(e.target.value)}
+                          onBlur={() => handleBlur('email')}
+                        />
+                        <div className="absolute right-3 top-1/2 -translate-y-1/2">
+                          <InputIcon isValid={valid.email} hasError={!!errors.email && touched.email} />
+                        </div>
+                      </div>
+                      {errors.email && touched.email && (
+                        <p className="text-sm text-destructive flex items-center gap-1">
+                          <AlertCircle className="h-3 w-3" />
+                          {errors.email}
+                        </p>
+                      )}
                     </div>
                     <div className="space-y-2">
                       <Label htmlFor="password-login">Senha</Label>
@@ -307,19 +418,29 @@ export default function Auth() {
                           id="password-login" 
                           type={showPassword ? "text" : "password"} 
                           placeholder="Digite sua senha" 
-                          className="h-11 pr-10 placeholder:text-muted-foreground/40"
+                          className={`h-11 pr-16 placeholder:text-muted-foreground/40 ${
+                            errors.password && touched.password ? 'border-destructive focus-visible:ring-destructive' : ''
+                          }`}
                           value={password} 
-                          onChange={e => setPassword(e.target.value)} 
-                          required 
+                          onChange={e => setPassword(e.target.value)}
+                          onBlur={() => handleBlur('password')}
                         />
-                        <button
-                          type="button"
-                          onClick={() => setShowPassword(!showPassword)}
-                          className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
-                        >
-                          {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                        </button>
+                        <div className="absolute right-3 top-1/2 -translate-y-1/2 flex items-center gap-2">
+                          <button
+                            type="button"
+                            onClick={() => setShowPassword(!showPassword)}
+                            className="text-muted-foreground hover:text-foreground transition-colors"
+                          >
+                            {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                          </button>
+                        </div>
                       </div>
+                      {errors.password && touched.password && (
+                        <p className="text-sm text-destructive flex items-center gap-1">
+                          <AlertCircle className="h-3 w-3" />
+                          {errors.password}
+                        </p>
+                      )}
                     </div>
 
                     <div className="flex items-center justify-between">
@@ -400,30 +521,56 @@ export default function Auth() {
                     </div>
                   </div>
 
-                  <form onSubmit={handleSignUp} className="space-y-4">
+                  <form onSubmit={handleSignUp} className="space-y-4" noValidate>
                     <div className="space-y-2">
                       <Label htmlFor="name-register">Nome completo</Label>
-                      <Input 
-                        id="name-register" 
-                        type="text" 
-                        placeholder="João da Silva" 
-                        className="h-11 placeholder:text-muted-foreground/40"
-                        value={fullName} 
-                        onChange={e => setFullName(e.target.value)} 
-                        required 
-                      />
+                      <div className="relative">
+                        <Input 
+                          id="name-register" 
+                          type="text" 
+                          placeholder="João da Silva" 
+                          className={`h-11 pr-10 placeholder:text-muted-foreground/40 ${
+                            errors.fullName && touched.fullName ? 'border-destructive focus-visible:ring-destructive' : ''
+                          } ${valid.fullName ? 'border-green-500 focus-visible:ring-green-500' : ''}`}
+                          value={fullName} 
+                          onChange={e => setFullName(e.target.value)}
+                          onBlur={() => handleBlur('fullName')}
+                        />
+                        <div className="absolute right-3 top-1/2 -translate-y-1/2">
+                          <InputIcon isValid={valid.fullName} hasError={!!errors.fullName && touched.fullName} />
+                        </div>
+                      </div>
+                      {errors.fullName && touched.fullName && (
+                        <p className="text-sm text-destructive flex items-center gap-1">
+                          <AlertCircle className="h-3 w-3" />
+                          {errors.fullName}
+                        </p>
+                      )}
                     </div>
                     <div className="space-y-2">
                       <Label htmlFor="email-register">Email</Label>
-                      <Input 
-                        id="email-register" 
-                        type="email" 
-                        placeholder="exemplo@email.com" 
-                        className="h-11 placeholder:text-muted-foreground/40"
-                        value={email} 
-                        onChange={e => setEmail(e.target.value)} 
-                        required 
-                      />
+                      <div className="relative">
+                        <Input 
+                          id="email-register" 
+                          type="email" 
+                          placeholder="exemplo@gmail.com" 
+                          className={`h-11 pr-10 placeholder:text-muted-foreground/40 ${
+                            errors.email && touched.email ? 'border-destructive focus-visible:ring-destructive' : ''
+                          } ${valid.email ? 'border-green-500 focus-visible:ring-green-500' : ''}`}
+                          value={email} 
+                          onChange={e => setEmail(e.target.value)}
+                          onBlur={() => handleBlur('email')}
+                        />
+                        <div className="absolute right-3 top-1/2 -translate-y-1/2">
+                          <InputIcon isValid={valid.email} hasError={!!errors.email && touched.email} />
+                        </div>
+                      </div>
+                      {errors.email && touched.email && (
+                        <p className="text-sm text-destructive flex items-center gap-1">
+                          <AlertCircle className="h-3 w-3" />
+                          {errors.email}
+                        </p>
+                      )}
                     </div>
                     <div className="space-y-2">
                       <Label htmlFor="password-register">Senha</Label>
@@ -431,21 +578,37 @@ export default function Auth() {
                         <Input 
                           id="password-register" 
                           type={showPassword ? "text" : "password"} 
-                          placeholder="Mínimo 8 caracteres, 1 maiúscula, 1 número" 
-                          className="h-11 pr-10 placeholder:text-muted-foreground/40"
+                          placeholder="Mínimo 8 caracteres" 
+                          className={`h-11 pr-16 placeholder:text-muted-foreground/40 ${
+                            errors.password && touched.password ? 'border-destructive focus-visible:ring-destructive' : ''
+                          } ${valid.password ? 'border-green-500 focus-visible:ring-green-500' : ''}`}
                           value={password} 
-                          onChange={e => setPassword(e.target.value)} 
-                          required 
-                          minLength={8} 
+                          onChange={e => setPassword(e.target.value)}
+                          onBlur={() => handleBlur('password')}
                         />
-                        <button
-                          type="button"
-                          onClick={() => setShowPassword(!showPassword)}
-                          className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
-                        >
-                          {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                        </button>
+                        <div className="absolute right-3 top-1/2 -translate-y-1/2 flex items-center gap-2">
+                          {touched.password && (
+                            <InputIcon isValid={valid.password} hasError={!!errors.password} />
+                          )}
+                          <button
+                            type="button"
+                            onClick={() => setShowPassword(!showPassword)}
+                            className="text-muted-foreground hover:text-foreground transition-colors"
+                          >
+                            {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                          </button>
+                        </div>
                       </div>
+                      {errors.password && touched.password ? (
+                        <p className="text-sm text-destructive flex items-center gap-1">
+                          <AlertCircle className="h-3 w-3" />
+                          {errors.password}
+                        </p>
+                      ) : (
+                        <p className="text-xs text-muted-foreground">
+                          Mínimo 8 caracteres, 1 maiúscula e 1 número
+                        </p>
+                      )}
                     </div>
                     <Button type="submit" className="w-full h-11" disabled={isLoading}>
                       {isLoading ? 'Criando conta...' : 'Criar conta'}
