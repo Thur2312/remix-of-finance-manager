@@ -25,6 +25,7 @@ import TikTokVariacoes from "./pages/tiktok/TikTokVariacoes";
 import TikTokPagamentos from "./pages/tiktok/TikTokPagamentos";
 import TikTokPagamentosUpload from "./pages/tiktok/TikTokPagamentosUpload";
 import DRE from "./pages/DRE";
+import Perfil from "./pages/Perfil";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -58,6 +59,7 @@ const App = () => (
             <Route path="/tiktok/pagamentos" element={<TikTokPagamentos />} />
             <Route path="/tiktok/pagamentos/upload" element={<TikTokPagamentosUpload />} />
             <Route path="/dre" element={<DRE />} />
+            <Route path="/perfil" element={<Perfil />} />
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
             <Route path="*" element={<NotFound />} />
           </Routes>

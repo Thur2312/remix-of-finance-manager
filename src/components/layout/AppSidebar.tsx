@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useLocation } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { NavLink } from '@/components/NavLink';
 import { useAuth } from '@/contexts/AuthContext';
 import { Sidebar, SidebarContent, SidebarFooter, SidebarGroup, SidebarGroupContent, SidebarHeader, SidebarMenu, SidebarMenuButton, SidebarMenuItem, useSidebar } from '@/components/ui/sidebar';
@@ -7,7 +7,7 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/component
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
-import { LayoutDashboard, Settings, Upload, FileSpreadsheet, Package, ChevronUp, ChevronDown, LogOut, ShoppingBag, TrendingUp, Calculator, Wallet, List, Tags, Sparkles, Receipt, BarChart3 } from 'lucide-react';
+import { LayoutDashboard, Settings, Upload, FileSpreadsheet, Package, ChevronUp, ChevronDown, LogOut, ShoppingBag, TrendingUp, Calculator, Wallet, List, Tags, Sparkles, Receipt, BarChart3, User } from 'lucide-react';
 import logo from '@/assets/logo.png';
 
 const relatoriosItems = [{
@@ -98,6 +98,7 @@ export function AppSidebar() {
     state
   } = useSidebar();
   const location = useLocation();
+  const navigate = useNavigate();
   const {
     user,
     signOut
@@ -143,10 +144,10 @@ export function AppSidebar() {
           </SidebarMenuButton>
         </SidebarMenuItem>)}
     </SidebarMenu>;
-  return <Sidebar collapsible="icon">
+  return <Sidebar collapsible="icon" className="transition-all duration-300 ease-in-out">
   <SidebarHeader className="border-b border-sidebar-border">
     <div className="flex items-center justify-center px-3 py-4">
-      <img src={logo} alt="Finance Manager" className={collapsed ? "h-8 w-8 object-contain" : "h-10 w-auto object-contain"} />
+      <img src={logo} alt="Deep Insight" className={`transition-all duration-300 ease-in-out ${collapsed ? "h-8 w-8 object-contain" : "h-10 w-auto object-contain"}`} />
     </div>
   </SidebarHeader>
 
@@ -312,7 +313,11 @@ export function AppSidebar() {
                   <span className="font-medium">{user?.email}</span>
                 </DropdownMenuItem>
                 <DropdownMenuSeparator />
-                <DropdownMenuItem onClick={signOut} className="text-destructive">
+                <DropdownMenuItem onClick={() => navigate('/perfil')} className="cursor-pointer">
+                  <User className="mr-2 h-4 w-4" />
+                  Meu Perfil
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={signOut} className="text-destructive cursor-pointer">
                   <LogOut className="mr-2 h-4 w-4" />
                   Sair
                 </DropdownMenuItem>
