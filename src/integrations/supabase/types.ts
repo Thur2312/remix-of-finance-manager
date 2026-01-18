@@ -190,7 +190,7 @@ export type Database = {
       }
       profiles: {
         Row: {
-          cpf: string | null
+          avatar_url: string | null
           created_at: string | null
           email: string | null
           full_name: string | null
@@ -199,7 +199,7 @@ export type Database = {
           updated_at: string | null
         }
         Insert: {
-          cpf?: string | null
+          avatar_url?: string | null
           created_at?: string | null
           email?: string | null
           full_name?: string | null
@@ -208,7 +208,7 @@ export type Database = {
           updated_at?: string | null
         }
         Update: {
-          cpf?: string | null
+          avatar_url?: string | null
           created_at?: string | null
           email?: string | null
           full_name?: string | null

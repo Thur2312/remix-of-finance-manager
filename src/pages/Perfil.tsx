@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { AppLayout } from '@/components/layout/AppLayout';
@@ -7,37 +7,39 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { toast } from 'sonner';
-import { Save, Loader2, User } from 'lucide-react';
-import { validateCPF, formatCPF, validatePhone, formatPhone, validateEmail, validateName } from '@/lib/validations';
+import { Save, Loader2, User, Camera } from 'lucide-react';
+import { validatePhone, formatPhone, validateEmail, validateName } from '@/lib/validations';
 
 interface ProfileData {
   id: string;
   full_name: string | null;
   email: string | null;
   phone: string | null;
-  cpf: string | null;
+  avatar_url: string | null;
 }
 
 interface FormErrors {
   full_name?: string;
   email?: string;
   phone?: string;
-  cpf?: string;
 }
 
 function PerfilContent() {
   const { user } = useAuth();
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
+  const [isUploading, setIsUploading] = useState(false);
   const [profile, setProfile] = useState<ProfileData | null>(null);
   const [errors, setErrors] = useState<FormErrors>({});
+  const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const [formData, setFormData] = useState({
     full_name: '',
     email: '',
     phone: '',
-    cpf: '',
   });
 
   useEffect(() => {
@@ -61,19 +63,17 @@ function PerfilContent() {
 
       if (data) {
         setProfile(data);
+        setAvatarUrl(data.avatar_url);
         setFormData({
           full_name: data.full_name || '',
           email: data.email || user?.email || '',
           phone: data.phone ? formatPhone(data.phone) : '',
-          cpf: data.cpf ? formatCPF(data.cpf) : '',
         });
       } else {
-        // Create profile if doesn't exist
         setFormData({
           full_name: user?.user_metadata?.full_name || '',
           email: user?.email || '',
           phone: '',
-          cpf: '',
         });
       }
     } catch (error) {
@@ -89,8 +89,6 @@ function PerfilContent() {
     
     if (field === 'phone') {
       formattedValue = formatPhone(value);
-    } else if (field === 'cpf') {
-      formattedValue = formatCPF(value);
     }
 
     setFormData(prev => ({ ...prev, [field]: formattedValue }));
@@ -112,12 +110,66 @@ function PerfilContent() {
       newErrors.phone = 'Telefone deve estar no formato (XX) XXXXX-XXXX';
     }
 
-    if (!validateCPF(formData.cpf)) {
-      newErrors.cpf = 'CPF inválido. Verifique os dígitos';
-    }
-
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
+  };
+
+  const handleAvatarClick = () => {
+    fileInputRef.current?.click();
+  };
+
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !user) return;
+
+    // Validate file type
+    if (!file.type.startsWith('image/')) {
+      toast.error('Por favor, selecione uma imagem');
+      return;
+    }
+
+    // Validate file size (max 2MB)
+    if (file.size > 2 * 1024 * 1024) {
+      toast.error('A imagem deve ter no máximo 2MB');
+      return;
+    }
+
+    setIsUploading(true);
+    try {
+      const fileExt = file.name.split('.').pop();
+      const fileName = `${user.id}/avatar.${fileExt}`;
+
+      // Upload file
+      const { error: uploadError } = await supabase.storage
+        .from('avatars')
+        .upload(fileName, file, { upsert: true });
+
+      if (uploadError) throw uploadError;
+
+      // Get public URL
+      const { data: { publicUrl } } = supabase.storage
+        .from('avatars')
+        .getPublicUrl(fileName);
+
+      // Update profile with new avatar URL
+      const { error: updateError } = await supabase
+        .from('profiles')
+        .upsert({
+          id: user.id,
+          avatar_url: publicUrl,
+          updated_at: new Date().toISOString(),
+        });
+
+      if (updateError) throw updateError;
+
+      setAvatarUrl(publicUrl + '?t=' + Date.now()); // Add timestamp to force refresh
+      toast.success('Foto atualizada com sucesso!');
+    } catch (error) {
+      console.error('Error uploading avatar:', error);
+      toast.error('Erro ao enviar foto');
+    } finally {
+      setIsUploading(false);
+    }
   };
 
   const handleSave = async () => {
@@ -126,7 +178,6 @@ function PerfilContent() {
     setIsSaving(true);
     try {
       const cleanPhone = formData.phone.replace(/\D/g, '');
-      const cleanCPF = formData.cpf.replace(/\D/g, '');
 
       const { error } = await supabase
         .from('profiles')
@@ -135,28 +186,25 @@ function PerfilContent() {
           full_name: formData.full_name.trim(),
           email: formData.email.trim(),
           phone: cleanPhone,
-          cpf: cleanCPF,
           updated_at: new Date().toISOString(),
         });
 
-      if (error) {
-        if (error.code === '23505') {
-          setErrors({ cpf: 'Este CPF já está cadastrado' });
-          throw new Error('CPF já cadastrado');
-        }
-        throw error;
-      }
+      if (error) throw error;
 
       toast.success('Perfil atualizado com sucesso!');
       await fetchProfile();
     } catch (error: any) {
       console.error('Error saving profile:', error);
-      if (!error.message?.includes('CPF')) {
-        toast.error('Erro ao salvar perfil');
-      }
+      toast.error('Erro ao salvar perfil');
     } finally {
       setIsSaving(false);
     }
+  };
+
+  const getInitials = (name: string | null, email: string | null) => {
+    if (name) return name.slice(0, 2).toUpperCase();
+    if (email) return email.slice(0, 2).toUpperCase();
+    return 'U';
   };
 
   if (isLoading) {
@@ -182,6 +230,39 @@ function PerfilContent() {
           </div>
         </CardHeader>
         <CardContent className="space-y-6">
+          {/* Avatar Section */}
+          <div className="flex flex-col items-center gap-4">
+            <div className="relative group">
+              <Avatar className="h-24 w-24 cursor-pointer" onClick={handleAvatarClick}>
+                <AvatarImage src={avatarUrl || undefined} alt="Avatar" />
+                <AvatarFallback className="bg-primary text-primary-foreground text-2xl">
+                  {getInitials(formData.full_name, formData.email)}
+                </AvatarFallback>
+              </Avatar>
+              <button
+                onClick={handleAvatarClick}
+                disabled={isUploading}
+                className="absolute inset-0 flex items-center justify-center bg-black/50 rounded-full opacity-0 group-hover:opacity-100 transition-opacity"
+              >
+                {isUploading ? (
+                  <Loader2 className="h-6 w-6 text-white animate-spin" />
+                ) : (
+                  <Camera className="h-6 w-6 text-white" />
+                )}
+              </button>
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="image/*"
+                onChange={handleFileChange}
+                className="hidden"
+              />
+            </div>
+            <p className="text-sm text-muted-foreground">
+              Clique para alterar a foto
+            </p>
+          </div>
+
           <div className="grid gap-4 sm:grid-cols-2">
             <div className="space-y-2 sm:col-span-2">
               <Label htmlFor="full_name">Nome Completo *</Label>
@@ -190,7 +271,7 @@ function PerfilContent() {
                 value={formData.full_name}
                 onChange={(e) => handleInputChange('full_name', e.target.value)}
                 placeholder="Seu nome completo"
-                className={errors.full_name ? 'border-destructive focus-visible:ring-destructive' : ''}
+                className={`placeholder:text-muted-foreground/50 ${errors.full_name ? 'border-destructive focus-visible:ring-destructive' : ''}`}
               />
               {errors.full_name && (
                 <p className="text-xs text-destructive">{errors.full_name}</p>
@@ -205,38 +286,24 @@ function PerfilContent() {
                 value={formData.email}
                 onChange={(e) => handleInputChange('email', e.target.value)}
                 placeholder="seu@email.com"
-                className={errors.email ? 'border-destructive focus-visible:ring-destructive' : ''}
+                className={`placeholder:text-muted-foreground/50 ${errors.email ? 'border-destructive focus-visible:ring-destructive' : ''}`}
               />
               {errors.email && (
                 <p className="text-xs text-destructive">{errors.email}</p>
               )}
             </div>
 
-            <div className="space-y-2">
+            <div className="space-y-2 sm:col-span-2">
               <Label htmlFor="phone">Telefone *</Label>
               <Input
                 id="phone"
                 value={formData.phone}
                 onChange={(e) => handleInputChange('phone', e.target.value)}
                 placeholder="(XX) XXXXX-XXXX"
-                className={errors.phone ? 'border-destructive focus-visible:ring-destructive' : ''}
+                className={`placeholder:text-muted-foreground/50 ${errors.phone ? 'border-destructive focus-visible:ring-destructive' : ''}`}
               />
               {errors.phone && (
                 <p className="text-xs text-destructive">{errors.phone}</p>
-              )}
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="cpf">CPF *</Label>
-              <Input
-                id="cpf"
-                value={formData.cpf}
-                onChange={(e) => handleInputChange('cpf', e.target.value)}
-                placeholder="XXX.XXX.XXX-XX"
-                className={errors.cpf ? 'border-destructive focus-visible:ring-destructive' : ''}
-              />
-              {errors.cpf && (
-                <p className="text-xs text-destructive">{errors.cpf}</p>
               )}
             </div>
           </div>
