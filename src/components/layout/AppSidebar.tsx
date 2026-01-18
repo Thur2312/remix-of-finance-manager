@@ -134,10 +134,10 @@ export function AppSidebar() {
   const getInitials = (email: string) => {
     return email.slice(0, 2).toUpperCase();
   };
-  const renderMenuItems = (items: typeof calculoLucroShopeeItems) => <SidebarMenu>
+  const renderMenuItems = (items: typeof calculoLucroShopeeItems) => <SidebarMenu className="space-y-1">
       {items.map(item => <SidebarMenuItem key={item.title}>
           <SidebarMenuButton asChild isActive={location.pathname === item.url} tooltip={item.title}>
-            <NavLink to={item.url} className="flex items-center gap-3" activeClassName="bg-sidebar-accent text-sidebar-accent-foreground">
+            <NavLink to={item.url} className="flex items-center gap-3 py-2" activeClassName="bg-sidebar-accent text-sidebar-accent-foreground">
               <item.icon className="h-5 w-5" />
               <span>{item.title}</span>
             </NavLink>
@@ -151,134 +151,134 @@ export function AppSidebar() {
     </div>
   </SidebarHeader>
 
-      <SidebarContent>
-        <SidebarGroup className="pb-1">
+      <SidebarContent className="px-2 py-3 space-y-2">
+        <SidebarGroup>
           {collapsed ? <SidebarGroupContent>
               {renderMenuItems(fluxoCaixaItems)}
             </SidebarGroupContent> : <Collapsible open={fluxoCaixaOpen} onOpenChange={setFluxoCaixaOpen}>
               <CollapsibleTrigger asChild>
-                <button className="flex items-center gap-2 w-full px-3 py-1.5 text-sm font-semibold text-sidebar-foreground hover:bg-sidebar-accent rounded-md transition-colors">
+                <button className="flex items-center gap-2 w-full px-3 py-2.5 text-sm font-semibold text-sidebar-foreground hover:bg-sidebar-accent rounded-md transition-colors">
                   <Wallet className="h-5 w-5" />
                   <span>Fluxo de Caixa</span>
                   <ChevronDown className={`h-4 w-4 ml-auto transition-transform duration-300 ease-out ${fluxoCaixaOpen ? '' : '-rotate-90'}`} />
                 </button>
               </CollapsibleTrigger>
               <CollapsibleContent className="overflow-hidden data-[state=closed]:animate-collapsible-up data-[state=open]:animate-collapsible-down">
-                <SidebarGroupContent>
+                <SidebarGroupContent className="mt-1">
                   {renderMenuItems(fluxoCaixaItems)}
                 </SidebarGroupContent>
               </CollapsibleContent>
             </Collapsible>}
         </SidebarGroup>
 
-        <SidebarGroup className="py-1">
+        <SidebarGroup>
           {collapsed ? <SidebarGroupContent>
               {renderMenuItems(calculoLucroShopeeItems)}
             </SidebarGroupContent> : <Collapsible open={calculoLucroShopeeOpen} onOpenChange={setCalculoLucroShopeeOpen}>
               <CollapsibleTrigger asChild>
-                <button className="flex items-center gap-2 w-full px-3 py-1.5 text-sm font-semibold text-sidebar-foreground hover:bg-sidebar-accent rounded-md transition-colors">
+                <button className="flex items-center gap-2 w-full px-3 py-2.5 text-sm font-semibold text-sidebar-foreground hover:bg-sidebar-accent rounded-md transition-colors">
                   <TrendingUp className="h-5 w-5" />
                   <span>Gestão Shopee</span>
                   <ChevronDown className={`h-4 w-4 ml-auto transition-transform duration-300 ease-out ${calculoLucroShopeeOpen ? '' : '-rotate-90'}`} />
                 </button>
               </CollapsibleTrigger>
               <CollapsibleContent className="overflow-hidden data-[state=closed]:animate-collapsible-up data-[state=open]:animate-collapsible-down">
-                <SidebarGroupContent>
+                <SidebarGroupContent className="mt-1">
                   {renderMenuItems(calculoLucroShopeeItems)}
                 </SidebarGroupContent>
               </CollapsibleContent>
             </Collapsible>}
         </SidebarGroup>
 
-        <SidebarGroup className="py-1">
+        <SidebarGroup>
           {collapsed ? <SidebarGroupContent>
               {renderMenuItems(calculoLucroTikTokItems)}
             </SidebarGroupContent> : <Collapsible open={calculoLucroTikTokOpen} onOpenChange={setCalculoLucroTikTokOpen}>
               <CollapsibleTrigger asChild>
-                <button className="flex items-center gap-2 w-full px-3 py-1.5 text-sm font-semibold text-sidebar-foreground hover:bg-sidebar-accent rounded-md transition-colors">
+                <button className="flex items-center gap-2 w-full px-3 py-2.5 text-sm font-semibold text-sidebar-foreground hover:bg-sidebar-accent rounded-md transition-colors">
                   <TrendingUp className="h-5 w-5" />
                   <span>Gestão TikTok Shop</span>
                   <ChevronDown className={`h-4 w-4 ml-auto transition-transform duration-300 ease-out ${calculoLucroTikTokOpen ? '' : '-rotate-90'}`} />
                 </button>
               </CollapsibleTrigger>
               <CollapsibleContent className="overflow-hidden data-[state=closed]:animate-collapsible-up data-[state=open]:animate-collapsible-down">
-                <SidebarGroupContent>
+                <SidebarGroupContent className="mt-1">
                   {renderMenuItems(calculoLucroTikTokItems)}
                 </SidebarGroupContent>
               </CollapsibleContent>
             </Collapsible>}
         </SidebarGroup>
 
-        <SidebarGroup className="py-1">
+        <SidebarGroup>
           {collapsed ? <SidebarGroupContent>
               {renderMenuItems(calculadoraItems)}
             </SidebarGroupContent> : <Collapsible open={calculadoraOpen} onOpenChange={setCalculadoraOpen}>
               <CollapsibleTrigger asChild>
-                <button className="flex items-center gap-2 w-full px-3 py-1.5 text-sm font-semibold text-sidebar-foreground hover:bg-sidebar-accent rounded-md transition-colors">
+                <button className="flex items-center gap-2 w-full px-3 py-2.5 text-sm font-semibold text-sidebar-foreground hover:bg-sidebar-accent rounded-md transition-colors">
                   <Calculator className="h-5 w-5" />
                   <span>Precificação</span>
                   <ChevronDown className={`h-4 w-4 ml-auto transition-transform duration-300 ease-out ${calculadoraOpen ? '' : '-rotate-90'}`} />
                 </button>
               </CollapsibleTrigger>
               <CollapsibleContent className="overflow-hidden data-[state=closed]:animate-collapsible-up data-[state=open]:animate-collapsible-down">
-                <SidebarGroupContent>
+                <SidebarGroupContent className="mt-1">
                   {renderMenuItems(calculadoraItems)}
                 </SidebarGroupContent>
               </CollapsibleContent>
             </Collapsible>}
         </SidebarGroup>
 
-        <SidebarGroup className="py-1">
+        <SidebarGroup>
           {collapsed ? <SidebarGroupContent>
               {renderMenuItems(custosFixosItems)}
             </SidebarGroupContent> : <Collapsible open={custosFixosOpen} onOpenChange={setCustosFixosOpen}>
               <CollapsibleTrigger asChild>
-                <button className="flex items-center gap-2 w-full px-3 py-1.5 text-sm font-semibold text-sidebar-foreground hover:bg-sidebar-accent rounded-md transition-colors">
+                <button className="flex items-center gap-2 w-full px-3 py-2.5 text-sm font-semibold text-sidebar-foreground hover:bg-sidebar-accent rounded-md transition-colors">
                   <Receipt className="h-5 w-5" />
                   <span>Custos Fixos</span>
                   <ChevronDown className={`h-4 w-4 ml-auto transition-transform duration-300 ease-out ${custosFixosOpen ? '' : '-rotate-90'}`} />
                 </button>
               </CollapsibleTrigger>
               <CollapsibleContent className="overflow-hidden data-[state=closed]:animate-collapsible-up data-[state=open]:animate-collapsible-down">
-                <SidebarGroupContent>
+                <SidebarGroupContent className="mt-1">
                   {renderMenuItems(custosFixosItems)}
                 </SidebarGroupContent>
               </CollapsibleContent>
             </Collapsible>}
         </SidebarGroup>
 
-        <SidebarGroup className="pt-1">
+        <SidebarGroup>
           {collapsed ? <SidebarGroupContent>
               {renderMenuItems(assistenteAnuncioItems)}
             </SidebarGroupContent> : <Collapsible open={assistenteAnuncioOpen} onOpenChange={setAssistenteAnuncioOpen}>
               <CollapsibleTrigger asChild>
-                <button className="flex items-center gap-2 w-full px-3 py-1.5 text-sm font-semibold text-sidebar-foreground hover:bg-sidebar-accent rounded-md transition-colors">
+                <button className="flex items-center gap-2 w-full px-3 py-2.5 text-sm font-semibold text-sidebar-foreground hover:bg-sidebar-accent rounded-md transition-colors">
                   <Sparkles className="h-5 w-5" />
                   <span>Assistente de Anúncio</span>
                   <ChevronDown className={`h-4 w-4 ml-auto transition-transform duration-300 ease-out ${assistenteAnuncioOpen ? '' : '-rotate-90'}`} />
                 </button>
               </CollapsibleTrigger>
               <CollapsibleContent className="overflow-hidden data-[state=closed]:animate-collapsible-up data-[state=open]:animate-collapsible-down">
-                <SidebarGroupContent>
+                <SidebarGroupContent className="mt-1">
                   {renderMenuItems(assistenteAnuncioItems)}
                 </SidebarGroupContent>
               </CollapsibleContent>
             </Collapsible>}
         </SidebarGroup>
 
-        <SidebarGroup className="py-1">
+        <SidebarGroup>
           {collapsed ? <SidebarGroupContent>
               {renderMenuItems(relatoriosItems)}
             </SidebarGroupContent> : <Collapsible open={relatoriosOpen} onOpenChange={setRelatoriosOpen}>
               <CollapsibleTrigger asChild>
-                <button className="flex items-center gap-2 w-full px-3 py-1.5 text-sm font-semibold text-sidebar-foreground hover:bg-sidebar-accent rounded-md transition-colors">
+                <button className="flex items-center gap-2 w-full px-3 py-2.5 text-sm font-semibold text-sidebar-foreground hover:bg-sidebar-accent rounded-md transition-colors">
                   <BarChart3 className="h-5 w-5" />
                   <span>Relatórios</span>
                   <ChevronDown className={`h-4 w-4 ml-auto transition-transform duration-300 ease-out ${relatoriosOpen ? '' : '-rotate-90'}`} />
                 </button>
               </CollapsibleTrigger>
               <CollapsibleContent className="overflow-hidden data-[state=closed]:animate-collapsible-up data-[state=open]:animate-collapsible-down">
-                <SidebarGroupContent>
+                <SidebarGroupContent className="mt-1">
                   {renderMenuItems(relatoriosItems)}
                 </SidebarGroupContent>
               </CollapsibleContent>
