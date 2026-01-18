@@ -17,16 +17,20 @@ const VALID_EMAIL_DOMAINS = [
   'uol.com.br', 'bol.com.br', 'terra.com.br', 'ig.com.br', 'globo.com'
 ];
 
+import { validatePhone, formatPhone } from '@/lib/validations';
+
 interface ValidationErrors {
   email?: string;
   password?: string;
   fullName?: string;
+  phone?: string;
 }
 
 interface ValidationStatus {
   email?: boolean;
   password?: boolean;
   fullName?: boolean;
+  phone?: boolean;
 }
 
 const validateEmail = (email: string): string | null => {
@@ -69,6 +73,7 @@ export default function Auth() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [fullName, setFullName] = useState('');
+  const [phone, setPhone] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [rememberMe, setRememberMe] = useState(false);
@@ -115,6 +120,18 @@ export default function Auth() {
     }
   }, [fullName, touched.fullName]);
 
+  useEffect(() => {
+    if (touched.phone) {
+      const isValid = validatePhone(phone);
+      setErrors(prev => ({ ...prev, phone: isValid ? undefined : 'Telefone deve estar no formato (XX) XXXXX-XXXX' }));
+      setValid(prev => ({ ...prev, phone: isValid && phone.length > 0 }));
+    }
+  }, [phone, touched.phone]);
+
+  const handlePhoneChange = (value: string) => {
+    setPhone(formatPhone(value));
+  };
+
   const handleBlur = (field: keyof ValidationStatus) => {
     setTouched(prev => ({ ...prev, [field]: true }));
   };
@@ -156,16 +173,18 @@ export default function Auth() {
     e.preventDefault();
     
     // Mark all fields as touched
-    setTouched({ email: true, password: true, fullName: true });
+    setTouched({ email: true, password: true, fullName: true, phone: true });
     
     const emailError = validateEmail(email);
     const passwordError = validatePassword(password);
     const nameError = validateFullName(fullName);
+    const phoneValid = validatePhone(phone);
     
     const newErrors: ValidationErrors = {};
     if (emailError) newErrors.email = emailError;
     if (passwordError) newErrors.password = passwordError;
     if (nameError) newErrors.fullName = nameError;
+    if (!phoneValid) newErrors.phone = 'Telefone deve estar no formato (XX) XXXXX-XXXX';
     
     if (Object.keys(newErrors).length > 0) {
       setErrors(newErrors);
@@ -181,6 +200,7 @@ export default function Auth() {
         toast.error(error.message);
       }
     } else {
+      // Save phone to profile after signup
       toast.success('Conta criada com sucesso! Você já pode fazer login.');
       navigate('/');
     }
@@ -197,7 +217,7 @@ export default function Auth() {
   };
 
   const handleForgotPassword = () => {
-    toast.info('Funcionalidade em desenvolvimento. Entre em contato com o suporte.');
+    navigate('/esqueci-senha');
   };
 
   const InputIcon = ({ isValid, hasError }: { isValid?: boolean; hasError?: boolean }) => {
@@ -569,6 +589,31 @@ export default function Auth() {
                         <p className="text-sm text-destructive flex items-center gap-1">
                           <AlertCircle className="h-3 w-3" />
                           {errors.email}
+                        </p>
+                      )}
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="phone-register">Telefone</Label>
+                      <div className="relative">
+                        <Input 
+                          id="phone-register" 
+                          type="tel" 
+                          placeholder="(XX) XXXXX-XXXX" 
+                          className={`h-11 pr-10 placeholder:text-muted-foreground/50 ${
+                            errors.phone && touched.phone ? 'border-destructive focus-visible:ring-destructive' : ''
+                          } ${valid.phone ? 'border-green-500 focus-visible:ring-green-500' : ''}`}
+                          value={phone} 
+                          onChange={e => handlePhoneChange(e.target.value)}
+                          onBlur={() => handleBlur('phone')}
+                        />
+                        <div className="absolute right-3 top-1/2 -translate-y-1/2">
+                          <InputIcon isValid={valid.phone} hasError={!!errors.phone && touched.phone} />
+                        </div>
+                      </div>
+                      {errors.phone && touched.phone && (
+                        <p className="text-sm text-destructive flex items-center gap-1">
+                          <AlertCircle className="h-3 w-3" />
+                          {errors.phone}
                         </p>
                       )}
                     </div>

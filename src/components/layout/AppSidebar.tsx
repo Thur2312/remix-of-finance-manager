@@ -160,7 +160,7 @@ export function AppSidebar() {
                 <button className="flex items-center gap-2 w-full px-3 py-1.5 text-sm font-semibold text-sidebar-foreground hover:bg-sidebar-accent rounded-md transition-colors">
                   <Wallet className="h-5 w-5" />
                   <span>Fluxo de Caixa</span>
-                  <ChevronDown className={`h-4 w-4 ml-auto transition-transform duration-200 ${fluxoCaixaOpen ? '' : '-rotate-90'}`} />
+                  <ChevronDown className={`h-4 w-4 ml-auto transition-transform duration-300 ease-out ${fluxoCaixaOpen ? '' : '-rotate-90'}`} />
                 </button>
               </CollapsibleTrigger>
               <CollapsibleContent className="transition-all data-[state=closed]:animate-accordion-up data-[state=open]:animate-accordion-down">
@@ -179,7 +179,7 @@ export function AppSidebar() {
                 <button className="flex items-center gap-2 w-full px-3 py-1.5 text-sm font-semibold text-sidebar-foreground hover:bg-sidebar-accent rounded-md transition-colors">
                   <TrendingUp className="h-5 w-5" />
                   <span>Gestão Shopee</span>
-                  <ChevronDown className={`h-4 w-4 ml-auto transition-transform duration-200 ${calculoLucroShopeeOpen ? '' : '-rotate-90'}`} />
+                  <ChevronDown className={`h-4 w-4 ml-auto transition-transform duration-300 ease-out ${calculoLucroShopeeOpen ? '' : '-rotate-90'}`} />
                 </button>
               </CollapsibleTrigger>
               <CollapsibleContent className="transition-all data-[state=closed]:animate-accordion-up data-[state=open]:animate-accordion-down">
@@ -198,7 +198,7 @@ export function AppSidebar() {
                 <button className="flex items-center gap-2 w-full px-3 py-1.5 text-sm font-semibold text-sidebar-foreground hover:bg-sidebar-accent rounded-md transition-colors">
                   <TrendingUp className="h-5 w-5" />
                   <span>Gestão TikTok Shop</span>
-                  <ChevronDown className={`h-4 w-4 ml-auto transition-transform duration-200 ${calculoLucroTikTokOpen ? '' : '-rotate-90'}`} />
+                  <ChevronDown className={`h-4 w-4 ml-auto transition-transform duration-300 ease-out ${calculoLucroTikTokOpen ? '' : '-rotate-90'}`} />
                 </button>
               </CollapsibleTrigger>
               <CollapsibleContent className="transition-all data-[state=closed]:animate-accordion-up data-[state=open]:animate-accordion-down">
@@ -217,7 +217,7 @@ export function AppSidebar() {
                 <button className="flex items-center gap-2 w-full px-3 py-1.5 text-sm font-semibold text-sidebar-foreground hover:bg-sidebar-accent rounded-md transition-colors">
                   <Calculator className="h-5 w-5" />
                   <span>Precificação</span>
-                  <ChevronDown className={`h-4 w-4 ml-auto transition-transform duration-200 ${calculadoraOpen ? '' : '-rotate-90'}`} />
+                  <ChevronDown className={`h-4 w-4 ml-auto transition-transform duration-300 ease-out ${calculadoraOpen ? '' : '-rotate-90'}`} />
                 </button>
               </CollapsibleTrigger>
               <CollapsibleContent className="transition-all data-[state=closed]:animate-accordion-up data-[state=open]:animate-accordion-down">
@@ -236,7 +236,7 @@ export function AppSidebar() {
                 <button className="flex items-center gap-2 w-full px-3 py-1.5 text-sm font-semibold text-sidebar-foreground hover:bg-sidebar-accent rounded-md transition-colors">
                   <Receipt className="h-5 w-5" />
                   <span>Custos Fixos</span>
-                  <ChevronDown className={`h-4 w-4 ml-auto transition-transform duration-200 ${custosFixosOpen ? '' : '-rotate-90'}`} />
+                  <ChevronDown className={`h-4 w-4 ml-auto transition-transform duration-300 ease-out ${custosFixosOpen ? '' : '-rotate-90'}`} />
                 </button>
               </CollapsibleTrigger>
               <CollapsibleContent className="transition-all data-[state=closed]:animate-accordion-up data-[state=open]:animate-accordion-down">
@@ -255,7 +255,7 @@ export function AppSidebar() {
                 <button className="flex items-center gap-2 w-full px-3 py-1.5 text-sm font-semibold text-sidebar-foreground hover:bg-sidebar-accent rounded-md transition-colors">
                   <Sparkles className="h-5 w-5" />
                   <span>Assistente de Anúncio</span>
-                  <ChevronDown className={`h-4 w-4 ml-auto transition-transform duration-200 ${assistenteAnuncioOpen ? '' : '-rotate-90'}`} />
+                  <ChevronDown className={`h-4 w-4 ml-auto transition-transform duration-300 ease-out ${assistenteAnuncioOpen ? '' : '-rotate-90'}`} />
                 </button>
               </CollapsibleTrigger>
               <CollapsibleContent className="transition-all data-[state=closed]:animate-accordion-up data-[state=open]:animate-accordion-down">
@@ -274,7 +274,7 @@ export function AppSidebar() {
                 <button className="flex items-center gap-2 w-full px-3 py-1.5 text-sm font-semibold text-sidebar-foreground hover:bg-sidebar-accent rounded-md transition-colors">
                   <BarChart3 className="h-5 w-5" />
                   <span>Relatórios</span>
-                  <ChevronDown className={`h-4 w-4 ml-auto transition-transform duration-200 ${relatoriosOpen ? '' : '-rotate-90'}`} />
+                  <ChevronDown className={`h-4 w-4 ml-auto transition-transform duration-300 ease-out ${relatoriosOpen ? '' : '-rotate-90'}`} />
                 </button>
               </CollapsibleTrigger>
               <CollapsibleContent className="transition-all data-[state=closed]:animate-accordion-up data-[state=open]:animate-accordion-down">

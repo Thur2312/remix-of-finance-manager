@@ -26,6 +26,7 @@ import TikTokPagamentos from "./pages/tiktok/TikTokPagamentos";
 import TikTokPagamentosUpload from "./pages/tiktok/TikTokPagamentosUpload";
 import DRE from "./pages/DRE";
 import Perfil from "./pages/Perfil";
+import EsqueciSenha from "./pages/EsqueciSenha";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -40,6 +41,7 @@ const App = () => (
           <Routes>
             <Route path="/" element={<Index />} />
             <Route path="/auth" element={<Auth />} />
+            <Route path="/esqueci-senha" element={<EsqueciSenha />} />
             <Route path="/configuracoes" element={<Configuracoes />} />
             <Route path="/upload" element={<Upload />} />
             <Route path="/resultados" element={<Resultados />} />
