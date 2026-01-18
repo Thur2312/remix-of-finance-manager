@@ -163,7 +163,7 @@ export function AppSidebar() {
                   <ChevronDown className={`h-4 w-4 ml-auto transition-transform duration-300 ease-out ${fluxoCaixaOpen ? '' : '-rotate-90'}`} />
                 </button>
               </CollapsibleTrigger>
-              <CollapsibleContent className="transition-all data-[state=closed]:animate-accordion-up data-[state=open]:animate-accordion-down">
+              <CollapsibleContent className="overflow-hidden data-[state=closed]:animate-collapsible-up data-[state=open]:animate-collapsible-down">
                 <SidebarGroupContent>
                   {renderMenuItems(fluxoCaixaItems)}
                 </SidebarGroupContent>
@@ -182,7 +182,7 @@ export function AppSidebar() {
                   <ChevronDown className={`h-4 w-4 ml-auto transition-transform duration-300 ease-out ${calculoLucroShopeeOpen ? '' : '-rotate-90'}`} />
                 </button>
               </CollapsibleTrigger>
-              <CollapsibleContent className="transition-all data-[state=closed]:animate-accordion-up data-[state=open]:animate-accordion-down">
+              <CollapsibleContent className="overflow-hidden data-[state=closed]:animate-collapsible-up data-[state=open]:animate-collapsible-down">
                 <SidebarGroupContent>
                   {renderMenuItems(calculoLucroShopeeItems)}
                 </SidebarGroupContent>
@@ -201,7 +201,7 @@ export function AppSidebar() {
                   <ChevronDown className={`h-4 w-4 ml-auto transition-transform duration-300 ease-out ${calculoLucroTikTokOpen ? '' : '-rotate-90'}`} />
                 </button>
               </CollapsibleTrigger>
-              <CollapsibleContent className="transition-all data-[state=closed]:animate-accordion-up data-[state=open]:animate-accordion-down">
+              <CollapsibleContent className="overflow-hidden data-[state=closed]:animate-collapsible-up data-[state=open]:animate-collapsible-down">
                 <SidebarGroupContent>
                   {renderMenuItems(calculoLucroTikTokItems)}
                 </SidebarGroupContent>
@@ -220,7 +220,7 @@ export function AppSidebar() {
                   <ChevronDown className={`h-4 w-4 ml-auto transition-transform duration-300 ease-out ${calculadoraOpen ? '' : '-rotate-90'}`} />
                 </button>
               </CollapsibleTrigger>
-              <CollapsibleContent className="transition-all data-[state=closed]:animate-accordion-up data-[state=open]:animate-accordion-down">
+              <CollapsibleContent className="overflow-hidden data-[state=closed]:animate-collapsible-up data-[state=open]:animate-collapsible-down">
                 <SidebarGroupContent>
                   {renderMenuItems(calculadoraItems)}
                 </SidebarGroupContent>
@@ -239,7 +239,7 @@ export function AppSidebar() {
                   <ChevronDown className={`h-4 w-4 ml-auto transition-transform duration-300 ease-out ${custosFixosOpen ? '' : '-rotate-90'}`} />
                 </button>
               </CollapsibleTrigger>
-              <CollapsibleContent className="transition-all data-[state=closed]:animate-accordion-up data-[state=open]:animate-accordion-down">
+              <CollapsibleContent className="overflow-hidden data-[state=closed]:animate-collapsible-up data-[state=open]:animate-collapsible-down">
                 <SidebarGroupContent>
                   {renderMenuItems(custosFixosItems)}
                 </SidebarGroupContent>
@@ -258,7 +258,7 @@ export function AppSidebar() {
                   <ChevronDown className={`h-4 w-4 ml-auto transition-transform duration-300 ease-out ${assistenteAnuncioOpen ? '' : '-rotate-90'}`} />
                 </button>
               </CollapsibleTrigger>
-              <CollapsibleContent className="transition-all data-[state=closed]:animate-accordion-up data-[state=open]:animate-accordion-down">
+              <CollapsibleContent className="overflow-hidden data-[state=closed]:animate-collapsible-up data-[state=open]:animate-collapsible-down">
                 <SidebarGroupContent>
                   {renderMenuItems(assistenteAnuncioItems)}
                 </SidebarGroupContent>
@@ -277,7 +277,7 @@ export function AppSidebar() {
                   <ChevronDown className={`h-4 w-4 ml-auto transition-transform duration-300 ease-out ${relatoriosOpen ? '' : '-rotate-90'}`} />
                 </button>
               </CollapsibleTrigger>
-              <CollapsibleContent className="transition-all data-[state=closed]:animate-accordion-up data-[state=open]:animate-accordion-down">
+              <CollapsibleContent className="overflow-hidden data-[state=closed]:animate-collapsible-up data-[state=open]:animate-collapsible-down">
                 <SidebarGroupContent>
                   {renderMenuItems(relatoriosItems)}
                 </SidebarGroupContent>
