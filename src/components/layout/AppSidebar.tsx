@@ -5,7 +5,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { Sidebar, SidebarContent, SidebarFooter, SidebarGroup, SidebarGroupContent, SidebarHeader, SidebarMenu, SidebarMenuButton, SidebarMenuItem, useSidebar } from '@/components/ui/sidebar';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
-import { Avatar, AvatarFallback } from '@/components/ui/avatar';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { LayoutDashboard, Settings, Upload, FileSpreadsheet, Package, ChevronUp, ChevronDown, LogOut, ShoppingBag, TrendingUp, Calculator, Wallet, List, Tags, Sparkles, Receipt, BarChart3, User } from 'lucide-react';
 import logo from '@/assets/logo.png';
@@ -101,6 +101,7 @@ export function AppSidebar() {
   const navigate = useNavigate();
   const {
     user,
+    profile,
     signOut
   } = useAuth();
   const collapsed = state === 'collapsed';
@@ -131,9 +132,16 @@ export function AppSidebar() {
     if (isInAssistenteAnuncio) setAssistenteAnuncioOpen(true);
     if (isInRelatorios) setRelatoriosOpen(true);
   }, [location.pathname, isInCalculoLucroShopee, isInCalculoLucroTikTok, isInCalculadora, isInCustosFixos, isInFluxoCaixa, isInAssistenteAnuncio, isInRelatorios]);
-  const getInitials = (email: string) => {
-    return email.slice(0, 2).toUpperCase();
+  
+  const getInitials = (name: string | null, email: string | null) => {
+    if (name && name.length >= 2) return name.slice(0, 2).toUpperCase();
+    if (email) return email.slice(0, 2).toUpperCase();
+    return 'U';
   };
+
+  const displayName = profile?.full_name || user?.user_metadata?.full_name || 'Usuário';
+  const displayEmail = profile?.email || user?.email || '';
+  const avatarUrl = profile?.avatar_url || null;
   const renderMenuItems = (items: typeof calculoLucroShopeeItems) => <SidebarMenu className="space-y-1">
       {items.map(item => <SidebarMenuItem key={item.title}>
           <SidebarMenuButton asChild isActive={location.pathname === item.url} tooltip={item.title}>
@@ -293,16 +301,17 @@ export function AppSidebar() {
               <DropdownMenuTrigger asChild>
                 <SidebarMenuButton size="lg" className="data-[state=open]:bg-sidebar-accent">
                   <Avatar className="h-8 w-8">
+                    <AvatarImage src={avatarUrl || undefined} alt="Avatar" />
                     <AvatarFallback className="bg-primary text-primary-foreground text-sm">
-                      {user?.email ? getInitials(user.email) : 'U'}
+                      {getInitials(displayName, displayEmail)}
                     </AvatarFallback>
                   </Avatar>
                   {!collapsed && <div className="flex flex-1 flex-col text-left text-sm">
                       <span className="truncate font-medium">
-                        {user?.user_metadata?.full_name || 'Usuário'}
+                        {displayName}
                       </span>
                       <span className="truncate text-xs text-muted-foreground">
-                        {user?.email}
+                        {displayEmail}
                       </span>
                     </div>}
                   <ChevronUp className="ml-auto h-4 w-4" />
@@ -310,7 +319,7 @@ export function AppSidebar() {
               </DropdownMenuTrigger>
               <DropdownMenuContent side="top" className="w-[--radix-popper-anchor-width]">
                 <DropdownMenuItem disabled className="flex flex-col items-start">
-                  <span className="font-medium">{user?.email}</span>
+                  <span className="font-medium">{displayEmail}</span>
                 </DropdownMenuItem>
                 <DropdownMenuSeparator />
                 <DropdownMenuItem onClick={() => navigate('/perfil')} className="cursor-pointer">

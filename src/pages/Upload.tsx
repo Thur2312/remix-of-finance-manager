@@ -45,6 +45,7 @@ import {
 } from '@/components/ui/alert-dialog';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
+import { MissingCostsModal, MissingSku } from '@/components/upload/MissingCostsModal';
 
 interface ParsedRow {
   order_id: string;
@@ -99,6 +100,10 @@ function UploadContent() {
   const [parsedRows, setParsedRows] = useState<RawRowData[]>([]);
   const [importStats, setImportStats] = useState({ total: 0, imported: 0, errors: 0 });
   const [replaceExisting, setReplaceExisting] = useState(true);
+  const [missingCostsModalOpen, setMissingCostsModalOpen] = useState(false);
+  const [missingSkus, setMissingSkus] = useState<MissingSku[]>([]);
+  const [pendingCosts, setPendingCosts] = useState<Record<string, number>>({});
+  const [isSavingCosts, setIsSavingCosts] = useState(false);
 
   const handleDrag = useCallback((e: React.DragEvent) => {
     e.preventDefault();
@@ -280,9 +285,77 @@ function UploadContent() {
     }).filter(row => row.order_id && row.nome_produto);
   };
 
-  const handlePreview = () => {
+  const handlePreview = async () => {
     if (!validateMapping()) return;
+    if (!user) return;
+
+    // Check for missing costs
+    const dataToImport = processDataForImport();
+    const uniqueSkus = [...new Set(dataToImport.filter(r => r.sku).map(r => r.sku))];
+
+    if (uniqueSkus.length > 0) {
+      // Fetch existing costs
+      const { data: existingCosts } = await supabase
+        .from('product_costs')
+        .select('sku')
+        .eq('user_id', user.id)
+        .in('sku', uniqueSkus);
+
+      const existingSkuSet = new Set(existingCosts?.map(c => c.sku) || []);
+      
+      // Find SKUs without costs
+      const missing: MissingSku[] = [];
+      const skuQuantities: Record<string, { nome_produto: string; quantidade: number }> = {};
+
+      for (const row of dataToImport) {
+        if (row.sku && !existingSkuSet.has(row.sku) && !pendingCosts[row.sku]) {
+          if (!skuQuantities[row.sku]) {
+            skuQuantities[row.sku] = { nome_produto: row.nome_produto, quantidade: 0 };
+          }
+          skuQuantities[row.sku].quantidade += row.quantidade;
+        }
+      }
+
+      for (const [sku, data] of Object.entries(skuQuantities)) {
+        missing.push({ sku, ...data });
+      }
+
+      if (missing.length > 0) {
+        setMissingSkus(missing);
+        setMissingCostsModalOpen(true);
+        return;
+      }
+    }
+
     setStep('preview');
+  };
+
+  const handleSaveCosts = async (costs: Record<string, number>) => {
+    if (!user) return;
+    setIsSavingCosts(true);
+
+    try {
+      const costsToInsert = Object.entries(costs).map(([sku, cost]) => ({
+        user_id: user.id,
+        sku,
+        cost,
+        effective_from: new Date().toISOString().split('T')[0],
+      }));
+
+      const { error } = await supabase.from('product_costs').insert(costsToInsert);
+
+      if (error) throw error;
+
+      setPendingCosts(prev => ({ ...prev, ...costs }));
+      setMissingCostsModalOpen(false);
+      toast.success('Custos salvos com sucesso!');
+      setStep('preview');
+    } catch (error) {
+      console.error('Error saving costs:', error);
+      toast.error('Erro ao salvar custos');
+    } finally {
+      setIsSavingCosts(false);
+    }
   };
 
   const handleImport = async () => {
@@ -631,6 +704,14 @@ function UploadContent() {
       {step === 'mapping' && renderMappingStep()}
       {step === 'preview' && renderPreviewStep()}
       {step === 'success' && renderSuccessStep()}
+
+      <MissingCostsModal
+        open={missingCostsModalOpen}
+        onOpenChange={setMissingCostsModalOpen}
+        missingSkus={missingSkus}
+        onSubmit={handleSaveCosts}
+        isLoading={isSavingCosts}
+      />
     </div>
   );
 }
