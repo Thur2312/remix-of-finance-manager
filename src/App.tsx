@@ -4,6 +4,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { AuthProvider } from "@/contexts/AuthContext";
+import { ProtectedRoute } from "@/components/layout/ProtectedRoute";
 import Index from "./pages/Index";
 import Auth from "./pages/Auth";
 import Configuracoes from "./pages/Configuracoes";
@@ -27,6 +28,7 @@ import TikTokPagamentosUpload from "./pages/tiktok/TikTokPagamentosUpload";
 import DRE from "./pages/DRE";
 import Perfil from "./pages/Perfil";
 import EsqueciSenha from "./pages/EsqueciSenha";
+import ResetPassword from "./pages/ResetPassword";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -39,30 +41,35 @@ const App = () => (
       <BrowserRouter>
         <AuthProvider>
           <Routes>
-            <Route path="/" element={<Index />} />
+            {/* Public routes */}
             <Route path="/auth" element={<Auth />} />
             <Route path="/esqueci-senha" element={<EsqueciSenha />} />
-            <Route path="/configuracoes" element={<Configuracoes />} />
-            <Route path="/upload" element={<Upload />} />
-            <Route path="/resultados" element={<Resultados />} />
-            <Route path="/resultados-variacoes" element={<ResultadosVariacoes />} />
-            <Route path="/calculadora" element={<CalculadoraPrecificacao />} />
-            <Route path="/precificacao/custos" element={<CadastroCustos />} />
-            <Route path="/fluxo-caixa" element={<FluxoCaixaDashboard />} />
-            <Route path="/fluxo-caixa/lancamentos" element={<FluxoCaixaLancamentos />} />
-            <Route path="/fluxo-caixa/categorias" element={<FluxoCaixaCategorias />} />
-            <Route path="/fluxo-caixa/importacao" element={<FluxoCaixaImportacao />} />
-            <Route path="/assistente-anuncio" element={<AssistenteAnuncio />} />
-            <Route path="/tiktok/dashboard" element={<TikTokDashboard />} />
-            <Route path="/tiktok/configuracoes" element={<TikTokConfiguracoes />} />
-            <Route path="/tiktok/upload" element={<TikTokUpload />} />
-            <Route path="/tiktok/resultados" element={<TikTokResultados />} />
-            <Route path="/tiktok/variacoes" element={<TikTokVariacoes />} />
-            <Route path="/tiktok/pagamentos" element={<TikTokPagamentos />} />
-            <Route path="/tiktok/pagamentos/upload" element={<TikTokPagamentosUpload />} />
-            <Route path="/dre" element={<DRE />} />
-            <Route path="/perfil" element={<Perfil />} />
-            {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
+            <Route path="/reset-password" element={<ResetPassword />} />
+            
+            {/* Protected routes */}
+            <Route path="/" element={<ProtectedRoute><Index /></ProtectedRoute>} />
+            <Route path="/configuracoes" element={<ProtectedRoute><Configuracoes /></ProtectedRoute>} />
+            <Route path="/upload" element={<ProtectedRoute><Upload /></ProtectedRoute>} />
+            <Route path="/resultados" element={<ProtectedRoute><Resultados /></ProtectedRoute>} />
+            <Route path="/resultados-variacoes" element={<ProtectedRoute><ResultadosVariacoes /></ProtectedRoute>} />
+            <Route path="/calculadora" element={<ProtectedRoute><CalculadoraPrecificacao /></ProtectedRoute>} />
+            <Route path="/precificacao/custos" element={<ProtectedRoute><CadastroCustos /></ProtectedRoute>} />
+            <Route path="/fluxo-caixa" element={<ProtectedRoute><FluxoCaixaDashboard /></ProtectedRoute>} />
+            <Route path="/fluxo-caixa/lancamentos" element={<ProtectedRoute><FluxoCaixaLancamentos /></ProtectedRoute>} />
+            <Route path="/fluxo-caixa/categorias" element={<ProtectedRoute><FluxoCaixaCategorias /></ProtectedRoute>} />
+            <Route path="/fluxo-caixa/importacao" element={<ProtectedRoute><FluxoCaixaImportacao /></ProtectedRoute>} />
+            <Route path="/assistente-anuncio" element={<ProtectedRoute><AssistenteAnuncio /></ProtectedRoute>} />
+            <Route path="/tiktok/dashboard" element={<ProtectedRoute><TikTokDashboard /></ProtectedRoute>} />
+            <Route path="/tiktok/configuracoes" element={<ProtectedRoute><TikTokConfiguracoes /></ProtectedRoute>} />
+            <Route path="/tiktok/upload" element={<ProtectedRoute><TikTokUpload /></ProtectedRoute>} />
+            <Route path="/tiktok/resultados" element={<ProtectedRoute><TikTokResultados /></ProtectedRoute>} />
+            <Route path="/tiktok/variacoes" element={<ProtectedRoute><TikTokVariacoes /></ProtectedRoute>} />
+            <Route path="/tiktok/pagamentos" element={<ProtectedRoute><TikTokPagamentos /></ProtectedRoute>} />
+            <Route path="/tiktok/pagamentos/upload" element={<ProtectedRoute><TikTokPagamentosUpload /></ProtectedRoute>} />
+            <Route path="/dre" element={<ProtectedRoute><DRE /></ProtectedRoute>} />
+            <Route path="/perfil" element={<ProtectedRoute><Perfil /></ProtectedRoute>} />
+            
+            {/* Catch-all */}
             <Route path="*" element={<NotFound />} />
           </Routes>
         </AuthProvider>

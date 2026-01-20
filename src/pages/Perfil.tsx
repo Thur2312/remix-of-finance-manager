@@ -27,7 +27,7 @@ interface FormErrors {
 }
 
 function PerfilContent() {
-  const { user } = useAuth();
+  const { user, refreshProfile } = useAuth();
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
@@ -164,6 +164,9 @@ function PerfilContent() {
 
       setAvatarUrl(publicUrl + '?t=' + Date.now()); // Add timestamp to force refresh
       toast.success('Foto atualizada com sucesso!');
+      
+      // Refresh the profile in AuthContext to sync everywhere
+      await refreshProfile();
     } catch (error) {
       console.error('Error uploading avatar:', error);
       toast.error('Erro ao enviar foto');
@@ -193,6 +196,9 @@ function PerfilContent() {
 
       toast.success('Perfil atualizado com sucesso!');
       await fetchProfile();
+      
+      // Refresh the profile in AuthContext to sync everywhere
+      await refreshProfile();
     } catch (error: any) {
       console.error('Error saving profile:', error);
       toast.error('Erro ao salvar perfil');
