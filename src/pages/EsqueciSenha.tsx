@@ -57,19 +57,30 @@ export default function EsqueciSenha() {
     setError(null);
 
     try {
-      const { error } = await supabase.auth.resetPasswordForEmail(email, {
-        redirectTo: `${window.location.origin}/reset-password`,
+      // Call edge function to verify email exists and send reset email
+      const redirectUrl = `${window.location.origin}/reset-password`;
+      
+      const { data, error: fnError } = await supabase.functions.invoke('send-password-reset', {
+        body: { 
+          email: email.toLowerCase(),
+          redirectUrl 
+        }
       });
 
-      if (error) {
-        throw error;
+      if (fnError) {
+        console.error('Error calling function:', fnError);
+        throw new Error('Erro ao enviar email de recuperação');
+      }
+
+      if (data?.error) {
+        throw new Error(data.error);
       }
 
       setEmailSent(true);
       toast.success('Email enviado com sucesso!');
     } catch (err: any) {
       console.error('Error sending reset email:', err);
-      toast.error('Erro ao enviar email. Tente novamente.');
+      toast.error(err.message || 'Erro ao enviar email. Tente novamente.');
     } finally {
       setIsLoading(false);
     }
