@@ -35,22 +35,22 @@ const ABSORCAO_PADRAO = {
 } as const;
 type PapelProduto = 'novo' | 'complementar' | 'principal' | 'avancado';
 function CalculadoraPrecificacaoContent() {
-  // Dados do Produto
-  const [custoProduto, setCustoProduto] = useState<number>(0);
-  const [embalagemEtiqueta, setEmbalagemEtiqueta] = useState<number>(0);
+  // Dados do Produto - usando strings para permitir digitação de vírgula
+  const [custoProduto, setCustoProduto] = useState<string>('');
+  const [embalagemEtiqueta, setEmbalagemEtiqueta] = useState<string>('');
 
   // Preço do Anúncio
-  const [precoCheio, setPrecoCheio] = useState<number>(0);
-  const [desconto, setDesconto] = useState<number>(0);
+  const [precoCheio, setPrecoCheio] = useState<string>('');
+  const [desconto, setDesconto] = useState<string>('');
 
   // Taxas e Comissões
-  const [comissaoPlataforma, setComissaoPlataforma] = useState<number>(20);
-  const [taxaFixa, setTaxaFixa] = useState<number>(4);
-  const [aliquotaImposto, setAliquotaImposto] = useState<number>(6);
-  const [comissaoAfiliados, setComissaoAfiliados] = useState<number>(0);
+  const [comissaoPlataforma, setComissaoPlataforma] = useState<string>('');
+  const [taxaFixa, setTaxaFixa] = useState<string>('');
+  const [aliquotaImposto, setAliquotaImposto] = useState<string>('');
+  const [comissaoAfiliados, setComissaoAfiliados] = useState<string>('');
 
   // Meta
-  const [margemDesejada, setMargemDesejada] = useState<number>(30);
+  const [margemDesejada, setMargemDesejada] = useState<string>('');
 
   // Papel do Produto na Operação (NOVO)
   const [papelProduto, setPapelProduto] = useState<PapelProduto>('novo');
@@ -87,19 +87,30 @@ function CalculadoraPrecificacaoContent() {
     const volume = volumeMensal > 0 ? volumeMensal : 1;
     const volumeProduto = volumeEsperadoProduto > 0 ? volumeEsperadoProduto : 1;
 
+    // Converter strings para números
+    const custoProdutoNum = parseNumericInputSafe(custoProduto, { min: 0, max: 9999999 });
+    const embalagemEtiquetaNum = parseNumericInputSafe(embalagemEtiqueta, { min: 0, max: 9999999 });
+    const precoCheioNum = parseNumericInputSafe(precoCheio, { min: 0, max: 9999999 });
+    const descontoNum = parseNumericInputSafe(desconto, { min: 0, max: 100 });
+    const comissaoPlataformaNum = parseNumericInputSafe(comissaoPlataforma, { min: 0, max: 100 });
+    const taxaFixaNum = parseNumericInputSafe(taxaFixa, { min: 0, max: 9999999 });
+    const aliquotaImpostoNum = parseNumericInputSafe(aliquotaImposto, { min: 0, max: 100 });
+    const comissaoAfiliadosNum = parseNumericInputSafe(comissaoAfiliados, { min: 0, max: 100 });
+    const margemDesejadaNum = parseNumericInputSafe(margemDesejada, { min: 0, max: 100 });
+
     // Preço Promocional (após desconto)
-    const precoPromocional = precoCheio * (1 - desconto / 100);
+    const precoPromocional = precoCheioNum * (1 - descontoNum / 100);
 
     // =========================================
     // CUSTOS VARIÁVEIS (por unidade) - SEM CUSTO FIXO
     // =========================================
     const custosVariaveis = {
-      produto: custoProduto,
-      embalagem: embalagemEtiqueta,
-      comissaoPlataforma: precoPromocional * (comissaoPlataforma / 100),
-      taxaFixaVenda: taxaFixa,
-      impostos: precoPromocional * (aliquotaImposto / 100),
-      comissaoAfiliados: precoPromocional * (comissaoAfiliados / 100)
+      produto: custoProdutoNum,
+      embalagem: embalagemEtiquetaNum,
+      comissaoPlataforma: precoPromocional * (comissaoPlataformaNum / 100),
+      taxaFixaVenda: taxaFixaNum,
+      impostos: precoPromocional * (aliquotaImpostoNum / 100),
+      comissaoAfiliados: precoPromocional * (comissaoAfiliadosNum / 100)
     };
     const totalCustosVariaveis = custosVariaveis.produto + custosVariaveis.embalagem + custosVariaveis.comissaoPlataforma + custosVariaveis.taxaFixaVenda + custosVariaveis.impostos + custosVariaveis.comissaoAfiliados;
 
@@ -128,25 +139,25 @@ function CalculadoraPrecificacaoContent() {
     const custoFixo100Percent = volumeProduto > 0 ? totalRecurringCosts / volumeProduto : 0;
 
     // Preço necessário para sustentar a empresa sozinho
-    const taxasTotais = (comissaoPlataforma + aliquotaImposto + comissaoAfiliados + margemDesejada) / 100;
+    const taxasTotais = (comissaoPlataformaNum + aliquotaImpostoNum + comissaoAfiliadosNum + margemDesejadaNum) / 100;
     const denominador = 1 - taxasTotais;
     const custoTotal100Percent = totalCustosVariaveis + custoFixo100Percent;
-    const precoNecessario100Percent = denominador > 0 ? (totalCustosVariaveis + custoFixo100Percent + taxaFixa) / denominador : 0;
+    const precoNecessario100Percent = denominador > 0 ? (totalCustosVariaveis + custoFixo100Percent + taxaFixaNum) / denominador : 0;
 
     // =========================================
     // CÁLCULOS LEGADOS (mantendo compatibilidade)
     // =========================================
     const custoFixoDiluido = totalRecurringCosts > 0 ? totalRecurringCosts / volume : 0;
-    const custoTotal = custoProduto + embalagemEtiqueta + custoFixoDiluido;
-    const valorComissaoPlataforma = precoPromocional * (comissaoPlataforma / 100);
-    const valorComissaoAfiliados = precoPromocional * (comissaoAfiliados / 100);
-    const valorImpostos = precoPromocional * (aliquotaImposto / 100);
-    const valorLiquidoRecebido = precoPromocional - valorComissaoPlataforma - taxaFixa - valorImpostos - valorComissaoAfiliados;
+    const custoTotal = custoProdutoNum + embalagemEtiquetaNum + custoFixoDiluido;
+    const valorComissaoPlataforma = precoPromocional * (comissaoPlataformaNum / 100);
+    const valorComissaoAfiliados = precoPromocional * (comissaoAfiliadosNum / 100);
+    const valorImpostos = precoPromocional * (aliquotaImpostoNum / 100);
+    const valorLiquidoRecebido = precoPromocional - valorComissaoPlataforma - taxaFixaNum - valorImpostos - valorComissaoAfiliados;
     const lucro = valorLiquidoRecebido - custoTotal;
     const margemReal = precoPromocional > 0 ? lucro / precoPromocional * 100 : 0;
     const viavel = lucro >= 0;
-    const margemAtingida = margemReal >= margemDesejada;
-    const precoIdeal = denominador > 0 ? (custoTotal + taxaFixa) / denominador : 0;
+    const margemAtingida = margemReal >= margemDesejadaNum;
+    const precoIdeal = denominador > 0 ? (custoTotal + taxaFixaNum) / denominador : 0;
     const margemInviavel = denominador <= 0;
     return {
       // Novos cálculos
@@ -177,7 +188,7 @@ function CalculadoraPrecificacaoContent() {
       precoIdeal,
       margemInviavel
     };
-  }, [custoProduto, precoCheio, desconto, comissaoPlataforma, taxaFixa, aliquotaImposto, comissaoAfiliados, embalagemEtiqueta, margemDesejada, totalRecurringCosts, volumeMensal, volumeEsperadoProduto, percentualAbsorcao]);
+  }, [custoProduto, embalagemEtiqueta, precoCheio, desconto, comissaoPlataforma, taxaFixa, aliquotaImposto, comissaoAfiliados, margemDesejada, totalRecurringCosts, volumeMensal, volumeEsperadoProduto, percentualAbsorcao]);
 
   // Alertas de proteção automáticos
   const alertas = useMemo(() => {
@@ -219,10 +230,7 @@ function CalculadoraPrecificacaoContent() {
     }
     return lista;
   }, [results, papelProduto, percentualAbsorcao]);
-  const handleNumberInput = (value: string, setter: (val: number) => void) => {
-    const numValue = parseNumericInputSafe(value, { min: 0, max: 9999999 });
-    setter(numValue);
-  };
+  
   return <AppLayout>
       <TooltipProvider>
         <div className="max-w-5xl mx-auto space-y-6">
@@ -388,13 +396,13 @@ function CalculadoraPrecificacaoContent() {
                   <Label htmlFor="custoProduto" className="text-sm font-medium">
                     Custo do Produto (R$)
                   </Label>
-                  <Input id="custoProduto" type="text" inputMode="decimal" value={custoProduto || ""} onChange={e => handleNumberInput(e.target.value, setCustoProduto)} placeholder="0,00" className="h-11" />
+                  <Input id="custoProduto" type="text" inputMode="decimal" value={custoProduto} onChange={e => setCustoProduto(e.target.value)} placeholder="0" className="h-11" />
                 </div>
                 <div className="space-y-1.5">
                   <Label htmlFor="comissaoPlataforma" className="text-sm font-medium">
                     Comissão Plataforma (%)
                   </Label>
-                  <Input id="comissaoPlataforma" type="text" inputMode="decimal" value={comissaoPlataforma || ""} onChange={e => handleNumberInput(e.target.value, setComissaoPlataforma)} placeholder="20" className="h-11" />
+                  <Input id="comissaoPlataforma" type="text" inputMode="decimal" value={comissaoPlataforma} onChange={e => setComissaoPlataforma(e.target.value)} placeholder="0" className="h-11" />
                 </div>
 
                 {/* Linha 2 */}
@@ -402,13 +410,13 @@ function CalculadoraPrecificacaoContent() {
                   <Label htmlFor="embalagemEtiqueta" className="text-sm font-medium">
                     Embalagem + Etiqueta (R$)
                   </Label>
-                  <Input id="embalagemEtiqueta" type="text" inputMode="decimal" value={embalagemEtiqueta || ""} onChange={e => handleNumberInput(e.target.value, setEmbalagemEtiqueta)} placeholder="0,00" className="h-11" />
+                  <Input id="embalagemEtiqueta" type="text" inputMode="decimal" value={embalagemEtiqueta} onChange={e => setEmbalagemEtiqueta(e.target.value)} placeholder="0" className="h-11" />
                 </div>
                 <div className="space-y-1.5">
                   <Label htmlFor="taxaFixa" className="text-sm font-medium">
                     Taxa Fixa por Venda (R$)
                   </Label>
-                  <Input id="taxaFixa" type="text" inputMode="decimal" value={taxaFixa || ""} onChange={e => handleNumberInput(e.target.value, setTaxaFixa)} placeholder="4,00" className="h-11" />
+                  <Input id="taxaFixa" type="text" inputMode="decimal" value={taxaFixa} onChange={e => setTaxaFixa(e.target.value)} placeholder="0" className="h-11" />
                 </div>
 
                 {/* Linha 3 */}
@@ -416,13 +424,13 @@ function CalculadoraPrecificacaoContent() {
                   <Label htmlFor="precoCheio" className="text-sm font-medium">
                     Preço Cheio (R$)
                   </Label>
-                  <Input id="precoCheio" type="text" inputMode="decimal" value={precoCheio || ""} onChange={e => handleNumberInput(e.target.value, setPrecoCheio)} placeholder="0,00" className="h-11" />
+                  <Input id="precoCheio" type="text" inputMode="decimal" value={precoCheio} onChange={e => setPrecoCheio(e.target.value)} placeholder="0" className="h-11" />
                 </div>
                 <div className="space-y-1.5">
                   <Label htmlFor="aliquotaImposto" className="text-sm font-medium">
                     Alíquota de Imposto (%)
                   </Label>
-                  <Input id="aliquotaImposto" type="text" inputMode="decimal" value={aliquotaImposto || ""} onChange={e => handleNumberInput(e.target.value, setAliquotaImposto)} placeholder="6" className="h-11" />
+                  <Input id="aliquotaImposto" type="text" inputMode="decimal" value={aliquotaImposto} onChange={e => setAliquotaImposto(e.target.value)} placeholder="0" className="h-11" />
                 </div>
 
                 {/* Linha 4 */}
@@ -430,13 +438,13 @@ function CalculadoraPrecificacaoContent() {
                   <Label htmlFor="desconto" className="text-sm font-medium">
                     Desconto (%)
                   </Label>
-                  <Input id="desconto" type="text" inputMode="decimal" value={desconto || ""} onChange={e => handleNumberInput(e.target.value, setDesconto)} placeholder="0" className="h-11" />
+                  <Input id="desconto" type="text" inputMode="decimal" value={desconto} onChange={e => setDesconto(e.target.value)} placeholder="0" className="h-11" />
                 </div>
                 <div className="space-y-1.5">
                   <Label htmlFor="comissaoAfiliados" className="text-sm font-medium">
                     Comissão Afiliados (%)
                   </Label>
-                  <Input id="comissaoAfiliados" type="text" inputMode="decimal" value={comissaoAfiliados || ""} onChange={e => handleNumberInput(e.target.value, setComissaoAfiliados)} placeholder="0" className="h-11" />
+                  <Input id="comissaoAfiliados" type="text" inputMode="decimal" value={comissaoAfiliados} onChange={e => setComissaoAfiliados(e.target.value)} placeholder="0" className="h-11" />
                 </div>
 
                 {/* Linha 5 */}
@@ -452,8 +460,8 @@ function CalculadoraPrecificacaoContent() {
                   <Label className="text-sm font-medium">Meta de Margem (%)</Label>
                   <div className="flex items-center gap-2">
                     <Slider 
-                      value={[margemDesejada]} 
-                      onValueChange={([val]) => setMargemDesejada(val)} 
+                      value={[parseNumericInputSafe(margemDesejada, { min: 0, max: 100 })]} 
+                      onValueChange={([val]) => setMargemDesejada(val.toString())} 
                       min={0} 
                       max={100} 
                       step={1} 
@@ -463,7 +471,7 @@ function CalculadoraPrecificacaoContent() {
                       type="text" 
                       inputMode="decimal" 
                       value={margemDesejada} 
-                      onChange={e => handleNumberInput(e.target.value, setMargemDesejada)} 
+                      onChange={e => setMargemDesejada(e.target.value)} 
                       className="w-16 h-11 text-center" 
                     />
                   </div>
@@ -482,7 +490,7 @@ function CalculadoraPrecificacaoContent() {
                       <div className="flex items-center gap-1.5">
                         <Lightbulb className="h-3.5 w-3.5 text-primary flex-shrink-0" />
                         <span className="text-xs text-primary">
-                          Para atingir <span className="font-semibold">{margemDesejada}%</span> de margem, o preço ideal é:
+                          Para atingir <span className="font-semibold">{parseNumericInputSafe(margemDesejada, { min: 0, max: 100 })}%</span> de margem, o preço ideal é:
                         </span>
                       </div>
                       <span className="text-lg font-bold text-primary flex-shrink-0">
@@ -630,7 +638,7 @@ function CalculadoraPrecificacaoContent() {
                       {results.margemInviavel ? 'Inviável' : formatCurrency(results.precoNecessario100Percent)}
                     </p>
                     <p className="text-xs text-muted-foreground mt-1">
-                      Para {formatPercent(margemDesejada)} de margem
+                      Para {formatPercent(parseNumericInputSafe(margemDesejada, { min: 0, max: 100 }))} de margem
                     </p>
                   </div>
                 </div>
@@ -693,7 +701,7 @@ function CalculadoraPrecificacaoContent() {
               </div>
 
               {/* Comissão Afiliados */}
-              {comissaoAfiliados > 0 && <div className="flex items-center justify-between p-4 bg-muted/30 rounded-lg">
+              {parseNumericInputSafe(comissaoAfiliados, { min: 0, max: 100 }) > 0 && <div className="flex items-center justify-between p-4 bg-muted/30 rounded-lg">
                   <span className="text-sm font-medium">Comissão Afiliados ({comissaoAfiliados}%)</span>
                   <span className="text-lg font-semibold text-destructive">- {formatCurrency(results.custosVariaveis.comissaoAfiliados)}</span>
                 </div>}
