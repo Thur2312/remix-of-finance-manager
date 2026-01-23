@@ -131,7 +131,7 @@ export function parseNumericInputSafe(
  * Validates a percentage value (0-100 range, converts to decimal 0-1)
  */
 export function parsePercentageInput(value: string): NumericValidationResult {
-  const result = parseNumericInput(value, { min: 0, max: 100, maxDecimalPlaces: 2 });
+  const result = parseNumericInput(value, { min: 0, max: 100, maxDecimalPlaces: 4 });
   if (result.isValid) {
     return { isValid: true, value: result.value / 100 };
   }
@@ -140,31 +140,27 @@ export function parsePercentageInput(value: string): NumericValidationResult {
 
 /**
  * Validates a currency/cost input (positive, reasonable bounds)
+ * Now allows more decimal places for flexibility
  */
 export function parseCurrencyInput(value: string): NumericValidationResult {
   return parseNumericInput(value, { 
     min: 0, 
     max: 9999999.99, 
     allowNegative: false,
-    maxDecimalPlaces: 2 
+    maxDecimalPlaces: 4 
   });
 }
 
 /**
- * Validates a quantity input (positive integers)
+ * Validates a quantity input (allows decimals for fractional quantities)
  */
 export function parseQuantityInput(value: string): NumericValidationResult {
-  const result = parseNumericInput(value, { 
+  return parseNumericInput(value, { 
     min: 0, 
     max: 999999, 
     allowNegative: false,
-    maxDecimalPlaces: 0 
+    maxDecimalPlaces: 4 
   });
-  
-  if (result.isValid) {
-    return { isValid: true, value: Math.floor(result.value) };
-  }
-  return result;
 }
 
 /**
@@ -180,4 +176,28 @@ export function parseBatchCostInput(value: string): NumericValidationResult {
     };
   }
   return result;
+}
+
+/**
+ * Formats a number for display - shows decimals only if needed
+ * Example: 35 -> "35", 35.5 -> "35,5", 35.50 -> "35,5"
+ */
+export function formatNumberDisplay(value: number, maxDecimals: number = 2): string {
+  if (Number.isInteger(value)) {
+    return value.toString();
+  }
+  // Round to max decimals and remove trailing zeros
+  const rounded = parseFloat(value.toFixed(maxDecimals));
+  return rounded.toString().replace('.', ',');
+}
+
+/**
+ * Formats a currency value for display in Brazilian format
+ * Example: 35 -> "35", 35.5 -> "35,50", 35.99 -> "35,99"
+ */
+export function formatCurrencyDisplay(value: number): string {
+  if (Number.isInteger(value)) {
+    return value.toString();
+  }
+  return value.toFixed(2).replace('.', ',');
 }
