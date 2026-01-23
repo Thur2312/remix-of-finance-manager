@@ -15,17 +15,20 @@ export default {
   	extend: {
   		fontFamily: {
   			sans: [
-  				'Source Sans Pro',
+  				'Lato',
   				'ui-sans-serif',
   				'system-ui',
-  				'sans-serif',
-  				'Apple Color Emoji',
-  				'Segoe UI Emoji',
-  				'Segoe UI Symbol',
-  				'Noto Color Emoji'
+  				'-apple-system',
+  				'BlinkMacSystemFont',
+  				'Segoe UI',
+  				'Roboto',
+  				'Helvetica Neue',
+  				'Arial',
+  				'Noto Sans',
+  				'sans-serif'
   			],
   			serif: [
-  				'Source Serif Pro',
+  				'EB Garamond',
   				'ui-serif',
   				'Georgia',
   				'Cambria',
@@ -34,7 +37,7 @@ export default {
   				'serif'
   			],
   			mono: [
-  				'Source Code Pro',
+  				'Fira Code',
   				'ui-monospace',
   				'SFMono-Regular',
   				'Menlo',
@@ -108,47 +111,47 @@ export default {
   			md: 'calc(var(--radius) - 2px)',
   			sm: 'calc(var(--radius) - 4px)'
   		},
-		keyframes: {
-			'accordion-down': {
-				from: {
-					height: '0',
-					opacity: '0'
-				},
-				to: {
-					height: 'var(--radix-accordion-content-height)',
-					opacity: '1'
-				}
-			},
-			'accordion-up': {
-				from: {
-					height: 'var(--radix-accordion-content-height)',
-					opacity: '1'
-				},
-				to: {
-					height: '0',
-					opacity: '0'
-				}
-			},
-			'collapsible-down': {
-				from: {
-					height: '0',
-					opacity: '0'
-				},
-				to: {
-					height: 'var(--radix-collapsible-content-height)',
-					opacity: '1'
-				}
-			},
-			'collapsible-up': {
-				from: {
-					height: 'var(--radix-collapsible-content-height)',
-					opacity: '1'
-				},
-				to: {
-					height: '0',
-					opacity: '0'
-				}
-			},
+  		keyframes: {
+  			'accordion-down': {
+  				from: {
+  					height: '0',
+  					opacity: '0'
+  				},
+  				to: {
+  					height: 'var(--radix-accordion-content-height)',
+  					opacity: '1'
+  				}
+  			},
+  			'accordion-up': {
+  				from: {
+  					height: 'var(--radix-accordion-content-height)',
+  					opacity: '1'
+  				},
+  				to: {
+  					height: '0',
+  					opacity: '0'
+  				}
+  			},
+  			'collapsible-down': {
+  				from: {
+  					height: '0',
+  					opacity: '0'
+  				},
+  				to: {
+  					height: 'var(--radix-collapsible-content-height)',
+  					opacity: '1'
+  				}
+  			},
+  			'collapsible-up': {
+  				from: {
+  					height: 'var(--radix-collapsible-content-height)',
+  					opacity: '1'
+  				},
+  				to: {
+  					height: '0',
+  					opacity: '0'
+  				}
+  			},
   			'fade-in': {
   				'0%': {
   					opacity: '0',
@@ -168,14 +171,14 @@ export default {
   				}
   			}
   		},
-		animation: {
-			'accordion-down': 'accordion-down 0.3s ease-out',
-			'accordion-up': 'accordion-up 0.25s ease-in',
-			'collapsible-down': 'collapsible-down 0.3s ease-out',
-			'collapsible-up': 'collapsible-up 0.25s ease-in',
-			'fade-in': 'fade-in 0.3s ease-out',
-			'slide-in': 'slide-in 0.3s ease-out'
-		},
+  		animation: {
+  			'accordion-down': 'accordion-down 0.3s ease-out',
+  			'accordion-up': 'accordion-up 0.25s ease-in',
+  			'collapsible-down': 'collapsible-down 0.3s ease-out',
+  			'collapsible-up': 'collapsible-up 0.25s ease-in',
+  			'fade-in': 'fade-in 0.3s ease-out',
+  			'slide-in': 'slide-in 0.3s ease-out'
+  		},
   		boxShadow: {
   			'2xs': 'var(--shadow-2xs)',
   			xs: 'var(--shadow-xs)',
