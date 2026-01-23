@@ -39,13 +39,30 @@ export function parseNumericInput(
     return { isValid: true, value: 0 };
   }
   
-  // Replace comma with dot for Brazilian format
-  const cleaned = trimmed.replace(',', '.');
+  // Replace comma with dot for Brazilian format and remove thousand separators
+  // Support formats: "1.234,56" (BR) -> "1234.56" or "1,234.56" (US) -> "1234.56"
+  let cleaned = trimmed;
+  
+  // Detect Brazilian format: dots as thousand separators, comma as decimal
+  const lastCommaIndex = cleaned.lastIndexOf(',');
+  const lastDotIndex = cleaned.lastIndexOf('.');
+  
+  if (lastCommaIndex > lastDotIndex) {
+    // Brazilian format: 1.234,56 -> remove dots, replace comma with dot
+    cleaned = cleaned.replace(/\./g, '').replace(',', '.');
+  } else if (lastDotIndex > lastCommaIndex && lastCommaIndex !== -1) {
+    // US format: 1,234.56 -> remove commas
+    cleaned = cleaned.replace(/,/g, '');
+  } else if (lastCommaIndex !== -1 && lastDotIndex === -1) {
+    // Simple comma as decimal: 35,50 -> 35.50
+    cleaned = cleaned.replace(',', '.');
+  }
   
   // Check for valid numeric format (optional negative, digits, optional decimal part)
+  // Allow trailing dot for typing convenience (e.g., "35." while typing "35.50")
   const numericPattern = opts.allowNegative 
-    ? /^-?\d+(\.\d+)?$/
-    : /^\d+(\.\d+)?$/;
+    ? /^-?\d+\.?\d*$/
+    : /^\d+\.?\d*$/;
   
   if (!numericPattern.test(cleaned)) {
     return { 
