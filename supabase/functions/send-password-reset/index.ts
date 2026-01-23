@@ -1,32 +1,26 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.3";
-
-const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers":
-    "authorization, x-client-info, apikey, content-type",
-};
-
-interface PasswordResetRequest {
-  email: string;
-  redirectUrl: string;
-}
+import { getCorsHeaders, handleCorsPreflightRequest } from '../_shared/cors.ts';
+import { passwordResetSchema, createValidationErrorResponse } from '../_shared/validation.ts';
 
 const handler = async (req: Request): Promise<Response> => {
-  // Handle CORS preflight requests
-  if (req.method === "OPTIONS") {
-    return new Response(null, { headers: corsHeaders });
-  }
+  // Handle CORS preflight
+  const corsResponse = handleCorsPreflightRequest(req);
+  if (corsResponse) return corsResponse;
+
+  const corsHeaders = getCorsHeaders(req);
 
   try {
-    const { email, redirectUrl }: PasswordResetRequest = await req.json();
-
-    if (!email) {
-      return new Response(
-        JSON.stringify({ error: "Email é obrigatório" }),
-        { status: 400, headers: { "Content-Type": "application/json", ...corsHeaders } }
-      );
+    // ========== INPUT VALIDATION ==========
+    const rawBody = await req.json();
+    const validationResult = passwordResetSchema.safeParse(rawBody);
+    
+    if (!validationResult.success) {
+      return createValidationErrorResponse(validationResult.error, corsHeaders);
     }
+    
+    const { email, redirectUrl } = validationResult.data;
+    // ========== FIM INPUT VALIDATION ==========
 
     // Create Supabase client with service role to check if email exists
     const supabaseAdmin = createClient(
@@ -38,7 +32,7 @@ const handler = async (req: Request): Promise<Response> => {
     const { data: profile, error: profileError } = await supabaseAdmin
       .from("profiles")
       .select("id, email")
-      .eq("email", email.toLowerCase())
+      .eq("email", email)
       .single();
 
     if (profileError || !profile) {
@@ -169,6 +163,7 @@ const handler = async (req: Request): Promise<Response> => {
     );
   } catch (error: any) {
     console.error("Error in send-password-reset function:", error);
+    const corsHeaders = getCorsHeaders(req);
     return new Response(
       JSON.stringify({ error: error.message || "Erro ao processar solicitação" }),
       { status: 500, headers: { "Content-Type": "application/json", ...corsHeaders } }

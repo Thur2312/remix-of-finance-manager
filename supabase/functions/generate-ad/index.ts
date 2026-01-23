@@ -1,11 +1,8 @@
 import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
-
-const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-};
+import { getCorsHeaders, handleCorsPreflightRequest } from '../_shared/cors.ts';
+import { generateAdSchema, createValidationErrorResponse } from '../_shared/validation.ts';
 
 const systemPrompt = `Você é um assistente especialista em criação de anúncios para Shopee Brasil, focado em aumentar cliques e conversões respeitando as políticas da plataforma.
 
@@ -114,9 +111,11 @@ REGRAS GERAIS:
 - Retorne APENAS o JSON, sem markdown ou texto adicional`;
 
 serve(async (req) => {
-  if (req.method === 'OPTIONS') {
-    return new Response(null, { headers: corsHeaders });
-  }
+  // Handle CORS preflight
+  const corsResponse = handleCorsPreflightRequest(req);
+  if (corsResponse) return corsResponse;
+
+  const corsHeaders = getCorsHeaders(req);
 
   try {
     // ========== AUTENTICAÇÃO JWT ==========
@@ -150,14 +149,16 @@ serve(async (req) => {
     console.log(`Request authenticated for user: ${userId}`);
     // ========== FIM AUTENTICAÇÃO ==========
 
-    const { nomeProduto, categoria, marca, faixaPreco, publicoAlvo, materiais, coresDisponiveis, images, medidas } = await req.json();
-
-    if (!nomeProduto) {
-      return new Response(
-        JSON.stringify({ error: 'Nome do produto é obrigatório' }),
-        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
+    // ========== INPUT VALIDATION ==========
+    const rawBody = await req.json();
+    const validationResult = generateAdSchema.safeParse(rawBody);
+    
+    if (!validationResult.success) {
+      return createValidationErrorResponse(validationResult.error, corsHeaders);
     }
+    
+    const { nomeProduto, categoria, marca, faixaPreco, publicoAlvo, materiais, coresDisponiveis, images, medidas } = validationResult.data;
+    // ========== FIM INPUT VALIDATION ==========
 
     const LOVABLE_API_KEY = Deno.env.get('LOVABLE_API_KEY');
     if (!LOVABLE_API_KEY) {

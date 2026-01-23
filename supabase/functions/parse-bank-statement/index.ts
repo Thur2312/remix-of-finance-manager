@@ -1,16 +1,14 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
-
-const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-};
+import { getCorsHeaders, handleCorsPreflightRequest } from '../_shared/cors.ts';
+import { parseBankStatementSchema, createValidationErrorResponse } from '../_shared/validation.ts';
 
 serve(async (req) => {
-  // Handle CORS preflight requests
-  if (req.method === 'OPTIONS') {
-    return new Response(null, { headers: corsHeaders });
-  }
+  // Handle CORS preflight
+  const corsResponse = handleCorsPreflightRequest(req);
+  if (corsResponse) return corsResponse;
+
+  const corsHeaders = getCorsHeaders(req);
 
   try {
     // ========== AUTENTICAÇÃO JWT ==========
@@ -44,14 +42,16 @@ serve(async (req) => {
     console.log(`Request authenticated for user: ${userId}`);
     // ========== FIM AUTENTICAÇÃO ==========
 
-    const { pdfBase64, fileName } = await req.json();
-
-    if (!pdfBase64) {
-      return new Response(
-        JSON.stringify({ error: 'PDF base64 data is required' }),
-        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
+    // ========== INPUT VALIDATION ==========
+    const rawBody = await req.json();
+    const validationResult = parseBankStatementSchema.safeParse(rawBody);
+    
+    if (!validationResult.success) {
+      return createValidationErrorResponse(validationResult.error, corsHeaders);
     }
+    
+    const { pdfBase64, fileName } = validationResult.data;
+    // ========== FIM INPUT VALIDATION ==========
 
     const LOVABLE_API_KEY = Deno.env.get('LOVABLE_API_KEY');
     if (!LOVABLE_API_KEY) {
@@ -211,6 +211,7 @@ Retorne APENAS um JSON válido no seguinte formato (sem markdown, sem explicaç�
     );
   } catch (error) {
     console.error('Error processing bank statement:', error);
+    const corsHeaders = getCorsHeaders(req);
     return new Response(
       JSON.stringify({ error: error instanceof Error ? error.message : 'Unknown error' }),
       { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
