@@ -388,13 +388,13 @@ function CalculadoraPrecificacaoContent() {
                   <Label htmlFor="custoProduto" className="text-sm font-medium">
                     Custo do Produto (R$)
                   </Label>
-                  <Input id="custoProduto" type="text" inputMode="decimal" value={custoProduto || ""} onChange={e => handleNumberInput(e.target.value.replace(',', '.'), setCustoProduto)} placeholder="0,00" className="h-11" />
+                  <Input id="custoProduto" type="text" inputMode="decimal" value={custoProduto || ""} onChange={e => handleNumberInput(e.target.value, setCustoProduto)} placeholder="0,00" className="h-11" />
                 </div>
                 <div className="space-y-1.5">
                   <Label htmlFor="comissaoPlataforma" className="text-sm font-medium">
                     Comissão Plataforma (%)
                   </Label>
-                  <Input id="comissaoPlataforma" type="text" inputMode="decimal" value={comissaoPlataforma || ""} onChange={e => handleNumberInput(e.target.value.replace(',', '.'), setComissaoPlataforma)} placeholder="20" className="h-11" />
+                  <Input id="comissaoPlataforma" type="text" inputMode="decimal" value={comissaoPlataforma || ""} onChange={e => handleNumberInput(e.target.value, setComissaoPlataforma)} placeholder="20" className="h-11" />
                 </div>
 
                 {/* Linha 2 */}
@@ -402,13 +402,13 @@ function CalculadoraPrecificacaoContent() {
                   <Label htmlFor="embalagemEtiqueta" className="text-sm font-medium">
                     Embalagem + Etiqueta (R$)
                   </Label>
-                  <Input id="embalagemEtiqueta" type="text" inputMode="decimal" value={embalagemEtiqueta || ""} onChange={e => handleNumberInput(e.target.value.replace(',', '.'), setEmbalagemEtiqueta)} placeholder="0,00" className="h-11" />
+                  <Input id="embalagemEtiqueta" type="text" inputMode="decimal" value={embalagemEtiqueta || ""} onChange={e => handleNumberInput(e.target.value, setEmbalagemEtiqueta)} placeholder="0,00" className="h-11" />
                 </div>
                 <div className="space-y-1.5">
                   <Label htmlFor="taxaFixa" className="text-sm font-medium">
                     Taxa Fixa por Venda (R$)
                   </Label>
-                  <Input id="taxaFixa" type="text" inputMode="decimal" value={taxaFixa || ""} onChange={e => handleNumberInput(e.target.value.replace(',', '.'), setTaxaFixa)} placeholder="4,00" className="h-11" />
+                  <Input id="taxaFixa" type="text" inputMode="decimal" value={taxaFixa || ""} onChange={e => handleNumberInput(e.target.value, setTaxaFixa)} placeholder="4,00" className="h-11" />
                 </div>
 
                 {/* Linha 3 */}
@@ -416,13 +416,13 @@ function CalculadoraPrecificacaoContent() {
                   <Label htmlFor="precoCheio" className="text-sm font-medium">
                     Preço Cheio (R$)
                   </Label>
-                  <Input id="precoCheio" type="text" inputMode="decimal" value={precoCheio || ""} onChange={e => handleNumberInput(e.target.value.replace(',', '.'), setPrecoCheio)} placeholder="0,00" className="h-11" />
+                  <Input id="precoCheio" type="text" inputMode="decimal" value={precoCheio || ""} onChange={e => handleNumberInput(e.target.value, setPrecoCheio)} placeholder="0,00" className="h-11" />
                 </div>
                 <div className="space-y-1.5">
                   <Label htmlFor="aliquotaImposto" className="text-sm font-medium">
                     Alíquota de Imposto (%)
                   </Label>
-                  <Input id="aliquotaImposto" type="text" inputMode="decimal" value={aliquotaImposto || ""} onChange={e => handleNumberInput(e.target.value.replace(',', '.'), setAliquotaImposto)} placeholder="6" className="h-11" />
+                  <Input id="aliquotaImposto" type="text" inputMode="decimal" value={aliquotaImposto || ""} onChange={e => handleNumberInput(e.target.value, setAliquotaImposto)} placeholder="6" className="h-11" />
                 </div>
 
                 {/* Linha 4 */}
@@ -430,13 +430,13 @@ function CalculadoraPrecificacaoContent() {
                   <Label htmlFor="desconto" className="text-sm font-medium">
                     Desconto (%)
                   </Label>
-                  <Input id="desconto" type="text" inputMode="decimal" value={desconto || ""} onChange={e => handleNumberInput(e.target.value.replace(',', '.'), setDesconto)} placeholder="0" className="h-11" />
+                  <Input id="desconto" type="text" inputMode="decimal" value={desconto || ""} onChange={e => handleNumberInput(e.target.value, setDesconto)} placeholder="0" className="h-11" />
                 </div>
                 <div className="space-y-1.5">
                   <Label htmlFor="comissaoAfiliados" className="text-sm font-medium">
                     Comissão Afiliados (%)
                   </Label>
-                  <Input id="comissaoAfiliados" type="text" inputMode="decimal" value={comissaoAfiliados || ""} onChange={e => handleNumberInput(e.target.value.replace(',', '.'), setComissaoAfiliados)} placeholder="0" className="h-11" />
+                  <Input id="comissaoAfiliados" type="text" inputMode="decimal" value={comissaoAfiliados || ""} onChange={e => handleNumberInput(e.target.value, setComissaoAfiliados)} placeholder="0" className="h-11" />
                 </div>
 
                 {/* Linha 5 */}
@@ -463,7 +463,7 @@ function CalculadoraPrecificacaoContent() {
                       type="text" 
                       inputMode="decimal" 
                       value={margemDesejada} 
-                      onChange={e => handleNumberInput(e.target.value.replace(',', '.'), setMargemDesejada)} 
+                      onChange={e => handleNumberInput(e.target.value, setMargemDesejada)} 
                       className="w-16 h-11 text-center" 
                     />
                   </div>

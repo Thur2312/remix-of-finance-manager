@@ -22,12 +22,12 @@ const COLORS = [
   'hsl(160, 60%, 45%)',  // Emerald
 ];
 
-const CustomTooltip = ({ active, payload, label }: any) => {
+const CustomTooltip = ({ active, payload, label }: { active?: boolean; payload?: Array<{ color: string; name: string; value: number; payload: { nome: string } }>; label?: string }) => {
   if (active && payload && payload.length) {
     return (
       <div className="bg-popover border rounded-lg shadow-lg p-3 text-sm">
         <p className="font-medium mb-1">{payload[0]?.payload?.nome || label}</p>
-        {payload.map((entry: any, index: number) => (
+        {payload.map((entry, index: number) => (
           <p key={index} style={{ color: entry.color }}>
             {entry.name}: {formatCurrency(entry.value)}
           </p>
@@ -38,7 +38,7 @@ const CustomTooltip = ({ active, payload, label }: any) => {
   return null;
 };
 
-const PieTooltip = ({ active, payload }: any) => {
+const PieTooltip = ({ active, payload }: { active?: boolean; payload?: Array<{ payload: { nome: string; value: number; percent: number } }> }) => {
   if (active && payload && payload.length) {
     const data = payload[0].payload;
     return (
