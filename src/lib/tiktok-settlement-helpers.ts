@@ -1,4 +1,5 @@
 import { supabase } from '@/integrations/supabase/client';
+import { types } from 'util';
 
 // Parse TikTok settlement currency format
 // Handles both formats: "BRL 35.91" (US decimal) and "BRL 35,91" (BR decimal)
@@ -130,7 +131,7 @@ function normalizeColumnName(name: string): string {
 }
 
 // Find matching column in row based on aliases (case-insensitive, flexible)
-function findColumnValue(row: Record<string, any>, aliases: string[]): any {
+function findColumnValue(row: Record<string, string>, aliases: string[]): string {
   // First try exact match
   for (const alias of aliases) {
     if (row[alias] !== undefined) {
@@ -257,7 +258,7 @@ export interface ImportSummary {
 }
 
 // Analyze file columns and return diagnostic info
-export function analyzeFileColumns(row: Record<string, any>): { 
+export function analyzeFileColumns(row: Record<string, string> ): { 
   foundColumns: string[]; 
   missingColumns: string[]; 
   fileColumns: string[];
@@ -278,7 +279,7 @@ export function analyzeFileColumns(row: Record<string, any>): {
   return { foundColumns, missingColumns, fileColumns };
 }
 
-export function parseSettlementRowWithDiagnostics(row: Record<string, any>): ParseResult {
+export function parseSettlementRowWithDiagnostics(row: Record<string, string>): ParseResult {
   // === VALIDAÇÃO CONFORME ESPECIFICAÇÃO ===
   // Considerar válido toda linha onde Type === 'Order' E Order/adjustment ID existe
   
@@ -404,13 +405,13 @@ export function parseSettlementRowWithDiagnostics(row: Record<string, any>): Par
 }
 
 // Legacy function for backward compatibility
-export function parseSettlementRow(row: Record<string, any>): ParsedSettlementRow | null {
+export function parseSettlementRow(row: Record<string, string>): ParsedSettlementRow | null {
   const result = parseSettlementRowWithDiagnostics(row);
   return result.success ? result.data : null;
 }
 
 // Parse all rows with detailed summary
-export function parseAllSettlements(rows: Record<string, any>[]): {
+export function parseAllSettlements(rows: Record<string, string>[]): {
   settlements: ParsedSettlementRow[];
   summary: ImportSummary;
 } {
@@ -505,7 +506,7 @@ export interface StatementsImportSummary {
 }
 
 // Parse Statements sheet (aggregated view)
-export function parseStatementsSheet(rows: Record<string, any>[]): {
+export function parseStatementsSheet(rows: Record<string, string>[]): {
   statements: ParsedStatementRow[];
   summary: StatementsImportSummary;
 } {
@@ -566,7 +567,7 @@ export function parseStatementsSheet(rows: Record<string, any>[]): {
 
 // Fetch all TikTok statements (aggregated payment summaries)
 export async function fetchAllTikTokStatements(userId: string) {
-  const allStatements: any[] = [];
+  const allStatements: ParsedStatementRow[] = [];
   const pageSize = 1000;
   let page = 0;
   let hasMore = true;
@@ -585,7 +586,24 @@ export async function fetchAllTikTokStatements(userId: string) {
     }
 
     if (data && data.length > 0) {
-      allStatements.push(...data);
+      // Map database columns to ParsedStatementRow interface
+      const mappedData = data.map(row => ({
+        statement_id: row.statement_id,
+        statement_date: row.statement_date,
+        payment_id: row.payment_id,
+        status: row.status,
+        currency: row.currency,
+        total_settlement_amount: row.total_settlement_amount,
+        net_sales: row.net_sales,
+        total_fees: row.fees_total, // Map fees_total to total_fees
+        customer_payment: 0, // Add missing fields with default values
+        seller_discounts: 0,
+        platform_discounts: 0,
+        shipping_total: row.shipping_total,
+        refund_subtotal: 0,
+        adjustment_amount: row.adjustments, // Map adjustments to adjustment_amount
+      }));
+      allStatements.push(...mappedData);
       page++;
       hasMore = data.length === pageSize;
     } else {
@@ -598,7 +616,7 @@ export async function fetchAllTikTokStatements(userId: string) {
 
 // Fetch all TikTok settlements (order details) with pagination
 export async function fetchAllTikTokSettlements(userId: string) {
-  const allSettlements: any[] = [];
+  const allSettlements: ParsedSettlementRow[] = [];
   const pageSize = 1000;
   let page = 0;
   let hasMore = true;

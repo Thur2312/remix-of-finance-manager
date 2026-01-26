@@ -59,15 +59,70 @@ interface SettlementSummary {
   refundCount: number;
 }
 
+interface Statement {
+  id?: string;
+  statement_id: string;
+  payment_id: string;
+  statement_date: string;
+  status: string;
+  total_settlement_amount: number;
+  net_sales: number;
+  fees_total?: number;
+  shipping_total: number;
+  adjustments?: number;
+}
+
+interface Settlement {
+  id?: string;
+  order_id: string;
+  payment_id: string;
+  statement_id: string;
+  status: string;
+  type: string;
+  quantidade: number;
+  nome_produto: string;
+  variacao: string;
+  sku_id: string;
+  data_criacao_pedido: string;
+  data_entrega: string;
+  statement_date: string;
+  total_settlement_amount: number;
+  net_sales: number;
+  subtotal_before_discounts: number;
+  customer_payment: number;
+  total_fees: number;
+  refund_subtotal: number;
+  customer_refund: number;
+  seller_discounts: number;
+  seller_cofunded_discount: number;
+  platform_discounts: number;
+  platform_cofunded_discount: number;
+  customer_shipping_fee: number;
+  tiktok_shipping_fee: number;
+  shipping_incentive: number;
+  refunded_shipping: number;
+  affiliate_commission: number;
+  tiktok_commission_fee: number;
+  sfp_service_fee: number;
+  icms_difal: number;
+  fee_per_item: number;
+  live_specials_fee: number;
+  voucher_xtra_fee: number;
+  delivery_option: string | null;
+  collection_method: string | null;
+  adjustment_amount: number;
+  adjustment_reason: string | null;
+}
+
 function TikTokPagamentosContent() {
   const { user } = useAuth();
-  const [settlements, setSettlements] = useState<any[]>([]);
-  const [statements, setStatements] = useState<any[]>([]);
+  const [settlements, setSettlements] = useState<Settlement[]>([]);
+  const [statements, setStatements] = useState<Statement[]>([]);
   const [orderCosts, setOrderCosts] = useState<Map<string, number>>(new Map());
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [typeFilter, setTypeFilter] = useState<string>('all');
-  const [selectedSettlement, setSelectedSettlement] = useState<any | null>(null);
+  const [selectedSettlement, setSelectedSettlement] = useState<Settlement | null>(null);
   const [modalOpen, setModalOpen] = useState(false);
 
   useEffect(() => {
@@ -240,7 +295,7 @@ function TikTokPagamentosContent() {
     link.click();
   };
 
-  const handleRowClick = (settlement: any) => {
+  const handleRowClick = (settlement: Settlement) => {
     setSelectedSettlement(settlement);
     setModalOpen(true);
   };

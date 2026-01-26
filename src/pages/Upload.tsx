@@ -67,11 +67,11 @@ interface ColumnMapping {
   quantidade: string;
   total_faturado: string;
   rebate_shopee: string;
-  data_pedido: string;
+  data_pedido: string ;
 }
 
 interface RawRowData {
-  [key: string]: any;
+  [key: string]: string | number  | undefined;
 }
 
 const defaultMapping: ColumnMapping = {
@@ -94,7 +94,7 @@ function UploadContent() {
   const [isProcessing, setIsProcessing] = useState(false);
   const [progress, setProgress] = useState(0);
   const [headers, setHeaders] = useState<string[]>([]);
-  const [previewData, setPreviewData] = useState<any[]>([]);
+  const [previewData, setPreviewData] = useState<RawRowData []>([]);
   const [mapping, setMapping] = useState<ColumnMapping>(defaultMapping);
   const [step, setStep] = useState<'upload' | 'mapping' | 'preview' | 'success'>('upload');
   const [parsedRows, setParsedRows] = useState<RawRowData[]>([]);
@@ -126,7 +126,7 @@ function UploadContent() {
       const workbook = XLSX.read(data, { type: 'array', cellDates: true });
       const sheetName = workbook.SheetNames[0];
       const worksheet = workbook.Sheets[sheetName];
-      const jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1 }) as any[][];
+      const jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1 }) as unknown[][];
 
       setProgress(50);
 
@@ -136,7 +136,7 @@ function UploadContent() {
         return;
       }
 
-      const fileHeaders = jsonData[0].map((h: any) => String(h || '').trim());
+      const fileHeaders = jsonData[0].map((h: unknown) => String(h || '').trim());
       setHeaders(fileHeaders);
       
       // Auto-map columns based on common names
@@ -155,16 +155,16 @@ function UploadContent() {
       setMapping(autoMapping);
 
       // Preview first 5 rows and parse all rows
-      const allRows: Record<string, any>[] = jsonData.slice(1).map(row => {
-        const obj: Record<string, any> = {};
+      const allRows: Record<string, unknown>[] = jsonData.slice(1).map(row => {
+        const obj: Record<string, unknown> = {};
         fileHeaders.forEach((header, index) => {
           obj[header] = row[index];
         });
         return obj;
       });
       
-      setPreviewData(allRows.slice(0, 5));
-      setParsedRows(allRows);
+      setPreviewData(allRows.slice(0, 5) as RawRowData[]);
+      setParsedRows(allRows as RawRowData[]);
 
       setProgress(100);
       setStep('mapping');
@@ -185,11 +185,11 @@ function UploadContent() {
     const files = e.dataTransfer.files;
     if (files && files.length > 0) {
       const droppedFile = files[0];
-      if (droppedFile.name.endsWith('.xlsx') || droppedFile.name.endsWith('.xls')) {
+      if (droppedFile.name.endsWith('.xlsx') || droppedFile.name.endsWith('.xls') || droppedFile.name.endsWith('.csv')) {
         setFile(droppedFile);
         processFile(droppedFile);
       } else {
-        toast.error('Por favor, envie um arquivo Excel (.xlsx ou .xls)');
+        toast.error('Por favor, envie um arquivo Excel (.xlsx, .xls) ou CSV (.csv)');
       }
     }
   }, []);
@@ -198,11 +198,11 @@ function UploadContent() {
     const files = e.target.files;
     if (files && files.length > 0) {
       const selectedFile = files[0];
-      if (selectedFile.name.endsWith('.xlsx') || selectedFile.name.endsWith('.xls')) {
+      if (selectedFile.name.endsWith('.xlsx') || selectedFile.name.endsWith('.xls') || selectedFile.name.endsWith('.csv')) {
         setFile(selectedFile);
         processFile(selectedFile);
       } else {
-        toast.error('Por favor, envie um arquivo Excel (.xlsx ou .xls)');
+        toast.error('Por favor, envie um arquivo Excel (.xlsx, .xls) ou CSV (.csv)');
       }
     }
   };
@@ -252,14 +252,14 @@ function UploadContent() {
         return header ? row[header] : null;
       };
 
-      const parseNumber = (value: any): number => {
+      const parseNumber = (value: number | null | undefined | ''): number => {
         if (value === null || value === undefined || value === '') return 0;
         if (typeof value === 'number') return value;
         const parsed = parseFloat(String(value).replace(/[^\d.,-]/g, '').replace(',', '.'));
         return isNaN(parsed) ? 0 : parsed;
       };
 
-      const parseDate = (value: any): string | null => {
+      const parseDate = (value: string | Date | null | undefined): string | null => {
         if (!value) return null;
         if (value instanceof Date) return value.toISOString();
         try {

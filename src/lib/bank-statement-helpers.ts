@@ -238,7 +238,7 @@ export const parseXLSXFile = async (file: File, bankType: string = 'generic'): P
   const worksheet = workbook.Sheets[sheetName];
 
   // Converter para JSON
-  const data = XLSX.utils.sheet_to_json(worksheet, { header: 1 }) as any[][];
+  const data = XLSX.utils.sheet_to_json(worksheet, { header: 1 }) as unknown[][];
 
   if (data.length < 2) {
     return { transactions: [], bankName: null, accountNumber: null, startDate: null, endDate: null };

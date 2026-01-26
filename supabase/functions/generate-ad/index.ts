@@ -110,7 +110,7 @@ REGRAS GERAIS:
 - Use emojis apenas nos títulos de seção (👗, 📏, ♻️, ⁉️)
 - Retorne APENAS o JSON, sem markdown ou texto adicional`;
 
-serve(async (req) => {
+serve(async (req: Request) => {
   // Handle CORS preflight
   const corsResponse = handleCorsPreflightRequest(req);
   if (corsResponse) return corsResponse;

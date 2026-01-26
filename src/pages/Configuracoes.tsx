@@ -297,8 +297,8 @@ function ConfiguracoesContent() {
 
       toast.success('Configuração e dados excluídos com sucesso!');
       await fetchSettings();
-    } catch (error: any) {
-      toast.error(error.message || 'Erro ao excluir configuração');
+    } catch (error: unknown) {
+      toast.error(error instanceof Error ? error.message : 'Erro ao excluir configuração');
     } finally {
       setIsDeleting(false);
     }

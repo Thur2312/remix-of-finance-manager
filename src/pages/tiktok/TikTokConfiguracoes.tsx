@@ -252,8 +252,9 @@ function TikTokConfiguracoesContent() {
         toast.success('Configuração salva com sucesso!');
         await fetchSettings();
       }
-    } catch (error: any) {
-      toast.error(error.message || 'Erro ao salvar configuração');
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : 'Erro ao salvar configuração';
+      toast.error(errorMessage);
     } finally {
       setIsSaving(false);
     }
@@ -289,8 +290,9 @@ function TikTokConfiguracoesContent() {
 
       toast.success('Configuração e todos os dados TikTok excluídos com sucesso!');
       await fetchSettings();
-    } catch (error: any) {
-      toast.error(error.message || 'Erro ao excluir configuração');
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : 'Erro ao excluir configuração';
+      toast.error(errorMessage);
     } finally {
       setIsDeleting(false);
     }

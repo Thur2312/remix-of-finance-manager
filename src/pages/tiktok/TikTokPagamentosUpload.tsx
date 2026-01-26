@@ -14,7 +14,7 @@ import { parseAllSettlements, parseStatementsSheet, ImportSummary, StatementsImp
 import * as XLSX from 'xlsx';
 
 interface ExtendedImportSummary extends ImportSummary {
-  dataSource: 'order_details' | 'statements';
+  dataSource: 'detalhes_pedido' | 'statements';
   hasLimitedData: boolean;
   statementsInfo?: StatementsImportSummary;
 }
@@ -55,7 +55,7 @@ function TikTokPagamentosUploadContent() {
       // === SELEÇÃO EXATA DE ABAS (conforme especificação) ===
       // Usar nomes EXATOS: "Order details" e "Statements"
       const orderDetailsSheetName = workbook.SheetNames.find(
-        name => name.toLowerCase() === 'order details'
+        name => name.toLowerCase() === 'detalhes_pedido' || name.toLowerCase() === 'order details'
       );
       const statementsSheetName = workbook.SheetNames.find(
         name => name.toLowerCase() === 'statements'
@@ -72,7 +72,7 @@ function TikTokPagamentosUploadContent() {
         const statementsData = XLSX.utils.sheet_to_json(statementsWs, {
           defval: '',
           raw: false
-        }) as Record<string, any>[];
+        }) as Record<string, string>[];
         const parsed = parseStatementsSheet(statementsData);
         statementsInfo = parsed.summary;
         console.log('📋 Dados de Statements:', statementsInfo);
@@ -91,13 +91,13 @@ function TikTokPagamentosUploadContent() {
       };
 
       // === LEITURA ROBUSTA DA ABA ORDER DETAILS (USANDO MATRIZ) ===
-      let orderDetailsData: Record<string, any>[] = [];
+      const orderDetailsData: Record<string, string>[] = [];
       
       if (orderDetailsSheetName) {
         const orderDetailsWs = workbook.Sheets[orderDetailsSheetName];
         
         // 1) Ler como MATRIZ (preserva todas as linhas, mesmo com headers duplicados)
-        const matrix: any[][] = XLSX.utils.sheet_to_json(orderDetailsWs, {
+        const matrix: number[][] = XLSX.utils.sheet_to_json(orderDetailsWs, {
           header: 1,       // LER COMO MATRIZ, não objetos!
           raw: true,
           defval: "",
@@ -108,7 +108,7 @@ function TikTokPagamentosUploadContent() {
         
         if (matrix.length >= 2) {
           // 2) Processar headers únicos
-          const rawHeaders = matrix[0].map((h: any) => (h ?? "").toString().trim());
+          const rawHeaders = matrix[0].map((h) => (h ?? "").toString().trim());
           const headers = makeHeadersUnique(rawHeaders);
           const duplicateCount = rawHeaders.length - new Set(rawHeaders.filter((h: string) => h)).size;
           
@@ -119,13 +119,13 @@ function TikTokPagamentosUploadContent() {
           for (let i = 1; i < matrix.length; i++) {
             const row = matrix[i];
             // pula linhas completamente vazias
-            if (!row || row.every((c: any) => (c ?? "").toString().trim() === "")) continue;
+            if (!row || row.every((c) => (c ?? "").toString().trim() === "")) continue;
             
-            const obj: Record<string, any> = {};
+            const obj: Record<string, string> = {};
             for (let j = 0; j < headers.length; j++) {
-              obj[headers[j]] = row[j] ?? "";
+              obj[headers[j]] = (row[j] ?? "").toString();
             }
-            obj.__row_index = i + 1; // linha 1-based para auditoria
+            obj.__row_index = (i + 1).toString(); // linha 1-based para auditoria
             orderDetailsData.push(obj);
           }
         }
@@ -144,7 +144,7 @@ function TikTokPagamentosUploadContent() {
           linhas_orders_validas: linhasOrdersValidas,
         });
       } else {
-        toast.error('Aba "Order details" não encontrada no arquivo');
+        toast.error('Aba "Detalhes do pedido" não encontrada no arquivo');
         setIsProcessing(false);
         return;
       }
@@ -157,7 +157,7 @@ function TikTokPagamentosUploadContent() {
       const jsonData = orderDetailsData;
       
       if (jsonData.length === 0) {
-        toast.error('Nenhum dado encontrado na aba "Order details"');
+        toast.error('Nenhum dado encontrado na aba "Detalhes do pedido"');
         setIsProcessing(false);
         return;
       }
@@ -169,7 +169,7 @@ function TikTokPagamentosUploadContent() {
       
       const extendedSummary: ExtendedImportSummary = {
         ...summary,
-        dataSource: 'order_details',
+        dataSource: 'detalhes_pedido',
         hasLimitedData: hasLimitedData || false,
         statementsInfo,
       };
@@ -208,7 +208,7 @@ function TikTokPagamentosUploadContent() {
         const statementsData = XLSX.utils.sheet_to_json(statementsWs, {
           defval: '',
           raw: false
-        }) as Record<string, any>[];
+        }) as Record<string, string>[];
         const { statements: parsedStatements } = parseStatementsSheet(statementsData);
         
         if (parsedStatements.length > 0) {

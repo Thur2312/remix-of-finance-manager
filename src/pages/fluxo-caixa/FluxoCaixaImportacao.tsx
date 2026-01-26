@@ -488,7 +488,7 @@ function FluxoCaixaImportacaoContent() {
                       <TableCell>
                         <Select
                           value={t.categoryId || 'none'}
-                          onValueChange={(value) => updateTransactionCategory(t.id, value === 'none' ? null as any : value)}
+                          onValueChange={(value) => updateTransactionCategory(t.id, value === 'none' ? null as string | null : value)}
                         >
                           <SelectTrigger className="w-[160px] h-8 text-xs">
                             <SelectValue placeholder="Selecionar..." />

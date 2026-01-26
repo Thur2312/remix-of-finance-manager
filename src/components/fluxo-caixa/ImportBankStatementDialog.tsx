@@ -130,7 +130,7 @@ export default function ImportBankStatementDialog({ open, onOpenChange }: Import
     return null;
   };
 
-  const processFile = async (file: File) => {
+  const processFile = useCallback(async (file: File) => {
     setIsProcessing(true);
     setError(null);
     setTransactions([]);
@@ -201,7 +201,7 @@ export default function ImportBankStatementDialog({ open, onOpenChange }: Import
     } finally {
       setIsProcessing(false);
     }
-  };
+  }, [selectedBank, categories ]);
 
   const handleDrop = useCallback(async (e: React.DragEvent) => {
     e.preventDefault();
