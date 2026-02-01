@@ -17,7 +17,7 @@ const relatoriosItems = [{
 }];
 const calculoLucroShopeeItems = [{
   title: 'Dashboard',
-  url: '/',
+  url: '/dashboard',
   icon: LayoutDashboard
 }, {
   title: 'Resultados Simplificados',
@@ -155,7 +155,7 @@ export function AppSidebar() {
   return <Sidebar collapsible="icon" className="transition-all duration-300 ease-in-out">
   <SidebarHeader className="border-b border-sidebar-border">
     <div className="flex items-center justify-center px-3 py-4">
-      <img src={logo} alt="Deep Insight" className={`transition-all duration-300 ease-in-out ${collapsed ? "h-8 w-8 object-contain" : "h-10 w-auto object-contain"}`} />
+      <img src={logo} alt="Seller Finance" className={`transition-all duration-300 ease-in-out ${collapsed ? "h-8 w-8 object-contain" : "h-10 w-auto object-contain"}`} />
     </div>
   </SidebarHeader>
 
