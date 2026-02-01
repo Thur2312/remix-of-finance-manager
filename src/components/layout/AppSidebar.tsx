@@ -8,7 +8,7 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSepara
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { LayoutDashboard, Settings, Upload, FileSpreadsheet, Package, ChevronUp, ChevronDown, LogOut, ShoppingBag, TrendingUp, Calculator, Wallet, List, Tags, Sparkles, Receipt, BarChart3, User } from 'lucide-react';
-import logo from '@/assets/logo.png';
+
 
 const relatoriosItems = [{
   title: 'DRE',
@@ -152,10 +152,13 @@ export function AppSidebar() {
           </SidebarMenuButton>
         </SidebarMenuItem>)}
     </SidebarMenu>;
-  return <Sidebar collapsible="icon" className="transition-all duration-300 ease-in-out">
-  <SidebarHeader className="border-b border-sidebar-border">
-    <div className="flex items-center justify-center px-3 py-4">
-      <img src={logo} alt="Seller Finance" className={`transition-all duration-300 ease-in-out ${collapsed ? "h-8 w-8 object-contain" : "h-10 w-auto object-contain"}`} />
+  return <Sidebar collapsible="icon" className="transition-all duration-300 ease-in-out border-r border-border/50">
+  <SidebarHeader className="border-b border-border/50 bg-card/50">
+    <div className="flex items-center justify-center gap-3 px-3 py-4">
+      <div className={`rounded-xl bg-gradient-to-br from-primary to-primary/80 flex items-center justify-center shadow-lg shadow-primary/20 transition-all duration-300 ${collapsed ? "h-8 w-8" : "h-10 w-10"}`}>
+        <BarChart3 className={`text-primary-foreground transition-all duration-300 ${collapsed ? "h-4 w-4" : "h-5 w-5"}`} />
+      </div>
+      {!collapsed && <span className="font-bold text-lg text-foreground">Seller Finance</span>}
     </div>
   </SidebarHeader>
 
