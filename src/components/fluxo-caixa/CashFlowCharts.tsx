@@ -1,6 +1,7 @@
 import { useMemo } from 'react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
+import { SectionCard } from '@/components/ui/section-card';
+import { EmptyState } from '@/components/ui/empty-state';
 import {
   LineChart,
   Line,
@@ -18,6 +19,7 @@ import {
 } from 'recharts';
 import { format, subMonths, startOfMonth, endOfMonth, parseISO } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
+import { TrendingUp, BarChart3, PieChart as PieChartIcon, ChartLine } from 'lucide-react';
 import type { CashFlowEntry, CashFlowCategory } from '@/hooks/useCashFlow';
 
 interface CashFlowChartsProps {
@@ -27,12 +29,17 @@ interface CashFlowChartsProps {
 }
 
 const CHART_COLORS = [
-  '#EF4444', '#F59E0B', '#10B981', '#3B82F6', '#8B5CF6', 
-  '#EC4899', '#14B8A6', '#6366F1', '#F97316', '#6B7280'
+  'hsl(var(--primary))',
+  'hsl(142, 76%, 36%)', // emerald
+  'hsl(0, 84%, 60%)',   // red
+  'hsl(217, 91%, 60%)', // blue
+  'hsl(262, 83%, 58%)', // violet
+  'hsl(330, 81%, 60%)', // pink
+  'hsl(172, 66%, 50%)', // teal
+  'hsl(239, 84%, 67%)', // indigo
 ];
 
 export function CashFlowCharts({ entries, categories, isLoading }: CashFlowChartsProps) {
-  // Calculate last 6 months data for line and bar charts
   const monthlyData = useMemo(() => {
     const now = new Date();
     const months: { month: string; income: number; expense: number; balance: number }[] = [];
@@ -68,7 +75,6 @@ export function CashFlowCharts({ entries, categories, isLoading }: CashFlowChart
     return months;
   }, [entries]);
 
-  // Calculate cumulative balance for line chart
   const balanceEvolution = useMemo(() => {
     let cumulativeBalance = 0;
     return monthlyData.map(month => {
@@ -80,7 +86,6 @@ export function CashFlowCharts({ entries, categories, isLoading }: CashFlowChart
     });
   }, [monthlyData]);
 
-  // Calculate expense distribution by category for pie chart
   const expenseByCategory = useMemo(() => {
     const now = new Date();
     const monthStart = startOfMonth(now);
@@ -128,13 +133,13 @@ export function CashFlowCharts({ entries, categories, isLoading }: CashFlowChart
     }).format(value);
   };
 
-    const CustomTooltip = ({ active, payload, label }: { active?: boolean; payload?: Array<{ value: number; name: string; color: string }>; label?: string }) => {
+  const CustomTooltip = ({ active, payload, label }: { active?: boolean; payload?: Array<{ value: number; name: string; color: string }>; label?: string }) => {
     if (active && payload && payload.length) {
       return (
-        <div className="bg-background border border-border rounded-lg p-3 shadow-lg">
-          <p className="font-medium mb-2">{label}</p>
+        <div className="bg-popover border border-border rounded-lg p-3 shadow-xl backdrop-blur-sm">
+          <p className="font-semibold text-foreground mb-2">{label}</p>
           {payload.map((entry: { value: number; name: string; color: string }, index: number) => (
-            <p key={index} style={{ color: entry.color }} className="text-sm">
+            <p key={index} style={{ color: entry.color }} className="text-sm font-medium">
               {entry.name}: {formatCurrency(entry.value)}
             </p>
           ))}
@@ -148,8 +153,8 @@ export function CashFlowCharts({ entries, categories, isLoading }: CashFlowChart
     if (active && payload && payload.length) {
       const data = payload[0];
       return (
-        <div className="bg-background border border-border rounded-lg p-3 shadow-lg">
-          <p className="font-medium">{data.name}</p>
+        <div className="bg-popover border border-border rounded-lg p-3 shadow-xl backdrop-blur-sm">
+          <p className="font-semibold text-foreground">{data.name}</p>
           <p className="text-sm text-muted-foreground">{formatCurrency(data.value)}</p>
         </div>
       );
@@ -161,14 +166,9 @@ export function CashFlowCharts({ entries, categories, isLoading }: CashFlowChart
     return (
       <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
         {[1, 2, 3].map(i => (
-          <Card key={i}>
-            <CardHeader>
-              <Skeleton className="h-6 w-40" />
-            </CardHeader>
-            <CardContent>
-              <Skeleton className="h-[250px] w-full" />
-            </CardContent>
-          </Card>
+          <SectionCard key={i} title="Carregando..." className="animate-pulse">
+            <Skeleton className="h-[250px] w-full rounded-lg" />
+          </SectionCard>
         ))}
       </div>
     );
@@ -179,28 +179,40 @@ export function CashFlowCharts({ entries, categories, isLoading }: CashFlowChart
   return (
     <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
       {/* Line Chart - Balance Evolution */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-lg">Evolução do Saldo</CardTitle>
-        </CardHeader>
-        <CardContent>
-          {!hasData ? (
-            <div className="h-[250px] flex items-center justify-center text-muted-foreground text-sm">
-              Sem dados para exibir
-            </div>
-          ) : (
+      <SectionCard 
+        title="Evolução do Saldo" 
+        icon={ChartLine}
+        className="overflow-hidden"
+      >
+        {!hasData ? (
+          <EmptyState
+            icon={TrendingUp}
+            title="Sem dados"
+            description="Adicione lançamentos para ver a evolução"
+            className="h-[250px]"
+          />
+        ) : (
+          <div className="pt-2">
             <ResponsiveContainer width="100%" height={250}>
               <LineChart data={balanceEvolution}>
-                <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
+                <defs>
+                  <linearGradient id="balanceGradient" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="5%" stopColor="hsl(var(--primary))" stopOpacity={0.3}/>
+                    <stop offset="95%" stopColor="hsl(var(--primary))" stopOpacity={0}/>
+                  </linearGradient>
+                </defs>
+                <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" opacity={0.5} />
                 <XAxis 
                   dataKey="month" 
-                  tick={{ fontSize: 12 }}
-                  className="text-muted-foreground"
+                  tick={{ fontSize: 12, fill: 'hsl(var(--muted-foreground))' }}
+                  axisLine={{ stroke: 'hsl(var(--border))' }}
+                  tickLine={{ stroke: 'hsl(var(--border))' }}
                 />
                 <YAxis 
                   tickFormatter={(value) => formatCurrency(value)}
-                  tick={{ fontSize: 10 }}
-                  className="text-muted-foreground"
+                  tick={{ fontSize: 10, fill: 'hsl(var(--muted-foreground))' }}
+                  axisLine={{ stroke: 'hsl(var(--border))' }}
+                  tickLine={{ stroke: 'hsl(var(--border))' }}
                   width={70}
                 />
                 <Tooltip content={<CustomTooltip />} />
@@ -208,122 +220,149 @@ export function CashFlowCharts({ entries, categories, isLoading }: CashFlowChart
                   type="monotone"
                   dataKey="cumulativeBalance"
                   name="Saldo"
-                  stroke="#3B82F6"
+                  stroke="hsl(var(--primary))"
                   strokeWidth={3}
-                  dot={{ fill: '#3B82F6', strokeWidth: 2, r: 4 }}
-                  activeDot={{ r: 6 }}
+                  dot={{ fill: 'hsl(var(--primary))', strokeWidth: 2, r: 4 }}
+                  activeDot={{ r: 6, fill: 'hsl(var(--primary))', stroke: 'hsl(var(--background))', strokeWidth: 2 }}
                 />
               </LineChart>
             </ResponsiveContainer>
-          )}
-        </CardContent>
-      </Card>
+          </div>
+        )}
+      </SectionCard>
 
       {/* Bar Chart - Income vs Expenses */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-lg">Entradas vs Saídas</CardTitle>
-        </CardHeader>
-        <CardContent>
-          {!hasData ? (
-            <div className="h-[250px] flex items-center justify-center text-muted-foreground text-sm">
-              Sem dados para exibir
-            </div>
-          ) : (
+      <SectionCard 
+        title="Entradas vs Saídas" 
+        icon={BarChart3}
+        className="overflow-hidden"
+      >
+        {!hasData ? (
+          <EmptyState
+            icon={BarChart3}
+            title="Sem dados"
+            description="Adicione lançamentos para comparar"
+            className="h-[250px]"
+          />
+        ) : (
+          <div className="pt-2">
             <ResponsiveContainer width="100%" height={250}>
-              <BarChart data={monthlyData}>
-                <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
+              <BarChart data={monthlyData} barGap={4}>
+                <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" opacity={0.5} />
                 <XAxis 
                   dataKey="month" 
-                  tick={{ fontSize: 12 }}
-                  className="text-muted-foreground"
+                  tick={{ fontSize: 12, fill: 'hsl(var(--muted-foreground))' }}
+                  axisLine={{ stroke: 'hsl(var(--border))' }}
+                  tickLine={{ stroke: 'hsl(var(--border))' }}
                 />
                 <YAxis 
                   tickFormatter={(value) => formatCurrency(value)}
-                  tick={{ fontSize: 10 }}
-                  className="text-muted-foreground"
+                  tick={{ fontSize: 10, fill: 'hsl(var(--muted-foreground))' }}
+                  axisLine={{ stroke: 'hsl(var(--border))' }}
+                  tickLine={{ stroke: 'hsl(var(--border))' }}
                   width={70}
                 />
                 <Tooltip content={<CustomTooltip />} />
                 <Legend 
                   formatter={(value) => <span className="text-foreground text-sm">{value}</span>}
+                  wrapperStyle={{ paddingTop: '10px' }}
                 />
-                <Bar dataKey="income" name="Entradas" fill="#10B981" radius={[4, 4, 0, 0]} />
-                <Bar dataKey="expense" name="Saídas" fill="#EF4444" radius={[4, 4, 0, 0]} />
+                <Bar 
+                  dataKey="income" 
+                  name="Entradas" 
+                  fill="hsl(142, 76%, 36%)" 
+                  radius={[6, 6, 0, 0]} 
+                  maxBarSize={40}
+                />
+                <Bar 
+                  dataKey="expense" 
+                  name="Saídas" 
+                  fill="hsl(0, 84%, 60%)" 
+                  radius={[6, 6, 0, 0]} 
+                  maxBarSize={40}
+                />
               </BarChart>
             </ResponsiveContainer>
-          )}
-        </CardContent>
-      </Card>
+          </div>
+        )}
+      </SectionCard>
 
       {/* Pie Chart - Expenses by Category */}
-      <Card className="flex flex-col">
-        <CardHeader className="pb-2">
-          <CardTitle className="text-lg">Despesas por Categoria</CardTitle>
-        </CardHeader>
-        <CardContent className="flex-1 flex flex-col">
-          {expenseByCategory.length === 0 ? (
-            <div className="h-[250px] flex items-center justify-center text-muted-foreground text-sm">
-              Sem despesas este mês
+      <SectionCard 
+        title="Despesas por Categoria" 
+        icon={PieChartIcon}
+        className="overflow-hidden flex flex-col"
+        contentClassName="flex-1 flex flex-col"
+      >
+        {expenseByCategory.length === 0 ? (
+          <EmptyState
+            icon={PieChartIcon}
+            title="Sem despesas"
+            description="Nenhuma despesa registrada este mês"
+            className="h-[250px]"
+          />
+        ) : (
+          <>
+            {/* Donut Chart */}
+            <div className="flex justify-center pt-2">
+              <ResponsiveContainer width={160} height={160}>
+                <PieChart>
+                  <Pie
+                    data={expenseByCategory}
+                    cx="50%"
+                    cy="50%"
+                    innerRadius={45}
+                    outerRadius={70}
+                    paddingAngle={3}
+                    dataKey="value"
+                    stroke="hsl(var(--background))"
+                    strokeWidth={2}
+                  >
+                    {expenseByCategory.map((entry, index) => (
+                      <Cell 
+                        key={`cell-${index}`} 
+                        fill={entry.color || CHART_COLORS[index % CHART_COLORS.length]}
+                        className="transition-opacity hover:opacity-80 cursor-pointer"
+                      />
+                    ))}
+                  </Pie>
+                  <Tooltip content={<PieTooltip />} />
+                </PieChart>
+              </ResponsiveContainer>
             </div>
-          ) : (
-            <>
-              {/* Donut Chart - Clean without labels */}
-              <div className="flex justify-center">
-                <ResponsiveContainer width={160} height={160}>
-                  <PieChart>
-                    <Pie
-                      data={expenseByCategory}
-                      cx="50%"
-                      cy="50%"
-                      innerRadius={45}
-                      outerRadius={70}
-                      paddingAngle={2}
-                      dataKey="value"
-                      stroke="none"
-                    >
-                      {expenseByCategory.map((entry, index) => (
-                        <Cell 
-                          key={`cell-${index}`} 
-                          fill={entry.color || CHART_COLORS[index % CHART_COLORS.length]}
-                          className="transition-opacity hover:opacity-80"
-                        />
-                      ))}
-                    </Pie>
-                    <Tooltip content={<PieTooltip />} />
-                  </PieChart>
-                </ResponsiveContainer>
-              </div>
 
-              {/* Custom Legend - Vertical list with full names */}
-              <div className="mt-4 space-y-2 max-h-[140px] overflow-y-auto pr-1">
-                {expenseByCategory.map((entry, index) => {
-                  const total = expenseByCategory.reduce((sum, e) => sum + e.value, 0);
-                  const percent = ((entry.value / total) * 100).toFixed(1);
-                  return (
-                    <div 
-                      key={index} 
-                      className="flex items-center justify-between gap-2 text-sm group hover:bg-muted/50 rounded px-1.5 py-1 -mx-1.5 transition-colors"
-                    >
-                      <div className="flex items-center gap-2 min-w-0 flex-1">
-                        <div 
-                          className="w-2.5 h-2.5 rounded-full flex-shrink-0" 
-                          style={{ backgroundColor: entry.color || CHART_COLORS[index % CHART_COLORS.length] }}
-                        />
-                        <span className="truncate text-foreground/90">{entry.name}</span>
-                      </div>
-                      <div className="flex items-center gap-2 flex-shrink-0 text-muted-foreground">
-                        <span className="font-medium text-foreground/80">{formatCurrency(entry.value)}</span>
-                        <span className="text-xs w-12 text-right">({percent}%)</span>
-                      </div>
+            {/* Legend */}
+            <div className="mt-4 space-y-1.5 max-h-[120px] overflow-y-auto pr-1">
+              {expenseByCategory.map((entry, index) => {
+                const total = expenseByCategory.reduce((sum, e) => sum + e.value, 0);
+                const percent = ((entry.value / total) * 100).toFixed(1);
+                return (
+                  <div 
+                    key={index} 
+                    className="flex items-center justify-between gap-2 text-sm group hover:bg-muted/50 rounded-md px-2 py-1.5 -mx-2 transition-colors cursor-default"
+                  >
+                    <div className="flex items-center gap-2 min-w-0 flex-1">
+                      <div 
+                        className="w-2.5 h-2.5 rounded-full flex-shrink-0 ring-1 ring-offset-1 ring-offset-background ring-black/5" 
+                        style={{ backgroundColor: entry.color || CHART_COLORS[index % CHART_COLORS.length] }}
+                      />
+                      <span className="truncate text-foreground/90 text-xs">{entry.name}</span>
                     </div>
-                  );
-                })}
-              </div>
-            </>
-          )}
-        </CardContent>
-      </Card>
+                    <div className="flex items-center gap-2 flex-shrink-0">
+                      <span className="font-semibold text-foreground text-xs tabular-nums">
+                        {formatCurrency(entry.value)}
+                      </span>
+                      <span className="text-[10px] text-muted-foreground w-10 text-right">
+                        {percent}%
+                      </span>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </>
+        )}
+      </SectionCard>
     </div>
   );
 }
