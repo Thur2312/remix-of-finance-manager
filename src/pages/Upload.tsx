@@ -271,16 +271,29 @@ function UploadContent() {
         return null;
       };
 
+      const rawQuantidade = getValue('quantidade');
+      const rawTotal = getValue('total_faturado');
+      const rawRebate = getValue('rebate_shopee');
+      const rawDataPedido = getValue('data_pedido');
+
+      // Parse data_pedido with proper type handling
+      let parsedDataPedido: string | null = null;
+      if (typeof rawDataPedido === 'string') {
+        parsedDataPedido = parseDate(rawDataPedido);
+      } else if (rawDataPedido && typeof rawDataPedido === 'object' && 'getTime' in (rawDataPedido as object)) {
+        parsedDataPedido = parseDate(rawDataPedido as Date);
+      }
+
       return {
         order_id: String(getValue('order_id') || ''),
         sku: String(getValue('sku') || ''),
         nome_produto: String(getValue('nome_produto') || ''),
         variacao: String(getValue('variacao') || ''),
-        quantidade: Math.max(1, Math.round(parseNumber(getValue('quantidade')))),
-        total_faturado: parseNumber(getValue('total_faturado')),
-        rebate_shopee: parseNumber(getValue('rebate_shopee')),
+        quantidade: Math.max(1, Math.round(parseNumber(typeof rawQuantidade === 'number' ? rawQuantidade : (rawQuantidade === '' ? '' : 0)))),
+        total_faturado: parseNumber(typeof rawTotal === 'number' ? rawTotal : (rawTotal === '' ? '' : 0)),
+        rebate_shopee: parseNumber(typeof rawRebate === 'number' ? rawRebate : (rawRebate === '' ? '' : 0)),
         custo_unitario: 0,
-        data_pedido: parseDate(getValue('data_pedido')),
+        data_pedido: parsedDataPedido,
       };
     }).filter(row => row.order_id && row.nome_produto);
   };
