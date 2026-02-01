@@ -316,13 +316,18 @@ function ConfiguracoesContent() {
     <div className="space-y-6 animate-fade-in">
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-        <div>
-          <h2 className="text-2xl font-bold">Configurações Financeiras</h2>
-          <p className="text-muted-foreground">
-            Defina os parâmetros de cálculo para suas vendas na Shopee
-          </p>
+        <div className="flex items-start gap-4">
+          <div className="hidden sm:flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-primary to-primary/70 text-primary-foreground shadow-lg shadow-primary/20">
+            <Settings className="h-6 w-6" />
+          </div>
+          <div>
+            <h2 className="text-2xl font-bold tracking-tight">Configurações Financeiras</h2>
+            <p className="text-muted-foreground">
+              Defina os parâmetros de cálculo para suas vendas na Shopee
+            </p>
+          </div>
         </div>
-        <Button onClick={handleNewSettings}>
+        <Button onClick={handleNewSettings} className="shadow-md">
           <Plus className="h-4 w-4 mr-2" />
           Nova Configuração
         </Button>
@@ -330,11 +335,11 @@ function ConfiguracoesContent() {
 
       <div className="grid gap-6 lg:grid-cols-4">
         {/* Settings List */}
-        <Card className="lg:col-span-1">
-          <CardHeader className="pb-3">
-            <CardTitle className="text-base">Configurações Salvas</CardTitle>
+        <Card className="lg:col-span-1 border-0 shadow-md">
+          <CardHeader className="pb-3 border-b bg-muted/20">
+            <CardTitle className="text-base font-semibold">Configurações Salvas</CardTitle>
           </CardHeader>
-          <CardContent className="space-y-2">
+          <CardContent className="space-y-2 pt-4">
             {settings.length === 0 ? (
               <p className="text-sm text-muted-foreground text-center py-4">
                 Nenhuma configuração salva
@@ -344,19 +349,27 @@ function ConfiguracoesContent() {
                 <button
                   key={setting.id}
                   onClick={() => selectSettings(setting)}
-                  className={`w-full text-left p-3 rounded-lg border transition-colors ${
+                  className={`w-full text-left p-3 rounded-xl border-2 transition-all duration-200 ${
                     selectedSettings?.id === setting.id
-                      ? 'border-primary bg-accent'
-                      : 'border-transparent hover:bg-muted'
+                      ? 'border-primary bg-primary/5 shadow-sm'
+                      : 'border-transparent hover:bg-muted/50'
                   }`}
                 >
                   <div className="flex items-center gap-2">
-                    <Settings className="h-4 w-4 text-muted-foreground" />
-                    <span className="font-medium text-sm truncate">{setting.name}</span>
+                    <div className={`h-8 w-8 rounded-lg flex items-center justify-center ${
+                      selectedSettings?.id === setting.id
+                        ? 'bg-primary text-primary-foreground'
+                        : 'bg-muted'
+                    }`}>
+                      <Settings className="h-4 w-4" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <span className="font-medium text-sm truncate block">{setting.name}</span>
+                      {setting.is_default && (
+                        <span className="text-xs text-primary font-medium">Padrão</span>
+                      )}
+                    </div>
                   </div>
-                  {setting.is_default && (
-                    <span className="text-xs text-primary">Padrão</span>
-                  )}
                 </button>
               ))
             )}
@@ -364,26 +377,26 @@ function ConfiguracoesContent() {
         </Card>
 
         {/* Settings Form */}
-        <Card className="lg:col-span-3">
-          <CardHeader>
-            <CardTitle>
+        <Card className="lg:col-span-3 border-0 shadow-md">
+          <CardHeader className="border-b bg-muted/20">
+            <CardTitle className="text-xl">
               {isCreating ? 'Nova Configuração' : `Editar: ${selectedSettings?.name}`}
             </CardTitle>
             <CardDescription>
               Configure as taxas e parâmetros que serão usados nos cálculos de resultado
             </CardDescription>
           </CardHeader>
-          <CardContent className="space-y-6">
+          <CardContent className="space-y-6 pt-6">
             {/* Name and Default */}
             <div className="grid gap-4 sm:grid-cols-2">
               <div className="space-y-2">
-                <Label htmlFor="name">Nome da Configuração</Label>
+                <Label htmlFor="name" className="font-medium">Nome da Configuração</Label>
                 <Input
                   id="name"
                   value={formData.name}
                   onChange={(e) => handleInputChange('name', e.target.value)}
                   placeholder="Ex: Padrão Shopee"
-                  className={errors.name ? 'border-destructive' : ''}
+                  className={`shadow-sm ${errors.name ? 'border-destructive' : ''}`}
                 />
                 {errors.name && <p className="text-xs text-destructive">{errors.name}</p>}
               </div>
@@ -393,15 +406,20 @@ function ConfiguracoesContent() {
                   checked={formData.is_default}
                   onCheckedChange={(checked) => handleInputChange('is_default', checked)}
                 />
-                <Label htmlFor="is_default">Definir como padrão</Label>
+                <Label htmlFor="is_default" className="font-medium">Definir como padrão</Label>
               </div>
             </div>
 
             <Separator />
 
             {/* Shopee Fees */}
-            <div>
-              <h3 className="font-semibold mb-4 text-primary">Taxas da Shopee</h3>
+            <div className="bg-gradient-to-r from-primary/5 to-transparent p-4 rounded-xl -mx-2">
+              <h3 className="font-semibold mb-4 text-primary flex items-center gap-2">
+                <div className="h-6 w-6 rounded-md bg-primary/15 flex items-center justify-center">
+                  <Settings className="h-3.5 w-3.5 text-primary" />
+                </div>
+                Taxas da Shopee
+              </h3>
               <div className="grid gap-4 sm:grid-cols-2">
                 <div className="space-y-2">
                   <Label htmlFor="taxa_comissao_shopee">Taxa de Comissão (%)</Label>
