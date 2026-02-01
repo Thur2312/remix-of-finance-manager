@@ -90,7 +90,7 @@ export default function Auth() {
 
   useEffect(() => {
     if (user) {
-      navigate('/');
+      navigate('/dashboard');
     }
   }, [user, navigate]);
 
@@ -163,7 +163,7 @@ export default function Auth() {
       }
     } else {
       toast.success('Login realizado com sucesso!');
-      navigate('/');
+      navigate('/dashboard');
     }
     setIsLoading(false);
   };
@@ -201,7 +201,7 @@ export default function Auth() {
     } else {
       // Save phone to profile after signup
       toast.success('Conta criada com sucesso! Você já pode fazer login.');
-      navigate('/');
+      navigate('/dashboard');
     }
     setIsLoading(false);
   };

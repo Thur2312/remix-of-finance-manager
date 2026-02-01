@@ -13,8 +13,10 @@ import {
   CheckCircle2,
   ArrowRight,
   Play,
+  Sparkles,
+  Menu,
+  X,
 } from 'lucide-react';
-import logo from '@/assets/logo.png';
 
 // Animated counter hook
 function useCountUp(end: number, duration: number = 2000, startOnView: boolean = true) {
@@ -70,33 +72,41 @@ function FAQItem({ question, answer }: { question: string; answer: string }) {
   const [isOpen, setIsOpen] = useState(false);
 
   return (
-    <div className="border-b border-border last:border-0">
+    <div className="border-b border-border/50 last:border-0">
       <button
         onClick={() => setIsOpen(!isOpen)}
-        className="w-full py-5 flex items-center justify-between text-left hover:text-primary transition-colors"
+        className="w-full py-6 flex items-center justify-between text-left hover:text-primary transition-colors group"
       >
-        <span className="font-medium text-lg">{question}</span>
-        <ChevronDown
-          className={`h-5 w-5 text-muted-foreground transition-transform duration-300 ${
-            isOpen ? 'rotate-180' : ''
-          }`}
-        />
+        <span className="font-semibold text-lg pr-4">{question}</span>
+        <div className={`h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center transition-all duration-300 group-hover:bg-primary/20 ${isOpen ? 'rotate-180 bg-primary/20' : ''}`}>
+          <ChevronDown className="h-4 w-4 text-primary" />
+        </div>
       </button>
       <div
         className={`overflow-hidden transition-all duration-300 ${
-          isOpen ? 'max-h-96 pb-5' : 'max-h-0'
+          isOpen ? 'max-h-96 pb-6' : 'max-h-0'
         }`}
       >
-        <p className="text-muted-foreground">{answer}</p>
+        <p className="text-muted-foreground leading-relaxed">{answer}</p>
       </div>
     </div>
   );
 }
 
 export default function LandingPage() {
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [scrolled, setScrolled] = useState(false);
   const { count: usersCount, ref: usersRef } = useCountUp(1500, 2500);
   const { count: ordersCount, ref: ordersRef } = useCountUp(50000, 2500);
   const { count: savingsCount, ref: savingsRef } = useCountUp(95, 2000);
+
+  useEffect(() => {
+    const handleScroll = () => {
+      setScrolled(window.scrollY > 20);
+    };
+    window.addEventListener('scroll', handleScroll);
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, []);
 
   const features = [
     {
@@ -104,36 +114,42 @@ export default function LandingPage() {
       title: 'Dashboard em Tempo Real',
       description:
         'Visualize lucro, margem e faturamento instantaneamente. Acompanhe a saúde financeira do seu negócio em tempo real.',
+      gradient: 'from-blue-500 to-cyan-500',
     },
     {
       icon: ShoppingCart,
       title: 'Multi-Marketplace',
       description:
         'Suporte a Shopee e TikTok em uma única ferramenta. Gerencie todas as suas operações em um só lugar.',
+      gradient: 'from-orange-500 to-red-500',
     },
     {
       icon: Package,
       title: 'Análise por SKU/Produto',
       description:
         'Descubra quais produtos dão lucro ou prejuízo. Identifique oportunidades e elimine gargalos na sua operação.',
+      gradient: 'from-purple-500 to-pink-500',
     },
     {
       icon: TrendingUp,
       title: 'DRE Automático',
       description:
         'Demonstração de resultados financeiros gerada automaticamente. Relatórios profissionais sem esforço manual.',
+      gradient: 'from-green-500 to-emerald-500',
     },
     {
       icon: Zap,
       title: 'Precificação Inteligente',
       description:
         'Calculadora de preços que considera todas as taxas e custos. Nunca mais precifique errado.',
+      gradient: 'from-yellow-500 to-orange-500',
     },
     {
       icon: Shield,
       title: 'Fluxo de Caixa',
       description:
         'Controle suas entradas e saídas. Planeje seu futuro financeiro com visibilidade completa.',
+      gradient: 'from-indigo-500 to-blue-500',
     },
   ];
 
@@ -166,116 +182,175 @@ export default function LandingPage() {
   ];
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen bg-gradient-to-b from-background via-background to-muted/20">
       {/* Header */}
-      <header className="fixed top-0 left-0 right-0 z-50 bg-background/80 backdrop-blur-lg border-b border-border">
-        <div className="container mx-auto px-4 h-16 flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <img src={logo} alt="Seller Finance" className="h-8 w-8" />
+      <header className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 ${
+        scrolled ? 'bg-background/95 backdrop-blur-xl shadow-lg border-b border-border/50' : 'bg-transparent'
+      }`}>
+        <div className="container mx-auto px-4 h-20 flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <div className="h-10 w-10 rounded-xl bg-gradient-to-br from-primary to-primary/80 flex items-center justify-center shadow-lg shadow-primary/25">
+              <BarChart3 className="h-5 w-5 text-primary-foreground" />
+            </div>
             <span className="font-bold text-xl text-foreground">Seller Finance</span>
           </div>
+
+          {/* Desktop Navigation */}
           <nav className="hidden md:flex items-center gap-8">
-            <a href="#funcionalidades" className="text-muted-foreground hover:text-primary transition-colors">
+            <a href="#funcionalidades" className="text-muted-foreground hover:text-primary transition-colors font-medium">
               Funcionalidades
             </a>
-            <a href="#planos" className="text-muted-foreground hover:text-primary transition-colors">
+            <a href="#planos" className="text-muted-foreground hover:text-primary transition-colors font-medium">
               Planos
             </a>
-            <a href="#faq" className="text-muted-foreground hover:text-primary transition-colors">
+            <a href="#faq" className="text-muted-foreground hover:text-primary transition-colors font-medium">
               FAQ
             </a>
           </nav>
-          <div className="flex items-center gap-3">
+
+          <div className="hidden md:flex items-center gap-4">
             <Link to="/auth">
-              <Button variant="ghost">Entrar</Button>
+              <Button variant="ghost" className="font-medium">Entrar</Button>
             </Link>
             <Link to="/auth">
-              <Button className="finance-gradient text-white">
+              <Button className="bg-gradient-to-r from-primary to-primary/80 hover:from-primary/90 hover:to-primary/70 text-primary-foreground shadow-lg shadow-primary/25 font-medium">
+                <Sparkles className="h-4 w-4 mr-2" />
                 Teste Grátis
               </Button>
             </Link>
           </div>
+
+          {/* Mobile Menu Button */}
+          <button
+            className="md:hidden p-2 hover:bg-muted rounded-lg transition-colors"
+            onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+          >
+            {mobileMenuOpen ? <X className="h-6 w-6" /> : <Menu className="h-6 w-6" />}
+          </button>
         </div>
+
+        {/* Mobile Menu */}
+        {mobileMenuOpen && (
+          <div className="md:hidden absolute top-full left-0 right-0 bg-background/95 backdrop-blur-xl border-b border-border shadow-xl">
+            <nav className="container mx-auto px-4 py-6 flex flex-col gap-4">
+              <a href="#funcionalidades" className="text-foreground hover:text-primary transition-colors font-medium py-2" onClick={() => setMobileMenuOpen(false)}>
+                Funcionalidades
+              </a>
+              <a href="#planos" className="text-foreground hover:text-primary transition-colors font-medium py-2" onClick={() => setMobileMenuOpen(false)}>
+                Planos
+              </a>
+              <a href="#faq" className="text-foreground hover:text-primary transition-colors font-medium py-2" onClick={() => setMobileMenuOpen(false)}>
+                FAQ
+              </a>
+              <div className="flex flex-col gap-3 pt-4 border-t border-border">
+                <Link to="/auth" onClick={() => setMobileMenuOpen(false)}>
+                  <Button variant="outline" className="w-full">Entrar</Button>
+                </Link>
+                <Link to="/auth" onClick={() => setMobileMenuOpen(false)}>
+                  <Button className="w-full bg-gradient-to-r from-primary to-primary/80">
+                    <Sparkles className="h-4 w-4 mr-2" />
+                    Teste Grátis
+                  </Button>
+                </Link>
+              </div>
+            </nav>
+          </div>
+        )}
       </header>
 
       {/* Hero Section */}
-      <section className="pt-32 pb-20 relative overflow-hidden">
+      <section className="pt-32 pb-24 relative overflow-hidden">
         {/* Background decorations */}
-        <div className="absolute top-0 right-0 w-[600px] h-[600px] bg-primary/10 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2" />
-        <div className="absolute bottom-0 left-0 w-[400px] h-[400px] bg-primary/5 rounded-full blur-3xl translate-y-1/2 -translate-x-1/2" />
+        <div className="absolute top-0 right-0 w-[800px] h-[800px] bg-gradient-to-br from-primary/20 via-primary/10 to-transparent rounded-full blur-3xl -translate-y-1/2 translate-x-1/3 pointer-events-none" />
+        <div className="absolute bottom-0 left-0 w-[600px] h-[600px] bg-gradient-to-tr from-primary/10 via-purple-500/5 to-transparent rounded-full blur-3xl translate-y-1/2 -translate-x-1/3 pointer-events-none" />
+        <div className="absolute top-1/2 left-1/2 w-[400px] h-[400px] bg-primary/5 rounded-full blur-3xl -translate-x-1/2 -translate-y-1/2 pointer-events-none" />
 
         <div className="container mx-auto px-4 relative">
-          <div className="grid lg:grid-cols-2 gap-12 items-center">
+          <div className="grid lg:grid-cols-2 gap-16 items-center">
             <div className="space-y-8">
-              <div className="inline-flex items-center gap-2 px-4 py-2 bg-primary/10 rounded-full text-primary text-sm font-medium">
+              <div className="inline-flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-primary/10 to-primary/5 rounded-full text-primary text-sm font-semibold border border-primary/20 shadow-sm">
                 <Zap className="h-4 w-4" />
                 Gestão financeira simplificada
               </div>
 
-              <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold leading-tight text-foreground">
-                <span className="text-primary">96%</span> dos vendedores não sabem{' '}
-                <span className="text-primary">quanto lucram</span> em tempo real
+              <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold leading-[1.1] text-foreground">
+                <span className="bg-gradient-to-r from-primary to-blue-600 bg-clip-text text-transparent">96%</span> dos vendedores não sabem{' '}
+                <span className="bg-gradient-to-r from-primary to-blue-600 bg-clip-text text-transparent">quanto lucram</span> em tempo real
               </h1>
 
-              <p className="text-xl text-muted-foreground max-w-lg">
+              <p className="text-xl text-muted-foreground max-w-lg leading-relaxed">
                 Com o Seller Finance, você visualiza seu lucro real venda a venda, identifica produtos
                 lucrativos e toma decisões mais inteligentes para seu negócio.
               </p>
 
               <div className="flex flex-col sm:flex-row gap-4">
                 <Link to="/auth">
-                  <Button size="lg" className="finance-gradient text-white w-full sm:w-auto text-lg px-8 py-6">
+                  <Button size="lg" className="bg-gradient-to-r from-primary to-primary/80 hover:from-primary/90 hover:to-primary/70 text-primary-foreground w-full sm:w-auto text-lg px-8 py-7 shadow-xl shadow-primary/25 font-semibold">
                     Começar 7 dias grátis
                     <ArrowRight className="ml-2 h-5 w-5" />
                   </Button>
                 </Link>
-                <Button size="lg" variant="outline" className="w-full sm:w-auto text-lg px-8 py-6">
+                <Button size="lg" variant="outline" className="w-full sm:w-auto text-lg px-8 py-7 font-semibold border-2 hover:bg-muted/50">
                   <Play className="mr-2 h-5 w-5" />
                   Ver demonstração
                 </Button>
               </div>
 
-              <p className="text-sm text-muted-foreground">
-                ✓ Sem cartão de crédito &nbsp;&nbsp; ✓ Cancele quando quiser
-              </p>
+              <div className="flex items-center gap-6 text-sm text-muted-foreground">
+                <div className="flex items-center gap-2">
+                  <CheckCircle2 className="h-4 w-4 text-success" />
+                  <span>Sem cartão de crédito</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <CheckCircle2 className="h-4 w-4 text-success" />
+                  <span>Cancele quando quiser</span>
+                </div>
+              </div>
             </div>
 
             <div className="relative">
-              <div className="absolute inset-0 bg-gradient-to-br from-primary/20 to-primary/5 rounded-3xl blur-2xl" />
-              <div className="relative bg-card border border-border rounded-2xl shadow-2xl p-6 space-y-4">
-                <div className="flex items-center gap-3 pb-4 border-b border-border">
-                  <div className="h-3 w-3 rounded-full bg-destructive" />
-                  <div className="h-3 w-3 rounded-full bg-warning" />
-                  <div className="h-3 w-3 rounded-full bg-success" />
-                  <span className="ml-2 text-sm text-muted-foreground">Dashboard</span>
+              <div className="absolute inset-0 bg-gradient-to-br from-primary/30 via-primary/10 to-purple-500/10 rounded-3xl blur-3xl" />
+              <div className="relative bg-card/80 backdrop-blur-sm border border-border/50 rounded-3xl shadow-2xl p-8 space-y-6">
+                <div className="flex items-center gap-3 pb-4 border-b border-border/50">
+                  <div className="h-3 w-3 rounded-full bg-red-400" />
+                  <div className="h-3 w-3 rounded-full bg-yellow-400" />
+                  <div className="h-3 w-3 rounded-full bg-green-400" />
+                  <span className="ml-3 text-sm font-medium text-muted-foreground">Dashboard — Seller Finance</span>
                 </div>
 
                 <div className="grid grid-cols-2 gap-4">
-                  <div className="bg-primary/10 rounded-xl p-4">
-                    <p className="text-sm text-muted-foreground">Faturamento</p>
-                    <p className="text-2xl font-bold text-primary">R$ 45.890</p>
+                  <div className="bg-gradient-to-br from-primary/15 to-primary/5 rounded-2xl p-5 border border-primary/10">
+                    <p className="text-sm text-muted-foreground mb-1">Faturamento</p>
+                    <p className="text-3xl font-bold text-primary">R$ 45.890</p>
+                    <p className="text-xs text-success mt-2 font-medium">↑ 12% vs mês anterior</p>
                   </div>
-                  <div className="bg-success/10 rounded-xl p-4">
-                    <p className="text-sm text-muted-foreground">Lucro Líquido</p>
-                    <p className="text-2xl font-bold text-success">R$ 12.450</p>
+                  <div className="bg-gradient-to-br from-success/15 to-success/5 rounded-2xl p-5 border border-success/10">
+                    <p className="text-sm text-muted-foreground mb-1">Lucro Líquido</p>
+                    <p className="text-3xl font-bold text-success">R$ 12.450</p>
+                    <p className="text-xs text-success mt-2 font-medium">↑ 8% vs mês anterior</p>
                   </div>
-                  <div className="bg-warning/10 rounded-xl p-4">
-                    <p className="text-sm text-muted-foreground">Margem</p>
-                    <p className="text-2xl font-bold text-warning">27,1%</p>
+                  <div className="bg-gradient-to-br from-warning/15 to-warning/5 rounded-2xl p-5 border border-warning/10">
+                    <p className="text-sm text-muted-foreground mb-1">Margem</p>
+                    <p className="text-3xl font-bold text-warning">27,1%</p>
+                    <p className="text-xs text-muted-foreground mt-2">Meta: 25%</p>
                   </div>
-                  <div className="bg-secondary/10 rounded-xl p-4">
-                    <p className="text-sm text-muted-foreground">Pedidos</p>
-                    <p className="text-2xl font-bold text-secondary-foreground">1.234</p>
+                  <div className="bg-gradient-to-br from-secondary/15 to-secondary/5 rounded-2xl p-5 border border-secondary/10">
+                    <p className="text-sm text-muted-foreground mb-1">Pedidos</p>
+                    <p className="text-3xl font-bold text-foreground">1.234</p>
+                    <p className="text-xs text-success mt-2 font-medium">↑ 156 novos hoje</p>
                   </div>
                 </div>
 
-                <div className="h-32 bg-gradient-to-t from-primary/20 to-transparent rounded-xl flex items-end justify-center pb-4">
-                  <div className="flex items-end gap-2">
-                    {[40, 65, 45, 80, 55, 90, 70].map((h, i) => (
+                <div className="h-36 bg-gradient-to-t from-primary/10 via-primary/5 to-transparent rounded-2xl flex items-end justify-center pb-6 border border-primary/10">
+                  <div className="flex items-end gap-3 w-full px-6">
+                    {[40, 65, 45, 80, 55, 90, 70, 85, 60].map((h, i) => (
                       <div
                         key={i}
-                        className="w-8 bg-primary rounded-t-md transition-all duration-500"
-                        style={{ height: `${h}%` }}
+                        className="flex-1 bg-gradient-to-t from-primary to-primary/60 rounded-t-lg transition-all duration-700 hover:from-primary/80 hover:to-primary/40"
+                        style={{ 
+                          height: `${h}%`,
+                          animation: `grow 0.8s ease-out ${i * 0.1}s both`
+                        }}
                       />
                     ))}
                   </div>
@@ -284,29 +359,44 @@ export default function LandingPage() {
             </div>
           </div>
         </div>
+
+        <style>{`
+          @keyframes grow {
+            from { height: 0; opacity: 0; }
+            to { opacity: 1; }
+          }
+        `}</style>
       </section>
 
       {/* What is Section */}
-      <section className="py-20 bg-muted/30">
+      <section className="py-24 relative">
         <div className="container mx-auto px-4">
-          <div className="max-w-3xl mx-auto text-center space-y-6">
-            <h2 className="text-3xl md:text-4xl font-bold text-foreground">
+          <div className="max-w-4xl mx-auto text-center space-y-8">
+            <div className="inline-flex items-center gap-2 px-4 py-2 bg-muted rounded-full text-sm font-medium">
+              <Sparkles className="h-4 w-4 text-primary" />
+              Sobre a plataforma
+            </div>
+            <h2 className="text-3xl md:text-5xl font-bold text-foreground leading-tight">
               O que é o Seller Finance?
             </h2>
-            <p className="text-lg text-muted-foreground leading-relaxed">
+            <p className="text-xl text-muted-foreground leading-relaxed max-w-3xl mx-auto">
               O Seller Finance é uma ferramenta completa de gestão financeira para vendedores de marketplace.
               Analise suas vendas em tempo real, descubra seu lucro real por produto e tome decisões
-              baseadas em dados. Chega de planilhas complicadas e cálculos manuais!
+              baseadas em dados. <span className="text-foreground font-medium">Chega de planilhas complicadas e cálculos manuais!</span>
             </p>
           </div>
         </div>
       </section>
 
       {/* Features Section */}
-      <section id="funcionalidades" className="py-20">
+      <section id="funcionalidades" className="py-24 bg-muted/30">
         <div className="container mx-auto px-4">
-          <div className="text-center mb-16 space-y-4">
-            <h2 className="text-3xl md:text-4xl font-bold text-foreground">
+          <div className="text-center mb-20 space-y-4">
+            <div className="inline-flex items-center gap-2 px-4 py-2 bg-primary/10 rounded-full text-sm font-semibold text-primary">
+              <Zap className="h-4 w-4" />
+              Recursos poderosos
+            </div>
+            <h2 className="text-3xl md:text-5xl font-bold text-foreground">
               Funcionalidades do Seller Finance
             </h2>
             <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
@@ -318,16 +408,16 @@ export default function LandingPage() {
             {features.map((feature, index) => (
               <Card
                 key={index}
-                className="group hover:shadow-xl transition-all duration-300 hover:-translate-y-1 border-border"
+                className="group hover:shadow-2xl transition-all duration-500 hover:-translate-y-2 border-border/50 bg-card/50 backdrop-blur-sm overflow-hidden"
               >
-                <CardHeader>
-                  <div className="h-12 w-12 rounded-xl bg-primary/10 flex items-center justify-center mb-4 group-hover:bg-primary/20 transition-colors">
-                    <feature.icon className="h-6 w-6 text-primary" />
+                <CardHeader className="pb-4">
+                  <div className={`h-14 w-14 rounded-2xl bg-gradient-to-br ${feature.gradient} flex items-center justify-center mb-4 shadow-lg group-hover:scale-110 transition-transform duration-300`}>
+                    <feature.icon className="h-7 w-7 text-white" />
                   </div>
-                  <CardTitle className="text-xl">{feature.title}</CardTitle>
+                  <CardTitle className="text-xl font-bold">{feature.title}</CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <p className="text-muted-foreground">{feature.description}</p>
+                  <p className="text-muted-foreground leading-relaxed">{feature.description}</p>
                 </CardContent>
               </Card>
             ))}
@@ -336,30 +426,35 @@ export default function LandingPage() {
       </section>
 
       {/* Stats Section */}
-      <section className="py-20 bg-primary text-primary-foreground">
-        <div className="container mx-auto px-4">
+      <section className="py-24 bg-gradient-to-br from-primary via-primary/90 to-blue-600 text-primary-foreground relative overflow-hidden">
+        <div className="absolute inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNjAiIGhlaWdodD0iNjAiIHZpZXdCb3g9IjAgMCA2MCA2MCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48ZyBmaWxsPSJub25lIiBmaWxsLXJ1bGU9ImV2ZW5vZGQiPjxnIGZpbGw9IiNmZmYiIGZpbGwtb3BhY2l0eT0iMC4wNSI+PGNpcmNsZSBjeD0iMzAiIGN5PSIzMCIgcj0iMiIvPjwvZz48L2c+PC9zdmc+')] opacity-50" />
+        <div className="container mx-auto px-4 relative">
           <div className="grid md:grid-cols-3 gap-12 text-center">
-            <div ref={usersRef} className="space-y-2">
-              <p className="text-5xl md:text-6xl font-bold">+{usersCount.toLocaleString()}</p>
-              <p className="text-xl opacity-90">Vendedores ativos</p>
+            <div ref={usersRef} className="space-y-3">
+              <p className="text-6xl md:text-7xl font-bold">+{usersCount.toLocaleString()}</p>
+              <p className="text-xl opacity-90 font-medium">Vendedores ativos</p>
             </div>
-            <div ref={ordersRef} className="space-y-2">
-              <p className="text-5xl md:text-6xl font-bold">+{ordersCount.toLocaleString()}</p>
-              <p className="text-xl opacity-90">Pedidos analisados</p>
+            <div ref={ordersRef} className="space-y-3">
+              <p className="text-6xl md:text-7xl font-bold">+{ordersCount.toLocaleString()}</p>
+              <p className="text-xl opacity-90 font-medium">Pedidos analisados</p>
             </div>
-            <div ref={savingsRef} className="space-y-2">
-              <p className="text-5xl md:text-6xl font-bold">{savingsCount}%</p>
-              <p className="text-xl opacity-90">Menos tempo em planilhas</p>
+            <div ref={savingsRef} className="space-y-3">
+              <p className="text-6xl md:text-7xl font-bold">{savingsCount}%</p>
+              <p className="text-xl opacity-90 font-medium">Menos tempo em planilhas</p>
             </div>
           </div>
         </div>
       </section>
 
       {/* Marketplaces Section */}
-      <section className="py-20">
+      <section className="py-24">
         <div className="container mx-auto px-4">
-          <div className="text-center mb-12 space-y-4">
-            <h2 className="text-3xl md:text-4xl font-bold text-foreground">
+          <div className="text-center mb-16 space-y-4">
+            <div className="inline-flex items-center gap-2 px-4 py-2 bg-muted rounded-full text-sm font-medium">
+              <ShoppingCart className="h-4 w-4 text-primary" />
+              Integrações
+            </div>
+            <h2 className="text-3xl md:text-5xl font-bold text-foreground">
               Marketplaces Integrados
             </h2>
             <p className="text-lg text-muted-foreground">
@@ -367,9 +462,9 @@ export default function LandingPage() {
             </p>
           </div>
 
-          <div className="flex flex-wrap items-center justify-center gap-12">
-            <div className="flex items-center gap-4 px-8 py-6 bg-card rounded-2xl border border-border shadow-lg">
-              <div className="h-16 w-16 bg-[#EE4D2D] rounded-xl flex items-center justify-center">
+          <div className="flex flex-wrap items-center justify-center gap-8">
+            <div className="flex items-center gap-5 px-8 py-6 bg-card rounded-3xl border border-border/50 shadow-xl hover:shadow-2xl transition-all duration-300 hover:-translate-y-1">
+              <div className="h-16 w-16 bg-gradient-to-br from-[#EE4D2D] to-[#D73211] rounded-2xl flex items-center justify-center shadow-lg">
                 <span className="text-white font-bold text-2xl">S</span>
               </div>
               <div>
@@ -378,8 +473,8 @@ export default function LandingPage() {
               </div>
             </div>
 
-            <div className="flex items-center gap-4 px-8 py-6 bg-card rounded-2xl border border-border shadow-lg">
-              <div className="h-16 w-16 bg-black rounded-xl flex items-center justify-center">
+            <div className="flex items-center gap-5 px-8 py-6 bg-card rounded-3xl border border-border/50 shadow-xl hover:shadow-2xl transition-all duration-300 hover:-translate-y-1">
+              <div className="h-16 w-16 bg-gradient-to-br from-black to-gray-800 rounded-2xl flex items-center justify-center shadow-lg">
                 <span className="text-white font-bold text-2xl">T</span>
               </div>
               <div>
@@ -388,8 +483,8 @@ export default function LandingPage() {
               </div>
             </div>
 
-            <div className="flex items-center gap-4 px-8 py-6 bg-muted/50 rounded-2xl border border-dashed border-border">
-              <div className="h-16 w-16 bg-muted rounded-xl flex items-center justify-center">
+            <div className="flex items-center gap-5 px-8 py-6 bg-muted/30 rounded-3xl border-2 border-dashed border-border/50 hover:border-primary/30 transition-all duration-300">
+              <div className="h-16 w-16 bg-muted rounded-2xl flex items-center justify-center">
                 <span className="text-muted-foreground font-bold text-2xl">+</span>
               </div>
               <div>
@@ -402,10 +497,14 @@ export default function LandingPage() {
       </section>
 
       {/* Pricing Section */}
-      <section id="planos" className="py-20 bg-muted/30">
+      <section id="planos" className="py-24 bg-muted/30">
         <div className="container mx-auto px-4">
           <div className="text-center mb-16 space-y-4">
-            <h2 className="text-3xl md:text-4xl font-bold text-foreground">
+            <div className="inline-flex items-center gap-2 px-4 py-2 bg-primary/10 rounded-full text-sm font-semibold text-primary">
+              <Sparkles className="h-4 w-4" />
+              Preço justo
+            </div>
+            <h2 className="text-3xl md:text-5xl font-bold text-foreground">
               Plano Simples e Acessível
             </h2>
             <p className="text-lg text-muted-foreground">
@@ -413,24 +512,24 @@ export default function LandingPage() {
             </p>
           </div>
 
-          <div className="max-w-md mx-auto">
-            <Card className="relative overflow-hidden border-2 border-primary shadow-2xl">
-              <div className="absolute top-0 right-0 bg-primary text-primary-foreground px-4 py-1 text-sm font-medium rounded-bl-xl">
+          <div className="max-w-lg mx-auto">
+            <Card className="relative overflow-hidden border-2 border-primary/50 shadow-2xl shadow-primary/10 bg-card">
+              <div className="absolute top-0 left-0 right-0 h-2 bg-gradient-to-r from-primary via-blue-500 to-primary" />
+              <div className="absolute top-4 right-4 bg-gradient-to-r from-primary to-blue-600 text-primary-foreground px-4 py-1.5 text-sm font-bold rounded-full shadow-lg">
                 7 dias grátis
               </div>
 
-              <CardHeader className="text-center pt-12 pb-8">
-                <CardTitle className="text-2xl mb-4">Plano Completo</CardTitle>
-                <div className="space-y-1">
-                  <p className="text-5xl font-bold text-primary">
+              <CardHeader className="text-center pt-16 pb-8">
+                <CardTitle className="text-2xl mb-6 font-bold">Plano Completo</CardTitle>
+                <div className="space-y-2">
+                  <p className="text-6xl font-bold bg-gradient-to-r from-primary to-blue-600 bg-clip-text text-transparent">
                     R$ 24,99
-                    <span className="text-lg font-normal text-muted-foreground">/mês</span>
                   </p>
-                  <p className="text-muted-foreground">após o período de teste</p>
+                  <p className="text-muted-foreground text-lg">/mês após o período de teste</p>
                 </div>
               </CardHeader>
 
-              <CardContent className="space-y-6 pb-8">
+              <CardContent className="space-y-8 pb-10">
                 <ul className="space-y-4">
                   {[
                     'Dashboard em tempo real',
@@ -442,15 +541,17 @@ export default function LandingPage() {
                     'Pedidos ilimitados',
                     'Suporte por chat',
                   ].map((item, i) => (
-                    <li key={i} className="flex items-center gap-3">
-                      <CheckCircle2 className="h-5 w-5 text-primary flex-shrink-0" />
-                      <span>{item}</span>
+                    <li key={i} className="flex items-center gap-4">
+                      <div className="h-6 w-6 rounded-full bg-success/10 flex items-center justify-center flex-shrink-0">
+                        <CheckCircle2 className="h-4 w-4 text-success" />
+                      </div>
+                      <span className="font-medium">{item}</span>
                     </li>
                   ))}
                 </ul>
 
                 <Link to="/auth" className="block">
-                  <Button size="lg" className="w-full finance-gradient text-white text-lg py-6">
+                  <Button size="lg" className="w-full bg-gradient-to-r from-primary to-blue-600 hover:from-primary/90 hover:to-blue-600/90 text-primary-foreground text-lg py-7 font-bold shadow-xl shadow-primary/25">
                     Começar 7 dias grátis
                     <ArrowRight className="ml-2 h-5 w-5" />
                   </Button>
@@ -466,10 +567,14 @@ export default function LandingPage() {
       </section>
 
       {/* FAQ Section */}
-      <section id="faq" className="py-20">
+      <section id="faq" className="py-24">
         <div className="container mx-auto px-4">
           <div className="text-center mb-16 space-y-4">
-            <h2 className="text-3xl md:text-4xl font-bold text-foreground">
+            <div className="inline-flex items-center gap-2 px-4 py-2 bg-muted rounded-full text-sm font-medium">
+              <BarChart3 className="h-4 w-4 text-primary" />
+              Dúvidas
+            </div>
+            <h2 className="text-3xl md:text-5xl font-bold text-foreground">
               Perguntas Frequentes
             </h2>
             <p className="text-lg text-muted-foreground">
@@ -477,7 +582,7 @@ export default function LandingPage() {
             </p>
           </div>
 
-          <div className="max-w-2xl mx-auto bg-card rounded-2xl border border-border p-6">
+          <div className="max-w-3xl mx-auto bg-card rounded-3xl border border-border/50 p-8 shadow-xl">
             {faqs.map((faq, index) => (
               <FAQItem key={index} question={faq.question} answer={faq.answer} />
             ))}
@@ -486,9 +591,10 @@ export default function LandingPage() {
       </section>
 
       {/* Final CTA Section */}
-      <section className="py-20 bg-primary text-primary-foreground">
-        <div className="container mx-auto px-4 text-center space-y-8">
-          <h2 className="text-3xl md:text-4xl font-bold">
+      <section className="py-24 bg-gradient-to-br from-primary via-primary/90 to-blue-600 text-primary-foreground relative overflow-hidden">
+        <div className="absolute inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNjAiIGhlaWdodD0iNjAiIHZpZXdCb3g9IjAgMCA2MCA2MCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48ZyBmaWxsPSJub25lIiBmaWxsLXJ1bGU9ImV2ZW5vZGQiPjxnIGZpbGw9IiNmZmYiIGZpbGwtb3BhY2l0eT0iMC4wNSI+PGNpcmNsZSBjeD0iMzAiIGN5PSIzMCIgcj0iMiIvPjwvZz48L2c+PC9zdmc+')] opacity-50" />
+        <div className="container mx-auto px-4 text-center space-y-8 relative">
+          <h2 className="text-3xl md:text-5xl font-bold max-w-3xl mx-auto leading-tight">
             Pronto para descobrir seu lucro real?
           </h2>
           <p className="text-xl opacity-90 max-w-2xl mx-auto">
@@ -497,8 +603,7 @@ export default function LandingPage() {
           <Link to="/auth">
             <Button
               size="lg"
-              variant="secondary"
-              className="text-lg px-8 py-6 bg-white text-primary hover:bg-white/90"
+              className="text-lg px-10 py-7 bg-white text-primary hover:bg-white/90 font-bold shadow-2xl"
             >
               Começar agora - É grátis!
               <ArrowRight className="ml-2 h-5 w-5" />
@@ -508,22 +613,24 @@ export default function LandingPage() {
       </section>
 
       {/* Footer */}
-      <footer className="py-12 bg-card border-t border-border">
+      <footer className="py-16 bg-card border-t border-border/50">
         <div className="container mx-auto px-4">
-          <div className="flex flex-col md:flex-row items-center justify-between gap-6">
-            <div className="flex items-center gap-2">
-              <img src={logo} alt="Seller Finance" className="h-8 w-8" />
+          <div className="flex flex-col md:flex-row items-center justify-between gap-8">
+            <div className="flex items-center gap-3">
+              <div className="h-10 w-10 rounded-xl bg-gradient-to-br from-primary to-primary/80 flex items-center justify-center">
+                <BarChart3 className="h-5 w-5 text-primary-foreground" />
+              </div>
               <span className="font-bold text-xl">Seller Finance</span>
             </div>
 
-            <nav className="flex items-center gap-6 text-sm text-muted-foreground">
-              <a href="#funcionalidades" className="hover:text-primary transition-colors">
+            <nav className="flex items-center gap-8 text-sm text-muted-foreground">
+              <a href="#funcionalidades" className="hover:text-primary transition-colors font-medium">
                 Funcionalidades
               </a>
-              <a href="#planos" className="hover:text-primary transition-colors">
+              <a href="#planos" className="hover:text-primary transition-colors font-medium">
                 Planos
               </a>
-              <a href="#faq" className="hover:text-primary transition-colors">
+              <a href="#faq" className="hover:text-primary transition-colors font-medium">
                 FAQ
               </a>
             </nav>
