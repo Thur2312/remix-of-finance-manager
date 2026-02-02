@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import { Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Separator } from '@/components/ui/separator';
 import {
   BarChart3,
   TrendingUp,
@@ -16,6 +17,12 @@ import {
   Sparkles,
   Menu,
   X,
+  Mail,
+  Instagram,
+  Youtube,
+  MessageCircle,
+  Heart,
+  ExternalLink,
 } from 'lucide-react';
 
 // Animated counter hook
@@ -613,30 +620,150 @@ export default function LandingPage() {
       </section>
 
       {/* Footer */}
-      <footer className="py-16 bg-card border-t border-border/50">
+      <footer className="bg-gradient-to-b from-card to-muted/30 border-t border-border/50">
         <div className="container mx-auto px-4">
-          <div className="flex flex-col md:flex-row items-center justify-between gap-8">
-            <div className="flex items-center gap-3">
-              <div className="h-10 w-10 rounded-xl bg-gradient-to-br from-primary to-primary/80 flex items-center justify-center">
-                <BarChart3 className="h-5 w-5 text-primary-foreground" />
+          {/* Main Footer Content */}
+          <div className="py-16 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-12">
+            {/* Brand Column */}
+            <div className="lg:col-span-1 space-y-6">
+              <div className="flex items-center gap-3">
+                <div className="h-12 w-12 rounded-xl bg-gradient-to-br from-primary to-primary/80 flex items-center justify-center shadow-lg shadow-primary/20">
+                  <BarChart3 className="h-6 w-6 text-primary-foreground" />
+                </div>
+                <span className="font-bold text-2xl text-foreground">Seller Finance</span>
               </div>
-              <span className="font-bold text-xl">Seller Finance</span>
+              <p className="text-muted-foreground leading-relaxed">
+                A ferramenta completa para gestão financeira de vendedores de marketplace. Simplifique seus números e maximize seus lucros.
+              </p>
+              {/* Social Links */}
+              <div className="flex items-center gap-3">
+                <a 
+                  href="https://instagram.com" 
+                  target="_blank" 
+                  rel="noopener noreferrer"
+                  className="h-10 w-10 rounded-lg bg-muted hover:bg-primary/10 flex items-center justify-center transition-all hover:scale-105 group"
+                >
+                  <Instagram className="h-5 w-5 text-muted-foreground group-hover:text-primary transition-colors" />
+                </a>
+                <a 
+                  href="https://youtube.com" 
+                  target="_blank" 
+                  rel="noopener noreferrer"
+                  className="h-10 w-10 rounded-lg bg-muted hover:bg-primary/10 flex items-center justify-center transition-all hover:scale-105 group"
+                >
+                  <Youtube className="h-5 w-5 text-muted-foreground group-hover:text-primary transition-colors" />
+                </a>
+                <a 
+                  href="https://wa.me/5511999999999" 
+                  target="_blank" 
+                  rel="noopener noreferrer"
+                  className="h-10 w-10 rounded-lg bg-muted hover:bg-primary/10 flex items-center justify-center transition-all hover:scale-105 group"
+                >
+                  <MessageCircle className="h-5 w-5 text-muted-foreground group-hover:text-primary transition-colors" />
+                </a>
+              </div>
             </div>
 
-            <nav className="flex items-center gap-8 text-sm text-muted-foreground">
-              <a href="#funcionalidades" className="hover:text-primary transition-colors font-medium">
-                Funcionalidades
-              </a>
-              <a href="#planos" className="hover:text-primary transition-colors font-medium">
-                Planos
-              </a>
-              <a href="#faq" className="hover:text-primary transition-colors font-medium">
-                FAQ
-              </a>
-            </nav>
+            {/* Product Column */}
+            <div className="space-y-5">
+              <h4 className="font-semibold text-foreground text-lg">Produto</h4>
+              <nav className="flex flex-col gap-3">
+                <a href="#funcionalidades" className="text-muted-foreground hover:text-primary transition-colors flex items-center gap-2 group">
+                  <span>Funcionalidades</span>
+                </a>
+                <a href="#planos" className="text-muted-foreground hover:text-primary transition-colors flex items-center gap-2 group">
+                  <span>Planos e Preços</span>
+                </a>
+                <a href="#faq" className="text-muted-foreground hover:text-primary transition-colors flex items-center gap-2 group">
+                  <span>Perguntas Frequentes</span>
+                </a>
+                <Link to="/auth" className="text-muted-foreground hover:text-primary transition-colors flex items-center gap-2 group">
+                  <span>Acessar Plataforma</span>
+                  <ExternalLink className="h-3 w-3 opacity-0 group-hover:opacity-100 transition-opacity" />
+                </Link>
+              </nav>
+            </div>
+
+            {/* Resources Column */}
+            <div className="space-y-5">
+              <h4 className="font-semibold text-foreground text-lg">Recursos</h4>
+              <nav className="flex flex-col gap-3">
+                <a href="#" className="text-muted-foreground hover:text-primary transition-colors">
+                  Central de Ajuda
+                </a>
+                <a href="#" className="text-muted-foreground hover:text-primary transition-colors">
+                  Tutoriais em Vídeo
+                </a>
+                <a href="#" className="text-muted-foreground hover:text-primary transition-colors">
+                  Blog para Sellers
+                </a>
+                <a href="#" className="text-muted-foreground hover:text-primary transition-colors">
+                  Calculadora Grátis
+                </a>
+              </nav>
+            </div>
+
+            {/* Contact Column */}
+            <div className="space-y-5">
+              <h4 className="font-semibold text-foreground text-lg">Contato</h4>
+              <div className="space-y-4">
+                <a 
+                  href="mailto:contato@sellerfinance.com.br" 
+                  className="flex items-center gap-3 text-muted-foreground hover:text-primary transition-colors group"
+                >
+                  <div className="h-9 w-9 rounded-lg bg-muted group-hover:bg-primary/10 flex items-center justify-center transition-colors">
+                    <Mail className="h-4 w-4" />
+                  </div>
+                  <span className="text-sm">contato@sellerfinance.com.br</span>
+                </a>
+                <a 
+                  href="https://wa.me/5511999999999" 
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex items-center gap-3 text-muted-foreground hover:text-primary transition-colors group"
+                >
+                  <div className="h-9 w-9 rounded-lg bg-muted group-hover:bg-primary/10 flex items-center justify-center transition-colors">
+                    <MessageCircle className="h-4 w-4" />
+                  </div>
+                  <span className="text-sm">WhatsApp</span>
+                </a>
+              </div>
+              
+              {/* Newsletter */}
+              <div className="pt-4 space-y-3">
+                <p className="text-sm font-medium text-foreground">Receba dicas por e-mail</p>
+                <div className="flex gap-2">
+                  <input 
+                    type="email" 
+                    placeholder="seu@email.com"
+                    className="flex-1 h-10 px-4 rounded-lg bg-muted border border-border text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary transition-all"
+                  />
+                  <Button size="sm" className="h-10 px-4 bg-primary hover:bg-primary/90">
+                    <ArrowRight className="h-4 w-4" />
+                  </Button>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <Separator className="bg-border/50" />
+
+          {/* Bottom Footer */}
+          <div className="py-8 flex flex-col md:flex-row items-center justify-between gap-6">
+            <div className="flex flex-wrap items-center justify-center md:justify-start gap-6 text-sm text-muted-foreground">
+              <a href="#" className="hover:text-primary transition-colors">Termos de Uso</a>
+              <a href="#" className="hover:text-primary transition-colors">Política de Privacidade</a>
+              <a href="#" className="hover:text-primary transition-colors">Política de Cookies</a>
+            </div>
+            
+            <div className="flex items-center gap-2 text-sm text-muted-foreground">
+              <span>Feito com</span>
+              <Heart className="h-4 w-4 text-destructive fill-destructive animate-pulse" />
+              <span>para vendedores brasileiros</span>
+            </div>
 
             <p className="text-sm text-muted-foreground">
-              © {new Date().getFullYear()} Seller Finance. Todos os direitos reservados.
+              © {new Date().getFullYear()} Seller Finance. CNPJ: 00.000.000/0001-00
             </p>
           </div>
         </div>
