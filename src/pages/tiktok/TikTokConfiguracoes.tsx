@@ -569,48 +569,53 @@ function TikTokConfiguracoesContent() {
 
             <Separator />
 
-            <div className="flex flex-col sm:flex-row gap-3 justify-between">
-              <div className="flex gap-3">
-                <Button onClick={handleSave} disabled={isSaving}>
-                  {isSaving ? (
-                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                  ) : (
-                    <Save className="h-4 w-4 mr-2" />
-                  )}
-                  Salvar
-                </Button>
-              </div>
-
-              {selectedSettings && !isCreating && (
-                <AlertDialog>
-                  <AlertDialogTrigger asChild>
-                    <Button variant="destructive" disabled={isDeleting}>
-                      {isDeleting ? (
-                        <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                      ) : (
-                        <Trash2 className="h-4 w-4 mr-2" />
-                      )}
-                      Excluir
-                    </Button>
-                  </AlertDialogTrigger>
-                  <AlertDialogContent>
-                    <AlertDialogHeader>
-                      <AlertDialogTitle>Excluir configuração?</AlertDialogTitle>
-                      <AlertDialogDescription>
-                        Esta ação irá excluir a configuração "{selectedSettings.name}" e <strong>todos os pedidos importados</strong>.
-                        Esta ação não pode ser desfeita.
-                      </AlertDialogDescription>
-                    </AlertDialogHeader>
-                    <AlertDialogFooter>
-                      <AlertDialogCancel>Cancelar</AlertDialogCancel>
-                      <AlertDialogAction onClick={handleDelete} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
-                        Excluir
-                      </AlertDialogAction>
-                    </AlertDialogFooter>
-                  </AlertDialogContent>
-                </AlertDialog>
-              )}
-            </div>
+            <div className="flex flex-col sm:flex-row gap-3 justify-end">
+                          {!isCreating && selectedSettings && (
+                            <AlertDialog>
+                              <AlertDialogTrigger asChild>
+                                <Button variant="destructive" className="sm:order-1">
+                                  <Trash2 className="h-4 w-4 mr-2" />
+                                  Excluir
+                                </Button>
+                              </AlertDialogTrigger>
+                              <AlertDialogContent>
+                                <AlertDialogHeader>
+                                  <AlertDialogTitle>Excluir configuração e dados?</AlertDialogTitle>
+                                  <AlertDialogDescription>
+                                    Esta ação não pode ser desfeita. A configuração "{selectedSettings.name}" e{' '}
+                                    <strong>todos os pedidos importados</strong> serão permanentemente excluídos,
+                                    zerando a análise atual.
+                                  </AlertDialogDescription>
+                                </AlertDialogHeader>
+                                <AlertDialogFooter>
+                                  <AlertDialogCancel disabled={isDeleting}>Cancelar</AlertDialogCancel>
+                                  <AlertDialogAction 
+                                    onClick={handleDelete} 
+                                    className="bg-destructive hover:bg-destructive/90"
+                                    disabled={isDeleting}
+                                  >
+                                    {isDeleting ? (
+                                      <>
+                                        <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                                        Excluindo...
+                                      </>
+                                    ) : (
+                                      'Excluir Tudo'
+                                    )}
+                                  </AlertDialogAction>
+                                </AlertDialogFooter>
+                              </AlertDialogContent>
+                            </AlertDialog>
+                          )}
+                          <Button onClick={handleSave} disabled={isSaving} className="sm:order-2">
+                            {isSaving ? (
+                              <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                            ) : (
+                              <Save className="h-4 w-4 mr-2" />
+                            )}
+                            {isCreating ? 'Criar Configuração' : 'Salvar Alterações'}
+                          </Button>
+                        </div>
           </CardContent>
         </Card>
       </div>

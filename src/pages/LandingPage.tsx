@@ -721,21 +721,14 @@ export default function LandingPage() {
               {/* Social Links */}
               <div className="flex items-center gap-3">
                 <a 
-                  href="https://instagram.com" 
+                  href="https://instagram.com/qx_assessoria/" 
                   target="_blank" 
                   rel="noopener noreferrer"
                   className="h-10 w-10 rounded-lg bg-muted hover:bg-primary/10 flex items-center justify-center transition-all hover:scale-105 group"
                 >
                   <Instagram className="h-5 w-5 text-muted-foreground group-hover:text-primary transition-colors" />
                 </a>
-                <a 
-                  href="https://youtube.com" 
-                  target="_blank" 
-                  rel="noopener noreferrer"
-                  className="h-10 w-10 rounded-lg bg-muted hover:bg-primary/10 flex items-center justify-center transition-all hover:scale-105 group"
-                >
-                  <Youtube className="h-5 w-5 text-muted-foreground group-hover:text-primary transition-colors" />
-                </a>
+               
                 <a 
                   href="https://wa.me/5511999999999" 
                   target="_blank" 
@@ -797,10 +790,10 @@ export default function LandingPage() {
                   <div className="h-9 w-9 rounded-lg bg-muted group-hover:bg-primary/10 flex items-center justify-center transition-colors">
                     <Mail className="h-4 w-4" />
                   </div>
-                  <span className="text-sm">contato@sellerfinance.com.br</span>
+                  <span className="text-sm">suporte@sellerfinance.com.br</span>
                 </a>
                 <a 
-                  href="https://wa.me/5511999999999" 
+                  href="https://wa.me/5583987999393" 
                   target="_blank"
                   rel="noopener noreferrer"
                   className="flex items-center gap-3 text-muted-foreground hover:text-primary transition-colors group"
@@ -839,14 +832,10 @@ export default function LandingPage() {
               <a href="#" className="hover:text-primary transition-colors">Política de Cookies</a>
             </div>
             
-            <div className="flex items-center gap-2 text-sm text-muted-foreground">
-              <span>Feito com</span>
-              <Heart className="h-4 w-4 text-destructive fill-destructive animate-pulse" />
-              <span>para vendedores brasileiros</span>
-            </div>
+      
 
             <p className="text-sm text-muted-foreground">
-              © {new Date().getFullYear()} Seller Finance. CNPJ: 00.000.000/0001-00
+              © {new Date().getFullYear()} Seller Finance.  CNPJ: 
             </p>
           </div>
         </div>
