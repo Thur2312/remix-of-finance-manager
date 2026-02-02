@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useLocation, useNavigate } from 'react-router-dom';
+import { useLocation, useNavigate, Link } from 'react-router-dom';
 import { NavLink } from '@/components/NavLink';
 import { useAuth } from '@/contexts/AuthContext';
 import { Sidebar, SidebarContent, SidebarFooter, SidebarGroup, SidebarGroupContent, SidebarHeader, SidebarMenu, SidebarMenuButton, SidebarMenuItem, useSidebar } from '@/components/ui/sidebar';
@@ -7,7 +7,8 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/component
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
-import { LayoutDashboard, Settings, Upload, FileSpreadsheet, Package, ChevronUp, ChevronDown, LogOut, ShoppingBag, TrendingUp, Calculator, Wallet, List, Tags, Sparkles, Receipt, BarChart3, User } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { LayoutDashboard, Settings, Upload, FileSpreadsheet, Package, ChevronUp, ChevronDown, LogOut, ShoppingBag, TrendingUp, Calculator, Wallet, List, Tags, Sparkles, Receipt, BarChart3, User, Home, CreditCard } from 'lucide-react';
 
 
 const relatoriosItems = [{
@@ -153,14 +154,57 @@ export function AppSidebar() {
         </SidebarMenuItem>)}
     </SidebarMenu>;
   return <Sidebar collapsible="icon" className="transition-all duration-300 ease-in-out border-r border-border/50">
-  <SidebarHeader className="border-b border-border/50 bg-card/50">
-    <div className="flex items-center justify-center gap-3 px-3 py-4">
-      <div className={`rounded-xl bg-gradient-to-br from-primary to-primary/80 flex items-center justify-center shadow-lg shadow-primary/20 transition-all duration-300 ${collapsed ? "h-8 w-8" : "h-10 w-10"}`}>
-        <BarChart3 className={`text-primary-foreground transition-all duration-300 ${collapsed ? "h-4 w-4" : "h-5 w-5"}`} />
+    <SidebarHeader className="border-b border-border/50 bg-card/50">
+      <div className="flex items-center justify-center gap-3 px-3 py-4">
+        <div className={`rounded-xl bg-gradient-to-br from-primary to-primary/80 flex items-center justify-center shadow-lg shadow-primary/20 transition-all duration-300 ${collapsed ? "h-8 w-8" : "h-10 w-10"}`}>
+          <BarChart3 className={`text-primary-foreground transition-all duration-300 ${collapsed ? "h-4 w-4" : "h-5 w-5"}`} />
+        </div>
+        {!collapsed && <span className="font-bold text-lg text-foreground">Seller Finance</span>}
       </div>
-      {!collapsed && <span className="font-bold text-lg text-foreground">Seller Finance</span>}
-    </div>
-  </SidebarHeader>
+      
+      {/* Quick Actions */}
+      <div className={`flex gap-2 px-3 pb-3 ${collapsed ? 'flex-col items-center' : ''}`}>
+        {collapsed ? (
+          <>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Link to="/">
+                  <Button variant="ghost" size="icon" className="h-8 w-8">
+                    <Home className="h-4 w-4" />
+                  </Button>
+                </Link>
+              </TooltipTrigger>
+              <TooltipContent side="right">Página inicial</TooltipContent>
+            </Tooltip>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Link to="/#planos">
+                  <Button variant="ghost" size="icon" className="h-8 w-8">
+                    <CreditCard className="h-4 w-4" />
+                  </Button>
+                </Link>
+              </TooltipTrigger>
+              <TooltipContent side="right">Ver planos</TooltipContent>
+            </Tooltip>
+          </>
+        ) : (
+          <>
+            <Link to="/" className="flex-1">
+              <Button variant="outline" size="sm" className="w-full gap-2 text-xs">
+                <Home className="h-3.5 w-3.5" />
+                Início
+              </Button>
+            </Link>
+            <Link to="/#planos" className="flex-1">
+              <Button variant="outline" size="sm" className="w-full gap-2 text-xs">
+                <CreditCard className="h-3.5 w-3.5" />
+                Planos
+              </Button>
+            </Link>
+          </>
+        )}
+      </div>
+    </SidebarHeader>
 
       <SidebarContent className="px-2 py-3 space-y-2">
         <SidebarGroup>
