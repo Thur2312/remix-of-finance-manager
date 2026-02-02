@@ -332,38 +332,18 @@ export default function Auth() {
       </div>
 
       {/* Right side - Auth Form */}
-      <div className="flex-1 flex flex-col bg-background">
-        {/* Navigation Header */}
-        <div className="flex items-center justify-between p-4 md:p-6">
-          <Link to="/">
-            <Button variant="ghost" size="sm" className="gap-2 text-muted-foreground hover:text-foreground">
-              <ArrowLeft className="h-4 w-4" />
-              <span className="hidden sm:inline">Voltar ao início</span>
-              <span className="sm:hidden">Voltar</span>
-            </Button>
-          </Link>
-          <Link to="/#planos">
-            <Button variant="outline" size="sm" className="gap-2">
-              <CreditCard className="h-4 w-4" />
-              <span className="hidden sm:inline">Ver planos</span>
-              <span className="sm:hidden">Planos</span>
-            </Button>
-          </Link>
-        </div>
-
-        {/* Auth Form Container */}
-        <div className="flex-1 flex items-center justify-center p-8">
-          <div className="w-full max-w-md">
-            {/* Mobile logo */}
-            <div className="lg:hidden flex flex-col items-center justify-center gap-2 mb-8">
-              <div className="p-3 finance-gradient rounded-xl">
-                <BarChart3 className="h-8 w-8 text-white" />
-              </div>
-              <h1 className="text-2xl font-bold text-primary">Seller Finance</h1>
+      <div className="flex-1 flex items-center justify-center p-8 bg-background">
+        <div className="w-full max-w-md">
+          {/* Mobile logo */}
+          <div className="lg:hidden flex flex-col items-center justify-center gap-2 mb-8">
+            <div className="p-3 finance-gradient rounded-xl">
+              <BarChart3 className="h-8 w-8 text-white" />
             </div>
+            <h1 className="text-2xl font-bold text-primary">Seller Finance</h1>
+          </div>
 
-            <Tabs defaultValue="login" className="w-full">
-              <TabsList className="grid w-full grid-cols-2 mb-6">
+          <Tabs defaultValue="login" className="w-full">
+            <TabsList className="grid w-full grid-cols-2 mb-6">
               <TabsTrigger value="login">Entrar</TabsTrigger>
               <TabsTrigger value="register">Cadastrar</TabsTrigger>
             </TabsList>
@@ -597,7 +577,6 @@ export default function Auth() {
               </Card>
             </TabsContent>
           </Tabs>
-          </div>
         </div>
       </div>
     </div>
