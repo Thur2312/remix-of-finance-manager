@@ -1,3 +1,4 @@
+/// <reference lib="deno.ns" />
 import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
@@ -183,7 +184,7 @@ serve(async (req: Request) => {
     console.log('Gerando anúncio para:', inputData, 'com', images?.length || 0, 'imagens');
 
     // Build user content - multimodal if images provided
-    let userContent: any;
+    let userContent: string | Array<{ type: string; text?: string; image_url?: { url: string } }>;
     if (images && images.length > 0) {
       userContent = [
         { type: "text", text: JSON.stringify(inputData, null, 2) },

@@ -252,14 +252,14 @@ function UploadContent() {
         return header ? row[header] : null;
       };
 
-      const parseNumber = (value: number | null | undefined | ''): number => {
+      const parseNumber = (value: string | number | null | undefined | ''): number => {
         if (value === null || value === undefined || value === '') return 0;
         if (typeof value === 'number') return value;
         const parsed = parseFloat(String(value).replace(/[^\d.,-]/g, '').replace(',', '.'));
         return isNaN(parsed) ? 0 : parsed;
       };
 
-      const parseDate = (value: string | Date | null | undefined): string | null => {
+      const parseDate = (value: string | number | Date | null | undefined): string | null => {
         if (!value) return null;
         if (value instanceof Date) return value.toISOString();
         try {

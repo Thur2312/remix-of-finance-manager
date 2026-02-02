@@ -199,7 +199,7 @@ function PerfilContent() {
       
       // Refresh the profile in AuthContext to sync everywhere
       await refreshProfile();
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Error saving profile:', error);
       toast.error('Erro ao salvar perfil');
     } finally {

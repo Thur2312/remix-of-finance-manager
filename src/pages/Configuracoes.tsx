@@ -262,8 +262,8 @@ function ConfiguracoesContent() {
         toast.success('Configuração salva com sucesso!');
         await fetchSettings();
       }
-    } catch (error: any) {
-      toast.error(error.message || 'Erro ao salvar configuração');
+    } catch (error:unknown) {
+      toast.error(error instanceof Error ? error.message : 'Erro ao salvar configuração');
     } finally {
       setIsSaving(false);
     }
