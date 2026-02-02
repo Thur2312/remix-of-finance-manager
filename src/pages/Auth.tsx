@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -8,7 +8,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Checkbox } from '@/components/ui/checkbox';
 import { toast } from 'sonner';
-import { TrendingUp, DollarSign, BarChart3, Eye, EyeOff, Sparkles, ArrowUpRight, PieChart, AlertCircle, CheckCircle2 } from 'lucide-react';
+import { TrendingUp, DollarSign, BarChart3, Eye, EyeOff, Sparkles, ArrowUpRight, PieChart, AlertCircle, CheckCircle2, ArrowLeft, CreditCard } from 'lucide-react';
 
 // Domínios de email válidos
 const VALID_EMAIL_DOMAINS = [
@@ -90,7 +90,7 @@ export default function Auth() {
 
   useEffect(() => {
     if (user) {
-      navigate('/');
+      navigate('/dashboard');
     }
   }, [user, navigate]);
 
@@ -163,7 +163,7 @@ export default function Auth() {
       }
     } else {
       toast.success('Login realizado com sucesso!');
-      navigate('/');
+      navigate('/dashboard');
     }
     setIsLoading(false);
   };
@@ -201,7 +201,7 @@ export default function Auth() {
     } else {
       // Save phone to profile after signup
       toast.success('Conta criada com sucesso! Você já pode fazer login.');
-      navigate('/');
+      navigate('/dashboard');
     }
     setIsLoading(false);
   };

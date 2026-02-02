@@ -12,8 +12,10 @@ import { DRETable } from '@/components/dre/DRETable';
 import { DRECharts } from '@/components/dre/DRECharts';
 import { DRESummaryCards } from '@/components/dre/DRESummaryCards';
 import { DREAlerts } from '@/components/dre/DREAlerts';
-import { formatDREForDisplay, formatCurrency, DREPeriod } from '@/lib/dre-calculations';
-import { FileSpreadsheet, RefreshCw, Download, Calendar, TrendingUp, TrendingDown, AlertCircle, CheckCircle2, XCircle } from 'lucide-react';
+import { PageHeader } from '@/components/ui/page-header';
+import { EmptyState } from '@/components/ui/empty-state';
+import { formatDREForDisplay, formatCurrency } from '@/lib/dre-calculations';
+import { FileSpreadsheet, RefreshCw, Download, Calendar, TrendingUp, AlertCircle, CheckCircle2, XCircle } from 'lucide-react';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 
@@ -88,73 +90,56 @@ function DREContent() {
 
   if (!dreData) {
     return (
-      <Card>
-        <CardContent className="py-12 text-center">
-          <FileSpreadsheet className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
-          <h3 className="text-lg font-medium mb-2">Nenhum dado disponível</h3>
-          <p className="text-muted-foreground text-sm">
-            Importe dados de vendas para visualizar o DRE da sua empresa.
-          </p>
-        </CardContent>
-      </Card>
+      <EmptyState
+        icon={FileSpreadsheet}
+        title="Nenhum dado disponível"
+        description="Importe dados de vendas para visualizar o DRE da sua empresa."
+      />
     );
   }
 
   const dreSections = formatDREForDisplay(dreData);
 
   return (
-    <div className="space-y-6">
-      {/* Header */}
-      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-bold flex items-center gap-2">
-            <TrendingUp className="h-6 w-6 text-primary" />
-            Demonstração do Resultado (DRE)
-          </h1>
-          <p className="text-muted-foreground text-sm mt-1">
-            Visão consolidada do resultado financeiro da empresa
-          </p>
-        </div>
+    <div className="space-y-6 animate-fade-in">
+      <PageHeader
+        title="Demonstração do Resultado (DRE)"
+        description="Visão consolidada do resultado financeiro da empresa"
+        icon={TrendingUp}
+      >
+        <Select value={selectedPeriod.label} onValueChange={handlePeriodChange}>
+          <SelectTrigger className="w-48 shadow-sm">
+            <Calendar className="h-4 w-4 mr-2 text-muted-foreground" />
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            {periods.map(period => (
+              <SelectItem key={period.label} value={period.label}>
+                {period.label}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
 
-        <div className="flex items-center gap-3">
-          {/* Period Selector */}
-          <Select value={selectedPeriod.label} onValueChange={handlePeriodChange}>
-            <SelectTrigger className="w-48">
-              <Calendar className="h-4 w-4 mr-2 text-muted-foreground" />
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              {periods.map(period => (
-                <SelectItem key={period.label} value={period.label}>
-                  {period.label}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+        <Button variant="outline" size="icon" onClick={refetch} className="shadow-sm">
+          <RefreshCw className="h-4 w-4" />
+        </Button>
 
-          {/* Refresh */}
-          <Button variant="outline" size="icon" onClick={refetch}>
-            <RefreshCw className="h-4 w-4" />
-          </Button>
+        <Button variant="outline" onClick={handleExportCSV} className="shadow-sm">
+          <Download className="h-4 w-4 mr-2" />
+          Exportar
+        </Button>
+      </PageHeader>
 
-          {/* Export */}
-          <Button variant="outline" onClick={handleExportCSV}>
-            <Download className="h-4 w-4 mr-2" />
-            Exportar
-          </Button>
-        </div>
-      </div>
-
-      {/* Period Info - Regra 2: Resumo executivo textual (sem valor numérico duplicado) */}
-      <Card className="bg-muted/30">
-        <CardContent className="py-3">
+      {/* Period Info */}
+      <Card className="bg-gradient-to-r from-muted/30 to-muted/10 border-0 shadow-sm">
+        <CardContent className="py-4">
           <div className="flex items-center justify-between text-sm">
             <span className="text-muted-foreground">
               Período: <span className="font-medium text-foreground">
                 {format(selectedPeriod.start, "dd 'de' MMMM", { locale: ptBR })} a {format(selectedPeriod.end, "dd 'de' MMMM 'de' yyyy", { locale: ptBR })}
               </span>
             </span>
-            {/* Resumo executivo textual - não repete valor numérico dos cards */}
             <span className="flex items-center gap-2">
               <span className="text-muted-foreground">Resultado do período:</span>
               {dreData.lucroOperacional >= 0 ? (
@@ -173,7 +158,7 @@ function DREContent() {
         </CardContent>
       </Card>
 
-      {/* Alertas de Validação */}
+      {/* Alerts */}
       {dreData.alertas && dreData.alertas.length > 0 && (
         <DREAlerts alertas={dreData.alertas} />
       )}
@@ -183,9 +168,13 @@ function DREContent() {
 
       {/* Tabs */}
       <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
-        <TabsList>
-          <TabsTrigger value="resumo">Resumo Visual</TabsTrigger>
-          <TabsTrigger value="demonstrativo">Demonstrativo Completo</TabsTrigger>
+        <TabsList className="bg-muted/50 p-1">
+          <TabsTrigger value="resumo" className="data-[state=active]:bg-background data-[state=active]:shadow-sm">
+            Resumo Visual
+          </TabsTrigger>
+          <TabsTrigger value="demonstrativo" className="data-[state=active]:bg-background data-[state=active]:shadow-sm">
+            Demonstrativo Completo
+          </TabsTrigger>
         </TabsList>
 
         <TabsContent value="resumo" className="space-y-6">
@@ -193,9 +182,9 @@ function DREContent() {
         </TabsContent>
 
         <TabsContent value="demonstrativo">
-          <Card>
+          <Card className="border-0 shadow-md">
             <CardHeader className="pb-4">
-              <CardTitle className="text-lg">Demonstrativo de Resultado do Exercício</CardTitle>
+              <CardTitle className="text-lg font-semibold">Demonstrativo de Resultado do Exercício</CardTitle>
               <CardDescription>
                 Formato contábil padrão com todas as linhas detalhadas
               </CardDescription>

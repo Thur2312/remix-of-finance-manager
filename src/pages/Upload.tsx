@@ -271,16 +271,29 @@ function UploadContent() {
         return null;
       };
 
+      const rawQuantidade = getValue('quantidade');
+      const rawTotal = getValue('total_faturado');
+      const rawRebate = getValue('rebate_shopee');
+      const rawDataPedido = getValue('data_pedido');
+
+      // Parse data_pedido with proper type handling
+      let parsedDataPedido: string | null = null;
+      if (typeof rawDataPedido === 'string') {
+        parsedDataPedido = parseDate(rawDataPedido);
+      } else if (rawDataPedido && typeof rawDataPedido === 'object' && 'getTime' in (rawDataPedido as object)) {
+        parsedDataPedido = parseDate(rawDataPedido as Date);
+      }
+
       return {
         order_id: String(getValue('order_id') || ''),
         sku: String(getValue('sku') || ''),
         nome_produto: String(getValue('nome_produto') || ''),
         variacao: String(getValue('variacao') || ''),
-        quantidade: Math.max(1, Math.round(parseNumber(getValue('quantidade')))),
-        total_faturado: parseNumber(getValue('total_faturado')),
-        rebate_shopee: parseNumber(getValue('rebate_shopee')),
+        quantidade: Math.max(1, Math.round(parseNumber(typeof rawQuantidade === 'number' ? rawQuantidade : (rawQuantidade === '' ? '' : 0)))),
+        total_faturado: parseNumber(typeof rawTotal === 'number' ? rawTotal : (rawTotal === '' ? '' : 0)),
+        rebate_shopee: parseNumber(typeof rawRebate === 'number' ? rawRebate : (rawRebate === '' ? '' : 0)),
         custo_unitario: 0,
-        data_pedido: parseDate(getValue('data_pedido')),
+        data_pedido: parsedDataPedido,
       };
     }).filter(row => row.order_id && row.nome_produto);
   };
@@ -421,27 +434,31 @@ function UploadContent() {
   };
 
   const renderUploadStep = () => (
-    <Card className="max-w-2xl mx-auto">
-      <CardHeader>
-        <CardTitle className="flex items-center gap-2">
-          <FileSpreadsheet className="h-6 w-6 text-primary" />
-          Upload de Relatório da Shopee
-        </CardTitle>
-        <CardDescription>
-          Faça upload do arquivo XLSX exportado da Shopee para importar seus pedidos
-        </CardDescription>
+    <Card className="max-w-2xl mx-auto border-0 shadow-lg overflow-hidden">
+      <CardHeader className="bg-gradient-to-r from-primary/5 to-primary/10 border-b">
+        <div className="flex items-center gap-3">
+          <div className="h-12 w-12 rounded-xl bg-gradient-to-br from-primary to-primary/70 flex items-center justify-center shadow-lg shadow-primary/20">
+            <FileSpreadsheet className="h-6 w-6 text-primary-foreground" />
+          </div>
+          <div>
+            <CardTitle className="text-xl">Upload de Relatório da Shopee</CardTitle>
+            <CardDescription>
+              Faça upload do arquivo XLSX exportado da Shopee para importar seus pedidos
+            </CardDescription>
+          </div>
+        </div>
       </CardHeader>
-      <CardContent>
+      <CardContent className="pt-6">
         <div
           onDragEnter={handleDrag}
           onDragLeave={handleDrag}
           onDragOver={handleDrag}
           onDrop={handleDrop}
           className={`
-            relative border-2 border-dashed rounded-xl p-12 text-center transition-all duration-200
+            relative border-2 border-dashed rounded-xl p-12 text-center transition-all duration-300
             ${isDragActive 
-              ? 'border-primary bg-accent scale-[1.02]' 
-              : 'border-muted-foreground/25 hover:border-primary/50 hover:bg-accent/50'
+              ? 'border-primary bg-primary/5 scale-[1.02] shadow-lg' 
+              : 'border-muted-foreground/25 hover:border-primary/50 hover:bg-muted/30'
             }
           `}
         >
@@ -454,14 +471,14 @@ function UploadContent() {
           
           <div className="space-y-4">
             <div className={`
-              mx-auto h-16 w-16 rounded-full flex items-center justify-center transition-colors
-              ${isDragActive ? 'bg-primary text-primary-foreground' : 'bg-muted'}
+              mx-auto h-20 w-20 rounded-full flex items-center justify-center transition-all duration-300
+              ${isDragActive ? 'bg-primary text-primary-foreground scale-110' : 'bg-muted'}
             `}>
-              <UploadIcon className="h-8 w-8" />
+              <UploadIcon className="h-10 w-10" />
             </div>
             
             <div>
-              <p className="text-lg font-medium">
+              <p className="text-lg font-semibold">
                 {isDragActive ? 'Solte o arquivo aqui' : 'Arraste o arquivo ou clique para selecionar'}
               </p>
               <p className="text-sm text-muted-foreground mt-1">
@@ -469,7 +486,7 @@ function UploadContent() {
               </p>
             </div>
 
-            <Button variant="secondary" className="pointer-events-none">
+            <Button variant="secondary" className="pointer-events-none shadow-sm">
               Selecionar Arquivo
             </Button>
           </div>
@@ -478,8 +495,8 @@ function UploadContent() {
         {isProcessing && (
           <div className="mt-6 space-y-2">
             <div className="flex items-center justify-between text-sm">
-              <span>Processando arquivo...</span>
-              <span>{progress.toFixed(0)}%</span>
+              <span className="font-medium">Processando arquivo...</span>
+              <span className="text-primary font-semibold">{progress.toFixed(0)}%</span>
             </div>
             <Progress value={progress} className="h-2" />
           </div>
@@ -489,19 +506,21 @@ function UploadContent() {
   );
 
   const renderMappingStep = () => (
-    <Card className="max-w-4xl mx-auto">
-      <CardHeader>
-        <CardTitle>Mapeamento de Colunas</CardTitle>
+    <Card className="max-w-4xl mx-auto border-0 shadow-lg">
+      <CardHeader className="border-b bg-muted/20">
+        <CardTitle className="text-xl">Mapeamento de Colunas</CardTitle>
         <CardDescription>
           Selecione qual coluna do arquivo corresponde a cada campo do sistema.
           Campos com * são obrigatórios.
         </CardDescription>
       </CardHeader>
-      <CardContent className="space-y-6">
-        <div className="flex items-center gap-3 p-4 bg-accent rounded-lg">
-          <FileSpreadsheet className="h-5 w-5 text-primary" />
+      <CardContent className="space-y-6 pt-6">
+        <div className="flex items-center gap-3 p-4 bg-gradient-to-r from-primary/10 to-primary/5 rounded-xl border border-primary/20">
+          <div className="h-10 w-10 rounded-lg bg-primary/20 flex items-center justify-center">
+            <FileSpreadsheet className="h-5 w-5 text-primary" />
+          </div>
           <div>
-            <p className="font-medium">{file?.name}</p>
+            <p className="font-semibold">{file?.name}</p>
             <p className="text-sm text-muted-foreground">
               {parsedRows.length} linhas encontradas • {headers.length} colunas
             </p>
@@ -511,7 +530,7 @@ function UploadContent() {
         <div className="grid gap-4 sm:grid-cols-2">
           {(Object.keys(mapping) as (keyof ColumnMapping)[]).map((field) => (
             <div key={field} className="space-y-2">
-              <Label>
+              <Label className="font-medium">
                 {getFieldLabel(field)}
                 {requiredFields.includes(field) && <span className="text-destructive ml-1">*</span>}
               </Label>
@@ -519,7 +538,7 @@ function UploadContent() {
                 value={mapping[field]}
                 onValueChange={(value) => handleMappingChange(field, value)}
               >
-                <SelectTrigger>
+                <SelectTrigger className="shadow-sm">
                   <SelectValue placeholder="Selecione uma coluna" />
                 </SelectTrigger>
                 <SelectContent>
@@ -535,12 +554,12 @@ function UploadContent() {
           ))}
         </div>
 
-        <div className="flex justify-between pt-4">
+        <div className="flex justify-between pt-4 border-t">
           <Button variant="outline" onClick={resetUpload}>
             <XCircle className="h-4 w-4 mr-2" />
             Cancelar
           </Button>
-          <Button onClick={handlePreview}>
+          <Button onClick={handlePreview} className="shadow-md">
             Continuar para Preview
           </Button>
         </div>
@@ -655,12 +674,13 @@ function UploadContent() {
   };
 
   const renderSuccessStep = () => (
-    <Card className="max-w-md mx-auto text-center">
-      <CardContent className="pt-8 pb-6 space-y-6">
-        <div className="mx-auto h-20 w-20 rounded-full bg-success/10 flex items-center justify-center">
-          <CheckCircle2 className="h-10 w-10 text-success" />
+    <Card className="max-w-md mx-auto text-center border-0 shadow-xl overflow-hidden">
+      <div className="bg-gradient-to-br from-emerald-500 to-green-600 p-8">
+        <div className="mx-auto h-20 w-20 rounded-full bg-white/20 backdrop-blur-sm flex items-center justify-center">
+          <CheckCircle2 className="h-10 w-10 text-white" />
         </div>
-        
+      </div>
+      <CardContent className="pt-6 pb-8 space-y-6">
         <div>
           <h2 className="text-2xl font-bold">Importação Concluída!</h2>
           <p className="text-muted-foreground mt-2">
@@ -668,25 +688,25 @@ function UploadContent() {
           </p>
         </div>
 
-        <div className="bg-muted rounded-lg p-4 space-y-2">
-          <div className="flex justify-between">
-            <span>Total de registros:</span>
-            <span className="font-medium">{importStats.total}</span>
+        <div className="bg-muted/50 rounded-xl p-4 space-y-3">
+          <div className="flex justify-between items-center">
+            <span className="text-muted-foreground">Total de registros:</span>
+            <span className="font-bold text-lg">{importStats.total}</span>
           </div>
-          <div className="flex justify-between text-success">
+          <div className="flex justify-between items-center text-emerald-600 dark:text-emerald-400">
             <span>Importados com sucesso:</span>
-            <span className="font-medium">{importStats.imported}</span>
+            <span className="font-bold text-lg">{importStats.imported}</span>
           </div>
           {importStats.errors > 0 && (
-            <div className="flex justify-between text-destructive">
+            <div className="flex justify-between items-center text-red-600 dark:text-red-400">
               <span>Erros:</span>
-              <span className="font-medium">{importStats.errors}</span>
+              <span className="font-bold text-lg">{importStats.errors}</span>
             </div>
           )}
         </div>
 
-        <div className="flex flex-col gap-2">
-          <Button onClick={resetUpload}>
+        <div className="flex flex-col gap-3">
+          <Button onClick={resetUpload} className="shadow-md">
             <UploadIcon className="h-4 w-4 mr-2" />
             Fazer Novo Upload
           </Button>
