@@ -210,7 +210,7 @@ serve(async (req: Request) => {
 
     console.log('Calling Lovable AI API...');
     
-    const response = await fetch('https://api.lovable.dev/api/v1/chat/completions', {
+    const response = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
