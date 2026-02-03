@@ -213,64 +213,6 @@ const AssistenteAnuncio = () => {
     });
   };
 
-  // Polling for image generation status
-  const pollJobStatus = async (jobId: string) => {
-    const pollInterval = setInterval(async () => {
-      try {
-        const { data: status, error } = await supabase.functions.invoke('get-image-generation-status', {
-          body: { jobId }
-        });
-
-        if (error) {
-          console.error('Error polling status:', error);
-          return;
-        }
-
-        if (status) {
-          setImageProgress(status.progress || 0);
-          
-          if (status.images && status.images.length > 0) {
-            setGeneratedImages(status.images);
-          }
-
-          if (status.status === 'completed') {
-            clearInterval(pollInterval);
-            setIsGeneratingImages(false);
-            setImageProgress(100);
-            toast({
-              title: 'Imagens geradas!',
-              description: `${status.images?.length || 0} imagens criadas com sucesso.`,
-            });
-          } else if (status.status === 'failed') {
-            clearInterval(pollInterval);
-            setIsGeneratingImages(false);
-            setImageProgress(0);
-            toast({
-              title: 'Erro ao gerar imagens',
-              description: status.errorMessage || 'Ocorreu um erro durante a geração.',
-              variant: 'destructive',
-            });
-          }
-        }
-      } catch (pollError) {
-        console.error('Polling error:', pollError);
-      }
-    }, 3000); // Poll every 3 seconds
-
-    // Cleanup after 10 minutes max
-    setTimeout(() => {
-      clearInterval(pollInterval);
-      if (isGeneratingImages) {
-        setIsGeneratingImages(false);
-        toast({
-          title: 'Timeout',
-          description: 'A geração de imagens demorou muito. Verifique o progresso mais tarde.',
-          variant: 'destructive',
-        });
-      }
-    }, 10 * 60 * 1000);
-  };
-
   const handleGenerate = async () => {
     if (!formData.nomeProduto.trim()) {
       toast({
@@ -327,7 +269,7 @@ const AssistenteAnuncio = () => {
 
       toast({
         title: 'Título e descrição gerados!',
-        description: 'Agora gerando as imagens do produto...',
+        description: imageBase64Array.length > 0 ? 'Agora gerando as imagens do produto...' : 'Anúncio pronto para uso.',
       });
 
       setIsLoading(false);
@@ -335,7 +277,7 @@ const AssistenteAnuncio = () => {
       // Step 2: Generate product images if there are source images
       if (imageBase64Array.length > 0) {
         setIsGeneratingImages(true);
-        setImageProgress(5);
+        setImageProgress(10);
 
         try {
           const { data: imageData, error: imageError } = await supabase.functions.invoke('generate-product-images', {
@@ -345,32 +287,31 @@ const AssistenteAnuncio = () => {
               coresDisponiveis: formData.coresDisponiveis,
               materiais: formData.materiais,
               nomeProduto: formData.nomeProduto,
-              medidas: {
-                campos: formData.camposMedidaSelecionados,
-                linhas: formData.linhasMedidas.map(linha => ({
-                  tamanho: linha.tamanho,
-                  ...linha.valores
-                }))
-              },
             },
           });
 
+          setImageProgress(80);
+
           if (imageError) {
-            throw new Error(imageError.message || 'Erro ao iniciar geração de imagens');
+            throw new Error(imageError.message || 'Erro ao gerar imagens');
           }
 
           if (imageData?.error) {
             throw new Error(imageData.error);
           }
 
-          // Start polling for status
-          if (imageData?.jobId) {
+          if (imageData?.images && imageData.images.length > 0) {
+            setGeneratedImages(imageData.images);
+            setImageProgress(100);
             toast({
-              title: 'Geração iniciada',
-              description: 'As imagens estão sendo geradas em segundo plano. Acompanhe o progresso abaixo.',
+              title: 'Imagens geradas!',
+              description: `${imageData.images.length} imagens criadas com sucesso.`,
             });
-            pollJobStatus(imageData.jobId);
+          } else {
+            throw new Error('Nenhuma imagem foi gerada');
           }
+
+          setIsGeneratingImages(false);
         } catch (imageError) {
           const errorMessage = imageError instanceof Error ? imageError.message : 'Erro desconhecido';
           toast({

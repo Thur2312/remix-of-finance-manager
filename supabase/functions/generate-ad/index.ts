@@ -37,7 +37,7 @@ function createValidationErrorResponse(error: z.ZodError): Response {
   );
 }
 
-// ============= SYSTEM PROMPT =============
+// ============= SYSTEM PROMPT - PROFISSIONAL SEM EMOJIS =============
 const systemPrompt = `Você é um assistente especialista em criação de anúncios para Shopee Brasil, focado em aumentar cliques e conversões respeitando as políticas da plataforma.
 
 ENTRADAS:
@@ -72,35 +72,49 @@ SUA TAREFA (execute na ordem):
    - SEMPRE incluir gênero logo após o tipo (Feminino, Masculino, Infantil, Unissex)
    - MÁXIMO 100 caracteres por título (limite da Shopee)
    - NÃO usar promessas exageradas, CAPS LOCK excessivo ou símbolos
+   - NÃO usar emojis nos títulos
 
-4. GERAR DESCRIÇÃO COMPLETA seguindo ESTA ESTRUTURA OBRIGATÓRIA:
+4. GERAR DESCRIÇÃO COMPLETA E PROFISSIONAL seguindo ESTA ESTRUTURA OBRIGATÓRIA:
 
-   A) ABERTURA EMOCIONAL (1-2 frases):
-      - Frase envolvente que conecta com o desejo do cliente
+   IMPORTANTE: NÃO USE EMOJIS EM NENHUMA PARTE DA DESCRIÇÃO. A descrição deve ser 100% profissional e textual.
+
+   A) ABERTURA (1-2 frases):
+      - Frase envolvente e profissional que conecta com o desejo do cliente
+      - Use linguagem elegante e aspiracional, sem exageros
    
-   B) 👗 DETALHES DO PRODUTO:
+   B) DETALHES DO PRODUTO:
       - Liste os principais diferenciais em tópicos com bullet points (-)
-      - Destaque características marcantes
+      - Destaque características marcantes (modelagem, acabamento, tecido)
+      - Descreva o tecido e seus benefícios (macio, elástico, confortável)
+      - Mencione o comprimento e ocasiões de uso
    
-   C) 📏 TAMANHO E MEDIDAS:
-      - Se o usuário fornecer medidas, criar seção formatada
+   C) TAMANHO E MEDIDAS:
+      - Se o usuário fornecer medidas, criar seção formatada com os dados
       - Se não houver medidas fornecidas, NÃO incluir esta seção
    
-   D) ♻️ CUIDADOS COM A PEÇA:
-      - Instruções de lavagem ESPECÍFICAS para o tipo de tecido
+   D) CUIDADOS COM A PEÇA:
+      - Instruções de lavagem ESPECÍFICAS para o tipo de tecido informado
+      - Formato:
+        Cuidados com a peça:
+        - Lavagem: [instrução específica]
+        - Secagem: [instrução específica]
+        - Passar: [instrução específica]
+        - Alvejante: [instrução específica]
    
    E) FECHAMENTO:
-      - SEMPRE incluir: "⁉️ Ficou com alguma dúvida? Não deixe de nos contactar através do chat."
+      - SEMPRE incluir: "Ficou com alguma dúvida? Não deixe de nos contactar através do chat."
 
 FORMATO DE RESPOSTA (JSON válido, sem texto extra):
 {
   "titles": ["Título 1", "Título 2", "Título 3"],
   "keywords": ["keyword1", "keyword2", "keyword3", "keyword4", "keyword5"],
-  "description": "Descrição completa seguindo a estrutura A-B-C-D-E acima, com emojis e formatação."
+  "description": "Descrição completa seguindo a estrutura A-B-C-D-E acima, SEM EMOJIS, formatação profissional."
 }
 
 REGRAS GERAIS:
 - Escreva sempre em português do Brasil
+- Tom profissional e elegante
+- PROIBIDO usar emojis em qualquer parte do texto
 - Retorne APENAS o JSON, sem markdown ou texto adicional`;
 
 // ============= MAIN FUNCTION =============
@@ -217,7 +231,7 @@ serve(async (req: Request) => {
         'Authorization': `Bearer ${LOVABLE_API_KEY}`,
       },
       body: JSON.stringify({
-        model: 'google/gemini-2.5-flash',
+        model: 'google/gemini-3-flash-preview',
         messages: messages,
         max_tokens: 4096,
         temperature: 0.7,
@@ -235,6 +249,13 @@ serve(async (req: Request) => {
         );
       }
 
+      if (response.status === 402) {
+        return new Response(
+          JSON.stringify({ error: 'Créditos de IA esgotados. Por favor, adicione créditos na sua conta.' }),
+          { status: 402, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
       if (response.status === 400) {
         return new Response(
           JSON.stringify({ error: 'Requisição inválida. Verifique os dados enviados.' }),
@@ -249,7 +270,7 @@ serve(async (req: Request) => {
     }
 
     const data = await response.json();
-    console.log('Lovable AI response received:', JSON.stringify(data).substring(0, 500));
+    console.log('Lovable AI response received');
     
     const content = data.choices?.[0]?.message?.content;
 
@@ -270,7 +291,7 @@ serve(async (req: Request) => {
       );
     }
 
-    console.log('Resposta bruta do modelo:', content.substring(0, 500));
+    console.log('Resposta bruta do modelo:', content.substring(0, 300));
 
     // Parse do JSON da resposta (pode vir com markdown)
     let parsedResult;
