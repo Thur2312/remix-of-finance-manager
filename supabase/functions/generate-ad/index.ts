@@ -4,40 +4,14 @@ import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 import { z } from 'https://deno.land/x/zod@v3.22.4/mod.ts';
 
-// ============= CORS FUNCTIONS (INLINE) =============
-function getCorsHeaders(req: Request): Record<string, string> {
-  const origin = req.headers.get('origin') || '';
-  
-  // Allow all localhost and local network IPs for development
-  const isLocalDev = origin.includes('localhost') || 
-                     origin.includes('127.0.0.1') ||
-                     origin.match(/http:\/\/192\.168\.\d+\.\d+/) ||
-                     origin.match(/http:\/\/172\.\d+\.\d+\.\d+/) ||
-                     origin.match(/http:\/\/10\.\d+\.\d+\.\d+/);
-  
-  const allowedOrigins = [
-    'https://id-preview--421daa1a-5e46-4a66-a384-f5a2f89a0cbe.lovable.app',
-  ];
-  
-  const isAllowed = allowedOrigins.some(allowed => 
-    origin === allowed || origin.endsWith('.lovable.app')
-  ) || isLocalDev;
-  
-  return {
-    'Access-Control-Allow-Origin': isAllowed ? origin : '',
-    'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-    'Access-Control-Allow-Methods': 'POST, OPTIONS',
-  };
-}
+// ============= CORS HEADERS =============
+const corsHeaders = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version',
+  'Access-Control-Allow-Methods': 'POST, OPTIONS',
+};
 
-function handleCorsPreflightRequest(req: Request): Response | null {
-  if (req.method === 'OPTIONS') {
-    return new Response(null, { headers: getCorsHeaders(req) });
-  }
-  return null;
-}
-
-// ============= VALIDATION (INLINE) =============
+// ============= VALIDATION =============
 const generateAdSchema = z.object({
   nomeProduto: z.string().min(1, 'Nome do produto é obrigatório').max(500, 'Nome muito longo'),
   categoria: z.string().max(200).optional().nullable(),
@@ -53,26 +27,17 @@ const generateAdSchema = z.object({
   }).optional().nullable(),
 });
 
-function createValidationErrorResponse(
-  error: z.ZodError,
-  corsHeaders: Record<string, string>
-): Response {
+function createValidationErrorResponse(error: z.ZodError): Response {
   const issues = error.issues.map(i => `${i.path.join('.')}: ${i.message}`).join(', ');
   console.error('Validation error:', issues);
   
   return new Response(
-    JSON.stringify({ 
-      error: 'Dados inválidos', 
-      details: issues 
-    }),
-    { 
-      status: 400, 
-      headers: { 'Content-Type': 'application/json', ...corsHeaders } 
-    }
+    JSON.stringify({ error: 'Dados inválidos', details: issues }),
+    { status: 400, headers: { 'Content-Type': 'application/json', ...corsHeaders } }
   );
 }
 
-// ============= MAIN FUNCTION =============
+// ============= SYSTEM PROMPT =============
 const systemPrompt = `Você é um assistente especialista em criação de anúncios para Shopee Brasil, focado em aumentar cliques e conversões respeitando as políticas da plataforma.
 
 ENTRADAS:
@@ -101,43 +66,28 @@ SUA TAREFA (execute na ordem):
    - "Vestido Longo Feminino Elegante Crepe Manga Longa"
    - "Blusa Cropped Feminino Casual Malha Ribana Decote V"
    - "Calça Wide Leg Feminino Cintura Alta Linho Bolsos Laterais"
-   - "Saia Midi Feminino Social Alfaiataria Fenda Lateral"
-   - "Conjunto Feminino Verão Estampado Viscose Short e Blusa"
    
    REGRAS OBRIGATÓRIAS PARA TÍTULOS:
    - SEMPRE começar com o tipo de produto (Vestido, Blusa, Calça, Saia, etc.)
    - SEMPRE incluir gênero logo após o tipo (Feminino, Masculino, Infantil, Unissex)
    - MÁXIMO 100 caracteres por título (limite da Shopee)
-   - Incorporar keywords identificadas de forma natural
    - NÃO usar promessas exageradas, CAPS LOCK excessivo ou símbolos
-   - NÃO usar traços, vírgulas ou pontuação desnecessária
 
 4. GERAR DESCRIÇÃO COMPLETA seguindo ESTA ESTRUTURA OBRIGATÓRIA:
 
    A) ABERTURA EMOCIONAL (1-2 frases):
       - Frase envolvente que conecta com o desejo do cliente
-      - Use linguagem emocional e aspiracional
-      - Exemplo: "Se você gosta de entrar em qualquer lugar e ser notada sem esforço, esse é o look perfeito."
    
    B) 👗 DETALHES DO PRODUTO:
       - Liste os principais diferenciais em tópicos com bullet points (-)
-      - Destaque características marcantes (costas nuas, decote, modelagem, forro, etc.)
-      - Descreva o tecido e seus benefícios (macio, elástico, confortável, etc.)
-      - Mencione o comprimento e ocasiões de uso
-      - Use descrições que vendem (ex: "abraça o corpo com caimento impecável")
+      - Destaque características marcantes
    
    C) 📏 TAMANHO E MEDIDAS:
-      - Se o usuário fornecer medidas, criar seção formatada com tabela
+      - Se o usuário fornecer medidas, criar seção formatada
       - Se não houver medidas fornecidas, NÃO incluir esta seção
    
    D) ♻️ CUIDADOS COM A PEÇA:
-      - PESQUISE E FORNEÇA instruções de lavagem ESPECÍFICAS para o tipo de tecido informado
-      - Formato obrigatório:
-        ♻️ Cuidados com a peça
-        - Lavagem: [instrução específica]
-        - Secagem: [instrução específica]
-        - Passar: [instrução específica]
-        - Alvejante: [instrução específica]
+      - Instruções de lavagem ESPECÍFICAS para o tipo de tecido
    
    E) FECHAMENTO:
       - SEMPRE incluir: "⁉️ Ficou com alguma dúvida? Não deixe de nos contactar através do chat."
@@ -150,18 +100,15 @@ FORMATO DE RESPOSTA (JSON válido, sem texto extra):
 }
 
 REGRAS GERAIS:
-- Escreva sempre em português do Brasil, tom profissional mas acessível
-- Foque em moda feminina e varejo online, mas adapte para outros nichos se necessário
-- Crie sempre texto original baseado nas entradas e análise visual
-- Use emojis apenas nos títulos de seção (👗, 📏, ♻️, ⁉️)
+- Escreva sempre em português do Brasil
 - Retorne APENAS o JSON, sem markdown ou texto adicional`;
 
+// ============= MAIN FUNCTION =============
 serve(async (req: Request) => {
   // Handle CORS preflight
-  const corsResponse = handleCorsPreflightRequest(req);
-  if (corsResponse) return corsResponse;
-
-  const corsHeaders = getCorsHeaders(req);
+  if (req.method === 'OPTIONS') {
+    return new Response('ok', { headers: corsHeaders });
+  }
 
   try {
     // ========== AUTENTICAÇÃO JWT ==========
@@ -193,24 +140,23 @@ serve(async (req: Request) => {
 
     const userId = claimsData.claims.sub;
     console.log(`Request authenticated for user: ${userId}`);
-    // ========== FIM AUTENTICAÇÃO ==========
 
     // ========== INPUT VALIDATION ==========
     const rawBody = await req.json();
     const validationResult = generateAdSchema.safeParse(rawBody);
     
     if (!validationResult.success) {
-      return createValidationErrorResponse(validationResult.error, corsHeaders);
+      return createValidationErrorResponse(validationResult.error);
     }
     
     const { nomeProduto, categoria, marca, faixaPreco, publicoAlvo, materiais, coresDisponiveis, images, medidas } = validationResult.data;
-    // ========== FIM INPUT VALIDATION ==========
 
-    const GOOGLE_API_KEY = Deno.env.get('GOOGLE_API_KEY');
-    if (!GOOGLE_API_KEY) {
-      console.error('GOOGLE_API_KEY não configurada');
+    // ========== LOVABLE AI API ==========
+    const LOVABLE_API_KEY = Deno.env.get('LOVABLE_API_KEY');
+    if (!LOVABLE_API_KEY) {
+      console.error('LOVABLE_API_KEY não configurada');
       return new Response(
-        JSON.stringify({ error: 'API do Google Gemini não configurada. Configure GOOGLE_API_KEY nas secrets.' }),
+        JSON.stringify({ error: 'API de IA não configurada. Entre em contato com o suporte.' }),
         { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
@@ -228,55 +174,63 @@ serve(async (req: Request) => {
 
     console.log('Gerando anúncio para:', inputData, 'com', images?.length || 0, 'imagens');
 
-    // Build Gemini request format
-    const userPrompt = `${systemPrompt}\n\nDados do produto:\n${JSON.stringify(inputData, null, 2)}`;
+    // Build messages for Lovable AI (OpenAI-compatible format)
+    const messages: Array<{ role: string; content: string | Array<{ type: string; text?: string; image_url?: { url: string } }> }> = [];
     
-    const parts: Array<{ text?: string; inlineData?: { mimeType: string; data: string } }> = [
-      { text: userPrompt }
-    ];
+    // Add system message
+    messages.push({
+      role: 'system',
+      content: systemPrompt
+    });
 
-    // Add images if provided (base64 format)
+    // Build user message content
+    const userContent: Array<{ type: string; text?: string; image_url?: { url: string } }> = [];
+    
+    // Add text content
+    userContent.push({
+      type: 'text',
+      text: `Dados do produto:\n${JSON.stringify(inputData, null, 2)}`
+    });
+
+    // Add images if provided (Lovable AI supports image URLs in OpenAI format)
     if (images && images.length > 0) {
-      images.forEach((img: string) => {
-        // Extract base64 data from data URL
-        const matches = img.match(/^data:image\/(png|jpeg|jpg|webp);base64,(.+)$/);
-        if (matches) {
-          parts.push({
-            inlineData: {
-              mimeType: `image/${matches[1]}`,
-              data: matches[2]
-            }
-          });
-        }
-      });
+      console.log(`Adding ${images.length} images to request`);
+      for (const img of images) {
+        userContent.push({
+          type: 'image_url',
+          image_url: { url: img }
+        });
+      }
     }
 
-    const response = await fetch(
-      `https://generativelanguage.googleapis.com/v1/models/gemini-pro:generateContent?key=${GOOGLE_API_KEY}`,
-      {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          contents: [{
-            parts: parts
-          }],
-          generationConfig: {
-            temperature: 0.7,
-            maxOutputTokens: 2048,
-          }
-        }),
-      }
-    );
+    messages.push({
+      role: 'user',
+      content: userContent
+    });
+
+    console.log('Calling Lovable AI API...');
+    
+    const response = await fetch('https://api.lovable.dev/api/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${LOVABLE_API_KEY}`,
+      },
+      body: JSON.stringify({
+        model: 'google/gemini-2.5-flash',
+        messages: messages,
+        max_tokens: 4096,
+        temperature: 0.7,
+      }),
+    });
 
     if (!response.ok) {
       const errorText = await response.text();
-      console.error('Erro da API Gemini:', response.status, errorText);
+      console.error('Erro da Lovable AI API:', response.status, errorText);
 
       if (response.status === 429) {
         return new Response(
-          JSON.stringify({ error: 'Limite de requisições atingido. Aguarde um momento.' }),
+          JSON.stringify({ error: 'Limite de requisições atingido. Aguarde um momento e tente novamente.' }),
           { status: 429, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
         );
       }
@@ -289,23 +243,34 @@ serve(async (req: Request) => {
       }
 
       return new Response(
-        JSON.stringify({ error: 'Erro ao gerar anúncio. Tente novamente.' }),
+        JSON.stringify({ error: 'Erro ao gerar anúncio. Tente novamente em alguns instantes.' }),
         { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
     const data = await response.json();
-    const content = data.candidates?.[0]?.content?.parts?.[0]?.text;
+    console.log('Lovable AI response received:', JSON.stringify(data).substring(0, 500));
+    
+    const content = data.choices?.[0]?.message?.content;
 
     if (!content) {
-      console.error('Resposta vazia do modelo:', data);
+      console.error('Resposta vazia do modelo:', JSON.stringify(data));
+      const finishReason = data.choices?.[0]?.finish_reason;
+      
+      if (finishReason === 'length') {
+        return new Response(
+          JSON.stringify({ error: 'Resposta muito longa. Tente com menos imagens ou dados mais simples.' }),
+          { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+      
       return new Response(
-        JSON.stringify({ error: 'Resposta vazia do modelo de IA' }),
+        JSON.stringify({ error: 'Resposta vazia do modelo de IA. Tente novamente.' }),
         { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
-    console.log('Resposta bruta do modelo:', content);
+    console.log('Resposta bruta do modelo:', content.substring(0, 500));
 
     // Parse do JSON da resposta (pode vir com markdown)
     let parsedResult;
@@ -349,7 +314,7 @@ serve(async (req: Request) => {
   } catch (error) {
     console.error('Erro na função generate-ad:', error);
     return new Response(
-      JSON.stringify({ error: error instanceof Error ? error.message : 'Erro desconhecido' }),
+      JSON.stringify({ error: error instanceof Error ? error.message : 'Erro desconhecido ao gerar anúncio' }),
       { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
   }
