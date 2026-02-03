@@ -11,23 +11,22 @@ import { useToast } from '@/hooks/use-toast';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { ProtectedRoute } from '@/components/layout/ProtectedRoute';
 import { supabase } from '@/integrations/supabase/client';
+import { ImageGenerationSection } from '@/components/assistente/ImageGenerationSection';
+import { GeneratedImage } from '@/components/assistente/GeneratedImageGrid';
+import { MedidasProdutoSection } from '@/components/assistente/MedidasProdutoSection';
+import { MedidaLinha } from '@/components/assistente/medidas.types';
 
 interface FormData {
   nomeProduto: string;
   categoria: string;
-  marca: string;
+  
   faixaPreco: string;
   publicoAlvo: string;
   materiais: string;
   coresDisponiveis: string;
-  // Medidas da peça
-  tamanho: string;
-  comprimento: string;
-  largura: string;
-  busto: string;
-  ombro: string;
-  cintura: string;
-  quadril: string;
+  // Medidas do produto (novo sistema dinâmico)
+  camposMedidaSelecionados: string[];
+  linhasMedidas: MedidaLinha[];
 }
 
 interface GeneratedAd {
@@ -72,27 +71,84 @@ const AssistenteAnuncio = () => {
   const [images, setImages] = useState<File[]>([]);
   const [imagePreviews, setImagePreviews] = useState<string[]>([]);
   
+  // Image generation states
+  const [isGeneratingImages, setIsGeneratingImages] = useState(false);
+  const [imageProgress, setImageProgress] = useState(0);
+  const [generatedImages, setGeneratedImages] = useState<GeneratedImage[]>([]);
+  
   const [formData, setFormData] = useState<FormData>({
     nomeProduto: '',
     categoria: '',
-    marca: '',
     faixaPreco: '',
     publicoAlvo: '',
     materiais: '',
     coresDisponiveis: '',
-    tamanho: '',
-    comprimento: '',
-    largura: '',
-    busto: '',
-    ombro: '',
-    cintura: '',
-    quadril: '',
+    camposMedidaSelecionados: [],
+    linhasMedidas: [],
   });
 
   const [generatedAd, setGeneratedAd] = useState<GeneratedAd | null>(null);
 
   const handleInputChange = (field: keyof FormData, value: string) => {
     setFormData(prev => ({ ...prev, [field]: value }));
+  };
+
+  // Funções para gerenciar medidas
+  const toggleCampoMedida = (campoId: string) => {
+    setFormData(prev => {
+      const isSelected = prev.camposMedidaSelecionados.includes(campoId);
+      const newCampos = isSelected
+        ? prev.camposMedidaSelecionados.filter(c => c !== campoId)
+        : [...prev.camposMedidaSelecionados, campoId];
+      
+      // Se é o primeiro campo selecionado, adiciona uma linha automaticamente
+      const newLinhas = !isSelected && prev.camposMedidaSelecionados.length === 0 && prev.linhasMedidas.length === 0
+        ? [{ id: `medida-${Date.now()}-${Math.random()}`, tamanho: '', valores: {} }]
+        : prev.linhasMedidas;
+      
+      return {
+        ...prev,
+        camposMedidaSelecionados: newCampos,
+        linhasMedidas: newLinhas,
+      };
+    });
+  };
+
+  const addMedidaLinha = () => {
+    setFormData(prev => ({
+      ...prev,
+      linhasMedidas: [
+        ...prev.linhasMedidas,
+        { id: `medida-${Date.now()}-${Math.random()}`, tamanho: '', valores: {} }
+      ]
+    }));
+  };
+
+  const removeMedidaLinha = (id: string) => {
+    setFormData(prev => ({
+      ...prev,
+      linhasMedidas: prev.linhasMedidas.filter(linha => linha.id !== id)
+    }));
+  };
+
+  const updateMedidaLinha = (id: string, campo: string, valor: string) => {
+    setFormData(prev => ({
+      ...prev,
+      linhasMedidas: prev.linhasMedidas.map(linha =>
+        linha.id === id
+          ? { ...linha, valores: { ...linha.valores, [campo]: valor } }
+          : linha
+      )
+    }));
+  };
+
+  const updateTamanhoLinha = (id: string, tamanho: string) => {
+    setFormData(prev => ({
+      ...prev,
+      linhasMedidas: prev.linhasMedidas.map(linha =>
+        linha.id === id ? { ...linha, tamanho } : linha
+      )
+    }));
   };
 
   const handleImageSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -157,6 +213,64 @@ const AssistenteAnuncio = () => {
     });
   };
 
+  // Polling for image generation status
+  const pollJobStatus = async (jobId: string) => {
+    const pollInterval = setInterval(async () => {
+      try {
+        const { data: status, error } = await supabase.functions.invoke('get-image-generation-status', {
+          body: { jobId }
+        });
+
+        if (error) {
+          console.error('Error polling status:', error);
+          return;
+        }
+
+        if (status) {
+          setImageProgress(status.progress || 0);
+          
+          if (status.images && status.images.length > 0) {
+            setGeneratedImages(status.images);
+          }
+
+          if (status.status === 'completed') {
+            clearInterval(pollInterval);
+            setIsGeneratingImages(false);
+            setImageProgress(100);
+            toast({
+              title: 'Imagens geradas!',
+              description: `${status.images?.length || 0} imagens criadas com sucesso.`,
+            });
+          } else if (status.status === 'failed') {
+            clearInterval(pollInterval);
+            setIsGeneratingImages(false);
+            setImageProgress(0);
+            toast({
+              title: 'Erro ao gerar imagens',
+              description: status.errorMessage || 'Ocorreu um erro durante a geração.',
+              variant: 'destructive',
+            });
+          }
+        }
+      } catch (pollError) {
+        console.error('Polling error:', pollError);
+      }
+    }, 3000); // Poll every 3 seconds
+
+    // Cleanup after 10 minutes max
+    setTimeout(() => {
+      clearInterval(pollInterval);
+      if (isGeneratingImages) {
+        setIsGeneratingImages(false);
+        toast({
+          title: 'Timeout',
+          description: 'A geração de imagens demorou muito. Verifique o progresso mais tarde.',
+          variant: 'destructive',
+        });
+      }
+    }, 10 * 60 * 1000);
+  };
+
   const handleGenerate = async () => {
     if (!formData.nomeProduto.trim()) {
       toast({
@@ -169,6 +283,7 @@ const AssistenteAnuncio = () => {
 
     setIsLoading(true);
     setGeneratedAd(null);
+    setGeneratedImages([]);
 
     try {
       // Convert images to base64
@@ -176,24 +291,22 @@ const AssistenteAnuncio = () => {
         images.map(img => convertToBase64(img))
       );
 
+      // Step 1: Generate title and description
       const { data, error } = await supabase.functions.invoke('generate-ad', {
         body: {
           nomeProduto: formData.nomeProduto,
           categoria: formData.categoria,
-          marca: formData.marca,
           faixaPreco: formData.faixaPreco,
           publicoAlvo: formData.publicoAlvo,
           materiais: formData.materiais,
           coresDisponiveis: formData.coresDisponiveis,
           images: imageBase64Array,
           medidas: {
-            tamanho: formData.tamanho,
-            comprimento: formData.comprimento,
-            largura: formData.largura,
-            busto: formData.busto,
-            ombro: formData.ombro,
-            cintura: formData.cintura,
-            quadril: formData.quadril,
+            campos: formData.camposMedidaSelecionados,
+            linhas: formData.linhasMedidas.map(linha => ({
+              tamanho: linha.tamanho,
+              ...linha.valores
+            }))
           },
         },
       });
@@ -213,9 +326,62 @@ const AssistenteAnuncio = () => {
       });
 
       toast({
-        title: 'Anúncio gerado!',
-        description: 'Títulos e descrição foram criados com sucesso.',
+        title: 'Título e descrição gerados!',
+        description: 'Agora gerando as imagens do produto...',
       });
+
+      setIsLoading(false);
+
+      // Step 2: Generate product images if there are source images
+      if (imageBase64Array.length > 0) {
+        setIsGeneratingImages(true);
+        setImageProgress(5);
+
+        try {
+          const { data: imageData, error: imageError } = await supabase.functions.invoke('generate-product-images', {
+            body: {
+              sourceImages: imageBase64Array,
+              categoria: formData.categoria,
+              coresDisponiveis: formData.coresDisponiveis,
+              materiais: formData.materiais,
+              nomeProduto: formData.nomeProduto,
+              medidas: {
+                campos: formData.camposMedidaSelecionados,
+                linhas: formData.linhasMedidas.map(linha => ({
+                  tamanho: linha.tamanho,
+                  ...linha.valores
+                }))
+              },
+            },
+          });
+
+          if (imageError) {
+            throw new Error(imageError.message || 'Erro ao iniciar geração de imagens');
+          }
+
+          if (imageData?.error) {
+            throw new Error(imageData.error);
+          }
+
+          // Start polling for status
+          if (imageData?.jobId) {
+            toast({
+              title: 'Geração iniciada',
+              description: 'As imagens estão sendo geradas em segundo plano. Acompanhe o progresso abaixo.',
+            });
+            pollJobStatus(imageData.jobId);
+          }
+        } catch (imageError) {
+          const errorMessage = imageError instanceof Error ? imageError.message : 'Erro desconhecido';
+          toast({
+            title: 'Erro ao gerar imagens',
+            description: errorMessage,
+            variant: 'destructive',
+          });
+          setIsGeneratingImages(false);
+          setImageProgress(0);
+        }
+      }
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Erro desconhecido';
       toast({
@@ -223,7 +389,6 @@ const AssistenteAnuncio = () => {
         description: errorMessage,
         variant: 'destructive',
       });
-    } finally {
       setIsLoading(false);
     }
   };
@@ -310,17 +475,7 @@ const AssistenteAnuncio = () => {
                 </Select>
               </div>
 
-              {/* Marca */}
-              <div className="space-y-2">
-                <Label htmlFor="marca">Marca</Label>
-                <Input
-                  id="marca"
-                  placeholder="Ex: Nike, Adidas, etc."
-                  value={formData.marca}
-                  onChange={(e) => handleInputChange('marca', e.target.value)}
-                />
-              </div>
-
+        
               {/* Faixa de Preço */}
               <div className="space-y-2">
                 <Label htmlFor="faixaPreco">Faixa de Preço</Label>
@@ -380,86 +535,15 @@ const AssistenteAnuncio = () => {
             </div>
 
             {/* Seção de Medidas */}
-            <div className="space-y-4 pt-4 border-t">
-              <div>
-                <Label className="text-base font-semibold">📏 Medidas da Peça (opcional)</Label>
-                <p className="text-sm text-muted-foreground mt-1">
-                  Preencha as medidas para incluir uma tabela na descrição do produto
-                </p>
-              </div>
-              
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="tamanho">Tamanho</Label>
-                  <Input
-                    id="tamanho"
-                    placeholder="Ex: Único, P, M, G"
-                    value={formData.tamanho}
-                    onChange={(e) => handleInputChange('tamanho', e.target.value)}
-                  />
-                </div>
-                
-                <div className="space-y-2">
-                  <Label htmlFor="comprimento">Comprimento (cm)</Label>
-                  <Input
-                    id="comprimento"
-                    placeholder="Ex: 124"
-                    value={formData.comprimento}
-                    onChange={(e) => handleInputChange('comprimento', e.target.value)}
-                  />
-                </div>
-                
-                <div className="space-y-2">
-                  <Label htmlFor="largura">Largura (cm)</Label>
-                  <Input
-                    id="largura"
-                    placeholder="Ex: 41"
-                    value={formData.largura}
-                    onChange={(e) => handleInputChange('largura', e.target.value)}
-                  />
-                </div>
-                
-                <div className="space-y-2">
-                  <Label htmlFor="busto">Busto (cm)</Label>
-                  <Input
-                    id="busto"
-                    placeholder="Ex: 35"
-                    value={formData.busto}
-                    onChange={(e) => handleInputChange('busto', e.target.value)}
-                  />
-                </div>
-                
-                <div className="space-y-2">
-                  <Label htmlFor="ombro">Ombro (cm)</Label>
-                  <Input
-                    id="ombro"
-                    placeholder="Ex: 14"
-                    value={formData.ombro}
-                    onChange={(e) => handleInputChange('ombro', e.target.value)}
-                  />
-                </div>
-                
-                <div className="space-y-2">
-                  <Label htmlFor="cintura">Cintura (cm)</Label>
-                  <Input
-                    id="cintura"
-                    placeholder="Ex: 68"
-                    value={formData.cintura}
-                    onChange={(e) => handleInputChange('cintura', e.target.value)}
-                  />
-                </div>
-                
-                <div className="space-y-2">
-                  <Label htmlFor="quadril">Quadril (cm)</Label>
-                  <Input
-                    id="quadril"
-                    placeholder="Ex: 96"
-                    value={formData.quadril}
-                    onChange={(e) => handleInputChange('quadril', e.target.value)}
-                  />
-                </div>
-              </div>
-            </div>
+            <MedidasProdutoSection
+              camposSelecionados={formData.camposMedidaSelecionados}
+              linhasMedidas={formData.linhasMedidas}
+              onToggleCampo={toggleCampoMedida}
+              onAddLinha={addMedidaLinha}
+              onRemoveLinha={removeMedidaLinha}
+              onUpdateLinha={updateMedidaLinha}
+              onUpdateTamanho={updateTamanhoLinha}
+            />
 
             {/* Upload de Fotos */}
             <div className="space-y-2">
@@ -524,24 +608,38 @@ const AssistenteAnuncio = () => {
             {/* Botão Gerar */}
             <Button
               onClick={handleGenerate}
-              disabled={isLoading}
+              disabled={isLoading || isGeneratingImages}
               className="w-full md:w-auto"
               size="lg"
             >
               {isLoading ? (
                 <>
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Gerando...
+                  Gerando título e descrição...
+                </>
+              ) : isGeneratingImages ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Gerando imagens...
                 </>
               ) : (
                 <>
                   <Sparkles className="mr-2 h-4 w-4" />
-                  Gerar título e descrição
+                  {images.length > 0 ? 'Gerar Título, Descrição e Imagens' : 'Gerar título e descrição'}
                 </>
               )}
             </Button>
           </CardContent>
         </Card>
+
+        {/* Gerador de Imagens do Produto */}
+        <ImageGenerationSection 
+          formData={formData}
+          imagePreviews={imagePreviews}
+          isGenerating={isGeneratingImages}
+          progress={imageProgress}
+          generatedImages={generatedImages}
+        />
 
         {/* Resultados */}
         {generatedAd && (

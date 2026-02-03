@@ -15,9 +15,17 @@ const allowedOrigins = [
  */
 export function getCorsHeaders(req: Request): Record<string, string> {
   const origin = req.headers.get('origin') || '';
+  
+  // Allow all localhost and local network IPs for development
+  const isLocalDev = origin.includes('localhost') || 
+                     origin.includes('127.0.0.1') ||
+                     origin.match(/http:\/\/192\.168\.\d+\.\d+/) ||
+                     origin.match(/http:\/\/172\.\d+\.\d+\.\d+/) ||
+                     origin.match(/http:\/\/10\.\d+\.\d+\.\d+/);
+  
   const isAllowed = allowedOrigins.some(allowed => 
     origin === allowed || origin.endsWith('.lovable.app')
-  );
+  ) || isLocalDev;
   
   return {
     'Access-Control-Allow-Origin': isAllowed ? origin : '',

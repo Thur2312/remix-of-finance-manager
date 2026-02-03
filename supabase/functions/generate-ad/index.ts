@@ -2,9 +2,77 @@
 import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
-import { getCorsHeaders, handleCorsPreflightRequest } from '../_shared/cors.ts';
-import { generateAdSchema, createValidationErrorResponse } from '../_shared/validation.ts';
+import { z } from 'https://deno.land/x/zod@v3.22.4/mod.ts';
 
+// ============= CORS FUNCTIONS (INLINE) =============
+function getCorsHeaders(req: Request): Record<string, string> {
+  const origin = req.headers.get('origin') || '';
+  
+  // Allow all localhost and local network IPs for development
+  const isLocalDev = origin.includes('localhost') || 
+                     origin.includes('127.0.0.1') ||
+                     origin.match(/http:\/\/192\.168\.\d+\.\d+/) ||
+                     origin.match(/http:\/\/172\.\d+\.\d+\.\d+/) ||
+                     origin.match(/http:\/\/10\.\d+\.\d+\.\d+/);
+  
+  const allowedOrigins = [
+    'https://id-preview--421daa1a-5e46-4a66-a384-f5a2f89a0cbe.lovable.app',
+  ];
+  
+  const isAllowed = allowedOrigins.some(allowed => 
+    origin === allowed || origin.endsWith('.lovable.app')
+  ) || isLocalDev;
+  
+  return {
+    'Access-Control-Allow-Origin': isAllowed ? origin : '',
+    'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+    'Access-Control-Allow-Methods': 'POST, OPTIONS',
+  };
+}
+
+function handleCorsPreflightRequest(req: Request): Response | null {
+  if (req.method === 'OPTIONS') {
+    return new Response(null, { headers: getCorsHeaders(req) });
+  }
+  return null;
+}
+
+// ============= VALIDATION (INLINE) =============
+const generateAdSchema = z.object({
+  nomeProduto: z.string().min(1, 'Nome do produto é obrigatório').max(500, 'Nome muito longo'),
+  categoria: z.string().max(200).optional().nullable(),
+  marca: z.string().max(200).optional().nullable(),
+  faixaPreco: z.string().max(100).optional().nullable(),
+  publicoAlvo: z.string().max(200).optional().nullable(),
+  materiais: z.string().max(500).optional().nullable(),
+  coresDisponiveis: z.string().max(500).optional().nullable(),
+  images: z.array(z.string()).max(10, 'Máximo 10 imagens').optional().nullable(),
+  medidas: z.object({
+    campos: z.array(z.string()).optional(),
+    linhas: z.array(z.record(z.union([z.string(), z.number()]))).optional(),
+  }).optional().nullable(),
+});
+
+function createValidationErrorResponse(
+  error: z.ZodError,
+  corsHeaders: Record<string, string>
+): Response {
+  const issues = error.issues.map(i => `${i.path.join('.')}: ${i.message}`).join(', ');
+  console.error('Validation error:', issues);
+  
+  return new Response(
+    JSON.stringify({ 
+      error: 'Dados inválidos', 
+      details: issues 
+    }),
+    { 
+      status: 400, 
+      headers: { 'Content-Type': 'application/json', ...corsHeaders } 
+    }
+  );
+}
+
+// ============= MAIN FUNCTION =============
 const systemPrompt = `Você é um assistente especialista em criação de anúncios para Shopee Brasil, focado em aumentar cliques e conversões respeitando as políticas da plataforma.
 
 ENTRADAS:
@@ -57,36 +125,13 @@ SUA TAREFA (execute na ordem):
       - Descreva o tecido e seus benefícios (macio, elástico, confortável, etc.)
       - Mencione o comprimento e ocasiões de uso
       - Use descrições que vendem (ex: "abraça o corpo com caimento impecável")
-      - Exemplo de formato:
-        👗 Detalhes do produto
-        - Costas nuas: Detalhe marcante que transforma o vestido em sinônimo de ousadia elegante
-        - Forro duplo: Possui forro duplo na área dos seios para não marcar
-        - Modelagem tubinho: Valoriza as curvas de forma sofisticada, sem apertar
-        - Tecido suplex premium: Macio, elástico e confortável, abraça o corpo com caimento impecável
    
    C) 📏 TAMANHO E MEDIDAS:
-      - Se o usuário fornecer medidas no campo "measurements", criar seção formatada assim:
-        📏 Tamanho e medidas
-        Tamanho: [valor de measurements.tamanho] (veste aproximadamente...)
-        - Comprimento: X cm
-        - Largura: X cm (tecido com elasticidade)
-        - Busto: X cm (tecido com elasticidade)
-        - Ombro: X cm
-        - Cintura: X cm (se aplicável)
-        - Quadril: X cm (se aplicável)
-      - Adicionar nota sobre elasticidade do tecido quando aplicável
+      - Se o usuário fornecer medidas, criar seção formatada com tabela
       - Se não houver medidas fornecidas, NÃO incluir esta seção
    
    D) ♻️ CUIDADOS COM A PEÇA:
       - PESQUISE E FORNEÇA instruções de lavagem ESPECÍFICAS para o tipo de tecido informado
-      - Para cada tecido, as instruções DEVEM ser diferentes e precisas:
-        * SUPLEX: Lavável à máquina em água fria, secar à sombra, passar em temperatura baixa, não usar alvejante
-        * ALGODÃO: Lavável à máquina, pode passar em temperatura média, secar ao sol ou máquina
-        * VISCOSE: Lavar à mão ou máquina ciclo delicado, secar à sombra, passar em temperatura baixa do avesso
-        * LINHO: Lavar à mão ou máquina ciclo delicado, secar à sombra, passar com vapor
-        * SEDA: Lavar à mão com sabão neutro, não torcer, secar à sombra, passar em temperatura baixa do avesso
-        * POLIÉSTER: Lavável à máquina, secar à sombra, não passar ou temperatura baixa
-        * CREPE: Lavar à mão ou máquina ciclo delicado, secar à sombra, passar em temperatura baixa do avesso
       - Formato obrigatório:
         ♻️ Cuidados com a peça
         - Lavagem: [instrução específica]
@@ -161,11 +206,11 @@ serve(async (req: Request) => {
     const { nomeProduto, categoria, marca, faixaPreco, publicoAlvo, materiais, coresDisponiveis, images, medidas } = validationResult.data;
     // ========== FIM INPUT VALIDATION ==========
 
-    const LOVABLE_API_KEY = Deno.env.get('LOVABLE_API_KEY');
-    if (!LOVABLE_API_KEY) {
-      console.error('LOVABLE_API_KEY não configurada');
+    const GOOGLE_API_KEY = Deno.env.get('GOOGLE_API_KEY');
+    if (!GOOGLE_API_KEY) {
+      console.error('GOOGLE_API_KEY não configurada');
       return new Response(
-        JSON.stringify({ error: 'Configuração de IA não encontrada' }),
+        JSON.stringify({ error: 'API do Google Gemini não configurada. Configure GOOGLE_API_KEY nas secrets.' }),
         { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
@@ -183,50 +228,63 @@ serve(async (req: Request) => {
 
     console.log('Gerando anúncio para:', inputData, 'com', images?.length || 0, 'imagens');
 
-    // Build user content - multimodal if images provided
-    let userContent: string | Array<{ type: string; text?: string; image_url?: { url: string } }>;
+    // Build Gemini request format
+    const userPrompt = `${systemPrompt}\n\nDados do produto:\n${JSON.stringify(inputData, null, 2)}`;
+    
+    const parts: Array<{ text?: string; inlineData?: { mimeType: string; data: string } }> = [
+      { text: userPrompt }
+    ];
+
+    // Add images if provided (base64 format)
     if (images && images.length > 0) {
-      userContent = [
-        { type: "text", text: JSON.stringify(inputData, null, 2) },
-        ...images.map((img: string) => ({
-          type: "image_url",
-          image_url: { url: img }
-        }))
-      ];
-    } else {
-      userContent = JSON.stringify(inputData, null, 2);
+      images.forEach((img: string) => {
+        // Extract base64 data from data URL
+        const matches = img.match(/^data:image\/(png|jpeg|jpg|webp);base64,(.+)$/);
+        if (matches) {
+          parts.push({
+            inlineData: {
+              mimeType: `image/${matches[1]}`,
+              data: matches[2]
+            }
+          });
+        }
+      });
     }
 
-    const response = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${LOVABLE_API_KEY}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        model: 'google/gemini-2.5-flash',
-        messages: [
-          { role: 'system', content: systemPrompt },
-          { role: 'user', content: userContent }
-        ],
-      }),
-    });
+    const response = await fetch(
+      `https://generativelanguage.googleapis.com/v1/models/gemini-pro:generateContent?key=${GOOGLE_API_KEY}`,
+      {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          contents: [{
+            parts: parts
+          }],
+          generationConfig: {
+            temperature: 0.7,
+            maxOutputTokens: 2048,
+          }
+        }),
+      }
+    );
 
     if (!response.ok) {
       const errorText = await response.text();
-      console.error('Erro do gateway AI:', response.status, errorText);
+      console.error('Erro da API Gemini:', response.status, errorText);
 
       if (response.status === 429) {
         return new Response(
-          JSON.stringify({ error: 'Muitas requisições. Aguarde um momento e tente novamente.' }),
+          JSON.stringify({ error: 'Limite de requisições atingido. Aguarde um momento.' }),
           { status: 429, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
         );
       }
 
-      if (response.status === 402) {
+      if (response.status === 400) {
         return new Response(
-          JSON.stringify({ error: 'Créditos de IA insuficientes. Adicione créditos para continuar.' }),
-          { status: 402, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          JSON.stringify({ error: 'Requisição inválida. Verifique os dados enviados.' }),
+          { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
         );
       }
 
@@ -237,7 +295,7 @@ serve(async (req: Request) => {
     }
 
     const data = await response.json();
-    const content = data.choices?.[0]?.message?.content;
+    const content = data.candidates?.[0]?.content?.parts?.[0]?.text;
 
     if (!content) {
       console.error('Resposta vazia do modelo:', data);
