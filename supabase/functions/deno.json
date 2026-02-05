@@ -14,5 +14,7 @@
       "include": ["**/*.ts"]
     }
   },
-  "imports": {}
+  "imports": {
+    "@supabase/supabase-js": "npm:@supabase/supabase-js@2.49.4"
+  }
 }
