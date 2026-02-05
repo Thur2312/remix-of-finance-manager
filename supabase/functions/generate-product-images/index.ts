@@ -214,17 +214,17 @@ serve(async (req: Request) => {
       const prompt = buildImagePrompt(i, totalImages, nomeProduto, categoria, coresDisponiveis, materiais, marketplaceTarget);
 
       try {
-        const parts: Array<{ text?: string; inline_data?: { mime_type: string; data: string } }> = [
+        const parts: Array<{ text?: string; inlineData?: { mimeType: string; data: string } }> = [
           { text: prompt }
         ];
 
-        // Add reference image(s) as inline_data
+        // Add reference image(s) as inlineData
         for (const img of sourceImages.slice(0, 3)) {
           if (img.startsWith('data:')) {
             const match = img.match(/^data:(.+?);base64,(.+)$/);
             if (match) {
               parts.push({
-                inline_data: { mime_type: match[1], data: match[2] }
+                inlineData: { mimeType: match[1], data: match[2] }
               });
             }
           } else {
@@ -232,15 +232,15 @@ serve(async (req: Request) => {
           }
         }
 
-        const geminiModel = 'gemini-2.0-flash-exp';
-        const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${geminiModel}:generateContent?key=${GOOGLE_GEMINI_API_KEY}`, {
+        const geminiModel = 'gemini-2.5-flash-image';
+        const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${geminiModel}:generateContent`, {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          headers: {
+            'Content-Type': 'application/json',
+            'x-goog-api-key': GOOGLE_GEMINI_API_KEY,
+          },
           body: JSON.stringify({
             contents: [{ role: 'user', parts }],
-            generationConfig: {
-              responseModalities: ['IMAGE', 'TEXT'],
-            },
           }),
         });
 
@@ -266,8 +266,8 @@ serve(async (req: Request) => {
         const candidateParts = data.candidates?.[0]?.content?.parts;
         if (candidateParts && candidateParts.length > 0) {
           for (const part of candidateParts) {
-            if (part.inline_data) {
-              const imageUrl = `data:${part.inline_data.mime_type};base64,${part.inline_data.data}`;
+            if (part.inlineData) {
+              const imageUrl = `data:${part.inlineData.mimeType};base64,${part.inlineData.data}`;
               generatedImages.push({
                 url: imageUrl,
                 prompt: prompt.slice(0, 200),
