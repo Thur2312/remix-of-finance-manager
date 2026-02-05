@@ -5,6 +5,7 @@ import { Loader2 } from 'lucide-react';
 export interface GeneratedImage {
   url: string;
   prompt?: string;
+  composition?: string;
 }
 
 interface ImageGenerationSectionProps {
@@ -49,14 +50,17 @@ export const ImageGenerationSection = ({
         )}
 
         {generatedImages.length > 0 && (
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+          <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
             {generatedImages.map((image, index) => (
-              <div key={index} className="relative group">
+              <div key={index} className="relative group space-y-1">
                 <img
                   src={image.url}
                   alt={`Imagem gerada ${index + 1}`}
                   className="w-full aspect-square object-cover rounded-lg border"
                 />
+                {image.composition && (
+                  <p className="text-xs text-muted-foreground text-center">{image.composition}</p>
+                )}
               </div>
             ))}
           </div>

@@ -2,7 +2,6 @@
 import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
-import { z } from 'https://deno.land/x/zod@v3.22.4/mod.ts';
 
 // ============= CORS HEADERS =============
 const corsHeaders = {
@@ -12,23 +11,146 @@ const corsHeaders = {
 };
 
 // ============= VALIDATION =============
-const generateImagesSchema = z.object({
-  sourceImages: z.array(z.string()).min(1, 'Pelo menos uma imagem é necessária').max(5),
-  nomeProduto: z.string().min(1),
-  categoria: z.string().optional().nullable(),
-  coresDisponiveis: z.string().optional().nullable(),
-  materiais: z.string().optional().nullable(),
-});
+function validateInput(body: any): { valid: boolean; error?: string; data?: any } {
+  if (!body.sourceImages || !Array.isArray(body.sourceImages) || body.sourceImages.length === 0) {
+    return { valid: false, error: 'Pelo menos uma imagem é necessária' };
+  }
+  if (body.sourceImages.length > 5) {
+    return { valid: false, error: 'Máximo de 5 imagens' };
+  }
+  if (!body.nomeProduto || typeof body.nomeProduto !== 'string' || body.nomeProduto.trim().length === 0) {
+    return { valid: false, error: 'Nome do produto é obrigatório' };
+  }
+  const marketplaceTarget = body.marketplaceTarget === 'TikTok_Shop' ? 'TikTok_Shop' : 'Shopee';
+  return {
+    valid: true,
+    data: {
+      sourceImages: body.sourceImages,
+      nomeProduto: body.nomeProduto,
+      categoria: body.categoria || null,
+      coresDisponiveis: body.coresDisponiveis || null,
+      materiais: body.materiais || null,
+      marketplaceTarget,
+    }
+  };
+}
+
+// ============= PROMPT BUILDER =============
+function buildImagePrompt(
+  index: number,
+  totalImages: number,
+  nomeProduto: string,
+  categoria: string | null | undefined,
+  coresDisponiveis: string | null | undefined,
+  materiais: string | null | undefined,
+  marketplaceTarget: string,
+): string {
+  // Map categories to prompt category types
+  const categoryMap: Record<string, string> = {
+    'Moda Feminina': 'Fashion',
+    'Moda Masculina': 'Fashion',
+    'Moda Infantil': 'Fashion',
+    'Acessórios': 'Accessories',
+    'Beleza & Cuidados': 'Beauty',
+    'Casa & Decoração': 'Home',
+    'Eletrônicos': 'Electronics',
+    'Esportes': 'Fashion',
+    'Brinquedos': 'Other',
+    'Outros': 'Other',
+  };
+
+  const productCategory = categoria ? (categoryMap[categoria] || 'Other') : 'Other';
+
+  // Define the 9 required angle/composition variations
+  const compositions = [
+    'Front angle view, clean studio white background, product as main focus, professional e-commerce photography',
+    'Side angle view, clean studio white background, showing product profile and proportions',
+    '45-degree angle view, professional lighting, showing depth and dimension of the product',
+    'Detail close-up shot focusing on texture, stitching, material quality, and key features of the product',
+    'In-context usage shot, showing the product being used naturally in its intended environment',
+    'Lifestyle composition, product placed in a stylish real-world scenario, aspirational feel',
+    'Clean studio background image, minimalist setup, pure white background, product centered',
+    'Minimalist aesthetic composition, elegant negative space, artistic product placement',
+    'Dynamic natural scenario image, outdoor or real-world environment, natural lighting',
+  ];
+
+  const composition = compositions[index % compositions.length];
+
+  // Category-specific environment instructions
+  let categoryInstructions = '';
+  if (productCategory === 'Fashion') {
+    categoryInstructions = `
+FASHION CATEGORY RULES:
+- Completely discard any original model from the reference image.
+- Generate a NEW professional, realistic, diverse model from scratch.
+- The new model must wear EXACTLY the same product from the reference image.
+- Fabric behavior, fit, drape, and proportions must look natural and realistic.
+- Model must have professional, natural, catalog-style posing.
+- Commercial, premium marketplace appearance.
+- No exaggerated poses or cartoonish features.`;
+  } else if (productCategory === 'Electronics') {
+    categoryInstructions = `
+ELECTRONICS CATEGORY RULES:
+- Place the product in realistic, relevant environments of use.
+- Examples: modern office desk, next to a laptop or monitor, professional workspace or gaming setup.
+- Show close-up of key features and design details.`;
+  } else if (productCategory === 'Home') {
+    categoryInstructions = `
+HOME/DECORATION CATEGORY RULES:
+- Integrate the product into natural, stylish environments consistent with its use.
+- Show the product in a real living space context (kitchen, living room, bedroom as appropriate).`;
+  }
+
+  // Color variation instructions
+  let colorInstructions = '';
+  if (coresDisponiveis && coresDisponiveis.trim()) {
+    colorInstructions = `
+COLOR RULES: The product may come in these colors: ${coresDisponiveis}. 
+Show the product in its natural/original color as seen in the reference image. The product design, texture, material, shape, and proportions must match the reference exactly.`;
+  }
+
+  return `You are a professional AI image generation engine specialized in creating ultra-realistic, commercial, marketplace-ready product images.
+
+MANDATE: Generate ONLY the image. No text, watermarks, graphics, logos, or promotional elements. The image must be photorealistic, commercially polished, and suitable for ${marketplaceTarget === 'TikTok_Shop' ? 'TikTok Shop' : 'Shopee'}.
+
+PRODUCT: ${nomeProduto}
+${categoria ? `CATEGORY: ${categoria} (${productCategory})` : ''}
+${materiais ? `MATERIALS: ${materiais}` : ''}
+${coresDisponiveis ? `AVAILABLE COLORS: ${coresDisponiveis}` : ''}
+
+COMPOSITION FOR THIS IMAGE (${index + 1} of ${totalImages}):
+${composition}
+${categoryInstructions}
+${colorInstructions}
+
+PRODUCT FIDELITY RULES (NON-NEGOTIABLE):
+1. The product MUST be visually identical to the reference image: same color, texture, material, shape, proportions, stitching, patterns, and finish.
+2. Do NOT stylize, redesign, smooth, enhance, or "improve" the product unless the composition requires a different angle.
+3. The product must always be the visual focus of the image.
+4. Backgrounds must be realistic, coherent with the category, and non-distracting.
+5. No text, labels, or branding overlays of any kind.
+
+AESTHETIC GUIDELINES:
+- Clean, premium aesthetic
+- Harmonious color palette
+- Balanced lighting with soft, realistic shadows
+- No visual clutter in the background
+- Ultra-realistic photography-level rendering
+- Natural or professional studio lighting
+- Clean composition with proper depth of field
+- No AI artifacts, distortions, or unrealistic textures
+
+Based on the reference image provided, create this specific composition while maintaining perfect product fidelity.`;
+}
 
 // ============= MAIN FUNCTION =============
 serve(async (req: Request) => {
-  // Handle CORS preflight
   if (req.method === 'OPTIONS') {
     return new Response('ok', { headers: corsHeaders });
   }
 
   try {
-    // ========== AUTENTICAÇÃO JWT ==========
+    // ========== AUTH ==========
     const authHeader = req.headers.get('Authorization');
     if (!authHeader?.startsWith('Bearer ')) {
       console.error('Missing or invalid Authorization header');
@@ -60,18 +182,17 @@ serve(async (req: Request) => {
 
     // ========== INPUT VALIDATION ==========
     const rawBody = await req.json();
-    const validationResult = generateImagesSchema.safeParse(rawBody);
+    const validationResult = validateInput(rawBody);
     
-    if (!validationResult.success) {
-      const issues = validationResult.error.issues.map(i => `${i.path.join('.')}: ${i.message}`).join(', ');
-      console.error('Validation error:', issues);
+    if (!validationResult.valid) {
+      console.error('Validation error:', validationResult.error);
       return new Response(
-        JSON.stringify({ error: 'Dados inválidos', details: issues }),
+        JSON.stringify({ error: 'Dados inválidos', details: validationResult.error }),
         { status: 400, headers: { 'Content-Type': 'application/json', ...corsHeaders } }
       );
     }
     
-    const { sourceImages, nomeProduto, categoria, coresDisponiveis, materiais } = validationResult.data;
+    const { sourceImages, nomeProduto, categoria, coresDisponiveis, materiais, marketplaceTarget } = validationResult.data;
 
     // ========== LOVABLE AI API ==========
     const LOVABLE_API_KEY = Deno.env.get('LOVABLE_API_KEY');
@@ -83,42 +204,27 @@ serve(async (req: Request) => {
       );
     }
 
-    console.log('Gerando imagens para:', nomeProduto, 'com', sourceImages.length, 'imagens de referência');
+    const totalImages = 9;
+    console.log(`Gerando ${totalImages} imagens para: ${nomeProduto} | Marketplace: ${marketplaceTarget} | Refs: ${sourceImages.length}`);
 
-    // Build prompt for image generation
-    const imagePrompt = `Crie uma imagem promocional profissional de e-commerce para o seguinte produto:
-
-Produto: ${nomeProduto}
-${categoria ? `Categoria: ${categoria}` : ''}
-${coresDisponiveis ? `Cores: ${coresDisponiveis}` : ''}
-${materiais ? `Material: ${materiais}` : ''}
-
-A imagem deve ser:
-- Fundo branco ou claro, limpo e profissional
-- Produto em destaque, bem iluminado
-- Estilo de fotografia de e-commerce de alta qualidade
-- Adequada para anúncio na Shopee Brasil
-- Aspecto atraente e comercial
-
-Baseie-se na imagem de referência fornecida para manter a identidade visual do produto.`;
-
-    // Generate images using Lovable AI image generation model
-    const generatedImages: Array<{ url: string; prompt: string }> = [];
+    const generatedImages: Array<{ url: string; prompt: string; composition: string }> = [];
     
-    // Generate 2 variations
-    for (let i = 0; i < 2; i++) {
-      console.log(`Generating image ${i + 1}/2...`);
+    // Generate 9 unique images sequentially (each with different composition)
+    for (let i = 0; i < totalImages; i++) {
+      console.log(`Generating image ${i + 1}/${totalImages}...`);
       
+      const prompt = buildImagePrompt(i, totalImages, nomeProduto, categoria, coresDisponiveis, materiais, marketplaceTarget);
+
       try {
         const userContent: Array<{ type: string; text?: string; image_url?: { url: string } }> = [
-          { type: 'text', text: imagePrompt + (i === 1 ? '\n\nCrie uma variação diferente, com outro ângulo ou composição.' : '') }
+          { type: 'text', text: prompt }
         ];
 
-        // Add first source image as reference
-        if (sourceImages[0]) {
+        // Add reference image(s)
+        for (const img of sourceImages.slice(0, 3)) {
           userContent.push({
             type: 'image_url',
-            image_url: { url: sourceImages[0] }
+            image_url: { url: img }
           });
         }
 
@@ -130,12 +236,7 @@ Baseie-se na imagem de referência fornecida para manter a identidade visual do 
           },
           body: JSON.stringify({
             model: 'google/gemini-2.5-flash-image',
-            messages: [
-              {
-                role: 'user',
-                content: userContent
-              }
-            ],
+            messages: [{ role: 'user', content: userContent }],
             modalities: ['image', 'text'],
           }),
         });
@@ -145,36 +246,39 @@ Baseie-se na imagem de referência fornecida para manter a identidade visual do 
           console.error(`Erro ao gerar imagem ${i + 1}:`, response.status, errorText);
           
           if (response.status === 429) {
-            return new Response(
-              JSON.stringify({ error: 'Limite de requisições atingido. Aguarde um momento e tente novamente.' }),
-              { status: 429, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-            );
+            // Rate limited - return what we have so far
+            console.warn('Rate limited, returning partial results');
+            break;
           }
-
           if (response.status === 402) {
             return new Response(
               JSON.stringify({ error: 'Créditos de IA esgotados. Por favor, adicione créditos na sua conta.' }),
               { status: 402, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
             );
           }
-          
-          continue; // Skip this image and try next
+          continue;
         }
 
         const data = await response.json();
-        console.log(`Image ${i + 1} response received`);
-        
-        // Extract generated image from response
         const images = data.choices?.[0]?.message?.images;
         if (images && images.length > 0) {
           const imageUrl = images[0]?.image_url?.url;
           if (imageUrl) {
             generatedImages.push({
               url: imageUrl,
-              prompt: imagePrompt
+              prompt: prompt.slice(0, 200),
+              composition: [
+                'Frontal', 'Lateral', '45 graus', 'Close-up detalhe',
+                'Em uso', 'Lifestyle', 'Studio', 'Minimalista', 'Cenário dinâmico'
+              ][i] || `Variação ${i + 1}`,
             });
             console.log(`Image ${i + 1} generated successfully`);
           }
+        }
+
+        // Small delay between requests to avoid rate limiting
+        if (i < totalImages - 1) {
+          await new Promise(resolve => setTimeout(resolve, 1500));
         }
       } catch (imgError) {
         console.error(`Error generating image ${i + 1}:`, imgError);
@@ -194,7 +298,8 @@ Baseie-se na imagem de referência fornecida para manter a identidade visual do 
       JSON.stringify({ 
         success: true,
         images: generatedImages,
-        count: generatedImages.length
+        count: generatedImages.length,
+        marketplace: marketplaceTarget,
       }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );

@@ -19,7 +19,7 @@ import { MedidaLinha } from '@/components/assistente/medidas.types';
 interface FormData {
   nomeProduto: string;
   categoria: string;
-  
+  marketplaceTarget: 'TikTok_Shop' | 'Shopee';
   faixaPreco: string;
   publicoAlvo: string;
   materiais: string;
@@ -79,6 +79,7 @@ const AssistenteAnuncio = () => {
   const [formData, setFormData] = useState<FormData>({
     nomeProduto: '',
     categoria: '',
+    marketplaceTarget: 'Shopee',
     faixaPreco: '',
     publicoAlvo: '',
     materiais: '',
@@ -287,6 +288,7 @@ const AssistenteAnuncio = () => {
               coresDisponiveis: formData.coresDisponiveis,
               materiais: formData.materiais,
               nomeProduto: formData.nomeProduto,
+              marketplaceTarget: formData.marketplaceTarget,
             },
           });
 
@@ -412,6 +414,23 @@ const AssistenteAnuncio = () => {
                         {cat}
                       </SelectItem>
                     ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {/* Marketplace Target */}
+              <div className="space-y-2">
+                <Label htmlFor="marketplaceTarget">Marketplace</Label>
+                <Select
+                  value={formData.marketplaceTarget}
+                  onValueChange={(value) => handleInputChange('marketplaceTarget', value)}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Selecione o marketplace" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="Shopee">Shopee</SelectItem>
+                    <SelectItem value="TikTok_Shop">TikTok Shop</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
