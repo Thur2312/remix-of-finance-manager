@@ -192,10 +192,10 @@ serve(async (req: Request) => {
     
     const { sourceImages, nomeProduto, categoria, coresDisponiveis, materiais, marketplaceTarget } = validationResult.data;
 
-    // ========== LOVABLE AI API ==========
-    const LOVABLE_API_KEY = Deno.env.get('LOVABLE_API_KEY');
-    if (!LOVABLE_API_KEY) {
-      console.error('LOVABLE_API_KEY não configurada');
+    // ========== GOOGLE GEMINI API ==========
+    const GOOGLE_GEMINI_API_KEY = Deno.env.get('GOOGLE_GEMINI_API_KEY');
+    if (!GOOGLE_GEMINI_API_KEY) {
+      console.error('GOOGLE_GEMINI_API_KEY não configurada');
       return new Response(
         JSON.stringify({ error: 'API de IA não configurada. Entre em contato com o suporte.' }),
         { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
@@ -214,28 +214,33 @@ serve(async (req: Request) => {
       const prompt = buildImagePrompt(i, totalImages, nomeProduto, categoria, coresDisponiveis, materiais, marketplaceTarget);
 
       try {
-        const userContent: Array<{ type: string; text?: string; image_url?: { url: string } }> = [
-          { type: 'text', text: prompt }
+        const parts: Array<{ text?: string; inline_data?: { mime_type: string; data: string } }> = [
+          { text: prompt }
         ];
 
-        // Add reference image(s)
+        // Add reference image(s) as inline_data
         for (const img of sourceImages.slice(0, 3)) {
-          userContent.push({
-            type: 'image_url',
-            image_url: { url: img }
-          });
+          if (img.startsWith('data:')) {
+            const match = img.match(/^data:(.+?);base64,(.+)$/);
+            if (match) {
+              parts.push({
+                inline_data: { mime_type: match[1], data: match[2] }
+              });
+            }
+          } else {
+            parts.push({ text: `[Imagem de referência: ${img}]` });
+          }
         }
 
-        const response = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
+        const geminiModel = 'gemini-2.0-flash-exp';
+        const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${geminiModel}:generateContent?key=${GOOGLE_GEMINI_API_KEY}`, {
           method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${LOVABLE_API_KEY}`,
-          },
+          headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
-            model: 'google/gemini-2.5-flash-image',
-            messages: [{ role: 'user', content: userContent }],
-            modalities: ['image', 'text'],
+            contents: [{ role: 'user', parts }],
+            generationConfig: {
+              responseModalities: ['IMAGE', 'TEXT'],
+            },
           }),
         });
 
@@ -258,19 +263,22 @@ serve(async (req: Request) => {
         }
 
         const data = await response.json();
-        const images = data.choices?.[0]?.message?.images;
-        if (images && images.length > 0) {
-          const imageUrl = images[0]?.image_url?.url;
-          if (imageUrl) {
-            generatedImages.push({
-              url: imageUrl,
-              prompt: prompt.slice(0, 200),
-              composition: [
-                'Frontal', 'Lateral', '45 graus', 'Close-up detalhe',
-                'Em uso', 'Lifestyle', 'Studio', 'Minimalista', 'Cenário dinâmico'
-              ][i] || `Variação ${i + 1}`,
-            });
-            console.log(`Image ${i + 1} generated successfully`);
+        const candidateParts = data.candidates?.[0]?.content?.parts;
+        if (candidateParts && candidateParts.length > 0) {
+          for (const part of candidateParts) {
+            if (part.inline_data) {
+              const imageUrl = `data:${part.inline_data.mime_type};base64,${part.inline_data.data}`;
+              generatedImages.push({
+                url: imageUrl,
+                prompt: prompt.slice(0, 200),
+                composition: [
+                  'Frontal', 'Lateral', '45 graus', 'Close-up detalhe',
+                  'Em uso', 'Lifestyle', 'Studio', 'Minimalista', 'Cenário dinâmico'
+                ][i] || `Variação ${i + 1}`,
+              });
+              console.log(`Image ${i + 1} generated successfully`);
+              break;
+            }
           }
         }
 
