@@ -9,7 +9,29 @@ const corsHeaders = {
 };
 
 // ============= VALIDATION =============
-function validateInput(body: any): { valid: boolean; error?: string; data?: any } {
+interface ValidateInputRequest {
+  sourceImages?: unknown;
+  nomeProduto?: string;
+  categoria?: string | null;
+  coresDisponiveis?: string | null;
+  materiais?: string | null;
+  marketplaceTarget?: string;
+}
+
+interface ValidateInputResponse {
+  valid: boolean;
+  error?: string;
+  data?: {
+    sourceImages: string[];
+    nomeProduto: string;
+    categoria: string | null;
+    coresDisponiveis: string | null;
+    materiais: string | null;
+    marketplaceTarget: string;
+  };
+}
+
+function validateInput(body: ValidateInputRequest): ValidateInputResponse {
   if (!body.sourceImages || !Array.isArray(body.sourceImages) || body.sourceImages.length === 0) {
     return { valid: false, error: 'Pelo menos uma imagem é necessária' };
   }

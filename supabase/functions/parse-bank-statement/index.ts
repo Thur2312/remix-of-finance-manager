@@ -186,7 +186,7 @@ Retorne APENAS um JSON válido no seguinte formato (sem markdown, sem explicaç�
     }
 
     // Validar e formatar transações
-    const transactions = (parsedResult.transactions || []).map((t: any, index: number) => ({
+    const transactions = (parsedResult.transactions || []).map((t: string, index: number) => ({
       id: `pdf_${Date.now()}_${index}`,
       date: t.date || new Date().toISOString().split('T')[0],
       description: t.description || 'Transação',
