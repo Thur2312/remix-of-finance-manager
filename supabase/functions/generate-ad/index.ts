@@ -187,14 +187,14 @@ serve(async (req: Request) => {
     console.log('Gerando anúncio para:', inputData, 'com', images?.length || 0, 'imagens');
 
     // Build parts for Gemini API
-    const parts: Array<{ text?: string; inline_data?: { mime_type: string; data: string } }> = [];
+    const parts: Array<{ text?: string; inlineData?: { mimeType: string; data: string } }> = [];
     
     // Add system + user text
     parts.push({
       text: `${systemPrompt}\n\nDados do produto:\n${JSON.stringify(inputData, null, 2)}`
     });
 
-    // Add images if provided (convert base64 data URLs to inline_data)
+    // Add images if provided (convert base64 data URLs to inlineData)
     if (images && images.length > 0) {
       console.log(`Adding ${images.length} images to request`);
       for (const img of images) {
@@ -202,7 +202,7 @@ serve(async (req: Request) => {
           const match = img.match(/^data:(.+?);base64,(.+)$/);
           if (match) {
             parts.push({
-              inline_data: { mime_type: match[1], data: match[2] }
+              inlineData: { mimeType: match[1], data: match[2] }
             });
           }
         } else {
@@ -215,9 +215,12 @@ serve(async (req: Request) => {
     console.log('Calling Google Gemini API...');
     
     const geminiModel = 'gemini-2.5-flash';
-    const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${geminiModel}:generateContent?key=${GOOGLE_GEMINI_API_KEY}`, {
+    const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${geminiModel}:generateContent`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: {
+        'Content-Type': 'application/json',
+        'x-goog-api-key': GOOGLE_GEMINI_API_KEY,
+      },
       body: JSON.stringify({
         contents: [{ role: 'user', parts }],
         generationConfig: {
