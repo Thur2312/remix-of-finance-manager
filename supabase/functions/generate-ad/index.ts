@@ -222,7 +222,8 @@ serve(async (req: Request) => {
         contents: [{ role: 'user', parts }],
         generationConfig: {
           temperature: 0.7,
-          maxOutputTokens: 4096,
+          maxOutputTokens: 16384,
+          responseMimeType: 'application/json',
         },
       }),
     });
@@ -275,18 +276,26 @@ serve(async (req: Request) => {
 
     console.log('Resposta bruta do modelo:', content.substring(0, 300));
 
-    // Parse do JSON da resposta (pode vir com markdown)
+    // Parse do JSON da resposta
     let parsedResult;
     try {
-      // Remove possíveis marcações de código markdown
+      // With responseMimeType: 'application/json', content should be raw JSON
+      // But clean markdown fences as fallback
       const cleanContent = content
-        .replace(/```json\n?/g, '')
-        .replace(/```\n?/g, '')
+        .replace(/^```json\s*/i, '')
+        .replace(/\s*```$/i, '')
         .trim();
       
       parsedResult = JSON.parse(cleanContent);
     } catch (parseError) {
-      console.error('Erro ao fazer parse do JSON:', parseError, 'Content:', content);
+      console.error('Erro ao fazer parse do JSON:', parseError, 'Content length:', content.length, 'Content:', content.substring(0, 500));
+      
+      // Check if truncated
+      const finishReason = data.candidates?.[0]?.finishReason;
+      if (finishReason === 'MAX_TOKENS') {
+        console.error('Response was truncated by token limit');
+      }
+      
       return new Response(
         JSON.stringify({ error: 'Erro ao processar resposta da IA. Tente novamente.' }),
         { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
