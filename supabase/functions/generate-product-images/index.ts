@@ -65,28 +65,19 @@ function buildImagePrompt(
   materiais: string | null | undefined,
   marketplaceTarget: string,
 ): string {
-  // Map categories to prompt category types
   const categoryMap: Record<string, string> = {
-    'Moda Feminina': 'Fashion',
-    'Moda Masculina': 'Fashion',
-    'Moda Infantil': 'Fashion',
-    'Acessórios': 'Accessories',
-    'Beleza & Cuidados': 'Beauty',
-    'Casa & Decoração': 'Home',
-    'Eletrônicos': 'Electronics',
-    'Esportes': 'Fashion',
-    'Brinquedos': 'Other',
-    'Outros': 'Other',
+    'Moda Feminina': 'Fashion', 'Moda Masculina': 'Fashion', 'Moda Infantil': 'Fashion',
+    'Acessórios': 'Accessories', 'Beleza & Cuidados': 'Beauty', 'Casa & Decoração': 'Home',
+    'Eletrônicos': 'Electronics', 'Esportes': 'Fashion', 'Brinquedos': 'Other', 'Outros': 'Other',
   };
 
   const productCategory = categoria ? (categoryMap[categoria] || 'Other') : 'Other';
 
-  // Define the 9 required angle/composition variations
   const compositions = [
     'Front angle view, clean studio white background, product as main focus, professional e-commerce photography',
     'Side angle view, clean studio white background, showing product profile and proportions',
     '45-degree angle view, professional lighting, showing depth and dimension of the product',
-    'Detail close-up shot focusing on texture, stitching, material quality, and key features of the product',
+    'Detail close-up shot focusing on texture, stitching, material quality, and key features',
     'In-context usage shot, showing the product being used naturally in its intended environment',
     'Lifestyle composition, product placed in a stylish real-world scenario, aspirational feel',
     'Clean studio background image, minimalist setup, pure white background, product centered',
@@ -96,71 +87,31 @@ function buildImagePrompt(
 
   const composition = compositions[index % compositions.length];
 
-  // Category-specific environment instructions
   let categoryInstructions = '';
   if (productCategory === 'Fashion') {
-    categoryInstructions = `
-FASHION CATEGORY RULES:
-- Completely discard any original model from the reference image.
-- Generate a NEW professional, realistic, diverse model from scratch.
-- The new model must wear EXACTLY the same product from the reference image.
-- Fabric behavior, fit, drape, and proportions must look natural and realistic.
-- Model must have professional, natural, catalog-style posing.
-- Commercial, premium marketplace appearance.
-- No exaggerated poses or cartoonish features.`;
+    categoryInstructions = 'FASHION: Generate a professional, diverse model wearing EXACTLY this product. Natural catalog-style posing. No cartoonish features.';
   } else if (productCategory === 'Electronics') {
-    categoryInstructions = `
-ELECTRONICS CATEGORY RULES:
-- Place the product in realistic, relevant environments of use.
-- Examples: modern office desk, next to a laptop or monitor, professional workspace or gaming setup.
-- Show close-up of key features and design details.`;
+    categoryInstructions = 'ELECTRONICS: Place the product in realistic environments like modern office desk, workspace or gaming setup.';
   } else if (productCategory === 'Home') {
-    categoryInstructions = `
-HOME/DECORATION CATEGORY RULES:
-- Integrate the product into natural, stylish environments consistent with its use.
-- Show the product in a real living space context (kitchen, living room, bedroom as appropriate).`;
+    categoryInstructions = 'HOME/DECORATION: Integrate the product into natural, stylish living space environments.';
   }
 
-  // Color variation instructions
   let colorInstructions = '';
   if (coresDisponiveis && coresDisponiveis.trim()) {
-    colorInstructions = `
-COLOR RULES: The product may come in these colors: ${coresDisponiveis}. 
-Show the product in its natural/original color as seen in the reference image. The product design, texture, material, shape, and proportions must match the reference exactly.`;
+    colorInstructions = `Available colors: ${coresDisponiveis}. Show the product in its natural/original color from the reference image.`;
   }
 
-  return `You are a professional AI image generation engine specialized in creating ultra-realistic, commercial, marketplace-ready product images.
-
-MANDATE: Generate ONLY the image. No text, watermarks, graphics, logos, or promotional elements. The image must be photorealistic, commercially polished, and suitable for ${marketplaceTarget === 'TikTok_Shop' ? 'TikTok Shop' : 'Shopee'}.
+  return `Generate a photorealistic, commercial, marketplace-ready product image. No text, watermarks, logos, or promotional elements. Ultra-realistic photography quality suitable for ${marketplaceTarget === 'TikTok_Shop' ? 'TikTok Shop' : 'Shopee'}.
 
 PRODUCT: ${nomeProduto}
-${categoria ? `CATEGORY: ${categoria} (${productCategory})` : ''}
+${categoria ? `CATEGORY: ${categoria}` : ''}
 ${materiais ? `MATERIALS: ${materiais}` : ''}
-${coresDisponiveis ? `AVAILABLE COLORS: ${coresDisponiveis}` : ''}
 
-COMPOSITION FOR THIS IMAGE (${index + 1} of ${totalImages}):
-${composition}
+COMPOSITION (${index + 1} of ${totalImages}): ${composition}
 ${categoryInstructions}
 ${colorInstructions}
 
-PRODUCT FIDELITY RULES (NON-NEGOTIABLE):
-1. The product MUST be visually identical to the reference image: same color, texture, material, shape, proportions, stitching, patterns, and finish.
-2. Do NOT stylize, redesign, smooth, enhance, or "improve" the product unless the composition requires a different angle.
-3. The product must always be the visual focus of the image.
-4. Backgrounds must be realistic, coherent with the category, and non-distracting.
-5. No text, labels, or branding overlays of any kind.
-
-AESTHETIC GUIDELINES:
-- Clean, premium aesthetic
-- Harmonious color palette
-- Balanced lighting with soft, realistic shadows
-- No visual clutter in the background
-- Ultra-realistic photography-level rendering
-- Natural or professional studio lighting
-- Clean composition with proper depth of field
-- No AI artifacts, distortions, or unrealistic textures
-
-Based on the reference image provided, create this specific composition while maintaining perfect product fidelity.`;
+The product must be the visual focus. Clean premium aesthetic, balanced lighting, realistic shadows, no AI artifacts. Based on the reference image, maintain perfect product fidelity.`;
 }
 
 // ============= MAIN FUNCTION =============
@@ -214,19 +165,18 @@ serve(async (req: Request) => {
     
     const { sourceImages, nomeProduto, categoria, coresDisponiveis, materiais, marketplaceTarget } = validationResult.data!;
 
-    // ========== HUGGING FACE INFERENCE API ==========
-    const HF_API_KEY = Deno.env.get('HUGGINGFACE_API_KEY');
-    if (!HF_API_KEY) {
-      console.error('HUGGINGFACE_API_KEY not configured');
+    // ========== LOVABLE AI (Nano Banana) ==========
+    const LOVABLE_API_KEY = Deno.env.get('LOVABLE_API_KEY');
+    if (!LOVABLE_API_KEY) {
+      console.error('LOVABLE_API_KEY not configured');
       return new Response(
-        JSON.stringify({ error: 'Chave da API Hugging Face não configurada.' }),
+        JSON.stringify({ error: 'Chave da API Lovable AI não configurada.' }),
         { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
     const totalImages = 9;
-    const HF_MODEL = 'stabilityai/stable-diffusion-xl-base-1.0';
-    console.log(`Gerando ${totalImages} imagens via Hugging Face (${HF_MODEL}) para: ${nomeProduto} | Marketplace: ${marketplaceTarget} | Refs: ${sourceImages.length}`);
+    console.log(`Gerando ${totalImages} imagens via Lovable AI (Nano Banana) para: ${nomeProduto} | Marketplace: ${marketplaceTarget} | Refs: ${sourceImages.length}`);
 
     const generatedImages: Array<{ url: string; prompt: string; composition: string }> = [];
     
@@ -240,59 +190,79 @@ serve(async (req: Request) => {
       
       const prompt = buildImagePrompt(i, totalImages, nomeProduto, categoria, coresDisponiveis, materiais, marketplaceTarget);
 
+      // Build message content with text prompt + reference image(s)
+      const messageContent: Array<{ type: string; text?: string; image_url?: { url: string } }> = [
+        { type: 'text', text: prompt },
+      ];
+
+      // Add reference images
+      for (const img of sourceImages) {
+        messageContent.push({
+          type: 'image_url',
+          image_url: { url: img },
+        });
+      }
+
       try {
-        const response = await fetch(`https://router.huggingface.co/hf-inference/models/${HF_MODEL}`, {
+        const response = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
           method: 'POST',
           headers: {
-            'Authorization': `Bearer ${HF_API_KEY}`,
+            'Authorization': `Bearer ${LOVABLE_API_KEY}`,
             'Content-Type': 'application/json',
           },
           body: JSON.stringify({
-            inputs: prompt.slice(0, 500),
-            parameters: {
-              width: marketplaceTarget === 'TikTok_Shop' ? 512 : 1024,
-              height: marketplaceTarget === 'TikTok_Shop' ? 512 : 1024,
-              num_inference_steps: 30,
-              seed: Date.now() + i,
-            },
+            model: 'google/gemini-2.5-flash-image',
+            messages: [
+              {
+                role: 'user',
+                content: messageContent,
+              },
+            ],
+            modalities: ['image', 'text'],
           }),
         });
 
-        if (response.status === 503) {
-          console.log(`Model loading, waiting 20s for image ${i + 1}...`);
-          await new Promise(resolve => setTimeout(resolve, 20000));
+        if (response.status === 429) {
+          console.error(`Rate limited at image ${i + 1}. Waiting 10s...`);
+          await new Promise(resolve => setTimeout(resolve, 10000));
           // Retry once
-          const retryResponse = await fetch(`https://router.huggingface.co/hf-inference/models/${HF_MODEL}`, {
+          const retryResp = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
             method: 'POST',
             headers: {
-              'Authorization': `Bearer ${HF_API_KEY}`,
+              'Authorization': `Bearer ${LOVABLE_API_KEY}`,
               'Content-Type': 'application/json',
             },
             body: JSON.stringify({
-              inputs: prompt.slice(0, 500),
-              parameters: {
-                width: marketplaceTarget === 'TikTok_Shop' ? 512 : 1024,
-                height: marketplaceTarget === 'TikTok_Shop' ? 512 : 1024,
-                num_inference_steps: 30,
-                seed: Date.now() + i + 100,
-              },
+              model: 'google/gemini-2.5-flash-image',
+              messages: [{ role: 'user', content: messageContent }],
+              modalities: ['image', 'text'],
             }),
           });
-          if (!retryResponse.ok) {
-            console.error(`Retry failed for image ${i + 1}: ${retryResponse.status}`);
-            continue;
+          if (retryResp.ok) {
+            const retryData = await retryResp.json();
+            const retryImageUrl = retryData.choices?.[0]?.message?.images?.[0]?.image_url?.url;
+            if (retryImageUrl) {
+              generatedImages.push({
+                url: retryImageUrl,
+                prompt: prompt.slice(0, 200),
+                composition: compositionLabels[i] || `Variação ${i + 1}`,
+              });
+              console.log(`Image ${i + 1} generated (after retry)`);
+            }
+          } else {
+            console.error(`Retry failed for image ${i + 1}: ${retryResp.status}`);
           }
-          const buffer = await retryResponse.arrayBuffer();
-          const uint8 = new Uint8Array(buffer);
-          let bin = '';
-          for (let j = 0; j < uint8.length; j++) bin += String.fromCharCode(uint8[j]);
-          generatedImages.push({
-            url: `data:image/jpeg;base64,${btoa(bin)}`,
-            prompt: prompt.slice(0, 200),
-            composition: compositionLabels[i] || `Variação ${i + 1}`,
-          });
-          console.log(`Image ${i + 1} generated (after retry)`);
           continue;
+        }
+
+        if (response.status === 402) {
+          console.error('Lovable AI credits exhausted (402)');
+          // Return what we have so far
+          if (generatedImages.length > 0) break;
+          return new Response(
+            JSON.stringify({ error: 'Créditos de IA esgotados. Adicione créditos ao seu workspace Lovable.' }),
+            { status: 402, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
         }
 
         if (!response.ok) {
@@ -301,24 +271,23 @@ serve(async (req: Request) => {
           continue;
         }
 
-        const imageBuffer = await response.arrayBuffer();
-        const uint8Array = new Uint8Array(imageBuffer);
-        let binary = '';
-        for (let j = 0; j < uint8Array.length; j++) {
-          binary += String.fromCharCode(uint8Array[j]);
+        const data = await response.json();
+        const imageUrl = data.choices?.[0]?.message?.images?.[0]?.image_url?.url;
+
+        if (imageUrl) {
+          generatedImages.push({
+            url: imageUrl,
+            prompt: prompt.slice(0, 200),
+            composition: compositionLabels[i] || `Variação ${i + 1}`,
+          });
+          console.log(`Image ${i + 1} generated successfully`);
+        } else {
+          console.error(`No image returned for image ${i + 1}`);
         }
-        const base64 = btoa(binary);
 
-        generatedImages.push({
-          url: `data:image/jpeg;base64,${base64}`,
-          prompt: prompt.slice(0, 200),
-          composition: compositionLabels[i] || `Variação ${i + 1}`,
-        });
-        console.log(`Image ${i + 1} generated successfully`);
-
-        // Rate limit delay
+        // Rate limit delay between requests
         if (i < totalImages - 1) {
-          await new Promise(resolve => setTimeout(resolve, 1500));
+          await new Promise(resolve => setTimeout(resolve, 2000));
         }
       } catch (imgError) {
         console.error(`Error generating image ${i + 1}:`, imgError);
