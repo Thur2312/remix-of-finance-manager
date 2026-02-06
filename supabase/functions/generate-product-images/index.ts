@@ -214,10 +214,10 @@ serve(async (req: Request) => {
     
     const { sourceImages, nomeProduto, categoria, coresDisponiveis, materiais, marketplaceTarget } = validationResult.data!;
 
-    // ========== GOOGLE GEMINI API ==========
-    const GOOGLE_GEMINI_API_KEY = Deno.env.get('GOOGLE_GEMINI_API_KEY');
-    if (!GOOGLE_GEMINI_API_KEY) {
-      console.error('GOOGLE_GEMINI_API_KEY não configurada');
+    // ========== LOVABLE AI GATEWAY ==========
+    const LOVABLE_API_KEY = Deno.env.get('LOVABLE_API_KEY');
+    if (!LOVABLE_API_KEY) {
+      console.error('LOVABLE_API_KEY não configurada');
       return new Response(
         JSON.stringify({ error: 'API de IA não configurada. Entre em contato com o suporte.' }),
         { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
@@ -236,33 +236,29 @@ serve(async (req: Request) => {
       const prompt = buildImagePrompt(i, totalImages, nomeProduto, categoria, coresDisponiveis, materiais, marketplaceTarget);
 
       try {
-        const parts: Array<{ text?: string; inlineData?: { mimeType: string; data: string } }> = [
-          { text: prompt }
+        // Build messages with reference images
+        const userContent: Array<{ type: string; text?: string; image_url?: { url: string } }> = [
+          { type: 'text', text: prompt }
         ];
 
-        // Add reference image(s) as inlineData
         for (const img of sourceImages.slice(0, 3)) {
-          if (img.startsWith('data:')) {
-            const match = img.match(/^data:(.+?);base64,(.+)$/);
-            if (match) {
-              parts.push({
-                inlineData: { mimeType: match[1], data: match[2] }
-              });
-            }
-          } else {
-            parts.push({ text: `[Imagem de referência: ${img}]` });
-          }
+          userContent.push({
+            type: 'image_url',
+            image_url: { url: img }
+          });
         }
 
-        const geminiModel = 'gemini-2.5-flash-image';
-        const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${geminiModel}:generateContent`, {
+        const response = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
           method: 'POST',
           headers: {
+            'Authorization': `Bearer ${LOVABLE_API_KEY}`,
             'Content-Type': 'application/json',
-            'x-goog-api-key': GOOGLE_GEMINI_API_KEY,
           },
           body: JSON.stringify({
-            contents: [{ role: 'user', parts }],
+            model: 'google/gemini-2.5-flash-image',
+            messages: [
+              { role: 'user', content: userContent }
+            ],
           }),
         });
 
@@ -271,42 +267,55 @@ serve(async (req: Request) => {
           console.error(`Erro ao gerar imagem ${i + 1}:`, response.status, errorText);
           
           if (response.status === 429) {
-            // Rate limited - return what we have so far
-            console.warn('Rate limited, returning partial results');
-            break;
+            console.warn('Rate limited, waiting 5s before retry...');
+            await new Promise(resolve => setTimeout(resolve, 5000));
+            continue;
           }
           if (response.status === 402) {
-            return new Response(
-              JSON.stringify({ error: 'Créditos de IA esgotados. Por favor, adicione créditos na sua conta.' }),
-              { status: 402, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-            );
+            console.warn('Credits exhausted, returning partial results');
+            break;
           }
           continue;
         }
 
         const data = await response.json();
-        const candidateParts = data.candidates?.[0]?.content?.parts;
-        if (candidateParts && candidateParts.length > 0) {
-          for (const part of candidateParts) {
-            if (part.inlineData) {
-              const imageUrl = `data:${part.inlineData.mimeType};base64,${part.inlineData.data}`;
-              generatedImages.push({
-                url: imageUrl,
-                prompt: prompt.slice(0, 200),
-                composition: [
-                  'Frontal', 'Lateral', '45 graus', 'Close-up detalhe',
-                  'Em uso', 'Lifestyle', 'Studio', 'Minimalista', 'Cenário dinâmico'
-                ][i] || `Variação ${i + 1}`,
-              });
-              console.log(`Image ${i + 1} generated successfully`);
-              break;
+        const choices = data.choices;
+        if (choices && choices.length > 0) {
+          const message = choices[0].message;
+          // Check for inline image data in content parts
+          if (message?.content && Array.isArray(message.content)) {
+            for (const part of message.content) {
+              if (part.type === 'image_url' && part.image_url?.url) {
+                generatedImages.push({
+                  url: part.image_url.url,
+                  prompt: prompt.slice(0, 200),
+                  composition: [
+                    'Frontal', 'Lateral', '45 graus', 'Close-up detalhe',
+                    'Em uso', 'Lifestyle', 'Studio', 'Minimalista', 'Cenário dinâmico'
+                  ][i] || `Variação ${i + 1}`,
+                });
+                console.log(`Image ${i + 1} generated successfully`);
+                break;
+              }
             }
+          }
+          // Also check if content is a base64 data URL string directly
+          if (typeof message?.content === 'string' && message.content.startsWith('data:image')) {
+            generatedImages.push({
+              url: message.content,
+              prompt: prompt.slice(0, 200),
+              composition: [
+                'Frontal', 'Lateral', '45 graus', 'Close-up detalhe',
+                'Em uso', 'Lifestyle', 'Studio', 'Minimalista', 'Cenário dinâmico'
+              ][i] || `Variação ${i + 1}`,
+            });
+            console.log(`Image ${i + 1} generated successfully (string content)`);
           }
         }
 
-        // Small delay between requests to avoid rate limiting
+        // Delay between requests to avoid rate limiting
         if (i < totalImages - 1) {
-          await new Promise(resolve => setTimeout(resolve, 1500));
+          await new Promise(resolve => setTimeout(resolve, 2000));
         }
       } catch (imgError) {
         console.error(`Error generating image ${i + 1}:`, imgError);
