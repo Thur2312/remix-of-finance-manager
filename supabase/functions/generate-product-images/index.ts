@@ -214,9 +214,19 @@ serve(async (req: Request) => {
     
     const { sourceImages, nomeProduto, categoria, coresDisponiveis, materiais, marketplaceTarget } = validationResult.data!;
 
-    // ========== POLLINATIONS.AI (FREE IMAGE GENERATION) ==========
+    // ========== HUGGING FACE INFERENCE API ==========
+    const HF_API_KEY = Deno.env.get('HUGGINGFACE_API_KEY');
+    if (!HF_API_KEY) {
+      console.error('HUGGINGFACE_API_KEY not configured');
+      return new Response(
+        JSON.stringify({ error: 'Chave da API Hugging Face não configurada.' }),
+        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
     const totalImages = 9;
-    console.log(`Gerando ${totalImages} imagens via Pollinations.ai para: ${nomeProduto} | Marketplace: ${marketplaceTarget} | Refs: ${sourceImages.length}`);
+    const HF_MODEL = 'stabilityai/stable-diffusion-xl-base-1.0';
+    console.log(`Gerando ${totalImages} imagens via Hugging Face (${HF_MODEL}) para: ${nomeProduto} | Marketplace: ${marketplaceTarget} | Refs: ${sourceImages.length}`);
 
     const generatedImages: Array<{ url: string; prompt: string; composition: string }> = [];
     
@@ -225,31 +235,72 @@ serve(async (req: Request) => {
       'Em uso', 'Lifestyle', 'Studio', 'Minimalista', 'Cenário dinâmico'
     ];
 
-    // Generate 9 unique images sequentially
     for (let i = 0; i < totalImages; i++) {
       console.log(`Generating image ${i + 1}/${totalImages}...`);
       
       const prompt = buildImagePrompt(i, totalImages, nomeProduto, categoria, coresDisponiveis, materiais, marketplaceTarget);
 
       try {
-        // Pollinations.ai image generation via GET request
-        const width = marketplaceTarget === 'TikTok_Shop' ? 600 : 1200;
-        const height = marketplaceTarget === 'TikTok_Shop' ? 600 : 1200;
-        const seed = Date.now() + i; // unique seed per image
-        
-        const encodedPrompt = encodeURIComponent(prompt);
-        const pollinationsUrl = `https://gen.pollinations.ai/image/${encodedPrompt}?width=${width}&height=${height}&seed=${seed}&model=flux&nologo=true&enhance=true`;
-        
-        console.log(`Fetching from Pollinations.ai (image ${i + 1})...`);
-        
-        const response = await fetch(pollinationsUrl);
+        const response = await fetch(`https://api-inference.huggingface.co/models/${HF_MODEL}`, {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${HF_API_KEY}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            inputs: prompt.slice(0, 500),
+            parameters: {
+              width: marketplaceTarget === 'TikTok_Shop' ? 512 : 1024,
+              height: marketplaceTarget === 'TikTok_Shop' ? 512 : 1024,
+              num_inference_steps: 30,
+              seed: Date.now() + i,
+            },
+          }),
+        });
 
-        if (!response.ok) {
-          console.error(`Erro ao gerar imagem ${i + 1}:`, response.status);
+        if (response.status === 503) {
+          console.log(`Model loading, waiting 20s for image ${i + 1}...`);
+          await new Promise(resolve => setTimeout(resolve, 20000));
+          // Retry once
+          const retryResponse = await fetch(`https://api-inference.huggingface.co/models/${HF_MODEL}`, {
+            method: 'POST',
+            headers: {
+              'Authorization': `Bearer ${HF_API_KEY}`,
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              inputs: prompt.slice(0, 500),
+              parameters: {
+                width: marketplaceTarget === 'TikTok_Shop' ? 512 : 1024,
+                height: marketplaceTarget === 'TikTok_Shop' ? 512 : 1024,
+                num_inference_steps: 30,
+                seed: Date.now() + i + 100,
+              },
+            }),
+          });
+          if (!retryResponse.ok) {
+            console.error(`Retry failed for image ${i + 1}: ${retryResponse.status}`);
+            continue;
+          }
+          const buffer = await retryResponse.arrayBuffer();
+          const uint8 = new Uint8Array(buffer);
+          let bin = '';
+          for (let j = 0; j < uint8.length; j++) bin += String.fromCharCode(uint8[j]);
+          generatedImages.push({
+            url: `data:image/jpeg;base64,${btoa(bin)}`,
+            prompt: prompt.slice(0, 200),
+            composition: compositionLabels[i] || `Variação ${i + 1}`,
+          });
+          console.log(`Image ${i + 1} generated (after retry)`);
           continue;
         }
 
-        // Convert the image response to base64
+        if (!response.ok) {
+          const errText = await response.text();
+          console.error(`Erro imagem ${i + 1}: ${response.status} - ${errText}`);
+          continue;
+        }
+
         const imageBuffer = await response.arrayBuffer();
         const uint8Array = new Uint8Array(imageBuffer);
         let binary = '';
@@ -257,18 +308,17 @@ serve(async (req: Request) => {
           binary += String.fromCharCode(uint8Array[j]);
         }
         const base64 = btoa(binary);
-        const imageUrl = `data:image/jpeg;base64,${base64}`;
 
         generatedImages.push({
-          url: imageUrl,
+          url: `data:image/jpeg;base64,${base64}`,
           prompt: prompt.slice(0, 200),
           composition: compositionLabels[i] || `Variação ${i + 1}`,
         });
         console.log(`Image ${i + 1} generated successfully`);
 
-        // Small delay between requests
+        // Rate limit delay
         if (i < totalImages - 1) {
-          await new Promise(resolve => setTimeout(resolve, 1000));
+          await new Promise(resolve => setTimeout(resolve, 1500));
         }
       } catch (imgError) {
         console.error(`Error generating image ${i + 1}:`, imgError);
