@@ -241,7 +241,7 @@ serve(async (req: Request) => {
       const prompt = buildImagePrompt(i, totalImages, nomeProduto, categoria, coresDisponiveis, materiais, marketplaceTarget);
 
       try {
-        const response = await fetch(`https://router.huggingface.co/models/${HF_MODEL}`, {
+        const response = await fetch(`https://router.huggingface.co/hf-inference/models/${HF_MODEL}`, {
           method: 'POST',
           headers: {
             'Authorization': `Bearer ${HF_API_KEY}`,
@@ -262,7 +262,7 @@ serve(async (req: Request) => {
           console.log(`Model loading, waiting 20s for image ${i + 1}...`);
           await new Promise(resolve => setTimeout(resolve, 20000));
           // Retry once
-          const retryResponse = await fetch(`https://router.huggingface.co/models/${HF_MODEL}`, {
+          const retryResponse = await fetch(`https://router.huggingface.co/hf-inference/models/${HF_MODEL}`, {
             method: 'POST',
             headers: {
               'Authorization': `Bearer ${HF_API_KEY}`,
