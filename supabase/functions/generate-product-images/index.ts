@@ -259,6 +259,7 @@ serve(async (req: Request) => {
             messages: [
               { role: 'user', content: userContent }
             ],
+            modalities: ['image', 'text'],
           }),
         });
 
@@ -272,22 +273,26 @@ serve(async (req: Request) => {
             continue;
           }
           if (response.status === 402) {
-            console.warn('Credits exhausted, returning partial results');
-            break;
+            console.warn('Credits exhausted');
+            return new Response(
+              JSON.stringify({ error: 'Créditos de IA esgotados. Adicione créditos em Settings → Workspace → Usage.' }),
+              { status: 402, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+            );
           }
           continue;
         }
 
         const data = await response.json();
+        console.log(`Response structure for image ${i + 1}:`, JSON.stringify(Object.keys(data)));
         const choices = data.choices;
         if (choices && choices.length > 0) {
           const message = choices[0].message;
-          // Check for inline image data in content parts
-          if (message?.content && Array.isArray(message.content)) {
-            for (const part of message.content) {
-              if (part.type === 'image_url' && part.image_url?.url) {
+          // Check for images array (Lovable AI Gateway format)
+          if (message?.images && Array.isArray(message.images)) {
+            for (const img of message.images) {
+              if (img.image_url?.url) {
                 generatedImages.push({
-                  url: part.image_url.url,
+                  url: img.image_url.url,
                   prompt: prompt.slice(0, 200),
                   composition: [
                     'Frontal', 'Lateral', '45 graus', 'Close-up detalhe',
@@ -299,8 +304,25 @@ serve(async (req: Request) => {
               }
             }
           }
-          // Also check if content is a base64 data URL string directly
-          if (typeof message?.content === 'string' && message.content.startsWith('data:image')) {
+          // Fallback: check content parts array
+          if (generatedImages.length <= i && message?.content && Array.isArray(message.content)) {
+            for (const part of message.content) {
+              if (part.type === 'image_url' && part.image_url?.url) {
+                generatedImages.push({
+                  url: part.image_url.url,
+                  prompt: prompt.slice(0, 200),
+                  composition: [
+                    'Frontal', 'Lateral', '45 graus', 'Close-up detalhe',
+                    'Em uso', 'Lifestyle', 'Studio', 'Minimalista', 'Cenário dinâmico'
+                  ][i] || `Variação ${i + 1}`,
+                });
+                console.log(`Image ${i + 1} generated successfully (content parts)`);
+                break;
+              }
+            }
+          }
+          // Fallback: content is base64 string
+          if (generatedImages.length <= i && typeof message?.content === 'string' && message.content.startsWith('data:image')) {
             generatedImages.push({
               url: message.content,
               prompt: prompt.slice(0, 200),
