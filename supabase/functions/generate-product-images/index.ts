@@ -214,130 +214,61 @@ serve(async (req: Request) => {
     
     const { sourceImages, nomeProduto, categoria, coresDisponiveis, materiais, marketplaceTarget } = validationResult.data!;
 
-    // ========== LOVABLE AI GATEWAY ==========
-    const LOVABLE_API_KEY = Deno.env.get('LOVABLE_API_KEY');
-    if (!LOVABLE_API_KEY) {
-      console.error('LOVABLE_API_KEY não configurada');
-      return new Response(
-        JSON.stringify({ error: 'API de IA não configurada. Entre em contato com o suporte.' }),
-        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
-    }
-
+    // ========== POLLINATIONS.AI (FREE IMAGE GENERATION) ==========
     const totalImages = 9;
-    console.log(`Gerando ${totalImages} imagens para: ${nomeProduto} | Marketplace: ${marketplaceTarget} | Refs: ${sourceImages.length}`);
+    console.log(`Gerando ${totalImages} imagens via Pollinations.ai para: ${nomeProduto} | Marketplace: ${marketplaceTarget} | Refs: ${sourceImages.length}`);
 
     const generatedImages: Array<{ url: string; prompt: string; composition: string }> = [];
     
-    // Generate 9 unique images sequentially (each with different composition)
+    const compositionLabels = [
+      'Frontal', 'Lateral', '45 graus', 'Close-up detalhe',
+      'Em uso', 'Lifestyle', 'Studio', 'Minimalista', 'Cenário dinâmico'
+    ];
+
+    // Generate 9 unique images sequentially
     for (let i = 0; i < totalImages; i++) {
       console.log(`Generating image ${i + 1}/${totalImages}...`);
       
       const prompt = buildImagePrompt(i, totalImages, nomeProduto, categoria, coresDisponiveis, materiais, marketplaceTarget);
 
       try {
-        // Build messages with reference images
-        const userContent: Array<{ type: string; text?: string; image_url?: { url: string } }> = [
-          { type: 'text', text: prompt }
-        ];
-
-        for (const img of sourceImages.slice(0, 3)) {
-          userContent.push({
-            type: 'image_url',
-            image_url: { url: img }
-          });
-        }
-
-        const response = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
-          method: 'POST',
-          headers: {
-            'Authorization': `Bearer ${LOVABLE_API_KEY}`,
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            model: 'google/gemini-2.5-flash-image',
-            messages: [
-              { role: 'user', content: userContent }
-            ],
-            modalities: ['image', 'text'],
-          }),
-        });
+        // Pollinations.ai image generation via GET request
+        const width = marketplaceTarget === 'TikTok_Shop' ? 600 : 1200;
+        const height = marketplaceTarget === 'TikTok_Shop' ? 600 : 1200;
+        const seed = Date.now() + i; // unique seed per image
+        
+        const encodedPrompt = encodeURIComponent(prompt);
+        const pollinationsUrl = `https://gen.pollinations.ai/image/${encodedPrompt}?width=${width}&height=${height}&seed=${seed}&model=flux&nologo=true&enhance=true`;
+        
+        console.log(`Fetching from Pollinations.ai (image ${i + 1})...`);
+        
+        const response = await fetch(pollinationsUrl);
 
         if (!response.ok) {
-          const errorText = await response.text();
-          console.error(`Erro ao gerar imagem ${i + 1}:`, response.status, errorText);
-          
-          if (response.status === 429) {
-            console.warn('Rate limited, waiting 5s before retry...');
-            await new Promise(resolve => setTimeout(resolve, 5000));
-            continue;
-          }
-          if (response.status === 402) {
-            console.warn('Credits exhausted');
-            return new Response(
-              JSON.stringify({ error: 'Créditos de IA esgotados. Adicione créditos em Settings → Workspace → Usage.' }),
-              { status: 402, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-            );
-          }
+          console.error(`Erro ao gerar imagem ${i + 1}:`, response.status);
           continue;
         }
 
-        const data = await response.json();
-        console.log(`Response structure for image ${i + 1}:`, JSON.stringify(Object.keys(data)));
-        const choices = data.choices;
-        if (choices && choices.length > 0) {
-          const message = choices[0].message;
-          // Check for images array (Lovable AI Gateway format)
-          if (message?.images && Array.isArray(message.images)) {
-            for (const img of message.images) {
-              if (img.image_url?.url) {
-                generatedImages.push({
-                  url: img.image_url.url,
-                  prompt: prompt.slice(0, 200),
-                  composition: [
-                    'Frontal', 'Lateral', '45 graus', 'Close-up detalhe',
-                    'Em uso', 'Lifestyle', 'Studio', 'Minimalista', 'Cenário dinâmico'
-                  ][i] || `Variação ${i + 1}`,
-                });
-                console.log(`Image ${i + 1} generated successfully`);
-                break;
-              }
-            }
-          }
-          // Fallback: check content parts array
-          if (generatedImages.length <= i && message?.content && Array.isArray(message.content)) {
-            for (const part of message.content) {
-              if (part.type === 'image_url' && part.image_url?.url) {
-                generatedImages.push({
-                  url: part.image_url.url,
-                  prompt: prompt.slice(0, 200),
-                  composition: [
-                    'Frontal', 'Lateral', '45 graus', 'Close-up detalhe',
-                    'Em uso', 'Lifestyle', 'Studio', 'Minimalista', 'Cenário dinâmico'
-                  ][i] || `Variação ${i + 1}`,
-                });
-                console.log(`Image ${i + 1} generated successfully (content parts)`);
-                break;
-              }
-            }
-          }
-          // Fallback: content is base64 string
-          if (generatedImages.length <= i && typeof message?.content === 'string' && message.content.startsWith('data:image')) {
-            generatedImages.push({
-              url: message.content,
-              prompt: prompt.slice(0, 200),
-              composition: [
-                'Frontal', 'Lateral', '45 graus', 'Close-up detalhe',
-                'Em uso', 'Lifestyle', 'Studio', 'Minimalista', 'Cenário dinâmico'
-              ][i] || `Variação ${i + 1}`,
-            });
-            console.log(`Image ${i + 1} generated successfully (string content)`);
-          }
+        // Convert the image response to base64
+        const imageBuffer = await response.arrayBuffer();
+        const uint8Array = new Uint8Array(imageBuffer);
+        let binary = '';
+        for (let j = 0; j < uint8Array.length; j++) {
+          binary += String.fromCharCode(uint8Array[j]);
         }
+        const base64 = btoa(binary);
+        const imageUrl = `data:image/jpeg;base64,${base64}`;
 
-        // Delay between requests to avoid rate limiting
+        generatedImages.push({
+          url: imageUrl,
+          prompt: prompt.slice(0, 200),
+          composition: compositionLabels[i] || `Variação ${i + 1}`,
+        });
+        console.log(`Image ${i + 1} generated successfully`);
+
+        // Small delay between requests
         if (i < totalImages - 1) {
-          await new Promise(resolve => setTimeout(resolve, 2000));
+          await new Promise(resolve => setTimeout(resolve, 1000));
         }
       } catch (imgError) {
         console.error(`Error generating image ${i + 1}:`, imgError);
