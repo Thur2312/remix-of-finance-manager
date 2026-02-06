@@ -212,7 +212,7 @@ serve(async (req: Request) => {
       );
     }
     
-    const { sourceImages, nomeProduto, categoria, coresDisponiveis, materiais, marketplaceTarget } = validationResult.data;
+    const { sourceImages, nomeProduto, categoria, coresDisponiveis, materiais, marketplaceTarget } = validationResult.data!;
 
     // ========== GOOGLE GEMINI API ==========
     const GOOGLE_GEMINI_API_KEY = Deno.env.get('GOOGLE_GEMINI_API_KEY');
