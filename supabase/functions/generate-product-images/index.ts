@@ -105,7 +105,6 @@ serve(async (req: Request) => {
     // ========== AUTH ==========
     const authHeader = req.headers.get('Authorization');
     if (!authHeader?.startsWith('Bearer ')) {
-      console.error('Missing or invalid Authorization header');
       return new Response(
         JSON.stringify({ error: 'Não autorizado. Faça login para continuar.' }),
         { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
@@ -122,7 +121,6 @@ serve(async (req: Request) => {
     const { data: claimsData, error: claimsError } = await supabase.auth.getClaims(token);
 
     if (claimsError || !claimsData?.claims) {
-      console.error('JWT validation failed:', claimsError);
       return new Response(
         JSON.stringify({ error: 'Token inválido ou expirado.' }),
         { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
@@ -145,12 +143,12 @@ serve(async (req: Request) => {
 
     const { sourceImages, nomeProduto, categoria, coresDisponiveis, materiais, marketplaceTarget } = validation.data!;
 
-    // ========== OPENAI API KEY ==========
-    const OPENAI_API_KEY = Deno.env.get('OPENAI_API_KEY');
-    if (!OPENAI_API_KEY) {
-      console.error('OPENAI_API_KEY not configured');
+    // ========== LOVABLE AI (Nano Banana) ==========
+    const LOVABLE_API_KEY = Deno.env.get('LOVABLE_API_KEY');
+    if (!LOVABLE_API_KEY) {
+      console.error('LOVABLE_API_KEY not configured');
       return new Response(
-        JSON.stringify({ error: 'Chave da API OpenAI não configurada.' }),
+        JSON.stringify({ error: 'Chave da API Lovable AI não configurada.' }),
         { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
@@ -161,12 +159,9 @@ serve(async (req: Request) => {
       'Em uso', 'Lifestyle', 'Studio', 'Minimalista', 'Cenário dinâmico'
     ];
 
-    console.log(`Generating ${totalImages} images via OpenAI DALL-E 3 for: ${nomeProduto} | Marketplace: ${marketplaceTarget} | Refs: ${sourceImages.length}`);
+    console.log(`Generating ${totalImages} images via Lovable AI (Nano Banana) for: ${nomeProduto} | Marketplace: ${marketplaceTarget} | Refs: ${sourceImages.length}`);
 
     const generatedImages: Array<{ url: string; prompt: string; composition: string }> = [];
-
-    // Size based on marketplace
-    const imageSize = marketplaceTarget === 'TikTok_Shop' ? '1024x1024' : '1024x1024';
 
     for (let i = 0; i < totalImages; i++) {
       console.log(`Generating image ${i + 1}/${totalImages}...`);
@@ -174,45 +169,43 @@ serve(async (req: Request) => {
       const prompt = buildImagePrompt(i, totalImages, nomeProduto, categoria, coresDisponiveis, materiais, marketplaceTarget);
 
       try {
-        const response = await fetch('https://api.openai.com/v1/images/generations', {
+        const response = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
           method: 'POST',
           headers: {
-            'Authorization': `Bearer ${OPENAI_API_KEY}`,
+            'Authorization': `Bearer ${LOVABLE_API_KEY}`,
             'Content-Type': 'application/json',
           },
           body: JSON.stringify({
-            model: 'dall-e-3',
-            prompt,
-            n: 1,
-            size: imageSize,
-            quality: 'standard',
-            response_format: 'url',
+            model: 'google/gemini-2.5-flash-image',
+            messages: [
+              { role: 'user', content: prompt }
+            ],
+            modalities: ['image', 'text'],
           }),
         });
 
         if (response.status === 429) {
-          console.error(`Rate limited at image ${i + 1}. Waiting 15s...`);
-          await new Promise(resolve => setTimeout(resolve, 15000));
+          console.error(`Rate limited at image ${i + 1}. Waiting 10s...`);
+          await new Promise(resolve => setTimeout(resolve, 10000));
           // Retry once
-          const retryResp = await fetch('https://api.openai.com/v1/images/generations', {
+          const retryResp = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
             method: 'POST',
             headers: {
-              'Authorization': `Bearer ${OPENAI_API_KEY}`,
+              'Authorization': `Bearer ${LOVABLE_API_KEY}`,
               'Content-Type': 'application/json',
             },
             body: JSON.stringify({
-              model: 'dall-e-3',
-              prompt,
-              n: 1,
-              size: imageSize,
-              quality: 'standard',
-              response_format: 'url',
+              model: 'google/gemini-2.5-flash-image',
+              messages: [
+                { role: 'user', content: prompt }
+              ],
+              modalities: ['image', 'text'],
             }),
           });
 
           if (retryResp.ok) {
             const retryData = await retryResp.json();
-            const imageUrl = retryData.data?.[0]?.url;
+            const imageUrl = retryData.choices?.[0]?.message?.images?.[0]?.image_url?.url;
             if (imageUrl) {
               generatedImages.push({
                 url: imageUrl,
@@ -227,20 +220,11 @@ serve(async (req: Request) => {
           continue;
         }
 
-        if (response.status === 401) {
-          console.error('OpenAI API key is invalid');
+        if (response.status === 402) {
+          console.error('Lovable AI credits exhausted');
           if (generatedImages.length > 0) break;
           return new Response(
-            JSON.stringify({ error: 'Chave da API OpenAI inválida. Verifique sua configuração.' }),
-            { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-          );
-        }
-
-        if (response.status === 402 || response.status === 403) {
-          console.error('OpenAI billing issue:', response.status);
-          if (generatedImages.length > 0) break;
-          return new Response(
-            JSON.stringify({ error: 'Problema de cobrança na sua conta OpenAI. Verifique seus créditos.' }),
+            JSON.stringify({ error: 'Créditos Lovable AI esgotados. Adicione créditos no seu workspace.' }),
             { status: 402, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
           );
         }
@@ -252,7 +236,7 @@ serve(async (req: Request) => {
         }
 
         const data = await response.json();
-        const imageUrl = data.data?.[0]?.url;
+        const imageUrl = data.choices?.[0]?.message?.images?.[0]?.image_url?.url;
 
         if (imageUrl) {
           generatedImages.push({
@@ -262,12 +246,12 @@ serve(async (req: Request) => {
           });
           console.log(`Image ${i + 1} generated successfully`);
         } else {
-          console.error(`No image returned for image ${i + 1}`);
+          console.error(`No image returned for image ${i + 1}`, JSON.stringify(data).slice(0, 300));
         }
 
         // Delay between requests to avoid rate limiting
         if (i < totalImages - 1) {
-          await new Promise(resolve => setTimeout(resolve, 1500));
+          await new Promise(resolve => setTimeout(resolve, 2000));
         }
       } catch (imgError) {
         console.error(`Error generating image ${i + 1}:`, imgError);
@@ -281,7 +265,7 @@ serve(async (req: Request) => {
       );
     }
 
-    console.log(`Successfully generated ${generatedImages.length} images via OpenAI`);
+    console.log(`Successfully generated ${generatedImages.length} images via Lovable AI`);
 
     return new Response(
       JSON.stringify({
