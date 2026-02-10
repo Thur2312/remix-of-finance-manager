@@ -1,5 +1,5 @@
 import { useState, useRef } from 'react';
-import { Sparkles, Copy, Check, Loader2, ImagePlus, X, Tag } from 'lucide-react';
+import { Sparkles, Copy, Check, Loader2, ImagePlus, X, Tag, Image } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
