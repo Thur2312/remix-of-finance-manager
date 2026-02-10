@@ -376,6 +376,78 @@ const AssistenteAnuncio = () => {
     }
   };
 
+  // ========== IMAGE TAB HANDLERS ==========
+  const handleImgTabImageSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (!files) return;
+    const newFiles: File[] = [];
+    const newPreviews: string[] = [];
+    Array.from(files).forEach(file => {
+      if (imgTabImages.length + newFiles.length >= MAX_IMAGES) return;
+      if (file.size > MAX_FILE_SIZE || !file.type.startsWith('image/')) return;
+      newFiles.push(file);
+      newPreviews.push(URL.createObjectURL(file));
+    });
+    setImgTabImages(prev => [...prev, ...newFiles]);
+    setImgTabPreviews(prev => [...prev, ...newPreviews]);
+    if (imgTabFileInputRef.current) imgTabFileInputRef.current.value = '';
+  };
+
+  const removeImgTabImage = (index: number) => {
+    URL.revokeObjectURL(imgTabPreviews[index]);
+    setImgTabImages(prev => prev.filter((_, i) => i !== index));
+    setImgTabPreviews(prev => prev.filter((_, i) => i !== index));
+  };
+
+  const handleGenerateImagesOnly = async () => {
+    if (!imgTabNomeProduto.trim()) {
+      toast({ title: 'Campo obrigatório', description: 'Preencha o nome do produto.', variant: 'destructive' });
+      return;
+    }
+    if (imgTabImages.length === 0) {
+      toast({ title: 'Imagem obrigatória', description: 'Adicione pelo menos uma foto de referência.', variant: 'destructive' });
+      return;
+    }
+
+    setImgTabGenerating(true);
+    setImgTabProgress(10);
+    setImgTabResults([]);
+
+    try {
+      const imageBase64Array = await Promise.all(imgTabImages.map(img => convertToBase64(img)));
+      setImgTabProgress(20);
+
+      const { data, error } = await supabase.functions.invoke('generate-product-images', {
+        body: {
+          sourceImages: imageBase64Array,
+          nomeProduto: imgTabNomeProduto,
+          categoria: imgTabCategoria || null,
+          coresDisponiveis: imgTabCores || null,
+          materiais: imgTabMateriais || null,
+          marketplaceTarget: imgTabMarketplace,
+        },
+      });
+
+      setImgTabProgress(80);
+
+      if (error) throw new Error(error.message || 'Erro ao gerar imagens');
+      if (data?.error) throw new Error(data.error);
+
+      if (data?.images && data.images.length > 0) {
+        setImgTabResults(data.images);
+        setImgTabProgress(100);
+        toast({ title: 'Imagens geradas!', description: `${data.images.length} imagens criadas com sucesso.` });
+      } else {
+        throw new Error('Nenhuma imagem foi gerada');
+      }
+    } catch (err) {
+      toast({ title: 'Erro ao gerar imagens', description: err instanceof Error ? err.message : 'Erro desconhecido', variant: 'destructive' });
+      setImgTabProgress(0);
+    } finally {
+      setImgTabGenerating(false);
+    }
+  };
+
   return (
     <AppLayout>
       <div className="space-y-6">
@@ -386,14 +458,24 @@ const AssistenteAnuncio = () => {
             Assistente de Anúncio
           </h1>
           <p className="text-muted-foreground">
-            Crie títulos e descrições otimizados para seus produtos na Shopee
+            Crie títulos, descrições e imagens otimizados para seus produtos
           </p>
         </div>
 
-        {/* Formulário */}
-        <Card>
-          <CardHeader>
-            <CardTitle>Informações do Produto</CardTitle>
+        <Tabs value={activeTab} onValueChange={setActiveTab}>
+          <TabsList>
+            <TabsTrigger value="anuncio" className="flex items-center gap-2">
+              <Sparkles className="h-4 w-4" />
+              Criar Anúncio
+            </TabsTrigger>
+            <TabsTrigger value="imagens" className="flex items-center gap-2">
+              <Image className="h-4 w-4" />
+              Gerador de Imagens
+            </TabsTrigger>
+          </TabsList>
+
+          {/* ========== ABA CRIAR ANÚNCIO ========== */}
+          <TabsContent value="anuncio" className="space-y-6">
             <CardDescription>
               Preencha os dados do produto para gerar títulos e descrições personalizados
             </CardDescription>
