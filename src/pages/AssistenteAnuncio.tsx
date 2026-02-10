@@ -1,11 +1,12 @@
 import { useState, useRef } from 'react';
-import { Sparkles, Copy, Check, Loader2, ImagePlus, X, Tag } from 'lucide-react';
+import { Sparkles, Copy, Check, Loader2, ImagePlus, X, Tag, Image } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/hooks/use-toast';
 import { AppLayout } from '@/components/layout/AppLayout';
@@ -89,6 +90,20 @@ const AssistenteAnuncio = () => {
   });
 
   const [generatedAd, setGeneratedAd] = useState<GeneratedAd | null>(null);
+  const [activeTab, setActiveTab] = useState('anuncio');
+
+  // Image-only generation states
+  const [imgTabImages, setImgTabImages] = useState<File[]>([]);
+  const [imgTabPreviews, setImgTabPreviews] = useState<string[]>([]);
+  const [imgTabGenerating, setImgTabGenerating] = useState(false);
+  const [imgTabProgress, setImgTabProgress] = useState(0);
+  const [imgTabResults, setImgTabResults] = useState<GeneratedImage[]>([]);
+  const [imgTabNomeProduto, setImgTabNomeProduto] = useState('');
+  const [imgTabCategoria, setImgTabCategoria] = useState('');
+  const [imgTabMarketplace, setImgTabMarketplace] = useState<'Shopee' | 'TikTok_Shop'>('Shopee');
+  const [imgTabCores, setImgTabCores] = useState('');
+  const [imgTabMateriais, setImgTabMateriais] = useState('');
+  const imgTabFileInputRef = useRef<HTMLInputElement>(null);
 
   const handleInputChange = (field: keyof FormData, value: string) => {
     setFormData(prev => ({ ...prev, [field]: value }));
@@ -361,6 +376,78 @@ const AssistenteAnuncio = () => {
     }
   };
 
+  // ========== IMAGE TAB HANDLERS ==========
+  const handleImgTabImageSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (!files) return;
+    const newFiles: File[] = [];
+    const newPreviews: string[] = [];
+    Array.from(files).forEach(file => {
+      if (imgTabImages.length + newFiles.length >= MAX_IMAGES) return;
+      if (file.size > MAX_FILE_SIZE || !file.type.startsWith('image/')) return;
+      newFiles.push(file);
+      newPreviews.push(URL.createObjectURL(file));
+    });
+    setImgTabImages(prev => [...prev, ...newFiles]);
+    setImgTabPreviews(prev => [...prev, ...newPreviews]);
+    if (imgTabFileInputRef.current) imgTabFileInputRef.current.value = '';
+  };
+
+  const removeImgTabImage = (index: number) => {
+    URL.revokeObjectURL(imgTabPreviews[index]);
+    setImgTabImages(prev => prev.filter((_, i) => i !== index));
+    setImgTabPreviews(prev => prev.filter((_, i) => i !== index));
+  };
+
+  const handleGenerateImagesOnly = async () => {
+    if (!imgTabNomeProduto.trim()) {
+      toast({ title: 'Campo obrigatório', description: 'Preencha o nome do produto.', variant: 'destructive' });
+      return;
+    }
+    if (imgTabImages.length === 0) {
+      toast({ title: 'Imagem obrigatória', description: 'Adicione pelo menos uma foto de referência.', variant: 'destructive' });
+      return;
+    }
+
+    setImgTabGenerating(true);
+    setImgTabProgress(10);
+    setImgTabResults([]);
+
+    try {
+      const imageBase64Array = await Promise.all(imgTabImages.map(img => convertToBase64(img)));
+      setImgTabProgress(20);
+
+      const { data, error } = await supabase.functions.invoke('generate-product-images', {
+        body: {
+          sourceImages: imageBase64Array,
+          nomeProduto: imgTabNomeProduto,
+          categoria: imgTabCategoria || null,
+          coresDisponiveis: imgTabCores || null,
+          materiais: imgTabMateriais || null,
+          marketplaceTarget: imgTabMarketplace,
+        },
+      });
+
+      setImgTabProgress(80);
+
+      if (error) throw new Error(error.message || 'Erro ao gerar imagens');
+      if (data?.error) throw new Error(data.error);
+
+      if (data?.images && data.images.length > 0) {
+        setImgTabResults(data.images);
+        setImgTabProgress(100);
+        toast({ title: 'Imagens geradas!', description: `${data.images.length} imagens criadas com sucesso.` });
+      } else {
+        throw new Error('Nenhuma imagem foi gerada');
+      }
+    } catch (err) {
+      toast({ title: 'Erro ao gerar imagens', description: err instanceof Error ? err.message : 'Erro desconhecido', variant: 'destructive' });
+      setImgTabProgress(0);
+    } finally {
+      setImgTabGenerating(false);
+    }
+  };
+
   return (
     <AppLayout>
       <div className="space-y-6">
@@ -371,11 +458,24 @@ const AssistenteAnuncio = () => {
             Assistente de Anúncio
           </h1>
           <p className="text-muted-foreground">
-            Crie títulos e descrições otimizados para seus produtos na Shopee
+            Crie títulos, descrições e imagens otimizados para seus produtos
           </p>
         </div>
 
-        {/* Formulário */}
+        <Tabs value={activeTab} onValueChange={setActiveTab}>
+          <TabsList>
+            <TabsTrigger value="anuncio" className="flex items-center gap-2">
+              <Sparkles className="h-4 w-4" />
+              Criar Anúncio
+            </TabsTrigger>
+            <TabsTrigger value="imagens" className="flex items-center gap-2">
+              <Image className="h-4 w-4" />
+              Gerador de Imagens
+            </TabsTrigger>
+          </TabsList>
+
+          {/* ========== ABA CRIAR ANÚNCIO ========== */}
+          <TabsContent value="anuncio" className="space-y-6">
         <Card>
           <CardHeader>
             <CardTitle>Informações do Produto</CardTitle>
@@ -705,6 +805,141 @@ const AssistenteAnuncio = () => {
             </Card>
           </div>
         )}
+          </TabsContent>
+
+          {/* ========== ABA GERADOR DE IMAGENS ========== */}
+          <TabsContent value="imagens" className="space-y-6">
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Image className="h-5 w-5" />
+                  Gerador de Imagens
+                </CardTitle>
+                <CardDescription>
+                  Gere imagens profissionais do seu produto usando IA
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label>Nome do Produto <span className="text-destructive">*</span></Label>
+                    <Input
+                      placeholder="Ex: Vestido Longo Estampado"
+                      value={imgTabNomeProduto}
+                      onChange={(e) => setImgTabNomeProduto(e.target.value)}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Categoria</Label>
+                    <Select value={imgTabCategoria} onValueChange={setImgTabCategoria}>
+                      <SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger>
+                      <SelectContent>
+                        {categorias.map((cat) => (
+                          <SelectItem key={cat} value={cat}>{cat}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Marketplace</Label>
+                    <Select value={imgTabMarketplace} onValueChange={(v) => setImgTabMarketplace(v as 'Shopee' | 'TikTok_Shop')}>
+                      <SelectTrigger><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="Shopee">Shopee</SelectItem>
+                        <SelectItem value="TikTok_Shop">TikTok Shop</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Cores Disponíveis</Label>
+                    <Input
+                      placeholder="Ex: Preto, Branco, Vermelho"
+                      value={imgTabCores}
+                      onChange={(e) => setImgTabCores(e.target.value)}
+                    />
+                  </div>
+                </div>
+                <div className="space-y-2">
+                  <Label>Materiais/Tecidos</Label>
+                  <Textarea
+                    placeholder="Ex: Algodão 100%, Poliéster..."
+                    value={imgTabMateriais}
+                    onChange={(e) => setImgTabMateriais(e.target.value)}
+                    rows={2}
+                  />
+                </div>
+
+                {/* Upload de Fotos de Referência */}
+                <div className="space-y-2">
+                  <Label className="flex items-center gap-2">
+                    <ImagePlus className="h-4 w-4" />
+                    Fotos de Referência <span className="text-destructive">*</span>
+                    <span className="text-muted-foreground font-normal">(até {MAX_IMAGES} fotos)</span>
+                  </Label>
+                  <input
+                    ref={imgTabFileInputRef}
+                    type="file"
+                    accept="image/jpeg,image/png,image/webp"
+                    multiple
+                    onChange={handleImgTabImageSelect}
+                    className="hidden"
+                  />
+                  <div
+                    onClick={() => imgTabImages.length < MAX_IMAGES && imgTabFileInputRef.current?.click()}
+                    className={`border-2 border-dashed rounded-lg p-6 text-center transition-colors ${
+                      imgTabImages.length < MAX_IMAGES
+                        ? 'cursor-pointer hover:border-primary hover:bg-muted/50'
+                        : 'cursor-not-allowed opacity-50'
+                    }`}
+                  >
+                    <ImagePlus className="h-8 w-8 mx-auto mb-2 text-muted-foreground" />
+                    <p className="text-sm text-muted-foreground">
+                      {imgTabImages.length < MAX_IMAGES ? 'Clique para selecionar imagens' : 'Limite atingido'}
+                    </p>
+                  </div>
+                  {imgTabPreviews.length > 0 && (
+                    <div className="flex flex-wrap gap-3 mt-3">
+                      {imgTabPreviews.map((preview, index) => (
+                        <div key={index} className="relative group">
+                          <img src={preview} alt={`Ref ${index + 1}`} className="w-20 h-20 object-cover rounded-lg border" />
+                          <button
+                            type="button"
+                            onClick={() => removeImgTabImage(index)}
+                            className="absolute -top-2 -right-2 bg-destructive text-destructive-foreground rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity"
+                          >
+                            <X className="h-3 w-3" />
+                          </button>
+                        </div>
+                      ))}
+                      <span className="self-center text-sm text-muted-foreground">{imgTabImages.length} de {MAX_IMAGES}</span>
+                    </div>
+                  )}
+                </div>
+
+                <Button
+                  onClick={handleGenerateImagesOnly}
+                  disabled={imgTabGenerating}
+                  className="w-full md:w-auto"
+                  size="lg"
+                >
+                  {imgTabGenerating ? (
+                    <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Gerando imagens...</>
+                  ) : (
+                    <><Image className="mr-2 h-4 w-4" />Gerar 9 Imagens</>
+                  )}
+                </Button>
+              </CardContent>
+            </Card>
+
+            <ImageGenerationSection
+              formData={{ nomeProduto: imgTabNomeProduto, categoria: imgTabCategoria, coresDisponiveis: imgTabCores, materiais: imgTabMateriais }}
+              imagePreviews={imgTabPreviews}
+              isGenerating={imgTabGenerating}
+              progress={imgTabProgress}
+              generatedImages={imgTabResults}
+            />
+          </TabsContent>
+        </Tabs>
       </div>
     </AppLayout>
   );
