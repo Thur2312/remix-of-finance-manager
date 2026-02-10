@@ -476,6 +476,9 @@ const AssistenteAnuncio = () => {
 
           {/* ========== ABA CRIAR ANÚNCIO ========== */}
           <TabsContent value="anuncio" className="space-y-6">
+        <Card>
+          <CardHeader>
+            <CardTitle>Informações do Produto</CardTitle>
             <CardDescription>
               Preencha os dados do produto para gerar títulos e descrições personalizados
             </CardDescription>
