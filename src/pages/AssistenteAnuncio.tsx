@@ -802,6 +802,141 @@ const AssistenteAnuncio = () => {
             </Card>
           </div>
         )}
+          </TabsContent>
+
+          {/* ========== ABA GERADOR DE IMAGENS ========== */}
+          <TabsContent value="imagens" className="space-y-6">
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Image className="h-5 w-5" />
+                  Gerador de Imagens
+                </CardTitle>
+                <CardDescription>
+                  Gere imagens profissionais do seu produto usando IA
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label>Nome do Produto <span className="text-destructive">*</span></Label>
+                    <Input
+                      placeholder="Ex: Vestido Longo Estampado"
+                      value={imgTabNomeProduto}
+                      onChange={(e) => setImgTabNomeProduto(e.target.value)}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Categoria</Label>
+                    <Select value={imgTabCategoria} onValueChange={setImgTabCategoria}>
+                      <SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger>
+                      <SelectContent>
+                        {categorias.map((cat) => (
+                          <SelectItem key={cat} value={cat}>{cat}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Marketplace</Label>
+                    <Select value={imgTabMarketplace} onValueChange={(v) => setImgTabMarketplace(v as 'Shopee' | 'TikTok_Shop')}>
+                      <SelectTrigger><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="Shopee">Shopee</SelectItem>
+                        <SelectItem value="TikTok_Shop">TikTok Shop</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Cores Disponíveis</Label>
+                    <Input
+                      placeholder="Ex: Preto, Branco, Vermelho"
+                      value={imgTabCores}
+                      onChange={(e) => setImgTabCores(e.target.value)}
+                    />
+                  </div>
+                </div>
+                <div className="space-y-2">
+                  <Label>Materiais/Tecidos</Label>
+                  <Textarea
+                    placeholder="Ex: Algodão 100%, Poliéster..."
+                    value={imgTabMateriais}
+                    onChange={(e) => setImgTabMateriais(e.target.value)}
+                    rows={2}
+                  />
+                </div>
+
+                {/* Upload de Fotos de Referência */}
+                <div className="space-y-2">
+                  <Label className="flex items-center gap-2">
+                    <ImagePlus className="h-4 w-4" />
+                    Fotos de Referência <span className="text-destructive">*</span>
+                    <span className="text-muted-foreground font-normal">(até {MAX_IMAGES} fotos)</span>
+                  </Label>
+                  <input
+                    ref={imgTabFileInputRef}
+                    type="file"
+                    accept="image/jpeg,image/png,image/webp"
+                    multiple
+                    onChange={handleImgTabImageSelect}
+                    className="hidden"
+                  />
+                  <div
+                    onClick={() => imgTabImages.length < MAX_IMAGES && imgTabFileInputRef.current?.click()}
+                    className={`border-2 border-dashed rounded-lg p-6 text-center transition-colors ${
+                      imgTabImages.length < MAX_IMAGES
+                        ? 'cursor-pointer hover:border-primary hover:bg-muted/50'
+                        : 'cursor-not-allowed opacity-50'
+                    }`}
+                  >
+                    <ImagePlus className="h-8 w-8 mx-auto mb-2 text-muted-foreground" />
+                    <p className="text-sm text-muted-foreground">
+                      {imgTabImages.length < MAX_IMAGES ? 'Clique para selecionar imagens' : 'Limite atingido'}
+                    </p>
+                  </div>
+                  {imgTabPreviews.length > 0 && (
+                    <div className="flex flex-wrap gap-3 mt-3">
+                      {imgTabPreviews.map((preview, index) => (
+                        <div key={index} className="relative group">
+                          <img src={preview} alt={`Ref ${index + 1}`} className="w-20 h-20 object-cover rounded-lg border" />
+                          <button
+                            type="button"
+                            onClick={() => removeImgTabImage(index)}
+                            className="absolute -top-2 -right-2 bg-destructive text-destructive-foreground rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity"
+                          >
+                            <X className="h-3 w-3" />
+                          </button>
+                        </div>
+                      ))}
+                      <span className="self-center text-sm text-muted-foreground">{imgTabImages.length} de {MAX_IMAGES}</span>
+                    </div>
+                  )}
+                </div>
+
+                <Button
+                  onClick={handleGenerateImagesOnly}
+                  disabled={imgTabGenerating}
+                  className="w-full md:w-auto"
+                  size="lg"
+                >
+                  {imgTabGenerating ? (
+                    <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Gerando imagens...</>
+                  ) : (
+                    <><Image className="mr-2 h-4 w-4" />Gerar 9 Imagens</>
+                  )}
+                </Button>
+              </CardContent>
+            </Card>
+
+            <ImageGenerationSection
+              formData={{ nomeProduto: imgTabNomeProduto, categoria: imgTabCategoria, coresDisponiveis: imgTabCores, materiais: imgTabMateriais }}
+              imagePreviews={imgTabPreviews}
+              isGenerating={imgTabGenerating}
+              progress={imgTabProgress}
+              generatedImages={imgTabResults}
+            />
+          </TabsContent>
+        </Tabs>
       </div>
     </AppLayout>
   );
