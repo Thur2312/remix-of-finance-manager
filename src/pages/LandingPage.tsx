@@ -224,9 +224,9 @@ export default function LandingPage() {
             <a href="#funcionalidades" className="text-muted-foreground hover:text-primary transition-colors font-medium">
               Funcionalidades
             </a>
-            <a href="#planos" className="text-muted-foreground hover:text-primary transition-colors font-medium">
+            <Link to="/planos" className="text-muted-foreground hover:text-primary transition-colors font-medium">
               Planos
-            </a>
+            </Link>
             <a href="#faq" className="text-muted-foreground hover:text-primary transition-colors font-medium">
               FAQ
             </a>
@@ -260,9 +260,9 @@ export default function LandingPage() {
               <a href="#funcionalidades" className="text-foreground hover:text-primary transition-colors font-medium py-2" onClick={() => setMobileMenuOpen(false)}>
                 Funcionalidades
               </a>
-              <a href="#planos" className="text-foreground hover:text-primary transition-colors font-medium py-2" onClick={() => setMobileMenuOpen(false)}>
+              <Link to="/planos" className="text-foreground hover:text-primary transition-colors font-medium py-2" onClick={() => setMobileMenuOpen(false)}>
                 Planos
-              </a>
+              </Link>
               <a href="#faq" className="text-foreground hover:text-primary transition-colors font-medium py-2" onClick={() => setMobileMenuOpen(false)}>
                 FAQ
               </a>
@@ -622,9 +622,9 @@ export default function LandingPage() {
                   ))}
                 </ul>
 
-                <Link to="/auth" className="block">
+                <Link to="/planos" className="block">
                   <Button size="lg" className="w-full bg-gradient-to-r from-primary to-blue-600 hover:from-primary/90 hover:to-blue-600/90 text-primary-foreground text-lg py-7 font-bold shadow-xl shadow-primary/25">
-                    Começar 7 dias grátis
+                    Ver todos os planos
                     <ArrowRight className="ml-2 h-5 w-5" />
                   </Button>
                 </Link>
@@ -744,9 +744,9 @@ export default function LandingPage() {
                 <a href="#funcionalidades" className="text-muted-foreground hover:text-primary transition-colors flex items-center gap-2 group">
                   <span>Funcionalidades</span>
                 </a>
-                <a href="#planos" className="text-muted-foreground hover:text-primary transition-colors flex items-center gap-2 group">
+                <Link to="/planos" className="text-muted-foreground hover:text-primary transition-colors flex items-center gap-2 group">
                   <span>Planos e Preços</span>
-                </a>
+                </Link>
                 <a href="#faq" className="text-muted-foreground hover:text-primary transition-colors flex items-center gap-2 group">
                   <span>Perguntas Frequentes</span>
                 </a>

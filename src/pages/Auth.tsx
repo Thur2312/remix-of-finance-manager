@@ -88,11 +88,15 @@ export default function Auth() {
   } = useAuth();
   const navigate = useNavigate();
 
+  // Get redirect param from URL
+  const searchParams = new URLSearchParams(window.location.search);
+  const redirectTo = searchParams.get('redirect') || '/dashboard';
+
   useEffect(() => {
     if (user) {
-      navigate('/dashboard');
+      navigate(redirectTo);
     }
-  }, [user, navigate]);
+  }, [user, navigate, redirectTo]);
 
   // Real-time validation
   useEffect(() => {
@@ -163,7 +167,7 @@ export default function Auth() {
       }
     } else {
       toast.success('Login realizado com sucesso!');
-      navigate('/dashboard');
+      navigate(redirectTo);
     }
     setIsLoading(false);
   };
@@ -201,7 +205,7 @@ export default function Auth() {
     } else {
       // Save phone to profile after signup
       toast.success('Conta criada com sucesso! Você já pode fazer login.');
-      navigate('/dashboard');
+      navigate(redirectTo);
     }
     setIsLoading(false);
   };
