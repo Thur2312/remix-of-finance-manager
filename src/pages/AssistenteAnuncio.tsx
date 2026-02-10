@@ -90,6 +90,20 @@ const AssistenteAnuncio = () => {
   });
 
   const [generatedAd, setGeneratedAd] = useState<GeneratedAd | null>(null);
+  const [activeTab, setActiveTab] = useState('anuncio');
+
+  // Image-only generation states
+  const [imgTabImages, setImgTabImages] = useState<File[]>([]);
+  const [imgTabPreviews, setImgTabPreviews] = useState<string[]>([]);
+  const [imgTabGenerating, setImgTabGenerating] = useState(false);
+  const [imgTabProgress, setImgTabProgress] = useState(0);
+  const [imgTabResults, setImgTabResults] = useState<GeneratedImage[]>([]);
+  const [imgTabNomeProduto, setImgTabNomeProduto] = useState('');
+  const [imgTabCategoria, setImgTabCategoria] = useState('');
+  const [imgTabMarketplace, setImgTabMarketplace] = useState<'Shopee' | 'TikTok_Shop'>('Shopee');
+  const [imgTabCores, setImgTabCores] = useState('');
+  const [imgTabMateriais, setImgTabMateriais] = useState('');
+  const imgTabFileInputRef = useRef<HTMLInputElement>(null);
 
   const handleInputChange = (field: keyof FormData, value: string) => {
     setFormData(prev => ({ ...prev, [field]: value }));
