@@ -143,12 +143,12 @@ serve(async (req: Request) => {
 
     const { sourceImages, nomeProduto, categoria, coresDisponiveis, materiais, marketplaceTarget } = validation.data!;
 
-    // ========== LOVABLE AI (Nano Banana) ==========
-    const LOVABLE_API_KEY = Deno.env.get('LOVABLE_API_KEY');
-    if (!LOVABLE_API_KEY) {
-      console.error('LOVABLE_API_KEY not configured');
+    // ========== GEMINI API KEY ==========
+    const GEMINI_API_KEY = Deno.env.get('GEMINI_API_KEY');
+    if (!GEMINI_API_KEY) {
+      console.error('GEMINI_API_KEY not configured');
       return new Response(
-        JSON.stringify({ error: 'Chave da API Lovable AI não configurada.' }),
+        JSON.stringify({ error: 'Chave da API Gemini não configurada.' }),
         { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
@@ -159,7 +159,7 @@ serve(async (req: Request) => {
       'Em uso', 'Lifestyle', 'Studio', 'Minimalista', 'Cenário dinâmico'
     ];
 
-    console.log(`Generating ${totalImages} images via Lovable AI (Nano Banana) for: ${nomeProduto} | Marketplace: ${marketplaceTarget} | Refs: ${sourceImages.length}`);
+    console.log(`Generating ${totalImages} images via Gemini API for: ${nomeProduto} | Marketplace: ${marketplaceTarget} | Refs: ${sourceImages.length}`);
 
     const generatedImages: Array<{ url: string; prompt: string; composition: string }> = [];
 
@@ -169,46 +169,46 @@ serve(async (req: Request) => {
       const prompt = buildImagePrompt(i, totalImages, nomeProduto, categoria, coresDisponiveis, materiais, marketplaceTarget);
 
       try {
-        const response = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
-          method: 'POST',
-          headers: {
-            'Authorization': `Bearer ${LOVABLE_API_KEY}`,
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            model: 'google/gemini-2.5-flash-image',
-            messages: [
-              { role: 'user', content: prompt }
-            ],
-            modalities: ['image', 'text'],
-          }),
-        });
+        const response = await fetch(
+          `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-exp:generateContent?key=${GEMINI_API_KEY}`,
+          {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              contents: [{ parts: [{ text: prompt }] }],
+              generationConfig: {
+                responseModalities: ['IMAGE', 'TEXT'],
+                imageMimeType: 'image/png',
+              },
+            }),
+          }
+        );
 
         if (response.status === 429) {
-          console.error(`Rate limited at image ${i + 1}. Waiting 10s...`);
-          await new Promise(resolve => setTimeout(resolve, 10000));
-          // Retry once
-          const retryResp = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
-            method: 'POST',
-            headers: {
-              'Authorization': `Bearer ${LOVABLE_API_KEY}`,
-              'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-              model: 'google/gemini-2.5-flash-image',
-              messages: [
-                { role: 'user', content: prompt }
-              ],
-              modalities: ['image', 'text'],
-            }),
-          });
+          console.error(`Rate limited at image ${i + 1}. Waiting 15s...`);
+          await new Promise(resolve => setTimeout(resolve, 15000));
+          const retryResp = await fetch(
+            `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-exp:generateContent?key=${GEMINI_API_KEY}`,
+            {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                contents: [{ parts: [{ text: prompt }] }],
+                generationConfig: {
+                  responseModalities: ['IMAGE', 'TEXT'],
+                  imageMimeType: 'image/png',
+                },
+              }),
+            }
+          );
 
           if (retryResp.ok) {
             const retryData = await retryResp.json();
-            const imageUrl = retryData.choices?.[0]?.message?.images?.[0]?.image_url?.url;
-            if (imageUrl) {
+            const parts = retryData.candidates?.[0]?.content?.parts || [];
+            const imgPart = parts.find((p: any) => p.inlineData?.mimeType?.startsWith('image/'));
+            if (imgPart) {
               generatedImages.push({
-                url: imageUrl,
+                url: `data:${imgPart.inlineData.mimeType};base64,${imgPart.inlineData.data}`,
                 prompt: prompt.slice(0, 200),
                 composition: compositionLabels[i] || `Variação ${i + 1}`,
               });
@@ -220,15 +220,6 @@ serve(async (req: Request) => {
           continue;
         }
 
-        if (response.status === 402) {
-          console.error('Lovable AI credits exhausted');
-          if (generatedImages.length > 0) break;
-          return new Response(
-            JSON.stringify({ error: 'Créditos Lovable AI esgotados. Adicione créditos no seu workspace.' }),
-            { status: 402, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-          );
-        }
-
         if (!response.ok) {
           const errText = await response.text();
           console.error(`Error image ${i + 1}: ${response.status} - ${errText}`);
@@ -236,11 +227,12 @@ serve(async (req: Request) => {
         }
 
         const data = await response.json();
-        const imageUrl = data.choices?.[0]?.message?.images?.[0]?.image_url?.url;
+        const parts = data.candidates?.[0]?.content?.parts || [];
+        const imgPart = parts.find((p: any) => p.inlineData?.mimeType?.startsWith('image/'));
 
-        if (imageUrl) {
+        if (imgPart) {
           generatedImages.push({
-            url: imageUrl,
+            url: `data:${imgPart.inlineData.mimeType};base64,${imgPart.inlineData.data}`,
             prompt: prompt.slice(0, 200),
             composition: compositionLabels[i] || `Variação ${i + 1}`,
           });
@@ -265,7 +257,7 @@ serve(async (req: Request) => {
       );
     }
 
-    console.log(`Successfully generated ${generatedImages.length} images via Lovable AI`);
+    console.log(`Successfully generated ${generatedImages.length} images via Gemini`);
 
     return new Response(
       JSON.stringify({
