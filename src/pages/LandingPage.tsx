@@ -321,10 +321,7 @@ export default function LandingPage() {
                     <ArrowRight className="ml-2 h-5 w-5" />
                   </Button>
                 </Link>
-                <Button size="lg" variant="outline" className="w-full sm:w-auto text-lg px-8 py-7 font-semibold border-2 hover:bg-muted/50">
-                  <Play className="mr-2 h-5 w-5" />
-                  Ver demonstração
-                </Button>
+               
               </div>
 
               <div className="flex items-center gap-6 text-sm text-muted-foreground">
@@ -598,7 +595,7 @@ export default function LandingPage() {
                 <CardTitle className="text-2xl mb-6 font-bold">Plano Completo</CardTitle>
                 <div className="space-y-2">
                   <p className="text-6xl font-bold bg-gradient-to-r from-primary to-blue-600 bg-clip-text text-transparent">
-                    R$ 24,99
+                    R$ 39,99
                   </p>
                   <p className="text-muted-foreground text-lg">/mês após o período de teste</p>
                 </div>
