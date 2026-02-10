@@ -187,15 +187,14 @@ serve(async (req: Request) => {
           console.error(`Rate limited at image ${i + 1}. Waiting 15s...`);
           await new Promise(resolve => setTimeout(resolve, 15000));
           const retryResp = await fetch(
-            `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-exp:generateContent?key=${GEMINI_API_KEY}`,
+            `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-preview-image-generation:generateContent?key=${GEMINI_API_KEY}`,
             {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify({
                 contents: [{ parts: [{ text: prompt }] }],
                 generationConfig: {
-                  responseModalities: ['IMAGE', 'TEXT'],
-                  imageMimeType: 'image/png',
+                  responseModalities: ['TEXT', 'IMAGE'],
                 },
               }),
             }
