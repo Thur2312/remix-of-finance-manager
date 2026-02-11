@@ -203,7 +203,7 @@ serve(async (req: Request) => {
           if (retryResp.ok) {
             const retryData = await retryResp.json();
             const parts = retryData.candidates?.[0]?.content?.parts || [];
-            const imgPart = parts.find((p: any) => p.inlineData?.mimeType?.startsWith('image/'));
+            const imgPart = parts.find((p: string) => p.inlineData?.mimeType?.startsWith('image/'));
             if (imgPart) {
               generatedImages.push({
                 url: `data:${imgPart.inlineData.mimeType};base64,${imgPart.inlineData.data}`,
@@ -226,7 +226,7 @@ serve(async (req: Request) => {
 
         const data = await response.json();
         const parts = data.candidates?.[0]?.content?.parts || [];
-        const imgPart = parts.find((p: any) => p.inlineData?.mimeType?.startsWith('image/'));
+        const imgPart = parts.find((p: string) => p.inlineData?.mimeType?.startsWith('image/'));
 
         if (imgPart) {
           generatedImages.push({

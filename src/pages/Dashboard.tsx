@@ -14,6 +14,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { calculateResults, formatCurrency, RawOrder, SettingsData } from '@/lib/calculations';
 import { fetchAllOrders } from '@/lib/supabase-helpers';
 
+
 export default function Dashboard() {
   const { user } = useAuth();
   const [isLoading, setIsLoading] = useState(true);

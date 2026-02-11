@@ -151,9 +151,11 @@ export function AppSidebar() {
               <span>{item.title}</span>
             </NavLink>
           </SidebarMenuButton>
-        </SidebarMenuItem>)}
+        </SidebarMenuItem>
+      )}
     </SidebarMenu>;
-  return <Sidebar collapsible="icon" className="transition-all duration-300 ease-in-out border-r border-border/50">
+  return(
+   <Sidebar collapsible="icon" className="transition-all duration-300 ease-in-out border-r border-border/50">
     <SidebarHeader className="border-b border-border/50 bg-card/50">
       <div className="flex items-center justify-center gap-3 px-3 py-4">
         <div className={`rounded-xl bg-gradient-to-br from-primary to-primary/80 flex items-center justify-center shadow-lg shadow-primary/20 transition-all duration-300 ${collapsed ? "h-8 w-8" : "h-10 w-10"}`}>
@@ -195,7 +197,7 @@ export function AppSidebar() {
                 Início
               </Button>
             </Link>
-            <Link to="/#planos" className="flex-1">
+            <Link to="/Planos" className="flex-1">
               <Button variant="outline" size="sm" className="w-full gap-2 text-xs">
                 <CreditCard className="h-3.5 w-3.5" />
                 Planos
@@ -382,5 +384,6 @@ export function AppSidebar() {
           </SidebarMenuItem>
         </SidebarMenu>
       </SidebarFooter>
-    </Sidebar>;
+    </Sidebar>
+  );
 }

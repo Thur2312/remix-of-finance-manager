@@ -6,6 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
 import {
   BarChart3,
+  Atom,
   TrendingUp,
   Package,
   ShoppingCart,
@@ -132,9 +133,11 @@ export default function LandingPage() {
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
 
+  
+
   const features = [
     {
-      icon: BarChart3,
+      icon: Atom,
       title: 'Dashboard em Tempo Real',
       description:
         'Visualize lucro, margem e faturamento instantaneamente. Acompanhe a saúde financeira do seu negócio em tempo real.',
@@ -208,38 +211,67 @@ export default function LandingPage() {
   return (
     <div className="min-h-screen bg-gradient-to-b from-background via-background to-muted/20">
       {/* Header */}
-      <header className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 ${
-        scrolled ? 'bg-background/95 backdrop-blur-xl shadow-lg border-b border-border/50' : 'bg-transparent'
+      <header className={`flex rounded-xl mt-8 left-9 right-9 z-50 transition-all duration-300 
       }`}>
         <div className="container mx-auto px-4 h-20 flex items-center justify-between">
           <div className="flex items-center gap-3">
             <div className="h-10 w-10 rounded-xl bg-gradient-to-br from-primary to-primary/80 flex items-center justify-center shadow-lg shadow-primary/25">
-              <BarChart3 className="h-5 w-5 text-primary-foreground" />
+              <Atom  className="h-5 w-5 text-primary-foreground" />
             </div>
-            <span className="font-bold text-xl text-foreground">Seller Finance</span>
+
+            <span className="font-bold text-xl text-foreground">SELLER FINANCE</span>
+            
           </div>
 
           {/* Desktop Navigation */}
           <nav className="hidden md:flex items-center gap-8">
-            <a href="#funcionalidades" className="text-muted-foreground hover:text-primary transition-colors font-medium">
-              Funcionalidades
-            </a>
-            <Link to="/planos" className="text-muted-foreground hover:text-primary transition-colors font-medium">
-              Planos
-            </Link>
-            <a href="#faq" className="text-muted-foreground hover:text-primary transition-colors font-medium">
-              FAQ
-            </a>
-          </nav>
+  <a
+    href="#funcionalidades"
+    className="relative text-muted-foreground font-medium transition-colors hover:text-primary
+               after:absolute after:left-0 after:-bottom-1
+               after:h-[2px] after:w-full
+               after:bg-primary after:origin-left after:scale-x-0
+               after:transition-transform after:duration-300
+               hover:after:scale-x-100"
+  >
+    Funcionalidades
+  </a>
 
-          <div className="hidden md:flex items-center gap-4">
+  <Link
+    to="/planos"
+    className="relative text-muted-foreground font-medium transition-colors hover:text-primary
+               after:absolute after:left-0 after:-bottom-1
+               after:h-[2px] after:w-full
+               after:bg-primary after:origin-left after:scale-x-0
+               after:transition-transform after:duration-300
+               hover:after:scale-x-100"
+  >
+    Planos
+  </Link>
+
+  <a
+    href="#faq"
+    className="relative text-muted-foreground font-medium transition-colors hover:text-primary
+               after:absolute after:left-0 after:-bottom-1
+               after:h-[2px] after:w-full
+               after:bg-primary after:origin-left after:scale-x-0
+               after:transition-transform after:duration-300
+               hover:after:scale-x-100"
+  >
+    FAQ
+  </a>
+</nav>
+
+          <div className="hidden md:flex items-center gap-2">
             <Link to="/auth">
               <Button variant="ghost" className="font-medium">Entrar</Button>
             </Link>
+
+          
             <Link to="/auth">
               <Button className="bg-gradient-to-r from-primary to-primary/80 hover:from-primary/90 hover:to-primary/70 text-primary-foreground shadow-lg shadow-primary/25 font-medium">
-                <Sparkles className="h-4 w-4 mr-2" />
-                Teste Grátis
+               
+             Assinar
               </Button>
             </Link>
           </div>
@@ -622,7 +654,7 @@ export default function LandingPage() {
                   ))}
                 </ul>
 
-                <Link to="/planos" className="block">
+                <Link to="/Planos" className="block">
                   <Button size="lg" className="w-full bg-gradient-to-r from-primary to-blue-600 hover:from-primary/90 hover:to-blue-600/90 text-primary-foreground text-lg py-7 font-bold shadow-xl shadow-primary/25">
                     Ver todos os planos
                     <ArrowRight className="ml-2 h-5 w-5" />
