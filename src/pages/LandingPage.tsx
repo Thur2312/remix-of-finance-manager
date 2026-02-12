@@ -351,7 +351,7 @@ export default function LandingPage() {
             <nav className="container mx-auto px-6 py-6 flex flex-col gap-4">
               <a href="#sobre" className="text-gray-900 hover:text-blue-600 transition-colors font-medium py-2" onClick={() => setMobileMenuOpen(false)}>Sobre</a>
               <a href="#features" className="text-gray-900 hover:text-blue-600 transition-colors font-medium py-2" onClick={() => setMobileMenuOpen(false)}>Funcionalidades</a>
-              <Link to="/planos" className="text-gray-900 hover:text-blue-600 transition-colors font-medium py-2" onClick={() => setMobileMenuOpen(false)}>Planos</Link>
+              <a href="#planos" className="text-gray-900 hover:text-blue-600 transition-colors font-medium py-2" onClick={() => setMobileMenuOpen(false)}>Planos</a>
               <a href="#faq" className="text-gray-900 hover:text-blue-600 transition-colors font-medium py-2" onClick={() => setMobileMenuOpen(false)}>FAQ</a>
               <div className="flex flex-col gap-3 pt-4 border-t border-blue-200">
                 <Link to="/auth" onClick={() => setMobileMenuOpen(false)}>
@@ -666,7 +666,7 @@ export default function LandingPage() {
         </div>
       </motion.section>
 
-      {/* Pricing Section - Todos os Planos */}
+            {/* Pricing Section - Todos os Planos */}
       <motion.section 
         id="planos" 
         className="py-16"
@@ -689,27 +689,29 @@ export default function LandingPage() {
                 key={index}
                 variants={fadeInUp}
                 whileHover={{ y: -10, scale: 1.05 }}
-                className={`bg-white border rounded-2xl p-8 shadow-lg hover:shadow-2xl transition-all duration-400 relative ${plan.popular ? 'border-blue-500 border-2' : 'border-blue-200'}`}
+                className={`bg-white border rounded-2xl p-8 shadow-lg hover:shadow-2xl transition-all duration-400 relative flex flex-col justify-between min-h-[400px] ${plan.popular ? 'border-blue-500 border-2' : 'border-blue-200'}`}
               >
                 {plan.popular && (
                   <div className="absolute -top-4 left-1/2 transform -translate-x-1/2 bg-gradient-to-r from-blue-500 to-cyan-500 text-white px-4 py-1 rounded-full text-sm font-bold shadow-lg">
                     Mais Popular
                   </div>
                 )}
-                <div className="text-center mb-6">
-                  <h3 className="text-2xl font-bold text-gray-900 mb-2">{plan.name}</h3>
-                  <p className="text-gray-600 mb-4">{plan.description}</p>
-                  <p className="text-5xl font-bold bg-gradient-to-r from-blue-600 to-cyan-600 bg-clip-text text-transparent">{plan.price}</p>
-                  <p className="text-gray-600">{plan.period}</p>
+                <div>
+                  <div className="text-center mb-6">
+                    <h3 className="text-2xl font-bold text-gray-900 mb-2">{plan.name}</h3>
+                    <p className="text-gray-600 mb-4">{plan.description}</p>
+                    <p className="text-5xl font-bold bg-gradient-to-r from-blue-600 to-cyan-600 bg-clip-text text-transparent">{plan.price}</p>
+                    <p className="text-gray-600">{plan.period}</p>
+                  </div>
+                  <ul className="space-y-3 mb-8">
+                    {plan.features.map((feature, i) => (
+                      <li key={i} className="flex items-center gap-3">
+                        <CheckCircle2 className="h-5 w-5 text-green-500" />
+                        <span className="text-gray-900">{feature}</span>
+                      </li>
+                    ))}
+                  </ul>
                 </div>
-                <ul className="space-y-3 mb-8">
-                  {plan.features.map((feature, i) => (
-                    <li key={i} className="flex items-center gap-3">
-                      <CheckCircle2 className="h-5 w-5 text-green-500" />
-                      <span className="text-gray-900">{feature}</span>
-                    </li>
-                  ))}
-                </ul>
                 <Link to="/auth">
                   <Button className={`w-full py-6 font-semibold ${plan.popular ? 'bg-gradient-to-r from-blue-500 to-cyan-500 hover:from-blue-600 hover:to-cyan-600 text-white' : 'bg-blue-100 hover:bg-blue-200 text-blue-700'}`}>
                     {plan.cta} <ArrowRight className="ml-2 h-5 w-5" />
@@ -727,7 +729,6 @@ export default function LandingPage() {
           </motion.div>
         </div>
       </motion.section>
-
       {/* FAQ Section - Novos Dados */}
       <motion.section 
         id="faq" 
@@ -781,7 +782,7 @@ export default function LandingPage() {
             <div>
               <div className="flex items-center gap-3 mb-4">
                 <div className="h-10 w-10 bg-blue-500 rounded-xl flex items-center justify-center">
-                  <BarChart3 className="h-5 w-5 text-white" />
+                    <Atom className="h-5 w-5 text-white" />
                 </div>
                 <span className="font-bold text-xl">Finance Manager</span>
               </div>
@@ -791,8 +792,11 @@ export default function LandingPage() {
               <h4 className="font-semibold mb-4">Produto</h4>
               <nav className="space-y-2">
                 <a href="#sobre" className="text-gray-400 hover:text-white transition-colors">Sobre</a>
+                <br />
                 <a href="#features" className="text-gray-400 hover:text-white transition-colors">Funcionalidades</a>
-                <Link to="/planos" className="text-gray-400 hover:text-white transition-colors">Planos</Link>
+                <br />
+                <a href="#planos" className="text-gray-400 hover:text-white transition-colors">Planos</a>
+                <br />
                 <a href="#faq" className="text-gray-400 hover:text-white transition-colors">FAQ</a>
               </nav>
             </div>
@@ -800,7 +804,9 @@ export default function LandingPage() {
               <h4 className="font-semibold mb-4">Recursos</h4>
               <nav className="space-y-2">
                 <a href="#" className="text-gray-400 hover:text-white transition-colors">Central de Ajuda</a>
+                <br />
                 <a href="#" className="text-gray-400 hover:text-white transition-colors">Tutoriais em Vídeo</a>
+                <br />
                 <a href="#" className="text-gray-400 hover:text-white transition-colors">Blog</a>
               </nav>
             </div>
@@ -808,8 +814,8 @@ export default function LandingPage() {
               <h4 className="font-semibold mb-4">Contato</h4>
               <a href="mailto:suporte@financemanager.com.br" className="text-gray-400 hover:text-white transition-colors">suporte@financemanager.com.br</a>
               <div className="flex gap-3 mt-4">
-                <a href="#" className="text-gray-400 hover:text-white"><Instagram className="h-5 w-5" /></a>
-                <a href="#" className="text-gray-400 hover:text-white"><MessageCircle className="h-5 w-5" /></a>
+                <Link to="https://www.instagram.com/qx_assessoria/" className="text-gray-400 hover:text-white"><Instagram className="h-5 w-5" /></Link>
+                <Link to="https://wa.me/558387999393" className="text-gray-400 hover:text-white"><MessageCircle className="h-5 w-5" /></Link>
               </div>
             </div>
           </div>
