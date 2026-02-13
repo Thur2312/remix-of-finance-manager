@@ -8,6 +8,7 @@ import {
   Tooltip,
   Legend,
 } from 'recharts';
+import { motion } from 'framer-motion';
 
 interface Settlement {
   statement_date: string | null;
@@ -25,6 +26,22 @@ interface Settlement {
 interface PaymentChartsProps {
   settlements: Settlement[];
 }
+
+// Animações (alinhadas com Landing Page)
+const fadeInUp = {
+  hidden: { opacity: 0, y: 60 },
+  visible: { opacity: 1, y: 0, transition: { duration: 0.6 } }
+};
+
+const stagger = {
+  hidden: { opacity: 0 },
+  visible: {
+    opacity: 1,
+    transition: {
+      staggerChildren: 0.2
+    }
+  }
+};
 
 export function PaymentCharts({ settlements }: PaymentChartsProps) {
   const formatCurrency = (value: number) => {
@@ -56,41 +73,49 @@ export function PaymentCharts({ settlements }: PaymentChartsProps) {
   if (settlements.length === 0) return null;
 
   return (
-    <div className="grid gap-4 md:grid-cols-2">
+    <motion.div 
+      className="grid gap-4 md:grid-cols-2"
+      initial="hidden"
+      whileInView="visible"
+      viewport={{ once: true }}
+      variants={stagger}
+    >
       {/* Type Breakdown */}
       {typeBreakdown.length > 1 && (
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium">Vendas vs Reembolsos</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="h-[200px]">
-              <ResponsiveContainer width="100%" height="100%">
-                <PieChart>
-                  <Pie
-                    data={typeBreakdown}
-                    cx="50%"
-                    cy="50%"
-                    innerRadius={40}
-                    outerRadius={70}
-                    paddingAngle={2}
-                    dataKey="value"
-                  >
-                    {typeBreakdown.map((entry, index) => (
-                      <Cell 
-                        key={`cell-${index}`} 
-                        fill={entry.name === 'Vendas' ? '#10b981' : entry.name === 'Reembolsos' ? '#ef4444' : '#f59e0b'} 
-                      />
-                    ))}
-                  </Pie>
-                  <Tooltip formatter={(value: number) => formatCurrency(value)} />
-                  <Legend />
-                </PieChart>
-              </ResponsiveContainer>
-            </div>
-          </CardContent>
-        </Card>
+        <motion.div variants={fadeInUp}>
+          <Card className="bg-white border border-blue-200 shadow-lg hover:shadow-xl transition-shadow">
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm font-medium text-gray-900">Vendas vs Reembolsos</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="h-[200px]">
+                <ResponsiveContainer width="100%" height="100%">
+                  <PieChart>
+                    <Pie
+                      data={typeBreakdown}
+                      cx="50%"
+                      cy="50%"
+                      innerRadius={40}
+                      outerRadius={70}
+                      paddingAngle={2}
+                      dataKey="value"
+                    >
+                      {typeBreakdown.map((entry, index) => (
+                        <Cell 
+                          key={`cell-${index}`} 
+                          fill={entry.name === 'Vendas' ? '#10b981' : entry.name === 'Reembolsos' ? '#ef4444' : '#f59e0b'} 
+                        />
+                      ))}
+                    </Pie>
+                    <Tooltip formatter={(value: number) => formatCurrency(value)} />
+                    <Legend />
+                  </PieChart>
+                </ResponsiveContainer>
+              </div>
+            </CardContent>
+          </Card>
+        </motion.div>
       )}
-    </div>
+    </motion.div>
   );
 }

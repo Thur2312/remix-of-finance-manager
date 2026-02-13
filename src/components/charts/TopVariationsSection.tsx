@@ -3,6 +3,7 @@ import { Badge } from '@/components/ui/badge';
 import { Package, Trophy, Medal } from 'lucide-react';
 import { RawOrder, formatCurrency } from '@/lib/calculations';
 import { useMemo } from 'react';
+import { motion } from 'framer-motion';
 
 interface VariationData {
   nome: string;
@@ -116,85 +117,97 @@ export function TopVariationsSection({
       case 2:
         return 'bg-amber-600/10 border-amber-600/30';
       default:
-        return 'bg-muted/50 border-border';
+        return 'bg-blue-50 border-blue-200';
     }
   };
 
   return (
-    <div className="space-y-4">
+    <motion.div 
+      className="space-y-4"
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.6 }}
+    >
       <div>
-        <h3 className="text-lg font-semibold flex items-center gap-2">
+        <h3 className="text-lg font-semibold flex items-center gap-2 text-gray-900">
           <Trophy className="h-5 w-5 text-yellow-500" />
           Variações Mais Vendidas
         </h3>
-        <p className="text-sm text-muted-foreground">
+        <p className="text-sm text-gray-600">
           TOP {topProducts} produtos e suas {topVariations} variações mais vendidas
         </p>
       </div>
 
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
         {productsWithVariations.map((product, productIndex) => (
-          <Card key={product.nome_produto} className="shopee-card-hover overflow-hidden">
-            <CardHeader className="pb-3 bg-gradient-to-r from-primary/5 to-transparent">
-              <div className="flex items-start justify-between gap-2">
-                <div className="flex items-center gap-2 min-w-0">
-                  <div className="flex-shrink-0 h-8 w-8 rounded-lg bg-primary/10 flex items-center justify-center">
-                    <Package className="h-4 w-4 text-primary" />
-                  </div>
-                  <div className="min-w-0">
-                    <CardTitle className="text-sm font-medium truncate" title={product.nome_produto}>
-                      {product.nome_produto.length > 35 
-                        ? product.nome_produto.slice(0, 35) + '...' 
-                        : product.nome_produto}
-                    </CardTitle>
-                    <CardDescription className="text-xs">
-                      #{productIndex + 1} em vendas
-                    </CardDescription>
-                  </div>
-                </div>
-                <Badge variant="secondary" className="flex-shrink-0 text-xs">
-                  {product.total_itens} un
-                </Badge>
-              </div>
-            </CardHeader>
-            
-            <CardContent className="pt-3 space-y-2">
-              {product.variacoes.map((variacao, variacaoIndex) => (
-                <div
-                  key={variacao.nome}
-                  className={`flex items-center justify-between p-2 rounded-lg border ${getMedalStyles(variacaoIndex)}`}
-                >
+          <motion.div
+            key={product.nome_produto}
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.6, delay: productIndex * 0.1 }}
+          >
+            <Card className="border border-blue-200 shadow-lg bg-white hover:shadow-xl transition-shadow duration-300 overflow-hidden">
+              <CardHeader className="pb-3 bg-blue-50 border-b border-blue-200">
+                <div className="flex items-start justify-between gap-2">
                   <div className="flex items-center gap-2 min-w-0">
-                    {getMedalIcon(variacaoIndex)}
-                    <span 
-                      className="text-sm truncate" 
-                      title={variacao.nome}
-                    >
-                      {variacao.nome.length > 25 
-                        ? variacao.nome.slice(0, 25) + '...' 
-                        : variacao.nome}
-                    </span>
+                    <div className="flex-shrink-0 h-8 w-8 rounded-lg bg-blue-100 flex items-center justify-center">
+                      <Package className="h-4 w-4 text-blue-600" />
+                    </div>
+                    <div className="min-w-0">
+                      <CardTitle className="text-sm font-medium text-gray-900 truncate" title={product.nome_produto}>
+                        {product.nome_produto.length > 35 
+                          ? product.nome_produto.slice(0, 35) + '...' 
+                          : product.nome_produto}
+                      </CardTitle>
+                      <CardDescription className="text-xs text-gray-600">
+                        #{productIndex + 1} em vendas
+                      </CardDescription>
+                    </div>
                   </div>
-                  <div className="flex items-center gap-2 flex-shrink-0">
-                    <Badge variant="outline" className="text-xs font-normal">
-                      {variacao.itens_vendidos} un
-                    </Badge>
-                    <span className="text-xs font-medium text-muted-foreground">
-                      {formatCurrency(variacao.faturamento)}
-                    </span>
-                  </div>
+                  <Badge variant="secondary" className="flex-shrink-0 text-xs bg-blue-100 text-blue-700 border-blue-200">
+                    {product.total_itens} un
+                  </Badge>
                 </div>
-              ))}
+              </CardHeader>
               
-              {product.variacoes.length === 0 && (
-                <p className="text-sm text-muted-foreground text-center py-2">
-                  Sem variações registradas
-                </p>
-              )}
-            </CardContent>
-          </Card>
+              <CardContent className="pt-3 space-y-2">
+                {product.variacoes.map((variacao, variacaoIndex) => (
+                  <div
+                    key={variacao.nome}
+                    className={`flex items-center justify-between p-2 rounded-lg border ${getMedalStyles(variacaoIndex)}`}
+                  >
+                    <div className="flex items-center gap-2 min-w-0">
+                      {getMedalIcon(variacaoIndex)}
+                      <span 
+                        className="text-sm text-gray-900 truncate" 
+                        title={variacao.nome}
+                      >
+                        {variacao.nome.length > 25 
+                          ? variacao.nome.slice(0, 25) + '...' 
+                          : variacao.nome}
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-2 flex-shrink-0">
+                      <Badge variant="outline" className="text-xs font-normal border-blue-200 text-blue-700">
+                        {variacao.itens_vendidos} un
+                      </Badge>
+                      <span className="text-xs font-medium text-gray-600">
+                        {formatCurrency(variacao.faturamento)}
+                      </span>
+                    </div>
+                  </div>
+                ))}
+                
+                {product.variacoes.length === 0 && (
+                  <p className="text-sm text-gray-500 text-center py-2">
+                    Sem variações registradas
+                  </p>
+                )}
+              </CardContent>
+            </Card>
+          </motion.div>
         ))}
       </div>
-    </div>
+    </motion.div>
   );
 }

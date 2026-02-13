@@ -34,6 +34,7 @@ import {
   detectFileFormat,
   SUPPORTED_BANKS,
 } from '@/lib/bank-statement-helpers';
+import { motion } from 'framer-motion';
 
 type FileFormat = 'ofx' | 'csv' | 'xlsx' | 'pdf' | 'unknown';
 
@@ -283,301 +284,373 @@ function FluxoCaixaImportacaoContent() {
 
   return (
     <AppLayout>
-      <div className="space-y-6">
+      <motion.div 
+        className="space-y-6"
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.6 }}
+      >
         {/* Header */}
-        <div>
-          <h1 className="text-3xl font-bold text-foreground">Importar Extrato Bancário</h1>
-          <p className="text-muted-foreground">
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.6, delay: 0.1 }}
+        >
+          <h1 className="text-3xl font-bold text-gray-900">Importar Extrato Bancário</h1>
+          <p className="text-gray-600">
             Importe transações automaticamente a partir do extrato do seu banco
           </p>
-        </div>
+        </motion.div>
 
         {/* Upload Card */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Upload className="h-5 w-5 text-primary" />
-              Upload de Extrato
-            </CardTitle>
-            <CardDescription>
-              Arraste um arquivo PDF, OFX, CSV ou XLSX do seu banco
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            {/* Bank Selection */}
-            <div className="flex items-center gap-4">
-              <div className="flex items-center gap-2">
-                <Building2 className="h-4 w-4 text-muted-foreground" />
-                <span className="text-sm font-medium">Banco:</span>
-              </div>
-              <Select value={selectedBank} onValueChange={setSelectedBank}>
-                <SelectTrigger className="w-[250px]">
-                  <SelectValue placeholder="Selecione o banco" />
-                </SelectTrigger>
-                <SelectContent>
-                  {SUPPORTED_BANKS.map(bank => (
-                    <SelectItem key={bank.id} value={bank.id}>
-                      {bank.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              <span className="text-xs text-muted-foreground">
-                (Ajuda a identificar as colunas corretamente)
-              </span>
-            </div>
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.6, delay: 0.2 }}
+        >
+          <Card className="border border-blue-200 shadow-lg bg-white">
+            <CardHeader className="bg-blue-50 border-b border-blue-200">
+              <CardTitle className="flex items-center gap-2 text-gray-900">
+                <Upload className="h-5 w-5 text-blue-600" />
+                Upload de Extrato
+              </CardTitle>
+              <CardDescription className="text-gray-600">
+                Arraste um arquivo PDF, OFX, CSV ou XLSX do seu banco
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              {/* Bank Selection */}
+              <motion.div 
+                className="flex items-center gap-4"
+                initial={{ opacity: 0, x: -20 }}
+                animate={{ opacity: 1, x: 0 }}
+                transition={{ duration: 0.4, delay: 0.3 }}
+              >
+                <div className="flex items-center gap-2">
+                  <Building2 className="h-4 w-4 text-gray-500" />
+                  <span className="text-sm font-medium text-gray-900">Banco:</span>
+                </div>
+                <Select value={selectedBank} onValueChange={setSelectedBank}>
+                  <SelectTrigger className="w-[250px] border-blue-200 focus:border-blue-500">
+                    <SelectValue placeholder="Selecione o banco" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {SUPPORTED_BANKS.map(bank => (
+                      <SelectItem key={bank.id} value={bank.id}>
+                        {bank.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <span className="text-xs text-gray-500">
+                  (Ajuda a identificar as colunas corretamente)
+                </span>
+              </motion.div>
 
-            {/* Drop Zone */}
-            <div
-              onDragOver={handleDragOver}
-              onDragLeave={handleDragLeave}
-              onDrop={handleDrop}
-              className={`
-                relative border-2 border-dashed rounded-lg p-8 text-center transition-colors
-                ${isDragging ? 'border-primary bg-primary/5' : 'border-muted-foreground/25'}
-                ${isProcessing ? 'pointer-events-none opacity-50' : 'cursor-pointer hover:border-primary/50'}
-              `}
-            >
-              <input
-                type="file"
-                accept=".pdf,.ofx,.ofc,.csv,.xlsx,.xls"
-                onChange={handleFileSelect}
-                className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
-                disabled={isProcessing}
-              />
-              
-              {isProcessing ? (
-                <div className="flex flex-col items-center gap-3">
-                  <Loader2 className="h-12 w-12 animate-spin text-primary" />
-                  <p className="text-lg font-medium">Processando arquivo...</p>
-                  <p className="text-sm text-muted-foreground">
-                    {fileInfo?.format === 'pdf' ? 'Analisando PDF com IA...' : 'Extraindo transações...'}
-                  </p>
-                </div>
-              ) : (
-                <div className="flex flex-col items-center gap-3">
-                  <div className="p-4 rounded-full bg-primary/10">
-                    <FileSpreadsheet className="h-8 w-8 text-primary" />
-                  </div>
-                  <div>
-                    <p className="text-lg font-medium">
-                      Arraste seu extrato aqui ou clique para selecionar
-                    </p>
-                    <p className="text-sm text-muted-foreground mt-1">
-                      Formatos suportados: PDF, OFX, CSV, XLSX
+              {/* Drop Zone */}
+              <motion.div
+                onDragOver={handleDragOver}
+                onDragLeave={handleDragLeave}
+                onDrop={handleDrop}
+                className={`
+                  relative border-2 border-dashed rounded-lg p-8 text-center transition-colors
+                  ${isDragging ? 'border-blue-500 bg-blue-50' : 'border-blue-300'}
+                  ${isProcessing ? 'pointer-events-none opacity-50' : 'cursor-pointer hover:border-blue-400'}
+                `}
+                initial={{ opacity: 0, scale: 0.95 }}
+                animate={{ opacity: 1, scale: 1 }}
+                transition={{ duration: 0.4, delay: 0.4 }}
+              >
+                <input
+                  type="file"
+                  accept=".pdf,.ofx,.ofc,.csv,.xlsx,.xls"
+                  onChange={handleFileSelect}
+                  className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                  disabled={isProcessing}
+                />
+                
+                {isProcessing ? (
+                  <div className="flex flex-col items-center gap-3">
+                    <Loader2 className="h-12 w-12 animate-spin text-blue-600" />
+                    <p className="text-lg font-medium text-gray-900">Processando arquivo...</p>
+                    <p className="text-sm text-gray-600">
+                      {fileInfo?.format === 'pdf' ? 'Analisando PDF com IA...' : 'Extraindo transações...'}
                     </p>
                   </div>
-                </div>
+                ) : (
+                  <div className="flex flex-col items-center gap-3">
+                    <div className="p-4 rounded-full bg-blue-100">
+                      <FileSpreadsheet className="h-8 w-8 text-blue-600" />
+                    </div>
+                    <div>
+                      <p className="text-lg font-medium text-gray-900">
+                        Arraste seu extrato aqui ou clique para selecionar
+                      </p>
+                      <p className="text-sm text-gray-600 mt-1">
+                        Formatos suportados: PDF, OFX, CSV, XLSX
+                      </p>
+                    </div>
+                  </div>
+                )}
+              </motion.div>
+
+              {/* File Info */}
+              {fileInfo && !isProcessing && (
+                <motion.div 
+                  className="flex items-center gap-2 text-sm"
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.3 }}
+                >
+                  <FileText className="h-4 w-4 text-gray-500" />
+                  <span className="font-medium text-gray-900">{fileInfo.name}</span>
+                  <Badge variant="outline" className="border-blue-200 text-blue-700">{fileInfo.format.toUpperCase()}</Badge>
+                </motion.div>
               )}
-            </div>
 
-            {/* File Info */}
-            {fileInfo && !isProcessing && (
-              <div className="flex items-center gap-2 text-sm">
-                <FileText className="h-4 w-4 text-muted-foreground" />
-                <span className="font-medium">{fileInfo.name}</span>
-                <Badge variant="outline">{fileInfo.format.toUpperCase()}</Badge>
-              </div>
-            )}
-
-            {/* Error */}
-            {error && (
-              <Alert variant="destructive">
-                <AlertCircle className="h-4 w-4" />
-                <AlertTitle>Erro no processamento</AlertTitle>
-                <AlertDescription>{error}</AlertDescription>
-              </Alert>
-            )}
-          </CardContent>
-        </Card>
+              {/* Error */}
+              {error && (
+                <motion.div
+                  initial={{ opacity: 0, scale: 0.95 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  transition={{ duration: 0.3 }}
+                >
+                  <Alert variant="destructive" className="border-red-500 bg-red-50">
+                    <AlertCircle className="h-4 w-4" />
+                    <AlertTitle className="text-red-800">Erro no processamento</AlertTitle>
+                    <AlertDescription className="text-red-700">{error}</AlertDescription>
+                  </Alert>
+                </motion.div>
+              )}
+            </CardContent>
+          </Card>
+        </motion.div>
 
         {/* Transactions Preview */}
         {transactions.length > 0 && (
-          <Card>
-            <CardHeader>
-              <div className="flex items-center justify-between">
-                <div>
-                  <CardTitle className="flex items-center gap-2">
-                    <CheckCircle2 className="h-5 w-5 text-green-600" />
-                    Transações Detectadas
-                  </CardTitle>
-                  <CardDescription>
-                    Revise e selecione as transações que deseja importar
-                  </CardDescription>
-                </div>
-                <div className="flex items-center gap-4">
-                  <div className="text-right">
-                    <p className="text-sm text-muted-foreground">
-                      {selectedCount} de {transactions.length} selecionadas
-                    </p>
-                    <p className={`text-lg font-bold ${totalSelected >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                      {formatCurrency(totalSelected)}
-                    </p>
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.6, delay: 0.3 }}
+          >
+            <Card className="border border-blue-200 shadow-lg bg-white">
+              <CardHeader className="bg-blue-50 border-b border-blue-200">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <CardTitle className="flex items-center gap-2 text-gray-900">
+                      <CheckCircle2 className="h-5 w-5 text-green-600" />
+                      Transações Detectadas
+                    </CardTitle>
+                    <CardDescription className="text-gray-600">
+                      Revise e selecione as transações que deseja importar
+                    </CardDescription>
                   </div>
-                  <Button onClick={handleImport} disabled={isImporting || selectedCount === 0}>
-                    {isImporting ? (
-                      <>
-                        <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                        Importando...
-                      </>
-                    ) : (
-                      <>
-                        <Upload className="h-4 w-4 mr-2" />
-                        Importar Selecionados
-                      </>
-                    )}
-                  </Button>
+                  <div className="flex items-center gap-4">
+                    <div className="text-right">
+                      <p className="text-sm text-gray-600">
+                        {selectedCount} de {transactions.length} selecionadas
+                      </p>
+                      <p className={`text-lg font-bold ${totalSelected >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                        {formatCurrency(totalSelected)}
+                      </p>
+                    </div>
+                    <Button onClick={handleImport} disabled={isImporting || selectedCount === 0} className="bg-blue-600 hover:bg-blue-700">
+                                        {isImporting ? (
+                        <>
+                          <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                          Importando...
+                        </>
+                      ) : (
+                        <>
+                          <Upload className="h-4 w-4 mr-2" />
+                          Importar Selecionados
+                        </>
+                      )}
+                    </Button>
+                  </div>
                 </div>
-              </div>
-            </CardHeader>
-            <CardContent className="p-0">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead className="w-12">
-                      <Checkbox
-                        checked={transactions.every(t => t.selected)}
-                        onCheckedChange={(checked) => toggleSelectAll(checked as boolean)}
-                      />
-                    </TableHead>
-                    <TableHead>Data</TableHead>
-                    <TableHead>Descrição</TableHead>
-                    <TableHead>Contraparte</TableHead>
-                    <TableHead>Tipo</TableHead>
-                    <TableHead className="text-right">Valor</TableHead>
-                    <TableHead>Categoria</TableHead>
-                    <TableHead className="w-12"></TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {transactions.map((t) => (
-                    <TableRow key={t.id} className={!t.selected ? 'opacity-50' : ''}>
-                      <TableCell>
+              </CardHeader>
+              <CardContent className="p-0">
+                <Table className="border border-blue-200 rounded-lg overflow-hidden">
+                  <TableHeader className="bg-blue-50">
+                    <TableRow>
+                      <TableHead className="w-12 text-gray-900">
                         <Checkbox
-                          checked={t.selected}
-                          onCheckedChange={() => toggleTransaction(t.id)}
+                          checked={transactions.every(t => t.selected)}
+                          onCheckedChange={(checked) => toggleSelectAll(checked as boolean)}
                         />
-                      </TableCell>
-                      <TableCell className="whitespace-nowrap">
-                        {format(parseISO(t.date), 'dd/MM/yyyy')}
-                      </TableCell>
-                      <TableCell className="max-w-[300px] truncate" title={t.description}>
-                        {t.description}
-                      </TableCell>
-                      <TableCell className="text-muted-foreground">
-                        {t.counterpart || '-'}
-                      </TableCell>
-                      <TableCell>
-                        {t.type === 'income' ? (
-                          <Badge variant="default" className="bg-green-600">
-                            <ArrowUpCircle className="h-3 w-3 mr-1" />
-                            Entrada
-                          </Badge>
-                        ) : (
-                          <Badge variant="destructive">
-                            <ArrowDownCircle className="h-3 w-3 mr-1" />
-                            Saída
-                          </Badge>
-                        )}
-                      </TableCell>
-                      <TableCell className={`text-right font-medium ${
-                        t.type === 'income' ? 'text-green-600' : 'text-red-600'
-                      }`}>
-                        {t.type === 'expense' ? '-' : '+'}{formatCurrency(t.amount)}
-                      </TableCell>
-                      <TableCell>
-                        <Select
-                          value={t.categoryId || 'none'}
-                          onValueChange={(value) => updateTransactionCategory(t.id, value === 'none' ? null as string | null : value)}
-                        >
-                          <SelectTrigger className="w-[160px] h-8 text-xs">
-                            <SelectValue placeholder="Selecionar..." />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="none">Sem categoria</SelectItem>
-                            {categories
-                              .filter(c => c.type === t.type)
-                              .map(c => (
-                                <SelectItem key={c.id} value={c.id}>
-                                  <div className="flex items-center gap-2">
-                                    <div 
-                                      className="w-2 h-2 rounded-full" 
-                                      style={{ backgroundColor: c.color }}
-                                    />
-                                    {c.name}
-                                  </div>
-                                </SelectItem>
-                              ))}
-                          </SelectContent>
-                        </Select>
-                      </TableCell>
-                      <TableCell>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          onClick={() => removeTransaction(t.id)}
-                          className="h-8 w-8"
-                        >
-                          <Trash2 className="h-4 w-4 text-muted-foreground" />
-                        </Button>
-                      </TableCell>
+                      </TableHead>
+                      <TableHead className="text-gray-900">Data</TableHead>
+                      <TableHead className="text-gray-900">Descrição</TableHead>
+                      <TableHead className="text-gray-900">Contraparte</TableHead>
+                      <TableHead className="text-gray-900">Tipo</TableHead>
+                      <TableHead className="text-right text-gray-900">Valor</TableHead>
+                      <TableHead className="text-gray-900">Categoria</TableHead>
+                      <TableHead className="w-12"></TableHead>
                     </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </CardContent>
-          </Card>
+                  </TableHeader>
+                  <TableBody>
+                    {transactions.map((t, index) => (
+                      <motion.tr 
+                        key={t.id} 
+                        className={`border-b border-blue-200 hover:bg-blue-25 ${!t.selected ? 'opacity-50' : ''}`}
+                        initial={{ opacity: 0, x: -20 }}
+                        animate={{ opacity: 1, x: 0 }}
+                        transition={{ duration: 0.6, delay: index * 0.05 }}
+                      >
+                        <TableCell>
+                          <Checkbox
+                            checked={t.selected}
+                            onCheckedChange={() => toggleTransaction(t.id)}
+                          />
+                        </TableCell>
+                        <TableCell className="whitespace-nowrap text-gray-900">
+                          {format(parseISO(t.date), 'dd/MM/yyyy')}
+                        </TableCell>
+                        <TableCell className="max-w-[300px] truncate text-gray-900" title={t.description}>
+                          {t.description}
+                        </TableCell>
+                        <TableCell className="text-gray-600">
+                          {t.counterpart || '-'}
+                        </TableCell>
+                        <TableCell>
+                          {t.type === 'income' ? (
+                            <Badge variant="default" className="bg-green-600 text-white">
+                              <ArrowUpCircle className="h-3 w-3 mr-1" />
+                              Entrada
+                            </Badge>
+                          ) : (
+                            <Badge variant="destructive" className="bg-red-500 text-white">
+                              <ArrowDownCircle className="h-3 w-3 mr-1" />
+                              Saída
+                            </Badge>
+                          )}
+                        </TableCell>
+                        <TableCell className={`text-right font-medium ${
+                          t.type === 'income' ? 'text-green-600' : 'text-red-600'
+                        }`}>
+                          {t.type === 'expense' ? '-' : '+'}{formatCurrency(t.amount)}
+                        </TableCell>
+                        <TableCell>
+                          <Select
+                            value={t.categoryId || 'none'}
+                            onValueChange={(value) => updateTransactionCategory(t.id, value === 'none' ? null as string | null : value)}
+                          >
+                            <SelectTrigger className="w-[160px] h-8 text-xs border-blue-200 focus:border-blue-500">
+                              <SelectValue placeholder="Selecionar..." />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="none">Sem categoria</SelectItem>
+                              {categories
+                                .filter(c => c.type === t.type)
+                                .map(c => (
+                                  <SelectItem key={c.id} value={c.id}>
+                                    <div className="flex items-center gap-2">
+                                      <div 
+                                        className="w-2 h-2 rounded-full" 
+                                        style={{ backgroundColor: c.color }}
+                                      />
+                                      {c.name}
+                                    </div>
+                                  </SelectItem>
+                                ))}
+                            </SelectContent>
+                          </Select>
+                        </TableCell>
+                        <TableCell>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => removeTransaction(t.id)}
+                            className="h-8 w-8 hover:bg-red-50 text-red-600"
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </TableCell>
+                      </motion.tr>
+                    ))}
+                  </TableBody>
+                </Table>
+              </CardContent>
+            </Card>
+          </motion.div>
         )}
 
         {/* Info Card */}
         {transactions.length === 0 && !isProcessing && (
-          <Card>
-            <CardHeader>
-              <CardTitle>Formatos Suportados</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-                <div className="p-4 rounded-lg border bg-card">
-                  <div className="flex items-center gap-2 mb-2">
-                    <FileText className="h-5 w-5 text-red-500" />
-                    <span className="font-medium">PDF</span>
-                  </div>
-                  <p className="text-sm text-muted-foreground">
-                    Extratos em PDF são analisados por IA para detectar transações automaticamente.
-                  </p>
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.6, delay: 0.4 }}
+          >
+            <Card className="border border-blue-200 shadow-lg bg-white">
+              <CardHeader className="bg-blue-50 border-b border-blue-200">
+                <CardTitle className="text-gray-900">Formatos Suportados</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+                  <motion.div 
+                    className="p-4 rounded-lg border border-blue-200 bg-white shadow-sm"
+                    initial={{ opacity: 0, scale: 0.9 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    transition={{ duration: 0.4, delay: 0.1 }}
+                  >
+                    <div className="flex items-center gap-2 mb-2">
+                      <FileText className="h-5 w-5 text-red-500" />
+                      <span className="font-medium text-gray-900">PDF</span>
+                    </div>
+                    <p className="text-sm text-gray-600">
+                      Extratos em PDF são analisados por IA para detectar transações automaticamente.
+                    </p>
+                  </motion.div>
+                  <motion.div 
+                    className="p-4 rounded-lg border border-blue-200 bg-white shadow-sm"
+                    initial={{ opacity: 0, scale: 0.9 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    transition={{ duration: 0.4, delay: 0.2 }}
+                  >
+                    <div className="flex items-center gap-2 mb-2">
+                      <FileText className="h-5 w-5 text-blue-500" />
+                      <span className="font-medium text-gray-900">OFX</span>
+                    </div>
+                    <p className="text-sm text-gray-600">
+                      Formato bancário padrão. Disponível na maioria dos bancos tradicionais.
+                    </p>
+                  </motion.div>
+                  <motion.div 
+                    className="p-4 rounded-lg border border-blue-200 bg-white shadow-sm"
+                    initial={{ opacity: 0, scale: 0.9 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    transition={{ duration: 0.4, delay: 0.3 }}
+                  >
+                    <div className="flex items-center gap-2 mb-2">
+                      <FileSpreadsheet className="h-5 w-5 text-green-500" />
+                      <span className="font-medium text-gray-900">CSV</span>
+                    </div>
+                    <p className="text-sm text-gray-600">
+                      Exportação comum em bancos digitais como Nubank e Inter.
+                    </p>
+                  </motion.div>
+                  <motion.div 
+                    className="p-4 rounded-lg border border-blue-200 bg-white shadow-sm"
+                    initial={{ opacity: 0, scale: 0.9 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    transition={{ duration: 0.4, delay: 0.4 }}
+                  >
+                    <div className="flex items-center gap-2 mb-2">
+                      <FileSpreadsheet className="h-5 w-5 text-emerald-500" />
+                      <span className="font-medium text-gray-900">XLSX</span>
+                    </div>
+                    <p className="text-sm text-gray-600">
+                      Planilhas Excel exportadas de sistemas bancários.
+                    </p>
+                  </motion.div>
                 </div>
-                <div className="p-4 rounded-lg border bg-card">
-                  <div className="flex items-center gap-2 mb-2">
-                    <FileText className="h-5 w-5 text-blue-500" />
-                    <span className="font-medium">OFX</span>
-                  </div>
-                  <p className="text-sm text-muted-foreground">
-                    Formato bancário padrão. Disponível na maioria dos bancos tradicionais.
-                  </p>
-                </div>
-                <div className="p-4 rounded-lg border bg-card">
-                  <div className="flex items-center gap-2 mb-2">
-                    <FileSpreadsheet className="h-5 w-5 text-green-500" />
-                    <span className="font-medium">CSV</span>
-                  </div>
-                  <p className="text-sm text-muted-foreground">
-                    Exportação comum em bancos digitais como Nubank e Inter.
-                  </p>
-                </div>
-                <div className="p-4 rounded-lg border bg-card">
-                  <div className="flex items-center gap-2 mb-2">
-                    <FileSpreadsheet className="h-5 w-5 text-emerald-500" />
-                    <span className="font-medium">XLSX</span>
-                  </div>
-                  <p className="text-sm text-muted-foreground">
-                    Planilhas Excel exportadas de sistemas bancários.
-                  </p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
+              </CardContent>
+            </Card>
+          </motion.div>
         )}
-      </div>
+      </motion.div>
     </AppLayout>
   );
 }

@@ -17,12 +17,15 @@ import { useFixedCosts, COST_CATEGORIES, FixedCost } from '@/hooks/useFixedCosts
 import { parseCurrencyInput, parseNumericInputSafe } from '@/lib/numeric-validation';
 import { toast } from 'sonner';
 import { DollarSign, Package, ShoppingBag, Percent, Plus, Pencil, Trash2, RefreshCw, Lightbulb, Building2, Laptop, Megaphone, CreditCard, Receipt, Truck, FolderOpen } from 'lucide-react';
+import { motion } from 'framer-motion';
+
 const formatCurrency = (value: number) => {
   return new Intl.NumberFormat('pt-BR', {
     style: 'currency',
     currency: 'BRL'
   }).format(value);
 };
+
 const getCategoryIcon = (category: string) => {
   const iconMap: Record<string, React.ReactNode> = {
     "Estrutura Administrativa": <Building2 className="h-4 w-4" />,
@@ -36,6 +39,7 @@ const getCategoryIcon = (category: string) => {
   };
   return iconMap[category] || <FolderOpen className="h-4 w-4" />;
 };
+
 function CadastroCustosContent() {
   const {
     costs,
@@ -60,6 +64,7 @@ function CadastroCustosContent() {
   const [formAmount, setFormAmount] = useState('');
   const [formIsRecurring, setFormIsRecurring] = useState(true);
   const [formNotes, setFormNotes] = useState('');
+
   const resetForm = () => {
     setFormCategory('');
     setFormName('');
@@ -68,6 +73,7 @@ function CadastroCustosContent() {
     setFormNotes('');
     setEditingCost(null);
   };
+
   const openEditDialog = (cost: FixedCost) => {
     setEditingCost(cost);
     setFormCategory(cost.category);
@@ -77,6 +83,7 @@ function CadastroCustosContent() {
     setFormNotes(cost.notes || '');
     setIsAddDialogOpen(true);
   };
+
   const handleSubmit = async () => {
     const parseResult = parseCurrencyInput(formAmount);
     if (!parseResult.isValid) {
@@ -103,207 +110,281 @@ function CadastroCustosContent() {
       resetForm();
     }
   };
+
   const handleSettingsChange = (field: 'monthly_orders' | 'monthly_products_sold' | 'monthly_revenue', value: string) => {
     const numValue = parseNumericInputSafe(value, { min: 0, max: 9999999 });
     updateSettings({
       [field]: numValue
     });
   };
+
   if (isLoading) {
-    return <AppLayout>
-        <div className="container mx-auto px-4 py-6 space-y-6">
+    return (
+      <AppLayout>
+        <motion.div 
+          className="container mx-auto px-4 py-6 space-y-6"
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.6 }}
+        >
           <Skeleton className="h-10 w-64" />
           <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
             {[1, 2, 3, 4].map(i => <Skeleton key={i} className="h-32" />)}
           </div>
           <Skeleton className="h-64" />
-        </div>
-      </AppLayout>;
+        </motion.div>
+      </AppLayout>
+    );
   }
-  return <AppLayout>
-      <div className="container mx-auto px-4 py-6 space-y-6">
+
+  return (
+    <AppLayout>
+      <motion.div 
+        className="container mx-auto px-4 py-6 space-y-6"
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.6 }}
+      >
         {/* Header */}
-        <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+        <motion.div 
+          className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4"
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.6, delay: 0.1 }}
+        >
           <div>
-            <h1 className="text-2xl font-bold text-foreground">Cadastro de Custos Fixos</h1>
-            <p className="text-muted-foreground">Gerencie os custos fixos mensais da sua operação</p>
+            <h1 className="text-2xl font-bold text-gray-900">Cadastro de Custos Fixos</h1>
+            <p className="text-gray-600">Gerencie os custos fixos mensais da sua operação</p>
           </div>
           
           <Dialog open={isAddDialogOpen} onOpenChange={open => {
-          setIsAddDialogOpen(open);
-          if (!open) resetForm();
-        }}>
+            setIsAddDialogOpen(open);
+            if (!open) resetForm();
+          }}>
             <DialogTrigger asChild>
-              <Button>
+              <Button className="bg-blue-600 hover:bg-blue-700">
                 <Plus className="h-4 w-4 mr-2" />
                 Adicionar Custo
               </Button>
             </DialogTrigger>
-            <DialogContent className="max-w-md">
+            <DialogContent className="max-w-md border border-blue-200 bg-white">
               <DialogHeader>
-                <DialogTitle>{editingCost ? 'Editar Custo' : 'Adicionar Custo Fixo'}</DialogTitle>
-                <DialogDescription>
+                <DialogTitle className="text-gray-900">{editingCost ? 'Editar Custo' : 'Adicionar Custo Fixo'}</DialogTitle>
+                <DialogDescription className="text-gray-600">
                   {editingCost ? 'Altere as informações do custo fixo' : 'Preencha as informações do novo custo fixo'}
                 </DialogDescription>
               </DialogHeader>
               
               <div className="space-y-4 py-4">
                 <div className="space-y-2">
-                  <Label htmlFor="category">Categoria *</Label>
+                  <Label htmlFor="category" className="text-gray-900">Categoria *</Label>
                   <Select value={formCategory} onValueChange={setFormCategory}>
-                    <SelectTrigger>
+                    <SelectTrigger className="border-blue-200 focus:border-blue-500">
                       <SelectValue placeholder="Selecione uma categoria" />
                     </SelectTrigger>
                     <SelectContent>
-                      {COST_CATEGORIES.map(cat => <SelectItem key={cat.name} value={cat.name}>
+                      {COST_CATEGORIES.map(cat => (
+                        <SelectItem key={cat.name} value={cat.name}>
                           {cat.name}
-                        </SelectItem>)}
+                        </SelectItem>
+                      ))}
                     </SelectContent>
                   </Select>
-                  {formCategory && <p className="text-xs text-muted-foreground">
+                  {formCategory && (
+                    <p className="text-xs text-gray-500">
                       Exemplos: {COST_CATEGORIES.find(c => c.name === formCategory)?.examples.slice(0, 3).join(', ')}
-                    </p>}
+                    </p>
+                  )}
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="name">Nome do Custo *</Label>
-                  <Input id="name" value={formName} onChange={e => setFormName(e.target.value)} placeholder="Ex: Pró-labore, ERP Bling..." maxLength={100} />
+                  <Label htmlFor="name" className="text-gray-900">Nome do Custo *</Label>
+                  <Input 
+                    id="name" 
+                    value={formName} 
+                    onChange={e => setFormName(e.target.value)} 
+                    placeholder="Ex: Pró-labore, ERP Bling..." 
+                    maxLength={100} 
+                    className="border-blue-200 focus:border-blue-500"
+                  />
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="amount">Valor Mensal (R$) *</Label>
-                  <Input id="amount" type="text" inputMode="decimal" value={formAmount} onChange={e => setFormAmount(e.target.value)} placeholder="0,00" />
+                  <Label htmlFor="amount" className="text-gray-900">Valor Mensal (R$) *</Label>
+                  <Input 
+                    id="amount" 
+                    type="text" 
+                    inputMode="decimal" 
+                    value={formAmount} 
+                    onChange={e => setFormAmount(e.target.value)} 
+                    placeholder="0,00" 
+                    className="border-blue-200 focus:border-blue-500"
+                  />
                 </div>
 
                 <div className="flex items-center justify-between">
                   <div className="space-y-0.5">
-                    <Label htmlFor="recurring">Este custo ocorre todo mês?</Label>
-                    <p className="text-xs text-muted-foreground">Custos recorrentes são incluídos no cálculo automático</p>
+                    <Label htmlFor="recurring" className="text-gray-900">Este custo ocorre todo mês?</Label>
+                    <p className="text-xs text-gray-500">Custos recorrentes são incluídos no cálculo automático</p>
                   </div>
                   <Switch id="recurring" checked={formIsRecurring} onCheckedChange={setFormIsRecurring} />
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="notes">Observações (opcional)</Label>
-                  <Textarea id="notes" value={formNotes} onChange={e => setFormNotes(e.target.value)} placeholder="Notas adicionais sobre este custo..." rows={2} maxLength={500} />
+                  <Label htmlFor="notes" className="text-gray-900">Observações (opcional)</Label>
+                  <Textarea 
+                    id="notes" 
+                    value={formNotes} 
+                    onChange={e => setFormNotes(e.target.value)} 
+                    placeholder="Notas adicionais sobre este custo..." 
+                    rows={2} 
+                    maxLength={500} 
+                    className="border-blue-200 focus:border-blue-500"
+                  />
                 </div>
               </div>
 
               <DialogFooter>
                 <Button variant="outline" onClick={() => {
-                setIsAddDialogOpen(false);
-                resetForm();
-              }}>
+                  setIsAddDialogOpen(false);
+                  resetForm();
+                }} className="border-blue-200 text-blue-700 hover:bg-blue-50">
                   Cancelar
                 </Button>
-                <Button onClick={handleSubmit} disabled={!formCategory || !formName || !formAmount}>
+                <Button onClick={handleSubmit} disabled={!formCategory || !formName || !formAmount} className="bg-blue-600 hover:bg-blue-700">
                   {editingCost ? 'Salvar Alterações' : 'Adicionar'}
                 </Button>
               </DialogFooter>
             </DialogContent>
           </Dialog>
-        </div>
+        </motion.div>
 
         {/* Dashboard Cards */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          <Card>
+        <motion.div 
+          className="grid grid-cols-1 sm:grid-cols-2 gap-4"
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.6, delay: 0.2 }}
+        >
+          <Card className="border border-blue-200 shadow-lg bg-white">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Custo Fixo Mensal Total</CardTitle>
-              <DollarSign className="h-4 w-4 text-muted-foreground" />
+              <CardTitle className="text-sm font-medium text-gray-900">Custo Fixo Mensal Total</CardTitle>
+              <DollarSign className="h-4 w-4 text-gray-500" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">{formatCurrency(totalRecurringCosts)}</div>
-              <p className="text-xs text-muted-foreground">
+              <div className="text-2xl font-bold text-gray-900">{formatCurrency(totalRecurringCosts)}</div>
+              <p className="text-xs text-gray-500">
                 {costs.filter(c => c.is_recurring).length} custos recorrentes
               </p>
             </CardContent>
           </Card>
-
-          
-        </div>
+        </motion.div>
 
         {/* Costs by Category */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-lg">Custos Cadastrados</CardTitle>
-            <CardDescription>
-              {costs.length} custo{costs.length !== 1 ? 's' : ''} cadastrado{costs.length !== 1 ? 's' : ''} em {Object.keys(costsByCategory).length} categoria{Object.keys(costsByCategory).length !== 1 ? 's' : ''}
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            {costs.length === 0 ? <div className="text-center py-8 text-muted-foreground">
-                <Receipt className="h-12 w-12 mx-auto mb-4 opacity-50" />
-                <p>Nenhum custo cadastrado ainda.</p>
-                <p className="text-sm">Clique em "Adicionar Custo" para começar.</p>
-              </div> : <Accordion type="multiple" className="w-full" defaultValue={Object.keys(costsByCategory)}>
-                {COST_CATEGORIES.filter(cat => costsByCategory[cat.name]?.length > 0).map(category => {
-              const categoryCosts = costsByCategory[category.name] || [];
-              const categoryTotal = categoryCosts.reduce((sum, c) => sum + Number(c.amount), 0);
-              return <AccordionItem key={category.name} value={category.name}>
-                      <AccordionTrigger className="hover:no-underline">
-                        <div className="flex items-center justify-between w-full pr-4">
-                          <div className="flex items-center gap-2">
-                            {getCategoryIcon(category.name)}
-                            <span>{category.name}</span>
-                            <Badge variant="secondary" className="ml-2">{categoryCosts.length}</Badge>
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.6, delay: 0.3 }}
+        >
+          <Card className="border border-blue-200 shadow-lg bg-white">
+            <CardHeader className="bg-blue-50 border-b border-blue-200">
+              <CardTitle className="text-lg text-gray-900">Custos Cadastrados</CardTitle>
+              <CardDescription className="text-gray-600">
+                {costs.length} custo{costs.length !== 1 ? 's' : ''} cadastrado{costs.length !== 1 ? 's' : ''} em {Object.keys(costsByCategory).length} categoria{Object.keys(costsByCategory).length !== 1 ? 's' : ''}
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              {costs.length === 0 ? (
+                <div className="text-center py-8 text-gray-600">
+                  <Receipt className="h-12 w-12 mx-auto mb-4 opacity-50" />
+                  <p>Nenhum custo cadastrado ainda.</p>
+                  <p className="text-sm">Clique em "Adicionar Custo" para começar.</p>
+                </div>
+              ) : (
+                <Accordion type="multiple" className="w-full" defaultValue={Object.keys(costsByCategory)}>
+                  {COST_CATEGORIES.filter(cat => costsByCategory[cat.name]?.length > 0).map(category => {
+                    const categoryCosts = costsByCategory[category.name] || [];
+                    const categoryTotal = categoryCosts.reduce((sum, c) => sum + Number(c.amount), 0);
+                    return (
+                      <AccordionItem key={category.name} value={category.name}>
+                        <AccordionTrigger className="hover:no-underline">
+                          <div className="flex items-center justify-between w-full pr-4">
+                            <div className="flex items-center gap-2">
+                              {getCategoryIcon(category.name)}
+                              <span className="text-gray-900">{category.name}</span>
+                              <Badge variant="secondary" className="ml-2 bg-blue-100 text-blue-700 border-blue-200">{categoryCosts.length}</Badge>
+                            </div>
+                            <span className="font-semibold text-blue-600">{formatCurrency(categoryTotal)}</span>
                           </div>
-                          <span className="font-semibold text-primary">{formatCurrency(categoryTotal)}</span>
-                        </div>
-                      </AccordionTrigger>
-                      <AccordionContent>
-                        <div className="space-y-2 pl-6">
-                          {categoryCosts.map(cost => <div key={cost.id} className="flex items-center justify-between py-2 px-3 bg-muted/50 rounded-md">
-                              <div className="flex items-center gap-3">
-                                <div>
-                                  <p className="font-medium text-sm">{cost.name}</p>
-                                  {cost.notes && <p className="text-xs text-muted-foreground">{cost.notes}</p>}
+                        </AccordionTrigger>
+                        <AccordionContent>
+                          <div className="space-y-2 pl-6">
+                            {categoryCosts.map(cost => (
+                              <motion.div 
+                                key={cost.id} 
+                                className="flex items-center justify-between py-2 px-3 bg-blue-50 rounded-md"
+                                initial={{ opacity: 0, x: -20 }}
+                                animate={{ opacity: 1, x: 0 }}
+                                transition={{ duration: 0.4 }}
+                              >
+                                <div className="flex items-center gap-3">
+                                  <div>
+                                    <p className="font-medium text-sm text-gray-900">{cost.name}</p>
+                                    {cost.notes && <p className="text-xs text-gray-600">{cost.notes}</p>}
+                                  </div>
                                 </div>
-                              </div>
-                              <div className="flex items-center gap-3">
-                                <div className="text-right">
-                                  <p className="font-semibold">{formatCurrency(cost.amount)}</p>
-                                  {cost.is_recurring && <Badge variant="outline" className="text-xs">
-                                      <RefreshCw className="h-3 w-3 mr-1" />
-                                      Recorrente
-                                    </Badge>}
+                                <div className="flex items-center gap-3">
+                                  <div className="text-right">
+                                    <p className="font-semibold text-gray-900">{formatCurrency(cost.amount)}</p>
+                                    {cost.is_recurring && (
+                                      <Badge variant="outline" className="text-xs border-blue-200 text-blue-700">
+                                        <RefreshCw className="h-3 w-3 mr-1" />
+                                        Recorrente
+                                      </Badge>
+                                    )}
+                                  </div>
+                                  <div className="flex items-center gap-1">
+                                    <Button variant="ghost" size="icon" className="h-8 w-8 hover:bg-blue-50 text-blue-600" onClick={() => openEditDialog(cost)}>
+                                      <Pencil className="h-4 w-4" />
+                                    </Button>
+                                    <AlertDialog>
+                                      <AlertDialogTrigger asChild>
+                                        <Button variant="ghost" size="icon" className="h-8 w-8 text-red-600 hover:bg-red-50">
+                                          <Trash2 className="h-4 w-4" />
+                                        </Button>
+                                      </AlertDialogTrigger>
+                                      <AlertDialogContent className="border border-blue-200 bg-white">
+                                        <AlertDialogHeader>
+                                          <AlertDialogTitle className="text-gray-900">Excluir custo?</AlertDialogTitle>
+                                          <AlertDialogDescription className="text-gray-600">
+                                            Tem certeza que deseja excluir "{cost.name}"? Esta ação não pode ser desfeita.
+                                          </AlertDialogDescription>
+                                        </AlertDialogHeader>
+                                        <AlertDialogFooter>
+                                          <AlertDialogCancel className="border-blue-200 text-blue-700 hover:bg-blue-50">Cancelar</AlertDialogCancel>
+                                          <AlertDialogAction onClick={() => deleteCost(cost.id)} className="bg-red-500 hover:bg-red-600 text-white">
+                                            Excluir
+                                          </AlertDialogAction>
+                                        </AlertDialogFooter>
+                                      </AlertDialogContent>
+                                    </AlertDialog>
+                                  </div>
                                 </div>
-                                <div className="flex items-center gap-1">
-                                  <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => openEditDialog(cost)}>
-                                    <Pencil className="h-4 w-4" />
-                                  </Button>
-                                  <AlertDialog>
-                                    <AlertDialogTrigger asChild>
-                                      <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive hover:text-destructive">
-                                        <Trash2 className="h-4 w-4" />
-                                      </Button>
-                                    </AlertDialogTrigger>
-                                    <AlertDialogContent>
-                                      <AlertDialogHeader>
-                                        <AlertDialogTitle>Excluir custo?</AlertDialogTitle>
-                                        <AlertDialogDescription>
-                                          Tem certeza que deseja excluir "{cost.name}"? Esta ação não pode ser desfeita.
-                                        </AlertDialogDescription>
-                                      </AlertDialogHeader>
-                                      <AlertDialogFooter>
-                                        <AlertDialogCancel>Cancelar</AlertDialogCancel>
-                                        <AlertDialogAction onClick={() => deleteCost(cost.id)}>
-                                          Excluir
-                                        </AlertDialogAction>
-                                      </AlertDialogFooter>
-                                    </AlertDialogContent>
-                                  </AlertDialog>
-                                </div>
-                              </div>
-                            </div>)}
-                        </div>
-                      </AccordionContent>
-                    </AccordionItem>;
-            })}
-              </Accordion>}
-          </CardContent>
-        </Card>
-      </div>
-    </AppLayout>;
+                              </motion.div>
+                            ))}
+                          </div>
+                        </AccordionContent>
+                      </AccordionItem>
+                    );
+                  })}
+                </Accordion>
+              )}
+            </CardContent>
+          </Card>
+        </motion.div>
+      </motion.div>
+    </AppLayout>
+  );
 }
 
 export default function CadastroCustos() {

@@ -33,6 +33,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import { motion } from 'framer-motion';
 
 const PRESET_COLORS = [
   '#10B981', '#3B82F6', '#8B5CF6', '#EC4899', 
@@ -110,15 +111,21 @@ function FluxoCaixaCategoriasContent() {
   };
 
   const CategoryCard = ({ category }: { category: CashFlowCategory }) => (
-    <div className="flex items-center justify-between p-4 bg-muted/50 rounded-lg">
+    <motion.div 
+      className="flex items-center justify-between p-4 bg-blue-50 rounded-lg border border-blue-200"
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.6 }}
+      whileHover={{ scale: 1.02 }}
+    >
       <div className="flex items-center gap-3">
         <div 
           className="w-4 h-4 rounded-full" 
           style={{ backgroundColor: category.color }}
         />
-        <span className="font-medium">{category.name}</span>
+        <span className="font-medium text-gray-900">{category.name}</span>
         {category.is_default && (
-          <Badge variant="secondary" className="text-xs">Padrão</Badge>
+          <Badge variant="secondary" className="text-xs bg-blue-100 text-blue-700 border-blue-200">Padrão</Badge>
         )}
       </div>
       <div className="flex items-center gap-1">
@@ -126,6 +133,7 @@ function FluxoCaixaCategoriasContent() {
           variant="ghost"
           size="icon"
           onClick={() => handleOpenDialog(category)}
+          className="hover:bg-blue-100 text-blue-600"
         >
           <Edit className="h-4 w-4" />
         </Button>
@@ -134,43 +142,60 @@ function FluxoCaixaCategoriasContent() {
             variant="ghost"
             size="icon"
             onClick={() => setDeletingCategory(category)}
+            className="hover:bg-red-50 text-red-600"
           >
-            <Trash2 className="h-4 w-4 text-destructive" />
+            <Trash2 className="h-4 w-4" />
           </Button>
         )}
       </div>
-    </div>
+    </motion.div>
   );
 
   return (
     <AppLayout>
-      <div className="space-y-6">
+      <motion.div 
+        className="space-y-6"
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.6 }}
+      >
         {/* Header */}
-        <div className="flex items-center justify-between">
+        <motion.div 
+          className="flex items-center justify-between"
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.6, delay: 0.1 }}
+        >
           <div>
-            <h1 className="text-3xl font-bold text-foreground">Categorias</h1>
-            <p className="text-muted-foreground">
+            <h1 className="text-3xl font-bold text-gray-900">Categorias</h1>
+            <p className="text-gray-600">
               Gerencie as categorias de entradas e saídas
             </p>
           </div>
-          <Button onClick={() => handleOpenDialog()}>
+          <Button onClick={() => handleOpenDialog()} className="bg-blue-600 hover:bg-blue-700">
             <Plus className="h-4 w-4 mr-2" />
             Nova Categoria
           </Button>
-        </div>
+        </motion.div>
 
-        <div className="grid gap-6 md:grid-cols-2">
+        <motion.div 
+          className="grid gap-6 md:grid-cols-2"
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.6, delay: 0.2 }}
+        >
           {/* Income Categories */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
+          <Card className="border border-blue-200 shadow-lg bg-white">
+            <CardHeader className="bg-blue-50 border-b border-blue-200">
+              <CardTitle className="flex items-center gap-2 text-gray-900">
                 <TrendingUp className="h-5 w-5 text-green-600" />
                 Categorias de Entrada
               </CardTitle>
-              <CardDescription>
+              <CardDescription className="text-gray-600">
                 Categorias para receitas e recebimentos
               </CardDescription>
             </CardHeader>
+            <br />
             <CardContent className="space-y-3">
               {isLoading ? (
                 <>
@@ -179,7 +204,7 @@ function FluxoCaixaCategoriasContent() {
                   <Skeleton className="h-14 w-full" />
                 </>
               ) : incomeCategories.length === 0 ? (
-                <p className="text-sm text-muted-foreground text-center py-4">
+                <p className="text-sm text-gray-500 text-center py-4">
                   Nenhuma categoria de entrada
                 </p>
               ) : (
@@ -191,16 +216,17 @@ function FluxoCaixaCategoriasContent() {
           </Card>
 
           {/* Expense Categories */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
+          <Card className="border border-blue-200 shadow-lg bg-white">
+            <CardHeader className="bg-blue-50 border-b border-blue-200">
+              <CardTitle className="flex items-center gap-2 text-gray-900">
                 <TrendingDown className="h-5 w-5 text-red-600" />
                 Categorias de Saída
               </CardTitle>
-              <CardDescription>
+              <CardDescription className="text-gray-600">
                 Categorias para despesas e pagamentos
               </CardDescription>
             </CardHeader>
+            <br />
             <CardContent className="space-y-3">
               {isLoading ? (
                 <>
@@ -209,7 +235,7 @@ function FluxoCaixaCategoriasContent() {
                   <Skeleton className="h-14 w-full" />
                 </>
               ) : expenseCategories.length === 0 ? (
-                <p className="text-sm text-muted-foreground text-center py-4">
+                <p className="text-sm text-gray-500 text-center py-4">
                   Nenhuma categoria de saída
                 </p>
               ) : (
@@ -219,92 +245,127 @@ function FluxoCaixaCategoriasContent() {
               )}
             </CardContent>
           </Card>
-        </div>
-      </div>
+        </motion.div>
+      </motion.div>
 
       {/* Create/Edit Dialog */}
       <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>
-              {editingCategory ? 'Editar Categoria' : 'Nova Categoria'}
-            </DialogTitle>
-          </DialogHeader>
+        <DialogContent className="border border-blue-200 bg-white">
+          <motion.div
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+            exit={{ opacity: 0, scale: 0.95 }}
+            transition={{ duration: 0.3 }}
+          >
+            <DialogHeader className="bg-blue-50 border-b border-blue-200 -m-6 mb-0 p-6 rounded-t-lg">
+              <DialogTitle className="text-gray-900">
+                {editingCategory ? 'Editar Categoria' : 'Nova Categoria'}
+              </DialogTitle>
+            </DialogHeader>
 
-          <div className="space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="name">Nome</Label>
-              <Input
-                id="name"
-                value={formData.name}
-                onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                placeholder="Ex: Fornecedores"
-              />
-            </div>
-
-            <div className="space-y-2">
-              <Label>Tipo</Label>
-              <Select
-                value={formData.type}
-                onValueChange={(value: 'income' | 'expense') => setFormData({ ...formData, type: value })}
+            <div className="space-y-4 p-6">
+              <motion.div 
+                className="space-y-2"
+                initial={{ opacity: 0, x: -20 }}
+                animate={{ opacity: 1, x: 0 }}
+                transition={{ duration: 0.4, delay: 0.1 }}
               >
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="income">Entrada</SelectItem>
-                  <SelectItem value="expense">Saída</SelectItem>
-                </SelectContent>
-              </Select>
+                <Label htmlFor="name" className="text-gray-900">Nome</Label>
+                <Input
+                  id="name"
+                  value={formData.name}
+                  onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                  placeholder="Ex: Fornecedores"
+                  className="border-blue-200 focus:border-blue-500"
+                />
+              </motion.div>
+
+              <motion.div 
+                className="space-y-2"
+                initial={{ opacity: 0, x: -20 }}
+                animate={{ opacity: 1, x: 0 }}
+                transition={{ duration: 0.4, delay: 0.2 }}
+              >
+                <Label className="text-gray-900">Tipo</Label>
+                <Select
+                  value={formData.type}
+                  onValueChange={(value: 'income' | 'expense') => setFormData({ ...formData, type: value })}
+                >
+                  <SelectTrigger className="border-blue-200 focus:border-blue-500">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="income">Entrada</SelectItem>
+                    <SelectItem value="expense">Saída</SelectItem>
+                  </SelectContent>
+                </Select>
+              </motion.div>
+
+              <motion.div 
+                className="space-y-2"
+                initial={{ opacity: 0, x: -20 }}
+                animate={{ opacity: 1, x: 0 }}
+                transition={{ duration: 0.4, delay: 0.3 }}
+              >
+                <Label className="text-gray-900">Cor</Label>
+                <div className="flex flex-wrap gap-2">
+                  {PRESET_COLORS.map((color, index) => (
+                    <motion.button
+                      key={color}
+                      className={`w-8 h-8 rounded-full border-2 transition-all ${
+                        formData.color === color ? 'border-blue-600 scale-110' : 'border-transparent'
+                      }`}
+                      style={{ backgroundColor: color }}
+                      onClick={() => setFormData({ ...formData, color })}
+                      initial={{ opacity: 0, scale: 0.8 }}
+                      animate={{ opacity: 1, scale: 1 }}
+                      transition={{ duration: 0.3, delay: index * 0.05 }}
+                      whileHover={{ scale: 1.1 }}
+                    />
+                  ))}
+                </div>
+              </motion.div>
             </div>
 
-            <div className="space-y-2">
-              <Label>Cor</Label>
-              <div className="flex flex-wrap gap-2">
-                {PRESET_COLORS.map(color => (
-                  <button
-                    key={color}
-                    className={`w-8 h-8 rounded-full border-2 transition-all ${
-                      formData.color === color ? 'border-foreground scale-110' : 'border-transparent'
-                    }`}
-                    style={{ backgroundColor: color }}
-                    onClick={() => setFormData({ ...formData, color })}
-                  />
-                ))}
-              </div>
-            </div>
-          </div>
-
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setIsDialogOpen(false)}>
-              Cancelar
-            </Button>
-            <Button 
-              onClick={handleSubmit}
-              disabled={!formData.name.trim() || createCategory.isPending || updateCategory.isPending}
-            >
-              {editingCategory ? 'Salvar' : 'Criar'}
-            </Button>
-          </DialogFooter>
+            <DialogFooter className="gap-2 sm:gap-0 -m-6 mt-0 p-6 bg-blue-50 border-t border-blue-200 rounded-b-lg">
+              <Button variant="outline" onClick={() => setIsDialogOpen(false)} className="border-blue-200 text-blue-700 hover:bg-blue-50">
+                Cancelar
+              </Button>
+              <Button 
+                onClick={handleSubmit}
+                disabled={!formData.name.trim() || createCategory.isPending || updateCategory.isPending}
+                className="bg-blue-600 hover:bg-blue-700"
+              >
+                {editingCategory ? 'Salvar' : 'Criar'}
+              </Button>
+            </DialogFooter>
+          </motion.div>
         </DialogContent>
       </Dialog>
 
       {/* Delete Confirmation */}
       <AlertDialog open={!!deletingCategory} onOpenChange={() => setDeletingCategory(null)}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Excluir categoria?</AlertDialogTitle>
-            <AlertDialogDescription>
-              Tem certeza que deseja excluir a categoria "{deletingCategory?.name}"?
-              Os lançamentos desta categoria ficarão sem categoria.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancelar</AlertDialogCancel>
-            <AlertDialogAction onClick={handleDelete} className="bg-destructive text-destructive-foreground">
-              Excluir
-            </AlertDialogAction>
-          </AlertDialogFooter>
+        <AlertDialogContent className="border border-blue-200 bg-white">
+          <motion.div
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+            exit={{ opacity: 0, scale: 0.95 }}
+            transition={{ duration: 0.3 }}
+          >
+            <AlertDialogHeader>
+              <AlertDialogTitle className="text-gray-900">Excluir categoria?</AlertDialogTitle>
+              <AlertDialogDescription className="text-gray-600">
+                Tem certeza que deseja excluir a categoria "{deletingCategory?.name}"?
+                Os lançamentos desta categoria ficarão sem categoria.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel className="border-blue-200 text-blue-700 hover:bg-blue-50">Cancelar</AlertDialogCancel>
+              <AlertDialogAction onClick={handleDelete} className="bg-red-500 hover:bg-red-600 text-white">
+                Excluir
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </motion.div>
         </AlertDialogContent>
       </AlertDialog>
     </AppLayout>

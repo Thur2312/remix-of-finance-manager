@@ -46,6 +46,23 @@ import {
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { MissingCostsModal, MissingSku } from '@/components/upload/MissingCostsModal';
+import { motion } from 'framer-motion';
+
+// Animações (alinhadas com Landing Page)
+const fadeInUp = {
+  hidden: { opacity: 0, y: 60 },
+  visible: { opacity: 1, y: 0, transition: { duration: 0.6 } }
+};
+
+const stagger = {
+  hidden: { opacity: 0 },
+  visible: {
+    opacity: 1,
+    transition: {
+      staggerChildren: 0.2
+    }
+  }
+};
 
 interface ParsedRow {
   order_id: string;
@@ -67,11 +84,11 @@ interface ColumnMapping {
   quantidade: string;
   total_faturado: string;
   rebate_shopee: string;
-  data_pedido: string ;
+  data_pedido: string;
 }
 
 interface RawRowData {
-  [key: string]: string | number  | undefined;
+  [key: string]: string | number | null;
 }
 
 const defaultMapping: ColumnMapping = {
@@ -94,7 +111,7 @@ function UploadContent() {
   const [isProcessing, setIsProcessing] = useState(false);
   const [progress, setProgress] = useState(0);
   const [headers, setHeaders] = useState<string[]>([]);
-  const [previewData, setPreviewData] = useState<RawRowData []>([]);
+  const [previewData, setPreviewData] = useState<RawRowData[]>([]);
   const [mapping, setMapping] = useState<ColumnMapping>(defaultMapping);
   const [step, setStep] = useState<'upload' | 'mapping' | 'preview' | 'success'>('upload');
   const [parsedRows, setParsedRows] = useState<RawRowData[]>([]);
@@ -252,7 +269,7 @@ function UploadContent() {
         return header ? row[header] : null;
       };
 
-      const parseNumber = (value: string | number | null | undefined | ''): number => {
+      const parseNumber = (value: string | number | null | undefined): number => {
         if (value === null || value === undefined || value === '') return 0;
         if (typeof value === 'number') return value;
         const parsed = parseFloat(String(value).replace(/[^\d.,-]/g, '').replace(',', '.'));
@@ -289,9 +306,9 @@ function UploadContent() {
         sku: String(getValue('sku') || ''),
         nome_produto: String(getValue('nome_produto') || ''),
         variacao: String(getValue('variacao') || ''),
-        quantidade: Math.max(1, Math.round(parseNumber(typeof rawQuantidade === 'number' ? rawQuantidade : (rawQuantidade === '' ? '' : 0)))),
-        total_faturado: parseNumber(typeof rawTotal === 'number' ? rawTotal : (rawTotal === '' ? '' : 0)),
-        rebate_shopee: parseNumber(typeof rawRebate === 'number' ? rawRebate : (rawRebate === '' ? '' : 0)),
+        quantidade: Math.max(1, Math.round(parseNumber(rawQuantidade))),
+        total_faturado: parseNumber(rawTotal),
+        rebate_shopee: parseNumber(rawRebate),
         custo_unitario: 0,
         data_pedido: parsedDataPedido,
       };
@@ -434,288 +451,330 @@ function UploadContent() {
   };
 
   const renderUploadStep = () => (
-    <Card className="max-w-2xl mx-auto border-0 shadow-lg overflow-hidden">
-      <CardHeader className="bg-gradient-to-r from-primary/5 to-primary/10 border-b">
-        <div className="flex items-center gap-3">
-          <div className="h-12 w-12 rounded-xl bg-gradient-to-br from-primary to-primary/70 flex items-center justify-center shadow-lg shadow-primary/20">
-            <FileSpreadsheet className="h-6 w-6 text-primary-foreground" />
-          </div>
-          <div>
-            <CardTitle className="text-xl">Upload de Relatório da Shopee</CardTitle>
-            <CardDescription>
-              Faça upload do arquivo XLSX exportado da Shopee para importar seus pedidos
-            </CardDescription>
-          </div>
-        </div>
-      </CardHeader>
-      <CardContent className="pt-6">
-        <div
-          onDragEnter={handleDrag}
-          onDragLeave={handleDrag}
-          onDragOver={handleDrag}
-          onDrop={handleDrop}
-          className={`
-            relative border-2 border-dashed rounded-xl p-12 text-center transition-all duration-300
-            ${isDragActive 
-              ? 'border-primary bg-primary/5 scale-[1.02] shadow-lg' 
-              : 'border-muted-foreground/25 hover:border-primary/50 hover:bg-muted/30'
-            }
-          `}
-        >
-          <input
-            type="file"
-            accept=".xlsx,.xls"
-            onChange={handleFileInput}
-            className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
-          />
-          
-          <div className="space-y-4">
-            <div className={`
-              mx-auto h-20 w-20 rounded-full flex items-center justify-center transition-all duration-300
-              ${isDragActive ? 'bg-primary text-primary-foreground scale-110' : 'bg-muted'}
-            `}>
-              <UploadIcon className="h-10 w-10" />
+    <motion.div 
+      className="max-w-2xl mx-auto"
+      initial="hidden"
+      whileInView="visible"
+      viewport={{ once: true }}
+      variants={fadeInUp}
+    >
+      <Card className="border-0 shadow-lg overflow-hidden bg-white border-blue-200">
+        <CardHeader className="bg-gradient-to-r from-blue-50 to-blue-100 border-b border-blue-200">
+          <div className="flex items-center gap-3">
+            <div className="h-12 w-12 rounded-xl bg-gradient-to-br from-blue-500 to-cyan-500 flex items-center justify-center shadow-lg shadow-blue-300">
+              <FileSpreadsheet className="h-6 w-6 text-white" />
             </div>
-            
             <div>
-              <p className="text-lg font-semibold">
-                {isDragActive ? 'Solte o arquivo aqui' : 'Arraste o arquivo ou clique para selecionar'}
-              </p>
-              <p className="text-sm text-muted-foreground mt-1">
-                Apenas arquivos Excel (.xlsx, .xls)
-              </p>
+              <CardTitle className="text-xl text-gray-900">Upload de Relatório da Shopee</CardTitle>
+              <CardDescription className="text-gray-600">
+                Faça upload do arquivo XLSX exportado da Shopee para importar seus pedidos
+              </CardDescription>
             </div>
-
-            <Button variant="secondary" className="pointer-events-none shadow-sm">
-              Selecionar Arquivo
-            </Button>
           </div>
-        </div>
+        </CardHeader>
+        <CardContent className="pt-6">
+          <div
+            onDragEnter={handleDrag}
+            onDragLeave={handleDrag}
+            onDragOver={handleDrag}
+            onDrop={handleDrop}
+            className={`
+              relative border-2 border-dashed rounded-xl p-12 text-center transition-all duration-300
+              ${isDragActive 
+                ? 'border-blue-500 bg-blue-50 scale-[1.02] shadow-lg' 
+                : 'border-blue-300 hover:border-blue-400 hover:bg-blue-25'
+              }
+            `}
+          >
+            <input
+              type="file"
+              accept=".xlsx,.xls"
+              onChange={handleFileInput}
+              className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+            />
+            
+            <div className="space-y-4">
+              <div className={`
+                mx-auto h-20 w-20 rounded-full flex items-center justify-center transition-all duration-300
+                ${isDragActive ? 'bg-blue-500 text-white scale-110' : 'bg-blue-100'}
+              `}>
+                <UploadIcon className="h-10 w-10 text-blue-600" />
+              </div>
+              
+              <div>
+                <p className="text-lg font-semibold text-gray-900">
+                  {isDragActive ? 'Solte o arquivo aqui' : 'Arraste o arquivo ou clique para selecionar'}
+                </p>
+                               <p className="text-sm text-gray-600 mt-1">
+                  Apenas arquivos Excel (.xlsx, .xls)
+                </p>
+              </div>
 
-        {isProcessing && (
-          <div className="mt-6 space-y-2">
-            <div className="flex items-center justify-between text-sm">
-              <span className="font-medium">Processando arquivo...</span>
-              <span className="text-primary font-semibold">{progress.toFixed(0)}%</span>
+              <Button variant="secondary" className="pointer-events-none shadow-sm border-blue-200 text-blue-700 hover:bg-blue-50">
+                Selecionar Arquivo
+              </Button>
             </div>
-            <Progress value={progress} className="h-2" />
           </div>
-        )}
-      </CardContent>
-    </Card>
+
+          {isProcessing && (
+            <div className="mt-6 space-y-2">
+              <div className="flex items-center justify-between text-sm">
+                <span className="font-medium text-gray-900">Processando arquivo...</span>
+                <span className="text-blue-600 font-semibold">{progress.toFixed(0)}%</span>
+              </div>
+              <Progress value={progress} className="h-2" />
+            </div>
+          )}
+        </CardContent>
+      </Card>
+    </motion.div>
   );
 
   const renderMappingStep = () => (
-    <Card className="max-w-4xl mx-auto border-0 shadow-lg">
-      <CardHeader className="border-b bg-muted/20">
-        <CardTitle className="text-xl">Mapeamento de Colunas</CardTitle>
-        <CardDescription>
-          Selecione qual coluna do arquivo corresponde a cada campo do sistema.
-          Campos com * são obrigatórios.
-        </CardDescription>
-      </CardHeader>
-      <CardContent className="space-y-6 pt-6">
-        <div className="flex items-center gap-3 p-4 bg-gradient-to-r from-primary/10 to-primary/5 rounded-xl border border-primary/20">
-          <div className="h-10 w-10 rounded-lg bg-primary/20 flex items-center justify-center">
-            <FileSpreadsheet className="h-5 w-5 text-primary" />
-          </div>
-          <div>
-            <p className="font-semibold">{file?.name}</p>
-            <p className="text-sm text-muted-foreground">
-              {parsedRows.length} linhas encontradas • {headers.length} colunas
-            </p>
-          </div>
-        </div>
-
-        <div className="grid gap-4 sm:grid-cols-2">
-          {(Object.keys(mapping) as (keyof ColumnMapping)[]).map((field) => (
-            <div key={field} className="space-y-2">
-              <Label className="font-medium">
-                {getFieldLabel(field)}
-                {requiredFields.includes(field) && <span className="text-destructive ml-1">*</span>}
-              </Label>
-              <Select
-                value={mapping[field]}
-                onValueChange={(value) => handleMappingChange(field, value)}
-              >
-                <SelectTrigger className="shadow-sm">
-                  <SelectValue placeholder="Selecione uma coluna" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="__none__">Não mapear</SelectItem>
-                  {headers.map((header) => (
-                    <SelectItem key={header} value={header}>
-                      {header}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+    <motion.div 
+      className="max-w-4xl mx-auto"
+      initial="hidden"
+      whileInView="visible"
+      viewport={{ once: true }}
+      variants={fadeInUp}
+    >
+      <Card className="border-0 shadow-lg bg-white  border-blue-200">
+        <CardHeader className="border-b border-blue-200 bg-blue-50">
+          <CardTitle className="text-xl text-gray-900">Mapeamento de Colunas</CardTitle>
+          <CardDescription className="text-gray-600">
+            Selecione qual coluna do arquivo corresponde a cada campo do sistema.
+            Campos com * são obrigatórios.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-6 pt-6">
+          <div className="flex items-center gap-3 p-4 bg-gradient-to-r from-blue-50 to-blue-25 rounded-xl border border-blue-200">
+            <div className="h-10 w-10 rounded-lg bg-blue-100 flex items-center justify-center">
+              <FileSpreadsheet className="h-5 w-5 text-blue-600" />
             </div>
-          ))}
-        </div>
+            <div>
+              <p className="font-semibold text-gray-900">{file?.name}</p>
+              <p className="text-sm text-gray-600">
+                {parsedRows.length} linhas encontradas • {headers.length} colunas
+              </p>
+            </div>
+          </div>
 
-        <div className="flex justify-between pt-4 border-t">
-          <Button variant="outline" onClick={resetUpload}>
-            <XCircle className="h-4 w-4 mr-2" />
-            Cancelar
-          </Button>
-          <Button onClick={handlePreview} className="shadow-md">
-            Continuar para Preview
-          </Button>
-        </div>
-      </CardContent>
-    </Card>
+          <motion.div 
+            className="grid gap-4 sm:grid-cols-2"
+            variants={stagger}
+            initial="hidden"
+            whileInView="visible"
+            viewport={{ once: true }}
+          >
+            {(Object.keys(mapping) as (keyof ColumnMapping)[]).map((field) => (
+              <motion.div 
+                key={field} 
+                className="space-y-2"
+                variants={fadeInUp}
+              >
+                <Label className="font-medium text-gray-900">
+                  {getFieldLabel(field)}
+                  {requiredFields.includes(field) && <span className="text-red-500 ml-1">*</span>}
+                </Label>
+                <Select
+                  value={mapping[field]}
+                  onValueChange={(value) => handleMappingChange(field, value)}
+                >
+                  <SelectTrigger className="shadow-sm border-blue-200">
+                    <SelectValue placeholder="Selecione uma coluna" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="__none__">Não mapear</SelectItem>
+                    {headers.map((header) => (
+                      <SelectItem key={header} value={header}>
+                        {header}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </motion.div>
+            ))}
+          </motion.div>
+
+          <div className="flex justify-between pt-4 border-t border-blue-200">
+            <Button variant="outline" onClick={resetUpload} className="border-blue-200 text-blue-700 hover:bg-blue-50">
+              <XCircle className="h-4 w-4 mr-2" />
+              Cancelar
+            </Button>
+            <Button onClick={handlePreview} className="shadow-md bg-blue-600 hover:bg-blue-700">
+              Continuar para Preview
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
+    </motion.div>
   );
 
   const renderPreviewStep = () => {
     const previewRows = processDataForImport().slice(0, 5);
 
     return (
-      <Card className="max-w-6xl mx-auto">
-        <CardHeader>
-          <CardTitle>Preview da Importação</CardTitle>
-          <CardDescription>
-            Verifique se os dados estão corretos antes de importar.
-            Mostrando as primeiras 5 linhas de {processDataForImport().length} total.
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-6">
-          <div className="rounded-lg border overflow-x-auto">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>ID Pedido</TableHead>
-                  <TableHead>SKU</TableHead>
-                  <TableHead>Produto</TableHead>
-                  <TableHead>Variação</TableHead>
-                  <TableHead className="text-right">Qtd</TableHead>
-                  <TableHead className="text-right">Total (R$)</TableHead>
-                  <TableHead className="text-right">Rebate (R$)</TableHead>
-                  <TableHead>Data</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {previewRows.map((row, index) => (
-                  <TableRow key={index}>
-                    <TableCell className="font-mono text-xs">{row.order_id}</TableCell>
-                    <TableCell>{row.sku || '-'}</TableCell>
-                    <TableCell className="max-w-[200px] truncate">{row.nome_produto}</TableCell>
-                    <TableCell>{row.variacao || '-'}</TableCell>
-                    <TableCell className="text-right">{row.quantidade}</TableCell>
-                    <TableCell className="text-right">{row.total_faturado.toFixed(2)}</TableCell>
-                    <TableCell className="text-right">{row.rebate_shopee.toFixed(2)}</TableCell>
-                    <TableCell className="text-xs">
-                      {row.data_pedido ? new Date(row.data_pedido).toLocaleDateString('pt-BR') : '-'}
-                    </TableCell>
+      <motion.div 
+        className="max-w-6xl mx-auto"
+        initial="hidden"
+        whileInView="visible"
+        viewport={{ once: true }}
+        variants={fadeInUp}
+      >
+        <Card className="bg-white border border-blue-200 shadow-lg">
+          <CardHeader className="border-b border-blue-200 bg-blue-50">
+            <CardTitle className="text-xl text-gray-900">Preview da Importação</CardTitle>
+            <CardDescription className="text-gray-600">
+              Verifique se os dados estão corretos antes de importar.
+              Mostrando as primeiras 5 linhas de {processDataForImport().length} total.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-6">
+            <div className="rounded-lg border border-blue-200 overflow-x-auto bg-white">
+              <Table>
+                <TableHeader>
+                  <TableRow className="bg-blue-50">
+                    <TableHead className="text-gray-900">ID Pedido</TableHead>
+                    <TableHead className="text-gray-900">SKU</TableHead>
+                    <TableHead className="text-gray-900">Produto</TableHead>
+                    <TableHead className="text-gray-900">Variação</TableHead>
+                    <TableHead className="text-right text-gray-900">Qtd</TableHead>
+                    <TableHead className="text-right text-gray-900">Total (R$)</TableHead>
+                    <TableHead className="text-right text-gray-900">Rebate (R$)</TableHead>
+                    <TableHead className="text-gray-900">Data</TableHead>
                   </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </div>
-
-          <div className="space-y-4">
-            <div className="flex items-center gap-2 p-4 bg-accent rounded-lg">
-              <AlertCircle className="h-5 w-5 text-primary" />
-              <p className="text-sm">
-                <strong>{processDataForImport().length}</strong> pedidos serão importados para o sistema.
-              </p>
+                </TableHeader>
+                <TableBody>
+                  {previewRows.map((row, index) => (
+                    <TableRow key={index} className="hover:bg-blue-25">
+                      <TableCell className="font-mono text-xs text-gray-900">{row.order_id}</TableCell>
+                      <TableCell className="text-gray-900">{row.sku || '-'}</TableCell>
+                      <TableCell className="max-w-[200px] truncate text-gray-900">{row.nome_produto}</TableCell>
+                      <TableCell className="text-gray-900">{row.variacao || '-'}</TableCell>
+                      <TableCell className="text-right text-gray-900">{row.quantidade}</TableCell>
+                      <TableCell className="text-right text-gray-900">{row.total_faturado.toFixed(2)}</TableCell>
+                      <TableCell className="text-right text-gray-900">{row.rebate_shopee.toFixed(2)}</TableCell>
+                      <TableCell className="text-xs text-gray-900">
+                        {row.data_pedido ? new Date(row.data_pedido).toLocaleDateString('pt-BR') : '-'}
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
             </div>
 
-            <div className="flex items-center space-x-3 p-4 border rounded-lg">
-              <Switch
-                id="replace_existing"
-                checked={replaceExisting}
-                onCheckedChange={setReplaceExisting}
-              />
-              <div>
-                <Label htmlFor="replace_existing" className="font-medium cursor-pointer">
-                  Substituir pedidos anteriores
-                </Label>
-                <p className="text-xs text-muted-foreground">
-                  {replaceExisting 
-                    ? 'Todos os pedidos anteriores serão excluídos antes da importação (recomendado para nova análise)'
-                    : 'Os novos pedidos serão adicionados aos já existentes'}
+            <div className="space-y-4">
+              <div className="flex items-center gap-2 p-4 bg-blue-50 rounded-lg border border-blue-200">
+                <AlertCircle className="h-5 w-5 text-blue-600" />
+                <p className="text-sm text-gray-900">
+                  <strong>{processDataForImport().length}</strong> pedidos serão importados para o sistema.
                 </p>
               </div>
-            </div>
-          </div>
 
-          {isProcessing && (
-            <div className="space-y-2">
-              <div className="flex items-center justify-between text-sm">
-                <span>Importando...</span>
-                <span>{importStats.imported} de {importStats.total}</span>
+              <div className="flex items-center space-x-3 p-4 border border-blue-200 rounded-lg bg-white">
+                <Switch
+                  id="replace_existing"
+                  checked={replaceExisting}
+                  onCheckedChange={setReplaceExisting}
+                />
+                <div>
+                  <Label htmlFor="replace_existing" className="font-medium cursor-pointer text-gray-900">
+                    Substituir pedidos anteriores
+                  </Label>
+                  <p className="text-xs text-gray-600">
+                    {replaceExisting 
+                      ? 'Todos os pedidos anteriores serão excluídos antes da importação (recomendado para nova análise)'
+                      : 'Os novos pedidos serão adicionados aos já existentes'}
+                  </p>
+                </div>
               </div>
-              <Progress value={progress} className="h-2" />
             </div>
-          )}
 
-          <div className="flex justify-between pt-4">
-            <Button variant="outline" onClick={() => setStep('mapping')}>
-              Voltar
-            </Button>
-            <Button onClick={handleImport} disabled={isProcessing}>
-              {isProcessing ? (
-                <>
-                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                  Importando...
-                </>
-              ) : (
-                <>
-                  <UploadIcon className="h-4 w-4 mr-2" />
-                  Importar {processDataForImport().length} Pedidos
-                </>
-              )}
-            </Button>
-          </div>
-        </CardContent>
-      </Card>
+            {isProcessing && (
+              <div className="space-y-2">
+                <div className="flex items-center justify-between text-sm">
+                  <span className="text-gray-900">Importando...</span>
+                  <span className="text-gray-900">{importStats.imported} de {importStats.total}</span>
+                </div>
+                <Progress value={progress} className="h-2" />
+              </div>
+            )}
+
+            <div className="flex justify-between pt-4 border-t border-blue-200">
+              <Button variant="outline" onClick={() => setStep('mapping')} className="border-blue-200 text-blue-700 hover:bg-blue-50">
+                Voltar
+              </Button>
+              <Button onClick={handleImport} disabled={isProcessing} className="shadow-md bg-blue-600 hover:bg-blue-700">
+                {isProcessing ? (
+                  <>
+                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                    Importando...
+                  </>
+                ) : (
+                  <>
+                    <UploadIcon className="h-4 w-4 mr-2" />
+                    Importar {processDataForImport().length} Pedidos
+                  </>
+                )}
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      </motion.div>
     );
   };
 
   const renderSuccessStep = () => (
-    <Card className="max-w-md mx-auto text-center border-0 shadow-xl overflow-hidden">
-      <div className="bg-gradient-to-br from-emerald-500 to-green-600 p-8">
-        <div className="mx-auto h-20 w-20 rounded-full bg-white/20 backdrop-blur-sm flex items-center justify-center">
-          <CheckCircle2 className="h-10 w-10 text-white" />
+    <motion.div 
+      className="max-w-md mx-auto text-center"
+      initial="hidden"
+      whileInView="visible"
+      viewport={{ once: true }}
+      variants={fadeInUp}
+    >
+      <Card className="border-0 shadow-xl overflow-hidden bg-white border-blue-200">
+        <div className="bg-gradient-to-br from-emerald-500 to-green-600 p-8">
+          <div className="mx-auto h-20 w-20 rounded-full bg-white/20 backdrop-blur-sm flex items-center justify-center">
+            <CheckCircle2 className="h-10 w-10 text-white" />
+          </div>
         </div>
-      </div>
-      <CardContent className="pt-6 pb-8 space-y-6">
-        <div>
-          <h2 className="text-2xl font-bold">Importação Concluída!</h2>
-          <p className="text-muted-foreground mt-2">
-            Seus dados foram importados com sucesso.
-          </p>
-        </div>
+        <CardContent className="pt-6 pb-8 space-y-6">
+          <div>
+            <h2 className="text-2xl font-bold text-gray-900">Importação Concluída!</h2>
+            <p className="text-gray-600 mt-2">
+              Seus dados foram importados com sucesso.
+            </p>
+          </div>
 
-        <div className="bg-muted/50 rounded-xl p-4 space-y-3">
-          <div className="flex justify-between items-center">
-            <span className="text-muted-foreground">Total de registros:</span>
-            <span className="font-bold text-lg">{importStats.total}</span>
-          </div>
-          <div className="flex justify-between items-center text-emerald-600 dark:text-emerald-400">
-            <span>Importados com sucesso:</span>
-            <span className="font-bold text-lg">{importStats.imported}</span>
-          </div>
-          {importStats.errors > 0 && (
-            <div className="flex justify-between items-center text-red-600 dark:text-red-400">
-              <span>Erros:</span>
-              <span className="font-bold text-lg">{importStats.errors}</span>
+          <div className="bg-blue-50 rounded-xl p-4 space-y-3 border border-blue-200">
+            <div className="flex justify-between items-center">
+              <span className="text-gray-600">Total de registros:</span>
+              <span className="font-bold text-lg text-gray-900">{importStats.total}</span>
             </div>
-          )}
-        </div>
+            <div className="flex justify-between items-center text-emerald-600">
+              <span>Importados com sucesso:</span>
+              <span className="font-bold text-lg">{importStats.imported}</span>
+            </div>
+            {importStats.errors > 0 && (
+              <div className="flex justify-between items-center text-red-600">
+                <span>Erros:</span>
+                <span className="font-bold text-lg">{importStats.errors}</span>
+              </div>
+            )}
+          </div>
 
-        <div className="flex flex-col gap-3">
-          <Button onClick={resetUpload} className="shadow-md">
-            <UploadIcon className="h-4 w-4 mr-2" />
-            Fazer Novo Upload
-          </Button>
-          <Button variant="outline" asChild>
-            <a href="/resultados">Ver Resultados</a>
-          </Button>
-        </div>
-      </CardContent>
-    </Card>
+          <div className="flex flex-col gap-3">
+            <Button onClick={resetUpload} className="shadow-md bg-blue-600 hover:bg-blue-700">
+              <UploadIcon className="h-4 w-4 mr-2" />
+              Fazer Novo Upload
+            </Button>
+            <Button variant="outline" asChild className="border-blue-200 text-blue-700 hover:bg-blue-50">
+              <a href="/resultados">Ver Resultados</a>
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
+    </motion.div>
   );
 
   return (

@@ -1,8 +1,9 @@
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { ProtectedRoute } from '@/components/layout/ProtectedRoute';
 import { Button } from '@/components/ui/button';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useCashFlowCategories, useCashFlowEntries } from '@/hooks/useCashFlow';
 import { CashFlowCharts } from '@/components/fluxo-caixa/CashFlowCharts';
 import { PageHeader } from '@/components/ui/page-header';
@@ -11,9 +12,12 @@ import { SectionCard } from '@/components/ui/section-card';
 import { EmptyState } from '@/components/ui/empty-state';
 import { Badge } from '@/components/ui/badge';
 import { Wallet, TrendingUp, TrendingDown, Clock, AlertTriangle, Plus, ArrowRight, CalendarClock, History, Receipt } from 'lucide-react';
-import { format, startOfMonth, endOfMonth, isBefore, parseISO } from 'date-fns';
+import { format, startOfMonth, endOfMonth, isBefore, parseISO, getMonth, getYear } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { cn } from '@/lib/utils';
+import { motion } from 'framer-motion';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Separator } from '@/components/ui/separator';
 
 function FluxoCaixaDashboardContent() {
   const navigate = useNavigate();
@@ -27,6 +31,10 @@ function FluxoCaixaDashboardContent() {
     isLoading: entriesLoading
   } = useCashFlowEntries();
 
+  const now = new Date();
+  const [selectedMonth, setSelectedMonth] = useState(getMonth(now) + 1); // 1-12
+  const [selectedYear, setSelectedYear] = useState(getYear(now));
+
   useEffect(() => {
     if (!categoriesLoading && categories.length === 0) {
       initializeDefaultCategories.mutate();
@@ -35,9 +43,9 @@ function FluxoCaixaDashboardContent() {
 
   const isLoading = categoriesLoading || entriesLoading;
 
-  const now = new Date();
-  const monthStart = startOfMonth(now);
-  const monthEnd = endOfMonth(now);
+  const selectedDate = new Date(selectedYear, selectedMonth - 1, 1);
+  const monthStart = startOfMonth(selectedDate);
+  const monthEnd = endOfMonth(selectedDate);
   const currentMonthEntries = entries.filter(entry => {
     const entryDate = parseISO(entry.date);
     return entryDate >= monthStart && entryDate <= monthEnd;
@@ -95,131 +103,235 @@ function FluxoCaixaDashboardContent() {
     return 'neutral';
   };
 
+  const months = [
+    { value: 1, label: 'Janeiro' },
+    { value: 2, label: 'Fevereiro' },
+    { value: 3, label: 'Março' },
+    { value: 4, label: 'Abril' },
+    { value: 5, label: 'Maio' },
+    { value: 6, label: 'Junho' },
+    { value: 7, label: 'Julho' },
+    { value: 8, label: 'Agosto' },
+    { value: 9, label: 'Setembro' },
+    { value: 10, label: 'Outubro' },
+    { value: 11, label: 'Novembro' },
+    { value: 12, label: 'Dezembro' },
+  ];
+
+  const years = Array.from({ length: 15 }, (_, i) => getYear(now) + i);
+
   return (
     <AppLayout title="Fluxo de Caixa">
-      <div className="space-y-6 animate-fade-in">
+      <motion.div 
+        className="space-y-8"
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.6 }}
+      >
         {/* Header */}
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+        <motion.div 
+          className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4"
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.6, delay: 0.1 }}
+        >
           <PageHeader
             title="Fluxo de Caixa"
-            description={`Visão geral de ${format(now, 'MMMM yyyy', { locale: ptBR })}`}
+            description={`Visão geral de ${format(selectedDate, 'MMMM yyyy', { locale: ptBR })}`}
             icon={Wallet}
           />
+          <div className="flex items-center gap-2">
+            <div className="flex gap-2">
+              <Select value={selectedMonth.toString()} onValueChange={(value) => setSelectedMonth(parseInt(value))}>
+                <SelectTrigger className="w-50 h-10 border-blue-200 focus:border-blue-500">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {months.map(month => (
+                    <SelectItem key={month.value} value={month.value.toString()}>
+                      {month.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <Select value={selectedYear.toString()} onValueChange={(value) => setSelectedYear(parseInt(value))}>
+                <SelectTrigger className="w-20 h-10 border-blue-200 focus:border-blue-500">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {years.map(year => (
+                    <SelectItem key={year} value={year.toString()}>
+                      {year}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
           <Button 
             onClick={() => navigate('/fluxo-caixa/lancamentos')} 
-            className="gap-2 shadow-md hover:shadow-lg transition-shadow"
+            className="gap-2 shadow-md hover:shadow-lg transition-shadow bg-blue-600 hover:bg-blue-700"
           >
             <Plus className="h-4 w-4" />
             Novo Lançamento
           </Button>
-        </div>
+          </div>
+        </motion.div>
+
+        <Separator className="my-4" />
+
+
+        <Separator className="my-4" />
 
         {/* Summary Cards */}
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-5">
-          <StatCard
-            title="Saldo Atual"
-            value={isLoading ? "..." : formatCurrency(currentBalance)}
-            subtitle="Este mês"
-            icon={Wallet}
-            trend={getBalanceTrend()}
-            className="animate-fade-in"
-          />
+        <motion.div 
+          className="grid gap-4 md:grid-cols-2 lg:grid-cols-5"
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.6, delay: 0.2 }}
+        >
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.6, delay: 0.3 }}
+          >
+            <StatCard
+              title="Saldo Atual"
+              value={isLoading ? "..." : formatCurrency(currentBalance)}
+              subtitle="Este mês"
+              icon={Wallet}
+              trend={getBalanceTrend()}
+              className="border border-blue-200 bg-white"
+            />
+          </motion.div>
           
-          <StatCard
-            title="Entradas"
-            value={isLoading ? "..." : formatCurrency(totalIncome)}
-            subtitle="Recebido este mês"
-            icon={TrendingUp}
-            trend="up"
-            className="animate-fade-in [animation-delay:50ms]"
-          />
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.6, delay: 0.35 }}
+          >
+            <StatCard
+              title="Entradas"
+              value={isLoading ? "..." : formatCurrency(totalIncome)}
+              subtitle="Recebido este mês"
+              icon={TrendingUp}
+              trend="up"
+              className="border border-blue-200 bg-white"
+            />
+          </motion.div>
           
-          <StatCard
-            title="Saídas"
-            value={isLoading ? "..." : formatCurrency(totalExpense)}
-            subtitle="Pago este mês"
-            icon={TrendingDown}
-            trend="down"
-            className="animate-fade-in [animation-delay:100ms]"
-          />
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.6, delay: 0.4 }}
+          >
+            <StatCard
+              title="Saídas"
+              value={isLoading ? "..." : formatCurrency(totalExpense)}
+              subtitle="Pago este mês"
+              icon={TrendingDown}
+              trend="down"
+              className="border border-blue-200 bg-white"
+            />
+          </motion.div>
           
-          <div className="animate-fade-in [animation-delay:150ms]">
-            <div className="relative overflow-hidden rounded-xl border-0 shadow-md bg-gradient-to-br from-info/10 via-card to-card p-6 h-full">
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.6, delay: 0.45 }}
+          >
+            <div className="relative overflow-hidden rounded-xl border border-blue-200 shadow-md bg-gradient-to-br from-blue-50 via-white to-white p-6 h-full">
               <div className="flex items-start justify-between">
                 <div className="space-y-1">
-                  <p className="text-sm font-medium text-muted-foreground">A Receber</p>
-                  <p className="text-2xl font-bold tracking-tight text-info">
+                  <p className="text-sm font-medium text-gray-600">A Receber</p>
+                  <p className="text-2xl font-bold tracking-tight text-blue-600">
                     {isLoading ? "..." : formatCurrency(pendingReceivables)}
                   </p>
-                  <p className="text-xs text-muted-foreground">Pendente</p>
+                  <p className="text-xs text-gray-500">Pendente</p>
                 </div>
-                <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-info/15">
-                  <Clock className="h-5 w-5 text-info" />
+                <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-blue-100">
+                  <Clock className="h-5 w-5 text-blue-600" />
                 </div>
               </div>
             </div>
-          </div>
+          </motion.div>
           
-          <div className="animate-fade-in [animation-delay:200ms]">
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.6, delay: 0.5 }}
+          >
             <div className={cn(
-              "relative overflow-hidden rounded-xl border-0 shadow-md p-6 h-full transition-all",
+              "relative overflow-hidden rounded-xl border border-blue-200 shadow-md p-6 h-full transition-all",
               overdueTotal > 0 
-                ? "bg-gradient-to-br from-warning/20 via-card to-card ring-1 ring-warning/30" 
-                : "bg-gradient-to-br from-muted/50 via-card to-card"
+                ? "bg-gradient-to-br from-yellow-50 via-white to-white ring-1 ring-yellow-300" 
+                : "bg-gradient-to-br from-blue-50 via-white to-white"
             )}>
               <div className="flex items-start justify-between">
                 <div className="space-y-1">
-                  <p className="text-sm font-medium text-muted-foreground">Vencido</p>
+                  <p className="text-sm font-medium text-gray-600">Vencido</p>
                   <p className={cn(
                     "text-2xl font-bold tracking-tight",
-                    overdueTotal > 0 ? "text-warning" : "text-muted-foreground"
+                    overdueTotal > 0 ? "text-yellow-600" : "text-gray-500"
                   )}>
                     {isLoading ? "..." : formatCurrency(overdueTotal)}
                   </p>
-                  <p className="text-xs text-muted-foreground">
+                  <p className="text-xs text-gray-500">
                     {overduePayables.length} {overduePayables.length === 1 ? 'conta' : 'contas'}
                   </p>
                 </div>
                 <div className={cn(
                   "flex h-11 w-11 shrink-0 items-center justify-center rounded-xl",
-                  overdueTotal > 0 ? "bg-warning/15" : "bg-muted"
+                  overdueTotal > 0 ? "bg-yellow-100" : "bg-blue-100"
                 )}>
                   <AlertTriangle className={cn(
                     "h-5 w-5",
-                    overdueTotal > 0 ? "text-warning" : "text-muted-foreground"
+                    overdueTotal > 0 ? "text-yellow-600" : "text-gray-500"
                   )} />
                 </div>
               </div>
               {overdueTotal > 0 && (
-                <div className="absolute -bottom-6 -right-6 h-24 w-24 rounded-full bg-warning/10 blur-2xl" />
+                <div className="absolute -bottom-6 -right-6 h-24 w-24 rounded-full bg-yellow-100 blur-2xl" />
               )}
             </div>
-          </div>
-        </div>
+          </motion.div>
+        </motion.div>
+
+        <Separator className="my-4" />
 
         {/* Charts */}
-        <div className="animate-fade-in [animation-delay:250ms]">
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.6, delay: 0.55 }}
+        >
           <CashFlowCharts entries={entries} categories={categories} isLoading={isLoading} />
-        </div>
+        </motion.div>
+
+        <Separator className="my-4" />
 
         {/* Quick Access Lists */}
-        <div className="grid gap-6 md:grid-cols-2 animate-fade-in [animation-delay:300ms]">
+        <motion.div 
+          className="grid gap-6 md:grid-cols-2"
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.6, delay: 0.6 }}
+        >
           {/* Upcoming Entries */}
           <SectionCard
             title="Próximos Vencimentos"
             icon={CalendarClock}
-            headerClassName="pb-2"
-            className="overflow-hidden"
+            headerClassName="pb-2 bg-blue-50 border-b border-blue-200"
+            className="overflow-hidden border border-blue-200 bg-white shadow-lg"
           >
             <div className="flex items-center justify-between mb-4">
-              <span className="text-xs text-muted-foreground">
+              <span className="text-xs text-gray-600">
                 {upcomingEntries.length} pendente{upcomingEntries.length !== 1 ? 's' : ''}
               </span>
               <Button 
                 variant="ghost" 
                 size="sm" 
                 onClick={() => navigate('/fluxo-caixa/lancamentos')}
-                className="text-xs h-7 px-2"
+                className="text-xs h-7 px-2 hover:bg-blue-50 text-blue-700"
               >
                 Ver todos <ArrowRight className="ml-1 h-3 w-3" />
               </Button>
@@ -234,30 +346,32 @@ function FluxoCaixaDashboardContent() {
               />
             ) : (
               <div className="space-y-2">
-                  {upcomingEntries.map((entry, index) => (
-                  <div 
+                {upcomingEntries.map((entry, index) => (
+                  <motion.div 
                     key={entry.id} 
                     className={cn(
                       "flex items-center justify-between p-3 rounded-lg transition-all",
-                      "bg-muted/30 hover:bg-muted/60 border border-transparent hover:border-border/50",
+                      "bg-blue-50 hover:bg-blue-100 border border-blue-200 hover:border-blue-300",
                       "animate-fade-in"
                     )}
-                    style={{ animationDelay: `${index * 50}ms` }}
+                    initial={{ opacity: 0, x: -20 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    transition={{ duration: 0.6, delay: index * 0.1 }}
                   >
                     <div className="flex items-center gap-3">
                       <div className={cn(
-                        "w-2.5 h-2.5 rounded-full ring-2 ring-offset-2 ring-offset-background",
+                        "w-2.5 h-2.5 rounded-full ring-2 ring-offset-2 ring-offset-white",
                         entry.type === 'income' 
-                          ? 'bg-success ring-success/30' 
-                          : 'bg-destructive ring-destructive/30'
+                          ? 'bg-green-500 ring-green-300' 
+                          : 'bg-red-500 ring-red-300'
                       )} />
                       <div>
-                        <p className="text-sm font-medium line-clamp-1">{entry.description}</p>
+                        <p className="text-sm font-medium line-clamp-1 text-gray-900">{entry.description}</p>
                         <div className="flex items-center gap-2">
-                          <p className="text-xs text-muted-foreground">
+                          <p className="text-xs text-gray-600">
                             {entry.due_date && format(parseISO(entry.due_date), 'dd/MM/yyyy')}
                           </p>
-                          <Badge variant="outline" className="text-[10px] h-4 px-1">
+                          <Badge variant="outline" className="text-[10px] h-4 px-1 border-blue-200 text-blue-700">
                             {entry.type === 'income' ? 'Entrada' : 'Saída'}
                           </Badge>
                         </div>
@@ -266,12 +380,12 @@ function FluxoCaixaDashboardContent() {
                     <span className={cn(
                       "font-semibold tabular-nums",
                       entry.type === 'income' 
-                        ? 'text-success' 
-                        : 'text-destructive'
+                        ? 'text-green-600' 
+                        : 'text-red-600'
                     )}>
                       {entry.type === 'expense' ? '-' : '+'}{formatCurrency(Number(entry.amount))}
                     </span>
-                  </div>
+                  </motion.div>
                 ))}
               </div>
             )}
@@ -281,20 +395,20 @@ function FluxoCaixaDashboardContent() {
           <SectionCard
             title="Últimos Lançamentos"
             icon={History}
-            headerClassName="pb-2"
-            className="overflow-hidden"
+            headerClassName="pb-2 bg-blue-50 border-b border-blue-200"
+            className="overflow-hidden border border-blue-200 bg-white shadow-lg"
           >
             <div className="flex items-center justify-between mb-4">
-              <span className="text-xs text-muted-foreground">
+              <span className="text-xs text-gray-600">
                 {entries.length} total
               </span>
               <Button 
                 variant="ghost" 
                 size="sm" 
                 onClick={() => navigate('/fluxo-caixa/lancamentos')}
-                className="text-xs h-7 px-2"
+                className="text-xs h-7 px-2 hover:bg-blue-50 text-blue-700"
               >
-                Ver todos <ArrowRight className="ml-1 h-3 w-3" />
+              Ver todos <ArrowRight className="ml-1 h-3 w-3" />
               </Button>
             </div>
             
@@ -311,32 +425,34 @@ function FluxoCaixaDashboardContent() {
               />
             ) : (
               <div className="space-y-2">
-                  {recentEntries.map((entry, index) => (
-                  <div 
+                {recentEntries.map((entry, index) => (
+                  <motion.div 
                     key={entry.id} 
                     className={cn(
                       "flex items-center justify-between p-3 rounded-lg transition-all",
-                      "bg-muted/30 hover:bg-muted/60 border border-transparent hover:border-border/50",
+                      "bg-blue-50 hover:bg-blue-100 border border-blue-200 hover:border-blue-300",
                       "animate-fade-in"
                     )}
-                    style={{ animationDelay: `${index * 50}ms` }}
+                    initial={{ opacity: 0, x: 20 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    transition={{ duration: 0.6, delay: index * 0.1 }}
                   >
                     <div className="flex items-center gap-3">
                       <div className={cn(
-                        "w-2.5 h-2.5 rounded-full ring-2 ring-offset-2 ring-offset-background",
+                        "w-2.5 h-2.5 rounded-full ring-2 ring-offset-2 ring-offset-white",
                         entry.type === 'income' 
-                          ? 'bg-success ring-success/30' 
-                          : 'bg-destructive ring-destructive/30'
+                          ? 'bg-green-500 ring-green-300' 
+                          : 'bg-red-500 ring-red-300'
                       )} />
                       <div>
-                        <p className="text-sm font-medium line-clamp-1">{entry.description}</p>
+                        <p className="text-sm font-medium line-clamp-1 text-gray-900">{entry.description}</p>
                         <div className="flex items-center gap-2">
-                          <p className="text-xs text-muted-foreground">
+                          <p className="text-xs text-gray-600">
                             {format(parseISO(entry.date), 'dd/MM/yyyy')}
                           </p>
                           <Badge 
                             variant={entry.status === 'paid' || entry.status === 'received' ? 'default' : 'secondary'}
-                            className="text-[10px] h-4 px-1"
+                            className="text-[10px] h-4 px-1 bg-blue-100 text-blue-700 border-blue-200"
                           >
                             {entry.status === 'paid' || entry.status === 'received' ? 'Confirmado' : 'Pendente'}
                           </Badge>
@@ -346,18 +462,18 @@ function FluxoCaixaDashboardContent() {
                     <span className={cn(
                       "font-semibold tabular-nums",
                       entry.type === 'income' 
-                        ? 'text-success' 
-                        : 'text-destructive'
+                        ? 'text-green-600' 
+                        : 'text-red-600'
                     )}>
                       {entry.type === 'expense' ? '-' : '+'}{formatCurrency(Number(entry.amount))}
                     </span>
-                  </div>
+                  </motion.div>
                 ))}
               </div>
             )}
           </SectionCard>
-        </div>
-      </div>
+        </motion.div>
+      </motion.div>
     </AppLayout>
   );
 }

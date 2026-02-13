@@ -24,6 +24,7 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import type { CashFlowEntry } from '@/hooks/useCashFlow';
+import { motion } from 'framer-motion';
 
 function FluxoCaixaLancamentosContent() {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
@@ -72,7 +73,7 @@ function FluxoCaixaLancamentosContent() {
     };
 
     return (
-      <Badge variant={variants[status] || 'outline'}>
+      <Badge variant={variants[status] || 'outline'} className="border-blue-200 text-blue-700 bg-blue-50">
         {labels[status as keyof typeof labels] || status}
       </Badge>
     );
@@ -117,185 +118,217 @@ function FluxoCaixaLancamentosContent() {
 
   return (
     <AppLayout>
-      <div className="space-y-6">
+      <motion.div 
+        className="space-y-6"
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.6 }}
+      >
         {/* Header */}
-        <div className="flex items-center justify-between">
+        <motion.div 
+          className="flex items-center justify-between"
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.6, delay: 0.1 }}
+        >
           <div>
-            <h1 className="text-3xl font-bold text-foreground">Lançamentos</h1>
-            <p className="text-muted-foreground">
+            <h1 className="text-3xl font-bold text-gray-900">Lançamentos</h1>
+            <p className="text-gray-600">
               Gerencie todas as entradas e saídas do seu fluxo de caixa
             </p>
           </div>
           <div className="flex gap-2">
-            <Button variant="outline" onClick={() => setIsImportDialogOpen(true)}>
+            <Button variant="outline" onClick={() => setIsImportDialogOpen(true)} className="border-blue-200 text-blue-700 hover:bg-blue-50">
               <Upload className="h-4 w-4 mr-2" />
               Importar Extrato
             </Button>
-            <Button variant="outline" onClick={handleExportCSV}>
+            <Button variant="outline" onClick={handleExportCSV} className="border-blue-200 text-blue-700 hover:bg-blue-50">
               <Download className="h-4 w-4 mr-2" />
               Exportar
             </Button>
-            <Button onClick={() => { setEditingEntry(null); setIsDialogOpen(true); }}>
+            <Button onClick={() => { setEditingEntry(null); setIsDialogOpen(true); }} className="bg-blue-600 hover:bg-blue-700">
               <Plus className="h-4 w-4 mr-2" />
               Novo Lançamento
             </Button>
           </div>
-        </div>
+        </motion.div>
 
         {/* Filters */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-lg">Filtros</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="grid gap-4 md:grid-cols-5">
-              <div className="relative md:col-span-2">
-                <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-                <Input
-                  placeholder="Buscar por descrição..."
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  className="pl-9"
-                />
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.6, delay: 0.2 }}
+        >
+          <Card className="border border-blue-200 shadow-lg bg-white">
+            <CardHeader className="bg-blue-50 border-b border-blue-200">
+              <CardTitle className="text-9XL text-gray-900">Filtros</CardTitle>
+            </CardHeader>
+            <br />
+            <CardContent>
+              <div className="grid gap-4 md:grid-cols-5">
+                <div className="relative md:col-span-2">
+                  <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-500" />
+                  <Input
+                    placeholder="Buscar por descrição..."
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                    className="pl-9 border-blue-200 focus:border-blue-500"
+                  />
+                </div>
+
+                <Select value={typeFilter} onValueChange={setTypeFilter}>
+                  <SelectTrigger className="border-blue-200 focus:border-blue-500">
+                    <SelectValue placeholder="Tipo" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">Todos os tipos</SelectItem>
+                    <SelectItem value="income">Entradas</SelectItem>
+                    <SelectItem value="expense">Saídas</SelectItem>
+                  </SelectContent>
+                </Select>
+
+                <Select value={statusFilter} onValueChange={setStatusFilter}>
+                  <SelectTrigger className="border-blue-200 focus:border-blue-500">
+                    <SelectValue placeholder="Status" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">Todos os status</SelectItem>
+                    <SelectItem value="pending">Pendente</SelectItem>
+                    <SelectItem value="paid">Pago</SelectItem>
+                    <SelectItem value="received">Recebido</SelectItem>
+                  </SelectContent>
+                </Select>
+
+                <Select value={categoryFilter} onValueChange={setCategoryFilter}>
+                  <SelectTrigger className="border-blue-200 focus:border-blue-500">
+                    <SelectValue placeholder="Categoria" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">Todas as categorias</SelectItem>
+                    {categories.map((cat) => (
+                      <SelectItem key={cat.id} value={cat.id}>
+                        {cat.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
-
-              <Select value={typeFilter} onValueChange={setTypeFilter}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Tipo" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">Todos os tipos</SelectItem>
-                  <SelectItem value="income">Entradas</SelectItem>
-                  <SelectItem value="expense">Saídas</SelectItem>
-                </SelectContent>
-              </Select>
-
-              <Select value={statusFilter} onValueChange={setStatusFilter}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Status" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">Todos os status</SelectItem>
-                  <SelectItem value="pending">Pendente</SelectItem>
-                  <SelectItem value="paid">Pago</SelectItem>
-                  <SelectItem value="received">Recebido</SelectItem>
-                </SelectContent>
-              </Select>
-
-              <Select value={categoryFilter} onValueChange={setCategoryFilter}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Categoria" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">Todas as categorias</SelectItem>
-                  {categories.map((cat) => (
-                    <SelectItem key={cat.id} value={cat.id}>
-                      {cat.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-          </CardContent>
-        </Card>
+            </CardContent>
+          </Card>
+        </motion.div>
 
         {/* Table */}
-        <Card>
-          <CardContent className="p-0">
-            {isLoading ? (
-              <div className="p-6 space-y-4">
-                {[1, 2, 3, 4, 5].map(i => (
-                  <Skeleton key={i} className="h-12 w-full" />
-                ))}
-              </div>
-            ) : filteredEntries.length === 0 ? (
-              <div className="p-12 text-center">
-                <p className="text-muted-foreground">Nenhum lançamento encontrado</p>
-                <Button className="mt-4" onClick={() => { setEditingEntry(null); setIsDialogOpen(true); }}>
-                  <Plus className="h-4 w-4 mr-2" />
-                  Criar primeiro lançamento
-                </Button>
-              </div>
-            ) : (
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Data</TableHead>
-                    <TableHead>Descrição</TableHead>
-                    <TableHead>Categoria</TableHead>
-                    <TableHead>Tipo</TableHead>
-                    <TableHead className="text-right">Valor</TableHead>
-                    <TableHead>Status</TableHead>
-                    <TableHead>Vencimento</TableHead>
-                    <TableHead className="text-right">Ações</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {filteredEntries.map((entry) => (
-                    <TableRow key={entry.id}>
-                      <TableCell>{format(parseISO(entry.date), 'dd/MM/yyyy')}</TableCell>
-                      <TableCell className="font-medium">{entry.description}</TableCell>
-                      <TableCell>
-                        {entry.category && (
-                          <div className="flex items-center gap-2">
-                            <div 
-                              className="w-3 h-3 rounded-full" 
-                              style={{ backgroundColor: entry.category.color }}
-                            />
-                            <span className="text-sm">{entry.category.name}</span>
-                          </div>
-                        )}
-                      </TableCell>
-                      <TableCell>
-                        <Badge variant={entry.type === 'income' ? 'default' : 'destructive'}>
-                          {entry.type === 'income' ? 'Entrada' : 'Saída'}
-                        </Badge>
-                      </TableCell>
-                      <TableCell className={`text-right font-medium ${
-                        entry.type === 'income' ? 'text-green-600' : 'text-red-600'
-                      }`}>
-                        {entry.type === 'expense' ? '-' : '+'}{formatCurrency(Number(entry.amount))}
-                      </TableCell>
-                      <TableCell>{getStatusBadge(entry.status, entry.type)}</TableCell>
-                      <TableCell>
-                        {entry.due_date ? format(parseISO(entry.due_date), 'dd/MM/yyyy') : '-'}
-                      </TableCell>
-                      <TableCell className="text-right">
-                        <div className="flex justify-end gap-1">
-                          {entry.status === 'pending' && (
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.6, delay: 0.3 }}
+        >
+          <Card className="border border-blue-200 shadow-lg bg-white">
+            <CardContent className="p-0">
+              {isLoading ? (
+                <div className="p-6 space-y-4">
+                  {[1, 2, 3, 4, 5].map(i => (
+                    <Skeleton key={i} className="h-12 w-full" />
+                  ))}
+                </div>
+              ) : filteredEntries.length === 0 ? (
+                <div className="p-12 text-center">
+                  <p className="text-gray-600">Nenhum lançamento encontrado</p>
+                  <Button className="mt-4 bg-blue-600 hover:bg-blue-700" onClick={() => { setEditingEntry(null); setIsDialogOpen(true); }}>
+                    <Plus className="h-4 w-4 mr-2" />
+                    Criar primeiro lançamento
+                  </Button>
+                </div>
+              ) : (
+                <Table className="border border-blue-200 rounded-lg overflow-hidden">
+                  <TableHeader className="bg-blue-50">
+                    <TableRow>
+                      <TableHead className="text-gray-900">Data</TableHead>
+                      <TableHead className="text-gray-900">Descrição</TableHead>
+                      <TableHead className="text-gray-900">Categoria</TableHead>
+                      <TableHead className="text-gray-900">Tipo</TableHead>
+                      <TableHead className="text-right text-gray-900">Valor</TableHead>
+                      <TableHead className="text-gray-900">Status</TableHead>
+                      <TableHead className="text-gray-900">Vencimento</TableHead>
+                      <TableHead className="text-right text-gray-900">Ações</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {filteredEntries.map((entry, index) => (
+                      <motion.tr 
+                        key={entry.id}
+                        className="border-b border-blue-200 hover:bg-blue-25"
+                        initial={{ opacity: 0, x: -20 }}
+                        animate={{ opacity: 1, x: 0 }}
+                        transition={{ duration: 0.6, delay: index * 0.05 }}
+                      >
+                        <TableCell className="text-gray-900">{format(parseISO(entry.date), 'dd/MM/yyyy')}</TableCell>
+                        <TableCell className="font-medium text-gray-900">{entry.description}</TableCell>
+                        <TableCell>
+                          {entry.category && (
+                            <div className="flex items-center gap-2">
+                              <div 
+                                className="w-3 h-3 rounded-full" 
+                                style={{ backgroundColor: entry.category.color }}
+                              />
+                              <span className="text-sm text-gray-900">{entry.category.name}</span>
+                            </div>
+                          )}
+                        </TableCell>
+                        <TableCell>
+                          <Badge variant={entry.type === 'income' ? 'default' : 'destructive'} className={entry.type === 'income' ? 'bg-green-600 text-white' : 'bg-red-500 text-white'}>
+                            {entry.type === 'income' ? 'Entrada' : 'Saída'}
+                          </Badge>
+                        </TableCell>
+                        <TableCell className={`text-right font-medium ${
+                          entry.type === 'income' ? 'text-green-600' : 'text-red-600'
+                        }`}>
+                          {entry.type === 'expense' ? '-' : '+'}{formatCurrency(Number(entry.amount))}
+                        </TableCell>
+                        <TableCell>{getStatusBadge(entry.status, entry.type)}</TableCell>
+                        <TableCell className="text-gray-900">
+                          {entry.due_date ? format(parseISO(entry.due_date), 'dd/MM/yyyy') : '-'}
+                        </TableCell>
+                        <TableCell className="text-right">
+                          <div className="flex justify-end gap-1">
+                            {entry.status === 'pending' && (
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                onClick={() => handleMarkAsDone(entry)}
+                                title={entry.type === 'income' ? 'Marcar como recebido' : 'Marcar como pago'}
+                                className="hover:bg-green-50 text-green-600"
+                              >
+                                <CheckCircle className="h-4 w-4" />
+                              </Button>
+                            )}
                             <Button
                               variant="ghost"
                               size="icon"
-                              onClick={() => handleMarkAsDone(entry)}
-                              title={entry.type === 'income' ? 'Marcar como recebido' : 'Marcar como pago'}
+                              onClick={() => handleEdit(entry)}
+                              className="hover:bg-blue-50 text-blue-600"
                             >
-                              <CheckCircle className="h-4 w-4 text-green-600" />
+                              <Edit className="h-4 w-4" />
                             </Button>
-                          )}
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            onClick={() => handleEdit(entry)}
-                          >
-                            <Edit className="h-4 w-4" />
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            onClick={() => setDeleteEntry(entry)}
-                          >
-                            <Trash2 className="h-4 w-4 text-destructive" />
-                          </Button>
-                        </div>
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            )}
-          </CardContent>
-        </Card>
-      </div>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              onClick={() => setDeleteEntry(entry)}
+                              className="hover:bg-red-50 text-red-600"
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          </div>
+                        </TableCell>
+                      </motion.tr>
+                    ))}
+                  </TableBody>
+                </Table>
+              )}
+            </CardContent>
+          </Card>
+        </motion.div>
+      </motion.div>
 
       <CashFlowEntryDialog
         open={isDialogOpen}
@@ -309,20 +342,27 @@ function FluxoCaixaLancamentosContent() {
       />
 
       <AlertDialog open={!!deleteEntry} onOpenChange={() => setDeleteEntry(null)}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Excluir lançamento?</AlertDialogTitle>
-            <AlertDialogDescription>
-              Tem certeza que deseja excluir o lançamento "{deleteEntry?.description}"?
-              Esta ação não pode ser desfeita.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancelar</AlertDialogCancel>
-            <AlertDialogAction onClick={handleDelete} className="bg-destructive text-destructive-foreground">
-              Excluir
-            </AlertDialogAction>
-          </AlertDialogFooter>
+        <AlertDialogContent className="border border-blue-200 bg-white">
+          <motion.div
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+            exit={{ opacity: 0, scale: 0.95 }}
+            transition={{ duration: 0.3 }}
+          >
+            <AlertDialogHeader>
+              <AlertDialogTitle className="text-gray-900">Excluir lançamento?</AlertDialogTitle>
+              <AlertDialogDescription className="text-gray-600">
+                Tem certeza que deseja excluir o lançamento "{deleteEntry?.description}"?
+                Esta ação não pode ser desfeita.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel className="border-blue-200 text-blue-700 hover:bg-blue-50">Cancelar</AlertDialogCancel>
+              <AlertDialogAction onClick={handleDelete} className="bg-red-500 hover:bg-red-600 text-white">
+                Excluir
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </motion.div>
         </AlertDialogContent>
       </AlertDialog>
     </AppLayout>

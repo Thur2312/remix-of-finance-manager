@@ -1,5 +1,6 @@
 import * as React from "react";
 import * as AvatarPrimitive from "@radix-ui/react-avatar";
+import { motion } from "framer-motion";
 
 import { cn } from "@/lib/utils";
 
@@ -7,11 +8,17 @@ const Avatar = React.forwardRef<
   React.ElementRef<typeof AvatarPrimitive.Root>,
   React.ComponentPropsWithoutRef<typeof AvatarPrimitive.Root>
 >(({ className, ...props }, ref) => (
-  <AvatarPrimitive.Root
-    ref={ref}
-    className={cn("relative flex h-10 w-10 shrink-0 overflow-hidden rounded-full", className)}
-    {...props}
-  />
+  <motion.div
+    initial={{ opacity: 0, scale: 0.9 }}
+    animate={{ opacity: 1, scale: 1 }}
+    transition={{ duration: 0.3 }}
+  >
+    <AvatarPrimitive.Root
+      ref={ref}
+      className={cn("relative flex h-10 w-10 shrink-0 overflow-hidden rounded-full ring-2 ring-blue-200", className)}
+      {...props}
+    />
+  </motion.div>
 ));
 Avatar.displayName = AvatarPrimitive.Root.displayName;
 
@@ -29,7 +36,7 @@ const AvatarFallback = React.forwardRef<
 >(({ className, ...props }, ref) => (
   <AvatarPrimitive.Fallback
     ref={ref}
-    className={cn("flex h-full w-full items-center justify-center rounded-full bg-muted", className)}
+    className={cn("flex h-full w-full items-center justify-center rounded-full bg-blue-100 text-blue-700 font-medium", className)}
     {...props}
   />
 ));
