@@ -21,13 +21,13 @@ interface FormData {
   nomeProduto: string;
   categoria: string;
   marketplaceTarget: 'TikTok_Shop' | 'Shopee';
-  faixaPreco: string;
   publicoAlvo: string;
   materiais: string;
   coresDisponiveis: string;
   // Medidas do produto (novo sistema dinâmico)
   camposMedidaSelecionados: string[];
   linhasMedidas: MedidaLinha[];
+  camposMedidaPersonalizados: { id: string; nome: string; unidade: string }[];
 }
 
 interface GeneratedAd {
@@ -81,12 +81,12 @@ const AssistenteAnuncio = () => {
     nomeProduto: '',
     categoria: '',
     marketplaceTarget: 'Shopee',
-    faixaPreco: '',
     publicoAlvo: '',
     materiais: '',
     coresDisponiveis: '',
     camposMedidaSelecionados: [],
     linhasMedidas: [],
+    camposMedidaPersonalizados: [],
   });
 
   const [generatedAd, setGeneratedAd] = useState<GeneratedAd | null>(null);
@@ -164,6 +164,18 @@ const AssistenteAnuncio = () => {
       linhasMedidas: prev.linhasMedidas.map(linha =>
         linha.id === id ? { ...linha, tamanho } : linha
       )
+    }));
+  };
+
+  // Função para adicionar medida personalizada
+  const addMedidaPersonalizada = (nome: string, unidade: string) => {
+    setFormData(prev => ({
+      ...prev,
+      camposMedidaPersonalizados: [...prev.camposMedidaPersonalizados, {
+        id: `custom-${Date.now()}-${Math.random()}`,
+        nome,
+        unidade,
+      }],
     }));
   };
 
@@ -254,7 +266,6 @@ const AssistenteAnuncio = () => {
         body: {
           nomeProduto: formData.nomeProduto,
           categoria: formData.categoria,
-          faixaPreco: formData.faixaPreco,
           publicoAlvo: formData.publicoAlvo,
           materiais: formData.materiais,
           coresDisponiveis: formData.coresDisponiveis,
@@ -264,7 +275,8 @@ const AssistenteAnuncio = () => {
             linhas: formData.linhasMedidas.map(linha => ({
               tamanho: linha.tamanho,
               ...linha.valores
-            }))
+            })),
+            personalizados: formData.camposMedidaPersonalizados,
           },
         },
       });
@@ -355,7 +367,7 @@ const AssistenteAnuncio = () => {
     try {
       await navigator.clipboard.writeText(text);
       
-      if (type === 'title' && index !== undefined) {
+      if (type === 'title' && index !== null) {
         setCopiedTitle(index);
         setTimeout(() => setCopiedTitle(null), 2000);
       } else {
@@ -490,7 +502,7 @@ const AssistenteAnuncio = () => {
                 <Label htmlFor="nomeProduto">
                   Nome do Produto <span className="text-destructive">*</span>
                 </Label>
-                <Input
+                                <Input
                   id="nomeProduto"
                   placeholder="Ex: Vestido Longo Estampado"
                   value={formData.nomeProduto}
@@ -533,18 +545,6 @@ const AssistenteAnuncio = () => {
                     <SelectItem value="TikTok_Shop">TikTok Shop</SelectItem>
                   </SelectContent>
                 </Select>
-              </div>
-
-        
-              {/* Faixa de Preço */}
-              <div className="space-y-2">
-                <Label htmlFor="faixaPreco">Faixa de Preço</Label>
-                <Input
-                  id="faixaPreco"
-                  placeholder="Ex: 50-100"
-                  value={formData.faixaPreco}
-                  onChange={(e) => handleInputChange('faixaPreco', e.target.value)}
-                />
               </div>
 
               {/* Público-alvo */}
@@ -603,6 +603,8 @@ const AssistenteAnuncio = () => {
               onRemoveLinha={removeMedidaLinha}
               onUpdateLinha={updateMedidaLinha}
               onUpdateTamanho={updateTamanhoLinha}
+              medidasPersonalizadas={formData.camposMedidaPersonalizados}
+              onAddMedidaPersonalizada={addMedidaPersonalizada}
             />
 
             {/* Upload de Fotos */}

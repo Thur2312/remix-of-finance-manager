@@ -205,7 +205,7 @@ export function AppSidebar() {
               </Tooltip>
               <Tooltip>
                 <TooltipTrigger asChild>
-                  <Link to="/#planos">
+                  <Link to="/">
                     <Button variant="ghost" size="icon" className="h-8 w-8 hover:bg-blue-50">
                       <CreditCard className="h-4 w-4 text-blue-600" />
                     </Button>
@@ -222,7 +222,7 @@ export function AppSidebar() {
                   Início
                 </Button>
               </Link>
-              <Link to="/#planos" className="flex-1">
+              <Link to="/Planos" className="flex-1">
                 <Button variant="outline" size="sm" className="w-full gap-2 text-xs border-blue-200 text-blue-700 hover:bg-blue-50">
                   <CreditCard className="h-3.5 w-3.5" />
                   Planos

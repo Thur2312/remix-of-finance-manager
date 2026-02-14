@@ -7,6 +7,7 @@ import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { toast } from 'sonner';
 import { Loader2, Lock, Eye, EyeOff, CheckCircle2, AlertCircle, ShieldCheck } from 'lucide-react';
+import { motion } from 'framer-motion';
 
 const validatePassword = (password: string): string | null => {
   if (!password) return 'Senha é obrigatória';
@@ -127,50 +128,65 @@ export default function ResetPassword() {
   // Loading state while checking session
   if (isValidSession === null) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-background">
-        <Loader2 className="h-8 w-8 animate-spin text-primary" />
-      </div>
+      <motion.div 
+        className="min-h-screen flex items-center justify-center bg-background"
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.6 }}
+      >
+        <Loader2 className="h-8 w-8 animate-spin text-blue-600" />
+      </motion.div>
     );
   }
 
   // Invalid session - redirect to forgot password
   if (isValidSession === false) {
     return (
-      <div className="min-h-screen flex items-center justify-center p-4 bg-background">
-        <Card className="w-full max-w-md border-0 shadow-lg animate-fade-in">
+      <motion.div 
+        className="min-h-screen flex items-center justify-center p-4 bg-background"
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.6 }}
+      >
+        <Card className="w-full max-w-md border border-blue-200 bg-white shadow-lg">
           <CardHeader className="text-center space-y-4">
-            <div className="mx-auto p-4 bg-destructive/10 rounded-full w-fit">
-              <AlertCircle className="h-8 w-8 text-destructive" />
+            <div className="mx-auto p-4 bg-red-100 rounded-full w-fit">
+              <AlertCircle className="h-8 w-8 text-red-600" />
             </div>
-            <CardTitle className="text-2xl">Link Inválido ou Expirado</CardTitle>
-            <CardDescription className="text-base">
+            <CardTitle className="text-2xl text-gray-900">Link Inválido ou Expirado</CardTitle>
+            <CardDescription className="text-base text-gray-600">
               O link de recuperação de senha é inválido ou já expirou. 
               Por favor, solicite um novo link.
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
-            <Button onClick={() => navigate('/esqueci-senha')} className="w-full h-11">
+            <Button onClick={() => navigate('/esqueci-senha')} className="w-full h-11 bg-blue-600 hover:bg-blue-700">
               Solicitar Novo Link
             </Button>
-            <Button variant="ghost" onClick={() => navigate('/auth')} className="w-full">
+            <Button variant="ghost" onClick={() => navigate('/auth')} className="w-full border-blue-200 text-blue-700 hover:bg-blue-50">
               Voltar para Login
             </Button>
           </CardContent>
         </Card>
-      </div>
+      </motion.div>
     );
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center p-4 bg-background">
-      <Card className="w-full max-w-md border-0 shadow-lg animate-fade-in">
+    <motion.div 
+      className="min-h-screen flex items-center justify-center p-4 bg-background"
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.6 }}
+    >
+      <Card className="w-full max-w-md border border-blue-200 bg-white shadow-lg">
         <CardHeader className="space-y-4">
-          <div className="mx-auto p-4 bg-primary/10 rounded-full w-fit">
-            <ShieldCheck className="h-8 w-8 text-primary" />
+          <div className="mx-auto p-4 bg-blue-100 rounded-full w-fit">
+            <ShieldCheck className="h-8 w-8 text-blue-600" />
           </div>
           <div className="text-center space-y-2">
-            <CardTitle className="text-2xl">Criar Nova Senha</CardTitle>
-            <CardDescription>
+            <CardTitle className="text-2xl text-gray-900">Criar Nova Senha</CardTitle>
+            <CardDescription className="text-gray-600">
               Digite sua nova senha. Ela deve ter pelo menos 8 caracteres, uma letra maiúscula e um número.
             </CardDescription>
           </div>
@@ -178,9 +194,9 @@ export default function ResetPassword() {
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-4" noValidate>
             <div className="space-y-2">
-              <Label htmlFor="password">Nova Senha</Label>
+              <Label htmlFor="password" className="text-gray-900">Nova Senha</Label>
               <div className="relative">
-                <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-500" />
                 <Input
                   id="password"
                   type={showPassword ? 'text' : 'password'}
@@ -188,9 +204,9 @@ export default function ResetPassword() {
                   value={password}
                   onChange={(e) => handlePasswordChange(e.target.value)}
                   onBlur={() => handleBlur('password')}
-                  className={`h-11 pl-10 pr-10 ${
+                  className={`h-11 pl-10 pr-10 border-blue-200 focus:border-blue-500 ${
                     errors.password && touched.password 
-                      ? 'border-destructive focus-visible:ring-destructive' 
+                      ? 'border-red-500 focus-visible:ring-red-500' 
                       : !errors.password && touched.password && password 
                         ? 'border-green-500 focus-visible:ring-green-500' 
                         : ''
@@ -199,13 +215,13 @@ export default function ResetPassword() {
                 <button
                   type="button"
                   onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-900"
                 >
                   {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                 </button>
               </div>
               {errors.password && touched.password && (
-                <p className="text-sm text-destructive flex items-center gap-1">
+                <p className="text-sm text-red-600 flex items-center gap-1">
                   <AlertCircle className="h-3 w-3" />
                   {errors.password}
                 </p>
@@ -213,9 +229,9 @@ export default function ResetPassword() {
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="confirmPassword">Confirmar Senha</Label>
+              <Label htmlFor="confirmPassword" className="text-gray-900">Confirmar Senha</Label>
               <div className="relative">
-                <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-500" />
                 <Input
                   id="confirmPassword"
                   type={showConfirmPassword ? 'text' : 'password'}
@@ -223,9 +239,9 @@ export default function ResetPassword() {
                   value={confirmPassword}
                   onChange={(e) => handleConfirmPasswordChange(e.target.value)}
                   onBlur={() => handleBlur('confirmPassword')}
-                  className={`h-11 pl-10 pr-10 ${
+                  className={`h-11 pl-10 pr-10 border-blue-200 focus:border-blue-500 ${
                     errors.confirmPassword && touched.confirmPassword 
-                      ? 'border-destructive focus-visible:ring-destructive' 
+                      ? 'border-red-500 focus-visible:ring-red-500' 
                       : !errors.confirmPassword && touched.confirmPassword && confirmPassword 
                         ? 'border-green-500 focus-visible:ring-green-500' 
                         : ''
@@ -234,13 +250,13 @@ export default function ResetPassword() {
                 <button
                   type="button"
                   onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-900"
                 >
                   {showConfirmPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                 </button>
               </div>
               {errors.confirmPassword && touched.confirmPassword && (
-                <p className="text-sm text-destructive flex items-center gap-1">
+                <p className="text-sm text-red-600 flex items-center gap-1">
                   <AlertCircle className="h-3 w-3" />
                   {errors.confirmPassword}
                 </p>
@@ -253,7 +269,7 @@ export default function ResetPassword() {
               )}
             </div>
 
-            <Button type="submit" className="w-full h-11" disabled={isLoading}>
+            <Button type="submit" className="w-full h-11 bg-blue-600 hover:bg-blue-700" disabled={isLoading}>
               {isLoading ? (
                 <>
                   <Loader2 className="h-4 w-4 mr-2 animate-spin" />
@@ -266,6 +282,6 @@ export default function ResetPassword() {
           </form>
         </CardContent>
       </Card>
-    </div>
+    </motion.div>
   );
 }
