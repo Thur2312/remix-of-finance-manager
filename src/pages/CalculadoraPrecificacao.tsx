@@ -98,8 +98,8 @@ function CalculadoraPrecificacaoContent() {
     const comissaoAfiliadosNum = parseNumericInputSafe(comissaoAfiliados, { min: 0, max: 100 });
     const margemDesejadaNum = parseNumericInputSafe(margemDesejada, { min: 0, max: 100 });
 
-    // Preço Promocional (após desconto)
-    const precoPromocional = precoCheioNum * (1 - descontoNum / 100);
+    // Preço do Anuncio ajustado pelo desconto
+    const precoPromocional = precoCheioNum / (1 - descontoNum / 100);
 
     // =========================================
     // CUSTOS VARIÁVEIS (por unidade) - SEM CUSTO FIXO
@@ -143,6 +143,14 @@ function CalculadoraPrecificacaoContent() {
     const denominador = 1 - taxasTotais;
     const custoTotal100Percent = totalCustosVariaveis + custoFixo100Percent;
     const precoNecessario100Percent = denominador > 0 ? (totalCustosVariaveis + custoFixo100Percent + taxaFixaNum) / denominador : 0;
+    
+    
+    // !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+    const margemDesej =  lucroLiquido / precoPromocional ; //!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! calculo da margem real considerando a absorção parcial, para ja trazer automaticamente qnd coloca os numeros
+    // !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+
+
+
 
     // =========================================
     // CÁLCULOS LEGADOS (mantendo compatibilidade)
@@ -422,7 +430,7 @@ function CalculadoraPrecificacaoContent() {
                 {/* Linha 3 */}
                 <div className="space-y-1.5">
                   <Label htmlFor="precoCheio" className="text-sm font-medium">
-                    Preço Cheio (R$)
+                    Preço Promocional (R$)
                   </Label>
                   <Input id="precoCheio" type="text" inputMode="decimal" value={precoCheio} onChange={e => setPrecoCheio(e.target.value)} placeholder="0" className="h-11" />
                 </div>
@@ -449,7 +457,7 @@ function CalculadoraPrecificacaoContent() {
 
                 {/* Linha 5 */}
                 <div className="space-y-1.5">
-                  <Label className="text-sm font-medium">Preço Promocional</Label>
+                  <Label className="text-sm font-medium">Preço do Anuncio</Label>
                   <div className="h-11 flex items-center justify-center px-3 bg-primary/10 border border-primary/30 rounded-md">
                     <span className="text-lg font-semibold text-primary">
                       {formatCurrency(results.precoPromocional)}
@@ -459,6 +467,7 @@ function CalculadoraPrecificacaoContent() {
                 <div className="space-y-1.5">
                   <Label className="text-sm font-medium">Meta de Margem (%)</Label>
                   <div className="flex items-center gap-2">
+                    
                     <Slider 
                       value={[parseNumericInputSafe(margemDesejada, { min: 0, max: 100 })]} 
                       onValueChange={([val]) => setMargemDesejada(val.toString())} 
