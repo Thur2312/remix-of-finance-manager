@@ -18,6 +18,20 @@ import { formatDREForDisplay, formatCurrency } from '@/lib/dre-calculations';
 import { FileSpreadsheet, RefreshCw, Download, Calendar, TrendingUp, AlertCircle, CheckCircle2, XCircle } from 'lucide-react';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
+import { motion } from 'framer-motion';
+
+const fadeInUp = {
+  hidden: { opacity: 0, y: 40 },
+  visible: { opacity: 1, y: 0 },
+};
+
+const staggerContainer = {
+  hidden: { opacity: 0 },
+  visible: {
+    opacity: 1,
+    transition: { staggerChildren: 0.15 },
+  },
+};
 
 function DREContent() {
   const { 
@@ -64,138 +78,172 @@ function DREContent() {
 
   if (isLoading) {
     return (
-      <div className="space-y-6">
-        <div className="flex items-center justify-between">
+      <motion.div
+        className="space-y-6"
+        initial="hidden"
+        animate="visible"
+        variants={staggerContainer}
+      >
+        <motion.div variants={fadeInUp} className="flex items-center justify-between">
           <Skeleton className="h-8 w-48" />
           <Skeleton className="h-10 w-40" />
-        </div>
-        <div className="grid grid-cols-6 gap-4">
+        </motion.div>
+        <motion.div variants={fadeInUp} className="grid grid-cols-6 gap-4">
           {[...Array(6)].map((_, i) => (
             <Skeleton key={i} className="h-24" />
           ))}
-        </div>
-        <Skeleton className="h-96" />
-      </div>
+        </motion.div>
+        <motion.div variants={fadeInUp}>
+          <Skeleton className="h-96" />
+        </motion.div>
+      </motion.div>
     );
   }
 
   if (error) {
     return (
-      <Alert variant="destructive">
-        <AlertCircle className="h-4 w-4" />
-        <AlertDescription>{error}</AlertDescription>
-      </Alert>
+      <motion.div
+        initial="hidden"
+        animate="visible"
+        variants={fadeInUp}
+      >
+        <Alert variant="destructive" className="border border-blue-200">
+          <AlertCircle className="h-4 w-4" />
+          <AlertDescription>{error}</AlertDescription>
+        </Alert>
+      </motion.div>
     );
   }
 
   if (!dreData) {
     return (
-      <EmptyState
-        icon={FileSpreadsheet}
-        title="Nenhum dado disponível"
-        description="Importe dados de vendas para visualizar o DRE da sua empresa."
-      />
+      <motion.div
+        initial="hidden"
+        animate="visible"
+        variants={fadeInUp}
+      >
+        <EmptyState
+          icon={FileSpreadsheet}
+          title="Nenhum dado disponível"
+          description="Importe dados de vendas para visualizar o DRE da sua empresa."
+        />
+      </motion.div>
     );
   }
 
   const dreSections = formatDREForDisplay(dreData);
 
   return (
-    <div className="space-y-6 animate-fade-in">
-      <PageHeader
-        title="Demonstração do Resultado (DRE)"
-        description="Visão consolidada do resultado financeiro da empresa"
-        icon={TrendingUp}
-      >
-        <Select value={selectedPeriod.label} onValueChange={handlePeriodChange}>
-          <SelectTrigger className="w-48 shadow-sm">
-            <Calendar className="h-4 w-4 mr-2 text-muted-foreground" />
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            {periods.map(period => (
-              <SelectItem key={period.label} value={period.label}>
-                {period.label}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+    <motion.div
+      className="space-y-6"
+      initial="hidden"
+      animate="visible"
+      variants={staggerContainer}
+    >
+      <motion.div variants={fadeInUp}>
+        <PageHeader
+          title="Demonstração do Resultado (DRE)"
+          description="Visão consolidada do resultado financeiro da empresa"
+          icon={TrendingUp}
+        >
+          <Select value={selectedPeriod.label} onValueChange={handlePeriodChange}>
+            <SelectTrigger className="w-48 shadow-sm border-blue-200">
+              <Calendar className="h-4 w-4 mr-2 text-muted-foreground" />
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {periods.map(period => (
+                <SelectItem key={period.label} value={period.label}>
+                  {period.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
 
-        <Button variant="outline" size="icon" onClick={refetch} className="shadow-sm">
-          <RefreshCw className="h-4 w-4" />
-        </Button>
+          <Button variant="outline" size="icon" onClick={refetch} className="shadow-sm border-blue-200 text-blue-700 hover:bg-blue-50">
+            <RefreshCw className="h-4 w-4" />
+          </Button>
 
-        <Button variant="outline" onClick={handleExportCSV} className="shadow-sm">
-          <Download className="h-4 w-4 mr-2" />
-          Exportar
-        </Button>
-      </PageHeader>
+          <Button variant="outline" onClick={handleExportCSV} className="shadow-sm border-blue-200 text-blue-700 hover:bg-blue-50">
+            <Download className="h-4 w-4 mr-2" />
+            Exportar
+          </Button>
+        </PageHeader>
+      </motion.div>
 
       {/* Period Info */}
-      <Card className="bg-gradient-to-r from-muted/30 to-muted/10 border-0 shadow-sm">
-        <CardContent className="py-4">
-          <div className="flex items-center justify-between text-sm">
-            <span className="text-muted-foreground">
-              Período: <span className="font-medium text-foreground">
-                {format(selectedPeriod.start, "dd 'de' MMMM", { locale: ptBR })} a {format(selectedPeriod.end, "dd 'de' MMMM 'de' yyyy", { locale: ptBR })}
+      <motion.div variants={fadeInUp}>
+        <Card className="bg-gradient-to-r from-blue-50 to-white border border-blue-200 shadow-lg">
+          <CardContent className="py-4">
+            <div className="flex items-center justify-between text-sm">
+              <span className="text-gray-600">
+                Período: <span className="font-medium text-gray-900">
+                  {format(selectedPeriod.start, "dd 'de' MMMM", { locale: ptBR })} a {format(selectedPeriod.end, "dd 'de' MMMM 'de' yyyy", { locale: ptBR })}
+                </span>
               </span>
-            </span>
-            <span className="flex items-center gap-2">
-              <span className="text-muted-foreground">Resultado do período:</span>
-              {dreData.lucroOperacional >= 0 ? (
-                <span className="flex items-center gap-1.5 text-emerald-600 dark:text-emerald-400 font-semibold">
-                  <CheckCircle2 className="h-4 w-4" />
-                  POSITIVO
-                </span>
-              ) : (
-                <span className="flex items-center gap-1.5 text-red-600 dark:text-red-400 font-semibold">
-                  <XCircle className="h-4 w-4" />
-                  NEGATIVO
-                </span>
-              )}
-            </span>
-          </div>
-        </CardContent>
-      </Card>
+              <span className="flex items-center gap-2">
+                <span className="text-gray-600">Resultado do período:</span>
+                {dreData.lucroOperacional >= 0 ? (
+                  <span className="flex items-center gap-1.5 text-emerald-600 dark:text-emerald-400 font-semibold">
+                    <CheckCircle2 className="h-4 w-4" />
+                    POSITIVO
+                  </span>
+                ) : (
+                  <span className="flex items-center gap-1.5 text-red-600 dark:text-red-400 font-semibold">
+                    <XCircle className="h-4 w-4" />
+                    NEGATIVO
+                  </span>
+                )}
+              </span>
+            </div>
+          </CardContent>
+        </Card>
+      </motion.div>
 
       {/* Alerts */}
       {dreData.alertas && dreData.alertas.length > 0 && (
-        <DREAlerts alertas={dreData.alertas} />
+        <motion.div variants={fadeInUp}>
+          <DREAlerts alertas={dreData.alertas} />
+        </motion.div>
       )}
 
       {/* Summary Cards */}
-      <DRESummaryCards data={dreData} />
+      <motion.div variants={fadeInUp}>
+        <DRESummaryCards data={dreData} />
+      </motion.div>
 
       {/* Tabs */}
-      <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
-        <TabsList className="bg-muted/50 p-1">
-          <TabsTrigger value="resumo" className="data-[state=active]:bg-background data-[state=active]:shadow-sm">
-            Resumo Visual
-          </TabsTrigger>
-          <TabsTrigger value="demonstrativo" className="data-[state=active]:bg-background data-[state=active]:shadow-sm">
-            Demonstrativo Completo
-          </TabsTrigger>
-        </TabsList>
+      <motion.div variants={fadeInUp} className="space-y-4">
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
+          <TabsList className="bg-blue-50 p-1 border border-blue-200">
+            <TabsTrigger value="resumo" className="data-[state=active]:bg-white data-[state=active]:shadow-sm text-gray-900">
+              Resumo Visual
+            </TabsTrigger>
+            <TabsTrigger value="demonstrativo" className="data-[state=active]:bg-white data-[state=active]:shadow-sm text-gray-900">
+              Demonstrativo Completo
+            </TabsTrigger>
+          </TabsList>
 
-        <TabsContent value="resumo" className="space-y-6">
-          <DRECharts data={dreData} />
-        </TabsContent>
+          <TabsContent value="resumo" className="space-y-6">
+            <DRECharts data={dreData} />
+          </TabsContent>
 
-        <TabsContent value="demonstrativo">
-          <Card className="border-0 shadow-md">
-            <CardHeader className="pb-4">
-              <CardTitle className="text-lg font-semibold">Demonstrativo de Resultado do Exercício</CardTitle>
-              <CardDescription>
-                Formato contábil padrão com todas as linhas detalhadas
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="p-0">
-              <DRETable sections={dreSections} />
-            </CardContent>
-          </Card>
-        </TabsContent>
-      </Tabs>
-    </div>
+          <TabsContent value="demonstrativo">
+            <Card className="border border-blue-200 shadow-lg bg-white">
+              <CardHeader className="pb-4 bg-blue-50 border-b border-blue-200">
+                <CardTitle className="text-lg font-semibold text-gray-900">Demonstrativo de Resultado do Exercício</CardTitle>
+                <CardDescription className="text-gray-600">
+                  Formato contábil padrão com todas as linhas detalhadas
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="p-0">
+                <DRETable sections={dreSections} />
+              </CardContent>
+            </Card>
+          </TabsContent>
+        </Tabs>
+      </motion.div>
+    </motion.div>
   );
 }
 
