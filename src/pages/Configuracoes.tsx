@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { AppLayout } from '@/components/layout/AppLayout';
@@ -94,13 +94,7 @@ function ConfiguracoesContent() {
   const [formData, setFormData] = useState(defaultSettings);
   const [errors, setErrors] = useState<Record<string, string>>({});
 
-  useEffect(() => {
-    if (user) {
-      fetchSettings();
-    }
-  }, [user]);
-
-  const fetchSettings = async () => {
+  const fetchSettings = useCallback(async () => {
     setIsLoading(true);
     const { data, error } = await supabase
       .from('settings')
@@ -121,7 +115,13 @@ function ConfiguracoesContent() {
       }
     }
     setIsLoading(false);
-  };
+  }, []);
+
+  useEffect(() => {
+    if (user) {
+      fetchSettings();
+    }
+  }, [fetchSettings, user]);
 
   const selectSettings = (setting: SettingsData) => {
     setSelectedSettings(setting);

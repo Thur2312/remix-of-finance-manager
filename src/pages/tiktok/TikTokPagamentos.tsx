@@ -22,6 +22,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import { motion } from 'framer-motion';
 import {
   DollarSign,
   TrendingUp,
@@ -43,6 +44,19 @@ import { Link } from 'react-router-dom';
 import { fetchAllTikTokSettlements, fetchAllTikTokStatements, fetchTikTokOrdersCosts } from '@/lib/tiktok-settlement-helpers';
 import { SettlementDetailModal } from '@/components/tiktok/SettlementDetailModal';
 import { PaymentCharts } from '@/components/tiktok/PaymentCharts';
+
+const fadeInUp = {
+  hidden: { opacity: 0, y: 40 },
+  visible: { opacity: 1, y: 0 },
+};
+
+const staggerContainer = {
+  hidden: { opacity: 0 },
+  visible: {
+    opacity: 1,
+    transition: { staggerChildren: 0.15 },
+  },
+};
 
 interface SettlementSummary {
   totalReceived: number;
@@ -307,15 +321,26 @@ function TikTokPagamentosContent() {
   if (loading) {
     return (
       <AppLayout>
-        <div className="space-y-6">
-          <Skeleton className="h-8 w-64" />
-          <div className="grid gap-4 md:grid-cols-3 lg:grid-cols-6">
-            {[...Array(6)].map((_, i) => (
-              <Skeleton key={i} className="h-24" />
-            ))}
-          </div>
-          <Skeleton className="h-96" />
-        </div>
+        <motion.div
+          className="space-y-6"
+          initial="hidden"
+          animate="visible"
+          variants={staggerContainer}
+        >
+          <motion.div variants={fadeInUp}>
+            <Skeleton className="h-8 w-64" />
+          </motion.div>
+          <motion.div variants={fadeInUp}>
+            <div className="grid gap-4 md:grid-cols-3 lg:grid-cols-6">
+              {[...Array(6)].map((_, i) => (
+                <Skeleton key={i} className="h-24" />
+              ))}
+            </div>
+          </motion.div>
+          <motion.div variants={fadeInUp}>
+            <Skeleton className="h-96" />
+          </motion.div>
+        </motion.div>
       </AppLayout>
     );
   }
@@ -323,30 +348,42 @@ function TikTokPagamentosContent() {
   if (settlements.length === 0 && statements.length === 0) {
     return (
       <AppLayout>
-        <div className="space-y-6">
-          <div>
-            <h1 className="text-3xl font-bold text-foreground">Pagamentos TikTok Shop</h1>
-            <p className="text-muted-foreground mt-2">
+        <motion.div
+          className="space-y-6"
+          initial="hidden"
+          animate="visible"
+          variants={staggerContainer}
+        >
+          <motion.div variants={fadeInUp} className="text-center">
+            <h1 className="text-2xl font-bold tracking-tight text-gray-900">
+              Pagamentos TikTok Shop
+            </h1>
+            <p className="text-gray-600 mt-1">
               Visualize o detalhamento completo de recebimentos do TikTok Shop
             </p>
-          </div>
+          </motion.div>
 
-          <Card>
-            <CardContent className="flex flex-col items-center justify-center py-16">
-              <FileSpreadsheet className="h-16 w-16 text-muted-foreground mb-4" />
-              <h3 className="text-lg font-medium mb-2">Nenhum pagamento importado</h3>
-              <p className="text-muted-foreground mb-6 text-center max-w-md">
-                Importe o relatório de pagamentos (Income) do TikTok Shop para visualizar o detalhamento completo de recebimentos por pedido
-              </p>
-              <Button asChild>
-                <Link to="/tiktok/pagamentos/upload">
-                  <Upload className="h-4 w-4 mr-2" />
-                  Importar Pagamentos
-                </Link>
-              </Button>
-            </CardContent>
-          </Card>
-        </div>
+          <motion.div variants={fadeInUp}>
+            <Card className="border border-blue-200 shadow-lg bg-white">
+              <CardContent className="flex flex-col items-center justify-center py-16">
+                <FileSpreadsheet className="h-16 w-16 text-gray-400 mb-4" />
+                <h3 className="font-semibold text-lg text-gray-900">Nenhum pagamento importado</h3>
+                <p className="text-gray-600 mb-6 text-center max-w-md">
+                  Importe o relatório de pagamentos (Income) do TikTok Shop para visualizar o detalhamento completo de recebimentos por pedido
+                </p>
+                <Button
+                  asChild
+                  className="bg-gradient-to-r from-blue-600 to-blue-500 hover:from-blue-700 hover:to-blue-600 text-white"
+                >
+                  <Link to="/tiktok/pagamentos/upload">
+                    <Upload className="h-4 w-4 mr-2" />
+                    Importar Pagamentos
+                  </Link>
+                </Button>
+              </CardContent>
+            </Card>
+          </motion.div>
+        </motion.div>
       </AppLayout>
     );
   }
@@ -355,406 +392,430 @@ function TikTokPagamentosContent() {
 
   return (
     <AppLayout>
-      <div className="space-y-6">
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+      <motion.div
+        className="space-y-6"
+        initial="hidden"
+        animate="visible"
+        variants={staggerContainer}
+      >
+        <motion.div variants={fadeInUp} className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <div>
-            <h1 className="text-3xl font-bold text-foreground">Pagamentos TikTok Shop</h1>
-            <p className="text-muted-foreground mt-2">
+            <h1 className="text-2xl font-bold tracking-tight text-gray-900">
+              Pagamentos TikTok Shop
+            </h1>
+            <p className="text-gray-600 mt-1">
               {summary.recordCount} registros • {summary.orderCount} vendas • {summary.refundCount} reembolsos
             </p>
           </div>
           <div className="flex gap-2">
-            <Button variant="outline" onClick={exportToCSV}>
+            <Button
+              variant="outline"
+              onClick={exportToCSV}
+              className="border-blue-200 text-blue-700 hover:bg-blue-50"
+            >
               <Download className="h-4 w-4 mr-2" />
               Exportar CSV
             </Button>
-            <Button asChild>
+            <Button
+              asChild
+              className="bg-gradient-to-r from-blue-600 to-blue-500 hover:from-blue-700 hover:to-blue-600 text-white"
+            >
               <Link to="/tiktok/pagamentos/upload">
                 <Upload className="h-4 w-4 mr-2" />
                 Importar
               </Link>
             </Button>
           </div>
-        </div>
+        </motion.div>
 
         {/* Period Summary Card */}
         {periodInfo && (
-          <Card className="bg-gradient-to-r from-primary/5 to-primary/10 border-primary/20">
-            <CardContent className="py-4">
-              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-                <div className="flex items-center gap-3">
-                  <div className="p-2 bg-primary/10 rounded-lg">
-                    <Calendar className="h-5 w-5 text-primary" />
+          <motion.div variants={fadeInUp}>
+            <Card className="bg-gradient-to-r from-blue-50 to-white border border-blue-200 shadow-lg">
+              <CardContent className="py-4">
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+                  <div className="flex items-center gap-3">
+                    <div className="p-2 bg-blue-100 rounded-lg">
+                      <Calendar className="h-5 w-5 text-blue-600" />
+                    </div>
+                    <div>
+                      <h3 className="font-medium text-gray-900">Período Importado</h3>
+                      <p className="text-sm text-gray-600">
+                        {periodInfo.startDate.toLocaleDateString('pt-BR')} até {periodInfo.endDate.toLocaleDateString('pt-BR')}
+                      </p>
+                    </div>
                   </div>
-                  <div>
-                    <h3 className="font-medium text-foreground">Período Importado</h3>
-                    <p className="text-sm text-muted-foreground">
-                      {periodInfo.startDate.toLocaleDateString('pt-BR')} até {periodInfo.endDate.toLocaleDateString('pt-BR')}
-                    </p>
+                  <div className="flex items-center gap-6 text-sm">
+                    <div className="text-center">
+                      <p className="font-semibold text-lg text-gray-900">{periodInfo.totalStatements}</p>
+                      <p className="text-gray-600">Pagamentos</p>
+                    </div>
+                    <div className="text-center">
+                      <p className="font-semibold text-lg text-gray-900">{settlements.length}</p>
+                      <p className="text-gray-600">Pedidos</p>
+                    </div>
+                    <div className="text-center">
+                      <p className="font-semibold text-lg text-green-600">{formatCurrency(statementsSummary.totalReceived)}</p>
+                      <p className="text-gray-600">Total Recebido</p>
+                    </div>
                   </div>
                 </div>
-                <div className="flex items-center gap-6 text-sm">
-                  <div className="text-center">
-                    <p className="font-semibold text-lg text-foreground">{periodInfo.totalStatements}</p>
-                    <p className="text-muted-foreground">Pagamentos</p>
-                  </div>
-                  <div className="text-center">
-                    <p className="font-semibold text-lg text-foreground">{settlements.length}</p>
-                    <p className="text-muted-foreground">Pedidos</p>
-                  </div>
-                  <div className="text-center">
-                    <p className="font-semibold text-lg text-emerald-600">{formatCurrency(statementsSummary.totalReceived)}</p>
-                    <p className="text-muted-foreground">Total Recebido</p>
-                  </div>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
+              </CardContent>
+            </Card>
+          </motion.div>
         )}
 
         {/* Limited Data Warning */}
         {hasLimitedData && (
-          <div className="bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-800 rounded-lg p-4">
-            <h4 className="font-medium mb-2 flex items-center gap-2 text-amber-800 dark:text-amber-200">
-              <AlertTriangle className="h-4 w-4" />
-              Dados Parciais de Pedidos
-            </h4>
-            <p className="text-sm text-amber-700 dark:text-amber-300">
-              O relatório TikTok mostra <strong>detalhes de pedidos apenas do último pagamento</strong>. 
-              Os totais abaixo estão corretos (baseados na aba Statements), mas a tabela de pedidos mostra apenas {settlements.length} registros.
-            </p>
-          </div>
+          <motion.div variants={fadeInUp}>
+            <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
+              <h4 className="font-medium mb-2 flex items-center gap-2 text-yellow-800">
+                <AlertTriangle className="h-4 w-4" />
+                Dados Parciais de Pedidos
+              </h4>
+              <p className="text-sm text-yellow-700">
+                O relatório TikTok mostra <strong>detalhes de pedidos apenas do último pagamento</strong>. 
+                Os totais abaixo estão corretos (baseados na aba Statements), mas a tabela de pedidos mostra apenas {settlements.length} registros.
+              </p>
+            </div>
+          </motion.div>
         )}
 
-        {/* Summary Cards - Row 1 (using STATEMENTS data for accurate totals) */}
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-          <Card>
+             {/* Summary Cards - Row 1 (using STATEMENTS data for accurate totals) */}
+        <motion.div variants={fadeInUp} className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+          <Card className="border border-blue-200 shadow-lg bg-white">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Total Recebido</CardTitle>
-              <DollarSign className="h-4 w-4 text-emerald-500" />
+              <CardTitle className="text-sm font-medium text-gray-900">Total Recebido</CardTitle>
+              <DollarSign className="h-4 w-4 text-green-500" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold text-emerald-600">
+              <div className="text-2xl font-bold text-green-600">
                 {formatCurrency(statementsSummary.totalReceived)}
               </div>
-              <p className="text-xs text-muted-foreground">
+              <p className="text-xs text-gray-600">
                 {statementsSummary.statementCount} pagamentos no período
               </p>
             </CardContent>
           </Card>
 
-          <Card>
+          <Card className="border border-blue-200 shadow-lg bg-white">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Vendas Líquidas</CardTitle>
+              <CardTitle className="text-sm font-medium text-gray-900">Vendas Líquidas</CardTitle>
               <TrendingUp className="h-4 w-4 text-blue-500" />
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold text-blue-600">
                 {formatCurrency(statementsSummary.netSales)}
               </div>
-              <p className="text-xs text-muted-foreground">
+              <p className="text-xs text-gray-600">
                 Net Sales (após descontos)
               </p>
             </CardContent>
           </Card>
 
-          <Card>
+          <Card className="border border-blue-200 shadow-lg bg-white">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Total de Taxas</CardTitle>
-              <Percent className="h-4 w-4 text-amber-500" />
+              <CardTitle className="text-sm font-medium text-gray-900">Total de Taxas</CardTitle>
+              <Percent className="h-4 w-4 text-yellow-500" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold text-amber-600">
+              <div className="text-2xl font-bold text-yellow-600">
                 -{formatCurrency(statementsSummary.totalFees)}
               </div>
-              <p className="text-xs text-muted-foreground">
+              <p className="text-xs text-gray-600">
                 Comissões e taxas TikTok
               </p>
             </CardContent>
           </Card>
 
-          <Card>
+          <Card className="border border-blue-200 shadow-lg bg-white">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Frete</CardTitle>
+              <CardTitle className="text-sm font-medium text-gray-900">Frete</CardTitle>
               <Truck className="h-4 w-4 text-cyan-500" />
             </CardHeader>
             <CardContent>
-              <div className={`text-2xl font-bold ${statementsSummary.shippingTotal >= 0 ? 'text-emerald-600' : 'text-rose-600'}`}>
+              <div className={`text-2xl font-bold ${statementsSummary.shippingTotal >= 0 ? 'text-green-600' : 'text-red-600'}`}>
                 {statementsSummary.shippingTotal >= 0 ? '+' : ''}{formatCurrency(statementsSummary.shippingTotal)}
               </div>
-              <p className="text-xs text-muted-foreground">
+              <p className="text-xs text-gray-600">
                 Saldo de frete do período
               </p>
             </CardContent>
           </Card>
-        </div>
+        </motion.div>
 
         {/* Summary Cards - Row 2 (details from Order details when available) */}
         {settlements.length > 0 && (
-          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-            <Card>
+          <motion.div variants={fadeInUp} className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+            <Card className="border border-blue-200 shadow-lg bg-white">
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Faturamento Bruto</CardTitle>
+                <CardTitle className="text-sm font-medium text-gray-900">Faturamento Bruto</CardTitle>
                 <TrendingUp className="h-4 w-4 text-blue-500" />
               </CardHeader>
               <CardContent>
                 <div className="text-2xl font-bold text-blue-600">
                   {formatCurrency(summary.grossSales)}
                 </div>
-                <p className="text-xs text-muted-foreground">
+                <p className="text-xs text-gray-600">
                   Antes de descontos (pedidos disponíveis)
                 </p>
               </CardContent>
             </Card>
 
-            <Card>
+            <Card className="border border-blue-200 shadow-lg bg-white">
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Descontos Vendedor</CardTitle>
-                <TrendingDown className="h-4 w-4 text-rose-500" />
+                <CardTitle className="text-sm font-medium text-gray-900">Descontos Vendedor</CardTitle>
+                <TrendingDown className="h-4 w-4 text-red-500" />
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold text-rose-600">
+                <div className="text-2xl font-bold text-red-600">
                   -{formatCurrency(summary.totalSellerDiscounts)}
                 </div>
-                <p className="text-xs text-muted-foreground">
+                <p className="text-xs text-gray-600">
                   Cupons e promoções do vendedor
                 </p>
               </CardContent>
             </Card>
 
-            <Card>
+            <Card className="border border-blue-200 shadow-lg bg-white">
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Descontos Plataforma</CardTitle>
+                <CardTitle className="text-sm font-medium text-gray-900">Descontos Plataforma</CardTitle>
                 <Receipt className="h-4 w-4 text-orange-500" />
               </CardHeader>
               <CardContent>
                 <div className="text-2xl font-bold text-orange-600">
                   -{formatCurrency(summary.totalPlatformDiscounts)}
                 </div>
-                <p className="text-xs text-muted-foreground">
+                <p className="text-xs text-gray-600">
                   Cupons e promoções do TikTok
                 </p>
               </CardContent>
             </Card>
 
-            <Card>
+            <Card className="border border-blue-200 shadow-lg bg-white">
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Reembolsos</CardTitle>
-                <RefreshCw className="h-4 w-4 text-rose-500" />
+                <CardTitle className="text-sm font-medium text-gray-900">Reembolsos</CardTitle>
+                <RefreshCw className="h-4 w-4 text-red-500" />
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold text-rose-600">
+                <div className="text-2xl font-bold text-red-600">
                   -{formatCurrency(summary.totalRefunds)}
                 </div>
-                <p className="text-xs text-muted-foreground">
+                <p className="text-xs text-gray-600">
                   Devoluções e cancelamentos
                 </p>
               </CardContent>
             </Card>
-          </div>
+          </motion.div>
         )}
 
         {/* Charts */}
-        <PaymentCharts settlements={settlements} />
+        <motion.div variants={fadeInUp}>
+          <PaymentCharts settlements={settlements} />
+        </motion.div>
 
         {/* Statements Summary Table (Resumo por Pagamento) */}
         {statements.length > 0 && (
-          <Card>
-            <CardHeader>
-              <div className="flex items-center gap-2">
-                <Calendar className="h-5 w-5 text-muted-foreground" />
+          <motion.div variants={fadeInUp}>
+            <Card className="border border-blue-200 shadow-lg bg-white">
+              <CardHeader className="bg-blue-50 border-b border-blue-200">
+                <div className="flex items-center gap-2">
+                  <Calendar className="h-5 w-5 text-blue-600" />
+                  <div>
+                    <CardTitle className="text-gray-900">Resumo por Pagamento</CardTitle>
+                    <CardDescription className="text-gray-600">
+                      Histórico de pagamentos (aba Statements do relatório)
+                    </CardDescription>
+                  </div>
+                </div>
+              </CardHeader>
+              <CardContent>
+                <div className="rounded-lg border border-blue-200 overflow-x-auto">
+                  <Table>
+                    <TableHeader>
+                      <TableRow className="bg-blue-50">
+                        <TableHead className="text-gray-900">Data</TableHead>
+                        <TableHead className="text-gray-900">Statement ID</TableHead>
+                        <TableHead className="text-gray-900">Payment ID</TableHead>
+                        <TableHead className="text-gray-900">Status</TableHead>
+                        <TableHead className="text-right text-gray-900">Vendas Líquidas</TableHead>
+                        <TableHead className="text-right text-gray-900">Taxas</TableHead>
+                        <TableHead className="text-right text-gray-900">Frete</TableHead>
+                        <TableHead className="text-right text-gray-900">Total Recebido</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {statements.map((s) => (
+                        <TableRow key={s.id}>
+                          <TableCell className="font-medium text-gray-900">
+                            {formatDate(s.statement_date)}
+                          </TableCell>
+                          <TableCell className="text-xs text-gray-600">
+                            {s.statement_id?.substring(0, 12)}...
+                          </TableCell>
+                          <TableCell className="text-xs text-gray-600">
+                            {s.payment_id?.substring(0, 10)}...
+                          </TableCell>
+                          <TableCell>
+                            <Badge variant={s.status === 'Paid' ? 'default' : 'secondary'} className="text-xs">
+                              {s.status || '-'}
+                            </Badge>
+                          </TableCell>
+                          <TableCell className="text-right text-gray-900">
+                            {formatCurrency(s.net_sales || 0)}
+                          </TableCell>
+                          <TableCell className="text-right text-yellow-600">
+                            -{formatCurrency(Math.abs(s.fees_total || 0))}
+                          </TableCell>
+                          <TableCell className="text-right text-gray-900">
+                            {formatCurrency(s.shipping_total || 0)}
+                          </TableCell>
+                          <TableCell className="text-right font-bold text-green-600">
+                            {formatCurrency(s.total_settlement_amount || 0)}
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </div>
+              </CardContent>
+            </Card>
+          </motion.div>
+        )}
+
+        {/* Settlements Table */}
+        <motion.div variants={fadeInUp}>
+          <Card className="border border-blue-200 shadow-lg bg-white">
+            <CardHeader className="bg-blue-50 border-b border-blue-200">
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
                 <div>
-                  <CardTitle>Resumo por Pagamento</CardTitle>
-                  <CardDescription>
-                    Histórico de pagamentos (aba Statements do relatório)
+                  <CardTitle className="text-gray-900">Detalhamento por Pedido</CardTitle>
+                  <CardDescription className="text-gray-600">
+                    Clique em um pedido para ver todos os detalhes
                   </CardDescription>
+                </div>
+                <div className="flex gap-2">
+                  <Select value={typeFilter} onValueChange={setTypeFilter}>
+                    <SelectTrigger className="w-[150px] border-blue-200 focus:border-blue-500">
+                      <SelectValue placeholder="Tipo" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">Todos</SelectItem>
+                      <SelectItem value="order">Vendas</SelectItem>
+                      <SelectItem value="refund">Reembolsos</SelectItem>
+                      <SelectItem value="adjustment">Ajustes</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <div className="relative w-full sm:w-64">
+                    <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-600" />
+                    <Input
+                      placeholder="Buscar pedido, produto, SKU..."
+                      value={searchTerm}
+                      onChange={(e) => setSearchTerm(e.target.value)}
+                      className="pl-9 border-blue-200 focus:border-blue-500"
+                    />
+                  </div>
                 </div>
               </div>
             </CardHeader>
             <CardContent>
-              <div className="overflow-x-auto">
+              <div className="rounded-lg border border-blue-200 overflow-x-auto">
                 <Table>
                   <TableHeader>
-                    <TableRow>
-                      <TableHead>Data</TableHead>
-                      <TableHead>Statement ID</TableHead>
-                      <TableHead>Payment ID</TableHead>
-                      <TableHead>Status</TableHead>
-                      <TableHead className="text-right">Vendas Líquidas</TableHead>
-                      <TableHead className="text-right">Taxas</TableHead>
-                      <TableHead className="text-right">Frete</TableHead>
-                      <TableHead className="text-right">Total Recebido</TableHead>
+                    <TableRow className="bg-blue-50">
+                      <TableHead className="text-gray-900">ID do Pedido</TableHead>
+                      <TableHead className="text-gray-900">ID Pagamento</TableHead>
+                      <TableHead className="text-gray-900">Status</TableHead>
+                      <TableHead className="text-gray-900">Produto / SKU</TableHead>
+                      <TableHead className="text-center text-gray-900">Qtd</TableHead>
+                      <TableHead className="text-center text-gray-900">Data Venda</TableHead>
+                      <TableHead className="text-center text-gray-900">Data Entrega</TableHead>
+                      <TableHead className="text-center text-gray-900">Data Pagamento</TableHead>
+                      <TableHead className="text-right text-gray-900">Valor Líquido</TableHead>
+                      <TableHead className="text-right text-gray-900">Comissão Afiliado</TableHead>
+                      <TableHead className="text-right text-gray-900">Total Recebido</TableHead>
+                      <TableHead className="text-center text-gray-900">Ação</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {statements.map((s) => (
-                      <TableRow key={s.id}>
-                        <TableCell className="font-medium">
-                          {formatDate(s.statement_date)}
-                        </TableCell>
-                        <TableCell className="text-xs text-muted-foreground">
-                          {s.statement_id?.substring(0, 12)}...
-                        </TableCell>
-                        <TableCell className="text-xs text-muted-foreground">
-                          {s.payment_id?.substring(0, 12)}...
-                        </TableCell>
-                        <TableCell>
-                          <Badge variant={s.status === 'Paid' ? 'default' : 'secondary'}>
-                            {s.status || '-'}
-                          </Badge>
-                        </TableCell>
-                        <TableCell className="text-right">
-                          {formatCurrency(s.net_sales || 0)}
-                        </TableCell>
-                        <TableCell className="text-right text-amber-600">
-                          -{formatCurrency(Math.abs(s.fees_total || 0))}
-                        </TableCell>
-                        <TableCell className="text-right">
-                          {formatCurrency(s.shipping_total || 0)}
-                        </TableCell>
-                        <TableCell className="text-right font-bold text-emerald-600">
-                          {formatCurrency(s.total_settlement_amount || 0)}
-                        </TableCell>
-                      </TableRow>
-                    ))}
+                    {filteredSettlements.slice(0, 100).map((s, idx) => {
+                      const getStatusBadge = () => {
+                        const status = s.status?.toLowerCase();
+                        if (status === 'paid' || status === 'settled') {
+                          return <Badge variant="outline" className="border-green-500 text-green-600 text-xs">Pago</Badge>;
+                        } else if (status === 'pending') {
+                          return <Badge variant="outline" className="border-yellow-500 text-yellow-600 text-xs">Pendente</Badge>;
+                        }
+                        return <Badge variant="outline" className="text-xs text-gray-900">{s.status || '-'}</Badge>;
+                      };
+                      
+                      return (
+                        <TableRow 
+                          key={`${s.order_id}-${idx}`} 
+                          className="cursor-pointer hover:bg-blue-25"
+                          onClick={() => handleRowClick(s)}
+                        >
+                          <TableCell className="font-mono text-xs text-gray-900">
+                            {s.order_id?.slice(0, 12)}...
+                          </TableCell>
+                          <TableCell className="font-mono text-xs text-gray-600">
+                            {s.payment_id?.slice(0, 10)}...
+                          </TableCell>
+                          <TableCell>
+                            {getStatusBadge()}
+                          </TableCell>
+                          <TableCell>
+                            <div className="max-w-[180px]">
+                              <p className="truncate text-sm font-medium text-gray-900">
+                                {s.nome_produto || '-'}
+                              </p>
+                              {s.variacao && (
+                                <p className="truncate text-xs text-gray-600">
+                                  {s.variacao}
+                                </p>
+                              )}
+                            </div>
+                          </TableCell>
+                          <TableCell className="text-center text-gray-900">{s.quantidade}</TableCell>
+                          <TableCell className="text-center text-xs text-gray-600">
+                            {formatDate(s.data_criacao_pedido)}
+                          </TableCell>
+                          <TableCell className="text-center text-xs text-gray-600">
+                            {formatDate(s.data_entrega)}
+                          </TableCell>
+                          <TableCell className="text-center text-xs text-gray-600">
+                            {formatDate(s.statement_date)}
+                          </TableCell>
+                          <TableCell className="text-right text-blue-600">
+                            {formatCurrency(s.net_sales || 0)}
+                          </TableCell>
+                          <TableCell className="text-right text-yellow-600">
+                            {Math.abs(s.affiliate_commission || 0) > 0 
+                              ? `-${formatCurrency(Math.abs(s.affiliate_commission || 0))}` 
+                              : '-'}
+                          </TableCell>
+                          <TableCell className="text-right font-medium text-green-600">
+                            {formatCurrency(s.total_settlement_amount || 0)}
+                          </TableCell>
+                          <TableCell className="text-center">
+                            <Button variant="ghost" size="sm" className="text-gray-600 hover:text-gray-900">
+                              <Eye className="h-4 w-4" />
+                            </Button>
+                          </TableCell>
+                        </TableRow>
+                      );
+                    })}
                   </TableBody>
                 </Table>
+                {filteredSettlements.length > 100 && (
+                  <p className="text-sm text-gray-600 text-center mt-4">
+                    Mostrando 100 de {filteredSettlements.length} registros. Exporte para ver todos.
+                  </p>
+                )}
               </div>
             </CardContent>
           </Card>
-        )}
-
-        {/* Settlements Table */}
-        <Card>
-          <CardHeader>
-            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-              <div>
-                <CardTitle>Detalhamento por Pedido</CardTitle>
-                <CardDescription>
-                  Clique em um pedido para ver todos os detalhes
-                </CardDescription>
-              </div>
-              <div className="flex gap-2">
-                <Select value={typeFilter} onValueChange={setTypeFilter}>
-                  <SelectTrigger className="w-[150px]">
-                    <SelectValue placeholder="Tipo" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">Todos</SelectItem>
-                    <SelectItem value="order">Vendas</SelectItem>
-                    <SelectItem value="refund">Reembolsos</SelectItem>
-                    <SelectItem value="adjustment">Ajustes</SelectItem>
-                  </SelectContent>
-                </Select>
-                <div className="relative w-full sm:w-64">
-                  <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-                  <Input
-                    placeholder="Buscar pedido, produto, SKU..."
-                    value={searchTerm}
-                    onChange={(e) => setSearchTerm(e.target.value)}
-                    className="pl-9"
-                  />
-                </div>
-              </div>
-            </div>
-          </CardHeader>
-          <CardContent>
-            <div className="overflow-x-auto">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>ID do Pedido</TableHead>
-                    <TableHead>ID Pagamento</TableHead>
-                    <TableHead>Status</TableHead>
-                    <TableHead>Produto / SKU</TableHead>
-                    <TableHead className="text-center">Qtd</TableHead>
-                    <TableHead className="text-center">Data Venda</TableHead>
-                    <TableHead className="text-center">Data Entrega</TableHead>
-                    <TableHead className="text-center">Data Pagamento</TableHead>
-                    <TableHead className="text-right">Valor Líquido</TableHead>
-                    <TableHead className="text-right">Comissão Afiliado</TableHead>
-                    <TableHead className="text-right">Total Recebido</TableHead>
-                    <TableHead className="text-center">Ação</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {filteredSettlements.slice(0, 100).map((s, idx) => {
-                    const getStatusBadge = () => {
-                      const status = s.status?.toLowerCase();
-                      if (status === 'paid' || status === 'settled') {
-                        return <Badge variant="outline" className="border-emerald-500 text-emerald-600 text-xs">Pago</Badge>;
-                      } else if (status === 'pending') {
-                        return <Badge variant="outline" className="border-amber-500 text-amber-600 text-xs">Pendente</Badge>;
-                      }
-                      return <Badge variant="outline" className="text-xs">{s.status || '-'}</Badge>;
-                    };
-                    
-                    return (
-                      <TableRow 
-                        key={`${s.order_id}-${idx}`} 
-                        className="cursor-pointer hover:bg-muted/50"
-                        onClick={() => handleRowClick(s)}
-                      >
-                        <TableCell className="font-mono text-xs">
-                          {s.order_id?.slice(0, 12)}...
-                        </TableCell>
-                        <TableCell className="font-mono text-xs text-muted-foreground">
-                          {s.payment_id?.slice(0, 10)}...
-                        </TableCell>
-                        <TableCell>
-                          {getStatusBadge()}
-                        </TableCell>
-                        <TableCell>
-                          <div className="max-w-[180px]">
-                            <p className="truncate text-sm font-medium">
-                              {s.nome_produto || '-'}
-                            </p>
-                            {s.variacao && (
-                              <p className="truncate text-xs text-muted-foreground">
-                                {s.variacao}
-                              </p>
-                            )}
-                          </div>
-                        </TableCell>
-                        <TableCell className="text-center">{s.quantidade}</TableCell>
-                        <TableCell className="text-center text-xs text-muted-foreground">
-                          {formatDate(s.data_criacao_pedido)}
-                        </TableCell>
-                        <TableCell className="text-center text-xs text-muted-foreground">
-                          {formatDate(s.data_entrega)}
-                        </TableCell>
-                        <TableCell className="text-center text-xs text-muted-foreground">
-                          {formatDate(s.statement_date)}
-                        </TableCell>
-                        <TableCell className="text-right text-blue-600">
-                          {formatCurrency(s.net_sales || 0)}
-                        </TableCell>
-                        <TableCell className="text-right text-amber-600">
-                          {Math.abs(s.affiliate_commission || 0) > 0 
-                            ? `-${formatCurrency(Math.abs(s.affiliate_commission || 0))}` 
-                            : '-'}
-                        </TableCell>
-                        <TableCell className="text-right font-medium text-emerald-600">
-                          {formatCurrency(s.total_settlement_amount || 0)}
-                        </TableCell>
-                        <TableCell className="text-center">
-                          <Button variant="ghost" size="sm">
-                            <Eye className="h-4 w-4" />
-                          </Button>
-                        </TableCell>
-                      </TableRow>
-                    );
-                  })}
-                </TableBody>
-              </Table>
-              {filteredSettlements.length > 100 && (
-                <p className="text-sm text-muted-foreground text-center mt-4">
-                  Mostrando 100 de {filteredSettlements.length} registros. Exporte para ver todos.
-                </p>
-              )}
-            </div>
-          </CardContent>
-        </Card>
+        </motion.div>
 
         {/* Detail Modal */}
         <SettlementDetailModal
@@ -763,7 +824,7 @@ function TikTokPagamentosContent() {
           open={modalOpen}
           onOpenChange={setModalOpen}
         />
-      </div>
+      </motion.div>
     </AppLayout>
   );
 }

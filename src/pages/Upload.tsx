@@ -132,7 +132,7 @@ function UploadContent() {
     }
   }, []);
 
-  const processFile = async (file: File) => {
+  const processFile = useCallback(async (file: File) => {
     setIsProcessing(true);
     setProgress(10);
 
@@ -192,7 +192,7 @@ function UploadContent() {
     } finally {
       setIsProcessing(false);
     }
-  };
+  }, []);
 
   const handleDrop = useCallback((e: React.DragEvent) => {
     e.preventDefault();
@@ -209,7 +209,7 @@ function UploadContent() {
         toast.error('Por favor, envie um arquivo Excel (.xlsx, .xls) ou CSV (.csv)');
       }
     }
-  }, []);
+  }, [processFile]);
 
   const handleFileInput = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
