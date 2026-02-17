@@ -401,6 +401,7 @@ function TikTokPagamentosUploadContent() {
                 Faça o download do relatório "Income" no Seller Center do TikTok Shop e importe aqui
               </CardDescription>
             </CardHeader>
+            <br />
             <CardContent className="space-y-6">
               <div className="space-y-3">
                 <div className="flex items-center space-x-3">
