@@ -32,6 +32,7 @@ import EsqueciSenha from "./pages/EsqueciSenha";
 import ResetPassword from "./pages/ResetPassword";
 import NotFound from "./pages/NotFound";
 import Planos from "./pages/Planos";
+import Upgrade from "./pages/Upgrade";
 
 const queryClient = new QueryClient();
 
@@ -72,6 +73,7 @@ const App = () => (
             <Route path="/tiktok/pagamentos/upload" element={<ProtectedRoute><TikTokPagamentosUpload /></ProtectedRoute>} />
             <Route path="/dre" element={<ProtectedRoute><DRE /></ProtectedRoute>} />
             <Route path="/perfil" element={<ProtectedRoute><Perfil /></ProtectedRoute>} />
+            <Route path="/upgrade" element={<ProtectedRoute><Upgrade /></ProtectedRoute>} />
             
             {/* Catch-all */}
             <Route path="*" element={<NotFound />} />

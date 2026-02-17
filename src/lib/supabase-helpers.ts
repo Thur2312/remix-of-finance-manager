@@ -1,6 +1,7 @@
 import { supabase } from '@/integrations/supabase/client';
 import { RawOrder } from '@/lib/calculations';
 
+
 /**
  * Fetches ALL orders from the database using pagination.
  * Supabase limits queries to 1000 rows by default, so this function
