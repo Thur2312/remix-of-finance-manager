@@ -13,6 +13,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow, TableFoo
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 import { parseBatchCostInput } from '@/lib/numeric-validation';
+import { motion } from 'framer-motion';
 import {
   Download,
   Loader2,
@@ -31,6 +32,19 @@ import { fetchAllTikTokOrders } from '@/lib/tiktok-helpers';
 import { EditableCostCell } from '@/components/EditableCostCell';
 import { ResultsCharts } from '@/components/charts/ResultsCharts';
 
+const fadeInUp = {
+  hidden: { opacity: 0, y: 40 },
+  visible: { opacity: 1, y: 0 },
+};
+
+const staggerContainer = {
+  hidden: { opacity: 0 },
+  visible: {
+    opacity: 1,
+    transition: { staggerChildren: 0.15 },
+  },
+};
+
 function TikTokResultadosContent() {
   const { user } = useAuth();
   const [isSettingsLoaded, setIsSettingsLoaded] = useState(false);
@@ -45,18 +59,6 @@ function TikTokResultadosContent() {
   const [batchCostValue, setBatchCostValue] = useState('');
   const [isBatchSaving, setIsBatchSaving] = useState(false);
   const [showBatchInput, setShowBatchInput] = useState(false);
-
-  useEffect(() => {
-    if (user) {
-      fetchSettings();
-    }
-  }, [user]);
-
-  useEffect(() => {
-    if (user && settings) {
-      fetchOrders();
-    }
-  }, [user, settings]);
 
   const fetchSettings = async () => {
     try {
@@ -82,7 +84,7 @@ function TikTokResultadosContent() {
     }
   };
 
-  const fetchOrders = async () => {
+  const fetchOrders = useCallback(async () => {
     if (!user) return;
     setIsOrdersLoading(true);
     
@@ -95,7 +97,19 @@ function TikTokResultadosContent() {
     }
     
     setIsOrdersLoading(false);
-  };
+  }, [user]);
+
+  useEffect(() => {
+    if (user) {
+      fetchSettings();
+    }
+  }, [user]);
+
+  useEffect(() => {
+    if (user && settings) {
+      fetchOrders();
+    }
+  }, [user, settings, fetchOrders]);
 
   const handleSettingsChange = (settingsId: string) => {
     const selected = allSettings.find(s => s.id === settingsId);
@@ -290,15 +304,15 @@ function TikTokResultadosContent() {
         value: formatCurrency(totals.lucro_reais),
         subtitle: totals.gasto_ads > 0 ? `Ads: -${formatCurrency(totals.gasto_ads)}` : undefined,
         icon: totals.lucro_reais >= 0 ? TrendingUp : TrendingDown,
-        color: totals.lucro_reais >= 0 ? 'text-success' : 'text-destructive',
-        bg: totals.lucro_reais >= 0 ? 'bg-success/10' : 'bg-destructive/10',
+        color: totals.lucro_reais >= 0 ? 'text-green-600' : 'text-red-600',
+        bg: totals.lucro_reais >= 0 ? 'bg-green-500/10' : 'bg-red-500/10',
       },
       {
         title: 'Margem Média',
         value: formatPercent(totals.lucro_percentual_medio),
         icon: Package,
-        color: 'text-primary',
-        bg: 'bg-primary/10',
+        color: 'text-blue-600',
+        bg: 'bg-blue-500/10',
       },
     ];
 
@@ -313,91 +327,103 @@ function TikTokResultadosContent() {
     }
 
     return (
-      <div className={cn('grid gap-4', totals.gasto_ads > 0 ? 'md:grid-cols-5' : 'md:grid-cols-4')}>
-        {cards.map((card) => (
-          <Card key={card.title}>
-            <CardContent className="pt-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm text-muted-foreground">{card.title}</p>
-                  <p className="text-2xl font-bold">{card.value}</p>
-                  {'subtitle' in card && card.subtitle && (
-                    <p className="text-xs text-muted-foreground mt-1">{card.subtitle}</p>
-                  )}
+      <motion.div
+        className={cn('grid gap-4', totals.gasto_ads > 0 ? 'md:grid-cols-5' : 'md:grid-cols-4')}
+        variants={staggerContainer}
+      >
+        {cards.map((card, index) => (
+          <motion.div key={card.title} variants={fadeInUp}>
+            <Card className="border border-blue-200 shadow-lg bg-white">
+              <CardContent className="pt-6">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm text-gray-600">{card.title}</p>
+                    <p className="text-2xl font-bold text-gray-900">{card.value}</p>
+                    {'subtitle' in card && card.subtitle && (
+                      <p className="text-xs text-gray-600 mt-1">{card.subtitle}</p>
+                    )}
+                  </div>
+                  <div className={cn('p-3 rounded-full', card.bg)}>
+                    <card.icon className={cn('h-5 w-5', card.color)} />
+                  </div>
                 </div>
-                <div className={cn('p-3 rounded-full', card.bg)}>
-                  <card.icon className={cn('h-5 w-5', card.color)} />
-                </div>
-              </div>
-            </CardContent>
-          </Card>
+              </CardContent>
+            </Card>
+          </motion.div>
         ))}
-      </div>
+      </motion.div>
     );
   };
 
   const renderFilters = () => (
-    <Card>
-      <CardHeader className="pb-4">
-        <CardTitle className="text-base flex items-center gap-2">
-          <Filter className="h-4 w-4" />
-          Filtros
-        </CardTitle>
-      </CardHeader>
-      <CardContent>
-        <div className="flex flex-wrap gap-4 items-end">
-          <div className="space-y-2">
-            <Label>Configuração</Label>
-            <Select value={selectedSettingsId} onValueChange={handleSettingsChange}>
-              <SelectTrigger className="w-[200px]">
-                <SelectValue placeholder="Selecionar configuração" />
-              </SelectTrigger>
-              <SelectContent>
-                {allSettings.map((s) => (
-                  <SelectItem key={s.id} value={s.id}>
-                    {s.name} {s.is_default && '(Padrão)'}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
+    <motion.div variants={fadeInUp}>
+      <Card className="border border-blue-200 shadow-lg bg-white">
+        <CardHeader className="pb-4 bg-blue-50 border-b border-blue-200">
+          <CardTitle className="text-base flex items-center gap-2 text-gray-900">
+            <Filter className="h-4 w-4 text-blue-600" />
+            Filtros
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="flex flex-wrap gap-4 items-end">
+            <div className="space-y-2">
+              <Label className="text-gray-900">Configuração</Label>
+              <Select value={selectedSettingsId} onValueChange={handleSettingsChange}>
+                <SelectTrigger className="w-[200px] border-blue-200 focus:border-blue-500">
+                  <SelectValue placeholder="Selecionar configuração" />
+                </SelectTrigger>
+                <SelectContent>
+                  {allSettings.map((s) => (
+                    <SelectItem key={s.id} value={s.id}>
+                      {s.name} {s.is_default && '(Padrão)'}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
 
-          {calculatedResults && calculatedResults.groups.length > 0 && (
-            <Button onClick={handleExport} variant="outline">
-              <Download className="h-4 w-4 mr-2" />
-              Exportar CSV
-            </Button>
-          )}
-        </div>
-      </CardContent>
-    </Card>
+            {calculatedResults && calculatedResults.groups.length > 0 && (
+              <Button
+                onClick={handleExport}
+                variant="outline"
+                className="border-blue-200 text-blue-700 hover:bg-blue-50"
+              >
+                <Download className="h-4 w-4 mr-2" />
+                Exportar CSV
+              </Button>
+            )}
+          </div>
+        </CardContent>
+      </Card>
+    </motion.div>
   );
 
   const renderBatchActions = () => {
     if (selectedProducts.size === 0) return null;
 
     return (
-      <div className="flex items-center gap-3 p-3 bg-primary/10 rounded-lg border border-primary/20 mb-4">
-        <span className="text-sm font-medium">
+      <div className="flex items-center gap-3 p-3 bg-blue-50 rounded-lg border border-blue-200 mb-4">
+        <span className="text-sm font-medium text-gray-900">
           {selectedProducts.size} produto(s) selecionado(s)
         </span>
         
         {showBatchInput ? (
           <div className="flex items-center gap-2">
-            <span className="text-sm text-muted-foreground">R$</span>
+            <span className="text-sm text-gray-600">R$</span>
             <Input
               type="text"
               inputMode="decimal"
               placeholder="0,00"
               value={batchCostValue}
               onChange={(e) => setBatchCostValue(e.target.value)}
-              className="w-24 h-8"
+              className="w-24 h-8 border-blue-200 focus:border-blue-500"
               autoFocus
             />
             <Button
               size="sm"
               onClick={handleBatchSave}
               disabled={isBatchSaving}
+              className="bg-gradient-to-r from-blue-600 to-blue-500 hover:from-blue-700 hover:to-blue-600 text-white"
             >
               {isBatchSaving ? (
                 <Loader2 className="h-4 w-4 animate-spin" />
@@ -421,6 +447,7 @@ function TikTokResultadosContent() {
             size="sm"
             variant="secondary"
             onClick={() => setShowBatchInput(true)}
+            className="border-blue-200 text-blue-700 hover:bg-blue-50"
           >
             <Edit className="h-4 w-4 mr-1" />
             Editar Custo em Massa
@@ -431,6 +458,7 @@ function TikTokResultadosContent() {
           size="sm"
           variant="ghost"
           onClick={() => setSelectedProducts(new Set())}
+          className="text-gray-600 hover:text-gray-900"
         >
           Limpar Seleção
         </Button>
@@ -441,158 +469,160 @@ function TikTokResultadosContent() {
   const renderResultsTable = () => {
     if (!calculatedResults || calculatedResults.groups.length === 0) {
       return (
-        <Card>
-          <CardContent className="py-12 text-center">
-            <AlertCircle className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
-            <h3 className="font-semibold text-lg">Nenhum resultado encontrado</h3>
-            <p className="text-muted-foreground mt-2">
-              Ajuste os filtros ou faça upload de pedidos para visualizar os resultados.
-            </p>
-          </CardContent>
-        </Card>
+        <motion.div variants={fadeInUp}>
+          <Card className="border border-blue-200 shadow-lg bg-white">
+            <CardContent className="py-12 text-center">
+              <AlertCircle className="h-12 w-12 mx-auto text-gray-400 mb-4" />
+              <h3 className="font-semibold text-lg text-gray-900">Nenhum resultado encontrado</h3>
+              <p className="text-gray-600 mt-2">
+                Ajuste os filtros ou faça upload de pedidos para visualizar os resultados.
+              </p>
+            </CardContent>
+          </Card>
+        </motion.div>
       );
     }
 
     const { groups, totals } = calculatedResults;
 
     return (
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Package className="h-5 w-5 text-primary" />
-            Resultados por Produto
-          </CardTitle>
-          <CardDescription>
-            {groups.length} produtos • {totals.itens_vendidos} itens vendidos
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          {renderBatchActions()}
-          <div className="rounded-lg border overflow-x-auto">
-            <Table>
-              <TableHeader>
-                <TableRow className="bg-muted/50">
-                  <TableHead className="w-10">
-                    <Checkbox
-                      checked={selectedProducts.size === groups.length && groups.length > 0}
-                      onCheckedChange={(checked) => handleSelectAll(!!checked)}
-                    />
-                  </TableHead>
-                  <TableHead className="min-w-[180px]">Produto</TableHead>
-                  <TableHead>SKU</TableHead>
-                  <TableHead className="text-right">Custo Unit.</TableHead>
-                  <TableHead className="text-right">Qtd</TableHead>
-                  <TableHead className="text-right">Faturado</TableHead>
-                  <TableHead className="text-right">Taxa TikTok</TableHead>
-                  <TableHead className="text-right">A Receber</TableHead>
-                  <TableHead className="text-right">Custo Total</TableHead>
-                  <TableHead className="text-right">Imposto</TableHead>
-                  <TableHead className="text-right">Lucro R$</TableHead>
-                  <TableHead className="text-right">Margem</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {groups.map((row) => (
-                  <TableRow 
-                    key={row.key}
-                    className={cn(
-                      row.custo_unitario_medio === 0 && 'bg-warning/10'
-                    )}
-                  >
-                    <TableCell>
-                      <Checkbox
-                        checked={selectedProducts.has(row.key)}
-                        onCheckedChange={(checked) => handleSelectProduct(row.key, !!checked)}
-                      />
+      <motion.div variants={fadeInUp}>
+        <Card className="border border-blue-200 shadow-lg bg-white">
+          <CardHeader className="bg-blue-50 border-b border-blue-200">
+            <CardTitle className="flex items-center gap-2 text-gray-900">
+              <Package className="h-5 w-5 text-blue-600" />
+              Resultados por Produto
+            </CardTitle>
+            <CardDescription className="text-gray-600">
+              {groups.length} produtos • {totals.itens_vendidos} itens vendidos
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            {renderBatchActions()}
+            <div className="rounded-lg border border-blue-200 overflow-x-auto">
+              <Table>
+                <TableHeader>
+                                  </TableHeader>
+                <TableBody>
+                  {groups.map((row) => (
+                    <TableRow
+                      key={row.key}
+                      className={cn(
+                        row.custo_unitario_medio === 0 && 'bg-yellow-50 border-yellow-200'
+                      )}
+                    >
+                      <TableCell>
+                        <Checkbox
+                          checked={selectedProducts.has(row.key)}
+                          onCheckedChange={(checked) => handleSelectProduct(row.key, !!checked)}
+                        />
+                      </TableCell>
+                      <TableCell className="max-w-[200px] truncate text-gray-900" title={row.nome_produto}>
+                        {row.nome_produto}
+                      </TableCell>
+                      <TableCell className="text-gray-600 text-sm">{row.sku || '-'}</TableCell>
+                      <TableCell className="text-right">
+                        <EditableCostCell
+                          initialCost={row.custo_unitario_medio}
+                          onCostSave={handleCostSave}
+                          sku={row.sku}
+                          nomeProduto={row.nome_produto}
+                        />
+                      </TableCell>
+                      <TableCell className="text-right text-gray-900">{row.itens_vendidos}</TableCell>
+                      <TableCell className="text-right text-gray-900">{formatCurrency(row.total_faturado)}</TableCell>
+                      <TableCell className="text-right text-gray-600">{formatCurrency(row.taxa_tiktok_reais)}</TableCell>
+                      <TableCell className="text-right text-gray-900">{formatCurrency(row.total_a_receber)}</TableCell>
+                      <TableCell className="text-right text-gray-600">{formatCurrency(row.total_gasto_produtos)}</TableCell>
+                      <TableCell className="text-right text-gray-600">{formatCurrency(row.imposto)}</TableCell>
+                      <TableCell className={cn('text-right font-medium', row.lucro_reais >= 0 ? 'text-green-600' : 'text-red-600')}>
+                        {formatCurrency(row.lucro_reais)}
+                      </TableCell>
+                      <TableCell className={cn('text-right', row.lucro_percentual >= 0 ? 'text-green-600' : 'text-red-600')}>
+                        {formatPercent(row.lucro_percentual)}
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+                <TableFooter>
+                  <TableRow className="bg-blue-100 font-semibold border-blue-200">
+                    <TableCell>-</TableCell>
+                    <TableCell className="font-bold text-gray-900">TOTAL GERAL</TableCell>
+                    <TableCell>-</TableCell>
+                    <TableCell>-</TableCell>
+                    <TableCell className="text-right font-bold text-gray-900">{totals.itens_vendidos}</TableCell>
+                    <TableCell className="text-right font-bold text-gray-900">{formatCurrency(totals.total_faturado)}</TableCell>
+                    <TableCell className="text-right text-gray-600">{formatCurrency(totals.taxa_tiktok_reais)}</TableCell>
+                    <TableCell className="text-right font-bold text-gray-900">{formatCurrency(totals.total_a_receber)}</TableCell>
+                    <TableCell className="text-right text-gray-600">{formatCurrency(totals.total_gasto_produtos)}</TableCell>
+                    <TableCell className="text-right text-gray-600">{formatCurrency(totals.imposto)}</TableCell>
+                    <TableCell className={cn('text-right font-bold', totals.lucro_bruto >= 0 ? 'text-green-600' : 'text-red-600')}>
+                      {formatCurrency(totals.lucro_bruto)}
                     </TableCell>
-                    <TableCell className="max-w-[200px] truncate" title={row.nome_produto}>
-                      {row.nome_produto}
-                    </TableCell>
-                    <TableCell className="text-muted-foreground text-sm">{row.sku || '-'}</TableCell>
-                    <TableCell className="text-right">
-                      <EditableCostCell
-                        initialCost={row.custo_unitario_medio}
-                        onCostSave={handleCostSave}
-                        sku={row.sku}
-                        nomeProduto={row.nome_produto}
-                      />
-                    </TableCell>
-                    <TableCell className="text-right">{row.itens_vendidos}</TableCell>
-                    <TableCell className="text-right">{formatCurrency(row.total_faturado)}</TableCell>
-                    <TableCell className="text-right text-muted-foreground">{formatCurrency(row.taxa_tiktok_reais)}</TableCell>
-                    <TableCell className="text-right">{formatCurrency(row.total_a_receber)}</TableCell>
-                    <TableCell className="text-right text-muted-foreground">{formatCurrency(row.total_gasto_produtos)}</TableCell>
-                    <TableCell className="text-right text-muted-foreground">{formatCurrency(row.imposto)}</TableCell>
-                    <TableCell className={cn('text-right font-medium', row.lucro_reais >= 0 ? 'text-success' : 'text-destructive')}>
-                      {formatCurrency(row.lucro_reais)}
-                    </TableCell>
-                    <TableCell className={cn('text-right', row.lucro_percentual >= 0 ? 'text-success' : 'text-destructive')}>
-                      {formatPercent(row.lucro_percentual)}
+                    <TableCell className={cn('text-right font-bold', totals.lucro_percentual_medio >= 0 ? 'text-green-600' : 'text-red-600')}>
+                      {formatPercent(totals.lucro_percentual_medio)}
                     </TableCell>
                   </TableRow>
-                ))}
-              </TableBody>
-              <TableFooter>
-                <TableRow className="bg-primary/10 font-semibold">
-                  <TableCell>-</TableCell>
-                  <TableCell className="font-bold">TOTAL GERAL</TableCell>
-                  <TableCell>-</TableCell>
-                  <TableCell>-</TableCell>
-                  <TableCell className="text-right font-bold">{totals.itens_vendidos}</TableCell>
-                  <TableCell className="text-right font-bold">{formatCurrency(totals.total_faturado)}</TableCell>
-                  <TableCell className="text-right">{formatCurrency(totals.taxa_tiktok_reais)}</TableCell>
-                  <TableCell className="text-right font-bold">{formatCurrency(totals.total_a_receber)}</TableCell>
-                  <TableCell className="text-right text-muted-foreground">{formatCurrency(totals.total_gasto_produtos)}</TableCell>
-                  <TableCell className="text-right text-muted-foreground">{formatCurrency(totals.imposto)}</TableCell>
-                  <TableCell className={cn('text-right font-bold', totals.lucro_bruto >= 0 ? 'text-success' : 'text-destructive')}>
-                    {formatCurrency(totals.lucro_bruto)}
-                  </TableCell>
-                  <TableCell className={cn('text-right font-bold', totals.lucro_percentual_medio >= 0 ? 'text-success' : 'text-destructive')}>
-                    {formatPercent(totals.lucro_percentual_medio)}
-                  </TableCell>
-                </TableRow>
-              </TableFooter>
-            </Table>
-          </div>
-        </CardContent>
-      </Card>
+                </TableFooter>
+              </Table>
+            </div>
+          </CardContent>
+        </Card>
+      </motion.div>
     );
   };
 
   if (!isSettingsLoaded) {
     return (
       <div className="flex items-center justify-center h-64">
-        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+        <Loader2 className="h-8 w-8 animate-spin text-blue-600" />
       </div>
     );
   }
 
   if (allSettings.length === 0) {
     return (
-      <Card className="max-w-md mx-auto">
-        <CardContent className="py-12 text-center">
-          <AlertCircle className="h-12 w-12 mx-auto text-warning mb-4" />
-          <h3 className="font-semibold text-lg">Configuração Necessária</h3>
-          <p className="text-muted-foreground mt-2">
-            Você precisa criar uma configuração financeira antes de visualizar os resultados.
-          </p>
-          <Button asChild className="mt-4">
-            <a href="/tiktok/configuracoes">Ir para Configurações</a>
-          </Button>
-        </CardContent>
-      </Card>
+      <motion.div
+        initial="hidden"
+        animate="visible"
+        variants={fadeInUp}
+        className="max-w-md mx-auto"
+      >
+        <Card className="border border-blue-200 shadow-lg bg-white">
+          <CardContent className="py-12 text-center">
+            <AlertCircle className="h-12 w-12 mx-auto text-yellow-500 mb-4" />
+            <h3 className="font-semibold text-lg text-gray-900">Configuração Necessária</h3>
+            <p className="text-gray-600 mt-2">
+              Você precisa criar uma configuração financeira antes de visualizar os resultados.
+            </p>
+            <Button
+              asChild
+              className="mt-4 bg-gradient-to-r from-blue-600 to-blue-500 hover:from-blue-700 hover:to-blue-600 text-white"
+            >
+              <a href="/tiktok/configuracoes">Ir para Configurações</a>
+            </Button>
+          </CardContent>
+        </Card>
+      </motion.div>
     );
   }
 
   return (
-    <div className="space-y-6 animate-fade-in">
+    <motion.div
+      className="space-y-6"
+      initial="hidden"
+      animate="visible"
+      variants={staggerContainer}
+    >
       {renderFilters()}
       {renderSummaryCards()}
       {calculatedResults && calculatedResults.groups.length > 0 && (
-        <ResultsCharts data={calculatedResults.groups.map(g => ({ ...g, rebates_shopee: 0, taxa_shopee_reais: g.taxa_tiktok_reais }))} type="produto" />
+        <motion.div variants={fadeInUp}>
+          <ResultsCharts data={calculatedResults.groups.map(g => ({ ...g, rebates_shopee: 0, taxa_shopee_reais: g.taxa_tiktok_reais }))} type="produto" />
+        </motion.div>
       )}
       {renderResultsTable()}
-    </div>
+    </motion.div>
   );
 }
 

@@ -9,6 +9,7 @@ import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
 import { Progress } from '@/components/ui/progress';
 import { toast } from 'sonner';
+import { motion } from 'framer-motion';
 import {
   Upload as UploadIcon,
   FileSpreadsheet,
@@ -26,6 +27,19 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { parseTikTokCSVRow, ParsedTikTokRow, excludedStatuses } from '@/lib/tiktok-helpers';
+
+const fadeInUp = {
+  hidden: { opacity: 0, y: 40 },
+  visible: { opacity: 1, y: 0 },
+};
+
+const staggerContainer = {
+  hidden: { opacity: 0 },
+  visible: {
+    opacity: 1,
+    transition: { staggerChildren: 0.15 },
+  },
+};
 
 function TikTokUploadContent() {
   const { user } = useAuth();
@@ -88,7 +102,7 @@ function TikTokUploadContent() {
     }
   }, []);
 
-  const processFile = async (file: File) => {
+  const processFile = useCallback(async (file: File) => {
     setIsProcessing(true);
     setProgress(10);
 
@@ -123,7 +137,7 @@ function TikTokUploadContent() {
     } finally {
       setIsProcessing(false);
     }
-  };
+  }, []);
 
   const handleDrop = useCallback((e: React.DragEvent) => {
     e.preventDefault();
@@ -140,7 +154,7 @@ function TikTokUploadContent() {
         toast.error('Por favor, envie um arquivo CSV');
       }
     }
-  }, []);
+  }, [processFile]);
 
   const handleFileInput = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
@@ -231,208 +245,227 @@ function TikTokUploadContent() {
   };
 
   const renderUploadStep = () => (
-    <Card className="max-w-2xl mx-auto">
-      <CardHeader>
-        <CardTitle className="flex items-center gap-2">
-          <FileText className="h-6 w-6 text-primary" />
-          Upload de Relatório do TikTok Shop
-        </CardTitle>
-        <CardDescription>
-          Faça upload do arquivo CSV exportado do TikTok Shop para importar seus pedidos
-        </CardDescription>
-      </CardHeader>
-      <CardContent>
-        <div
-          onDragEnter={handleDrag}
-          onDragLeave={handleDrag}
-          onDragOver={handleDrag}
-          onDrop={handleDrop}
-          className={`
-            relative border-2 border-dashed rounded-xl p-12 text-center transition-all duration-200
-            ${isDragActive 
-              ? 'border-primary bg-accent scale-[1.02]' 
-              : 'border-muted-foreground/25 hover:border-primary/50 hover:bg-accent/50'
-            }
-          `}
-        >
-          <input
-            type="file"
-            accept=".csv"
-            onChange={handleFileInput}
-            className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
-          />
-          
-          <div className="space-y-4">
-            <div className={`
-              mx-auto h-16 w-16 rounded-full flex items-center justify-center transition-colors
-              ${isDragActive ? 'bg-primary text-primary-foreground' : 'bg-muted'}
-            `}>
-              <UploadIcon className="h-8 w-8" />
-            </div>
+    <motion.div variants={fadeInUp}>
+      <Card className="max-w-2xl mx-auto border border-blue-200 shadow-lg bg-white">
+        <CardHeader className="bg-blue-50 border-b border-blue-200">
+          <CardTitle className="flex items-center gap-2 text-gray-900">
+            <FileText className="h-6 w-6 text-blue-600" />
+            Upload de Relatório do TikTok Shop
+          </CardTitle>
+          <CardDescription className="text-gray-600">
+            Faça upload do arquivo CSV exportado do TikTok Shop para importar seus pedidos
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div
+            onDragEnter={handleDrag}
+            onDragLeave={handleDrag}
+            onDragOver={handleDrag}
+            onDrop={handleDrop}
+            className={`
+              relative border-2 border-dashed rounded-xl p-12 text-center transition-all duration-200
+              ${isDragActive 
+                ? 'border-blue-600 bg-blue-50 scale-[1.02]' 
+                : 'border-blue-200 hover:border-blue-500 hover:bg-blue-25'
+              }
+            `}
+          >
+            <input
+              type="file"
+              accept=".csv"
+              onChange={handleFileInput}
+              className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+            />
             
-            <div>
-              <p className="text-lg font-medium">
-                {isDragActive ? 'Solte o arquivo aqui' : 'Arraste o arquivo ou clique para selecionar'}
-              </p>
-              <p className="text-sm text-muted-foreground mt-1">
-                Apenas arquivos CSV (.csv)
-              </p>
+            <div className="space-y-4">
+              <div className={`
+                mx-auto h-16 w-16 rounded-full flex items-center justify-center transition-colors
+                ${isDragActive ? 'bg-blue-600 text-white' : 'bg-blue-100'}
+              `}>
+                <UploadIcon className="h-8 w-8" />
+              </div>
+              
+              <div>
+                <p className="text-lg font-medium text-gray-900">
+                  {isDragActive ? 'Solte o arquivo aqui' : 'Arraste o arquivo ou clique para selecionar'}
+                </p>
+                <p className="text-sm text-gray-600 mt-1">
+                  Apenas arquivos CSV (.csv)
+                </p>
+              </div>
+
+              <Button variant="secondary" className="pointer-events-none border-blue-200 text-blue-700">
+                Selecionar Arquivo
+              </Button>
             </div>
-
-            <Button variant="secondary" className="pointer-events-none">
-              Selecionar Arquivo
-            </Button>
           </div>
-        </div>
 
-        {isProcessing && (
-          <div className="mt-6 space-y-2">
-            <div className="flex items-center justify-between text-sm">
-              <span>Processando arquivo...</span>
-              <span>{progress.toFixed(0)}%</span>
+          {isProcessing && (
+            <div className="mt-6 space-y-2">
+              <div className="flex items-center justify-between text-sm">
+                <span className="text-gray-900">Processando arquivo...</span>
+                <span className="text-gray-600">{progress.toFixed(0)}%</span>
+              </div>
+              <Progress value={progress} className="h-2" />
             </div>
-            <Progress value={progress} className="h-2" />
-          </div>
-        )}
+          )}
 
-        <div className="mt-6 p-4 bg-muted rounded-lg">
-          <h4 className="font-medium mb-2">Informações importantes:</h4>
-          <ul className="text-sm text-muted-foreground space-y-1">
-            <li>• Pedidos com status <strong>"{excludedStatuses.join('", "')}"</strong> serão ignorados</li>
-            <li>• Os valores em "BRL" serão convertidos automaticamente</li>
-            <li>• Você poderá preencher os custos unitários depois</li>
-          </ul>
-        </div>
-      </CardContent>
-    </Card>
+          <div className="mt-6 p-4 bg-blue-50 rounded-lg border border-blue-200">
+            <h4 className="font-medium text-gray-900 mb-2">Informações importantes:</h4>
+            <ul className="text-sm text-gray-600 space-y-1">
+              <li>• Pedidos com status <strong>"{excludedStatuses.join('", "')}"</strong> serão ignorados</li>
+              <li>• Os valores em "BRL" serão convertidos automaticamente</li>
+              <li>• Você poderá preencher os custos unitários depois</li>
+            </ul>
+          </div>
+        </CardContent>
+      </Card>
+    </motion.div>
   );
 
   const renderPreviewStep = () => (
-    <Card className="max-w-6xl mx-auto">
-      <CardHeader>
-        <div className="flex items-center justify-between">
-          <div>
-            <CardTitle className="flex items-center gap-2">
-              <FileSpreadsheet className="h-5 w-5 text-primary" />
-              Preview da Importação
-            </CardTitle>
-            <CardDescription>
-              Verifique se os dados estão corretos antes de importar.
-              {parsedData.length} pedidos válidos | {skippedCount} ignorados
-            </CardDescription>
-          </div>
-          <Button variant="ghost" size="icon" onClick={resetUpload}>
-            <XCircle className="h-5 w-5" />
-          </Button>
-        </div>
-      </CardHeader>
-      <CardContent className="space-y-6">
-        <div className="flex items-center gap-3 p-4 bg-accent rounded-lg">
-          <FileSpreadsheet className="h-5 w-5 text-primary" />
-          <div>
-            <p className="font-medium">{file?.name}</p>
-            <p className="text-sm text-muted-foreground">
-              {parsedData.length} linhas válidas
-            </p>
-          </div>
-        </div>
-
-        <div className="flex items-center space-x-3">
-          <Switch
-            id="replace"
-            checked={replaceExisting}
-            onCheckedChange={setReplaceExisting}
-          />
-          <Label htmlFor="replace">Substituir pedidos anteriores</Label>
-        </div>
-
-        <div className="rounded-lg border overflow-x-auto">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>ID Pedido</TableHead>
-                <TableHead>Produto</TableHead>
-                <TableHead>Variação</TableHead>
-                <TableHead className="text-right">Qtd</TableHead>
-                <TableHead className="text-right">Total (R$)</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {parsedData.slice(0, 10).map((row, index) => (
-                <TableRow key={index}>
-                  <TableCell className="font-mono text-xs">{row.order_id.slice(0, 15)}...</TableCell>
-                  <TableCell className="max-w-[200px] truncate">{row.nome_produto?.slice(0, 40)}...</TableCell>
-                  <TableCell>{row.variacao?.slice(0, 20) || '-'}</TableCell>
-                  <TableCell className="text-right">{row.quantidade}</TableCell>
-                  <TableCell className="text-right">R$ {row.total_faturado.toFixed(2)}</TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-          {parsedData.length > 10 && (
-            <div className="p-3 bg-muted text-center text-sm text-muted-foreground">
-              Mostrando 10 de {parsedData.length} pedidos
+    <motion.div variants={fadeInUp}>
+      <Card className="max-w-6xl mx-auto border border-blue-200 shadow-lg bg-white">
+        <CardHeader className="bg-blue-50 border-b border-blue-200">
+          <div className="flex items-center justify-between">
+            <div>
+              <CardTitle className="flex items-center gap-2 text-gray-900">
+                <FileSpreadsheet className="h-5 w-5 text-blue-600" />
+                Preview da Importação
+              </CardTitle>
+              <CardDescription className="text-gray-600">
+                Verifique se os dados estão corretos antes de importar.
+                {parsedData.length} pedidos válidos | {skippedCount} ignorados
+              </CardDescription>
             </div>
-          )}
-        </div>
+            <Button variant="ghost" size="icon" onClick={resetUpload} className="text-gray-600 hover:text-gray-900">
+              <XCircle className="h-5 w-5" />
+            </Button>
+          </div>
+        </CardHeader>
+        <CardContent className="space-y-6">
+          <div className="flex items-center gap-3 p-4 bg-blue-50 rounded-lg border border-blue-200">
+            <FileSpreadsheet className="h-5 w-5 text-blue-600" />
+            <div>
+              <p className="font-medium text-gray-900">{file?.name}</p>
+              <p className="text-sm text-gray-600">
+                {parsedData.length} linhas válidas
+              </p>
+            </div>
+          </div>
 
-        <div className="flex justify-between pt-4">
-          <Button variant="outline" onClick={resetUpload}>
-            <XCircle className="h-4 w-4 mr-2" />
-            Cancelar
-          </Button>
-          <Button onClick={handleImport}>
-            Importar {parsedData.length} Pedidos
-          </Button>
-        </div>
-      </CardContent>
-    </Card>
+          <div className="flex items-center space-x-3">
+            <Switch
+              id="replace"
+              checked={replaceExisting}
+              onCheckedChange={setReplaceExisting}
+            />
+            <Label htmlFor="replace" className="text-gray-900">Substituir pedidos anteriores</Label>
+          </div>
+
+          <div className="rounded-lg border border-blue-200 overflow-x-auto">
+            <Table>
+              <TableHeader>
+                <TableRow className="bg-blue-50">
+                  <TableHead className="text-gray-900">ID Pedido</TableHead>
+                  <TableHead className="text-gray-900">Produto</TableHead>
+                  <TableHead className="text-gray-900">Variação</TableHead>
+                  <TableHead className="text-right text-gray-900">Qtd</TableHead>
+                  <TableHead className="text-right text-gray-900">Total (R$)</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {parsedData.slice(0, 10).map((row, index) => (
+                  <TableRow key={index}>
+                    <TableCell className="font-mono text-xs text-gray-900">{row.order_id.slice(0, 15)}...</TableCell>
+                    <TableCell className="max-w-[200px] truncate text-gray-900">{row.nome_produto?.slice(0, 40)}...</TableCell>
+                    <TableCell className="text-gray-900">{row.variacao?.slice(0, 20) || '-'}</TableCell>
+                    <TableCell className="text-right text-gray-900">{row.quantidade}</TableCell>
+                    <TableCell className="text-right text-gray-900">R$ {row.total_faturado.toFixed(2)}</TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+            {parsedData.length > 10 && (
+              <div className="p-3 bg-blue-50 text-center text-sm text-gray-600 border-t border-blue-200">
+                Mostrando 10 de {parsedData.length} pedidos
+              </div>
+            )}
+          </div>
+
+          <div className="flex justify-between pt-4">
+            <Button variant="outline" onClick={resetUpload} className="border-blue-200 text-blue-700 hover:bg-blue-50">
+              <XCircle className="h-4 w-4 mr-2" />
+              Cancelar
+            </Button>
+            <Button
+              onClick={handleImport}
+              className="bg-gradient-to-r from-blue-600 to-blue-500 hover:from-blue-700 hover:to-blue-600 text-white"
+            >
+              Importar {parsedData.length} Pedidos
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
+    </motion.div>
   );
 
   const renderImportingStep = () => (
-    <Card className="max-w-md mx-auto">
-      <CardContent className="py-12">
-        <div className="text-center space-y-4">
-          <Loader2 className="h-12 w-12 mx-auto animate-spin text-primary" />
-          <h3 className="text-lg font-medium">Importando pedidos...</h3>
-          <Progress value={progress} className="w-64 mx-auto" />
-          <p className="text-sm text-muted-foreground">
-            {Math.round(progress)}% concluído
-          </p>
-        </div>
-      </CardContent>
-    </Card>
+    <motion.div variants={fadeInUp}>
+      <Card className="max-w-md mx-auto border border-blue-200 shadow-lg bg-white">
+        <CardContent className="py-12">
+          <div className="text-center space-y-4">
+            <Loader2 className="h-12 w-12 mx-auto animate-spin text-blue-600" />
+            <h3 className="text-lg font-medium text-gray-900">Importando pedidos...</h3>
+            <Progress value={progress} className="w-64 mx-auto" />
+            <p className="text-sm text-gray-600">
+              {Math.round(progress)}% concluído
+            </p>
+          </div>
+        </CardContent>
+      </Card>
+    </motion.div>
   );
 
   const renderSuccessStep = () => (
-    <Card className="max-w-md mx-auto">
-      <CardContent className="py-12">
-        <div className="text-center space-y-4">
-          <CheckCircle2 className="h-16 w-16 mx-auto text-success" />
-          <h3 className="text-xl font-medium">Importação Concluída!</h3>
-          <p className="text-muted-foreground">
-            {parsedData.length} pedidos foram importados com sucesso
-          </p>
-          <div className="flex gap-3 justify-center pt-4">
-            <Button onClick={resetUpload} variant="outline">
-              Importar Outro Arquivo
-            </Button>
-            <Button asChild>
-              <a href="/tiktok/resultados">Ver Resultados</a>
-            </Button>
+    <motion.div variants={fadeInUp}>
+      <Card className="max-w-md mx-auto border border-blue-200 shadow-lg bg-white">
+        <CardContent className="py-12">
+          <div className="text-center space-y-4">
+            <CheckCircle2 className="h-16 w-16 mx-auto text-green-600" />
+            <h3 className="text-xl font-medium text-gray-900">Importação Concluída!</h3>
+            <p className="text-gray-600">
+              {parsedData.length} pedidos foram importados com sucesso
+            </p>
+            <div className="flex gap-3 justify-center pt-4">
+              <Button onClick={resetUpload} variant="outline" className="border-blue-200 text-blue-700 hover:bg-blue-50">
+                Importar Outro Arquivo
+              </Button>
+              <Button
+                asChild
+                className="bg-gradient-to-r from-blue-600 to-blue-500 hover:from-blue-700 hover:to-blue-600 text-white"
+              >
+                <a href="/tiktok/resultados">Ver Resultados</a>
+              </Button>
+            </div>
           </div>
-        </div>
-      </CardContent>
-    </Card>
+        </CardContent>
+      </Card>
+    </motion.div>
   );
 
   return (
-    <div className="space-y-6 animate-fade-in">
+    <motion.div
+      className="space-y-6"
+      initial="hidden"
+      animate="visible"
+      variants={staggerContainer}
+    >
       {step === 'upload' && renderUploadStep()}
       {step === 'preview' && renderPreviewStep()}
       {step === 'importing' && renderImportingStep()}
       {step === 'success' && renderSuccessStep()}
-    </div>
+    </motion.div>
   );
 }
 

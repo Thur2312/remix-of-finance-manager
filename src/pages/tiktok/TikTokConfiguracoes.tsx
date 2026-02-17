@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { AppLayout } from '@/components/layout/AppLayout';
@@ -10,6 +10,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Switch } from '@/components/ui/switch';
 import { Separator } from '@/components/ui/separator';
 import { toast } from 'sonner';
+import { motion } from 'framer-motion';
 import { Save, Plus, Trash2, Settings, Loader2 } from 'lucide-react';
 import {
   AlertDialog,
@@ -24,6 +25,19 @@ import {
 } from '@/components/ui/alert-dialog';
 import { z } from 'zod';
 import { TikTokSettingsData } from '@/lib/tiktok-calculations';
+
+const fadeInUp = {
+  hidden: { opacity: 0, y: 40 },
+  visible: { opacity: 1, y: 0 },
+};
+
+const staggerContainer = {
+  hidden: { opacity: 0 },
+  visible: {
+    opacity: 1,
+    transition: { staggerChildren: 0.15 },
+  },
+};
 
 const settingsSchema = z.object({
   name: z.string().min(1, 'Nome é obrigatório').max(100, 'Nome muito longo'),
@@ -70,13 +84,7 @@ function TikTokConfiguracoesContent() {
   const [formData, setFormData] = useState(defaultSettings);
   const [errors, setErrors] = useState<Record<string, string>>({});
 
-  useEffect(() => {
-    if (user) {
-      fetchSettings();
-    }
-  }, [user]);
-
-  const fetchSettings = async () => {
+  const fetchSettings = useCallback(async () => {
     setIsLoading(true);
     const { data, error } = await supabase
       .from('tiktok_settings')
@@ -97,7 +105,13 @@ function TikTokConfiguracoesContent() {
       }
     }
     setIsLoading(false);
-  };
+  }, []);
+
+  useEffect(() => {
+    if (user) {
+      fetchSettings();
+    }
+  }, [fetchSettings, user]);
 
   const selectSettings = (setting: SettingsRow) => {
     setSelectedSettings(setting);
@@ -301,34 +315,42 @@ function TikTokConfiguracoesContent() {
   if (isLoading) {
     return (
       <div className="flex items-center justify-center h-64">
-        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+        <Loader2 className="h-8 w-8 animate-spin text-blue-600" />
       </div>
     );
   }
 
   return (
-    <div className="space-y-6 animate-fade-in">
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+    <motion.div
+      className="space-y-6"
+      initial="hidden"
+      animate="visible"
+      variants={staggerContainer}
+    >
+      <motion.div variants={fadeInUp} className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <h2 className="text-2xl font-bold">Configurações TikTok Shop</h2>
-          <p className="text-muted-foreground">
+          <h2 className="text-2xl font-bold text-gray-900">Configurações TikTok Shop</h2>
+          <p className="text-gray-600">
             Defina os parâmetros de cálculo para suas vendas no TikTok Shop
           </p>
         </div>
-        <Button onClick={handleNewSettings}>
+        <Button
+          onClick={handleNewSettings}
+          className="bg-gradient-to-r from-blue-600 to-blue-500 hover:from-blue-700 hover:to-blue-600 text-white"
+        >
           <Plus className="h-4 w-4 mr-2" />
           Nova Configuração
         </Button>
-      </div>
+      </motion.div>
 
-      <div className="grid gap-6 lg:grid-cols-4">
-        <Card className="lg:col-span-1">
-          <CardHeader className="pb-3">
-            <CardTitle className="text-base">Configurações Salvas</CardTitle>
+      <motion.div variants={fadeInUp} className="grid gap-6 lg:grid-cols-4">
+        <Card className="lg:col-span-1 border border-blue-200 shadow-lg bg-white">
+          <CardHeader className="pb-3 bg-blue-50 border-b border-blue-200">
+            <CardTitle className="text-base text-gray-900">Configurações Salvas</CardTitle>
           </CardHeader>
           <CardContent className="space-y-2">
             {settings.length === 0 ? (
-              <p className="text-sm text-muted-foreground text-center py-4">
+              <p className="text-sm text-gray-600 text-center py-4">
                 Nenhuma configuração salva
               </p>
             ) : (
@@ -338,16 +360,16 @@ function TikTokConfiguracoesContent() {
                   onClick={() => selectSettings(setting)}
                   className={`w-full text-left p-3 rounded-lg border transition-colors ${
                     selectedSettings?.id === setting.id
-                      ? 'border-primary bg-accent'
-                      : 'border-transparent hover:bg-muted'
+                      ? 'border-blue-600 bg-blue-50'
+                      : 'border-transparent hover:bg-blue-25'
                   }`}
                 >
                   <div className="flex items-center gap-2">
-                    <Settings className="h-4 w-4 text-muted-foreground" />
-                    <span className="font-medium text-sm truncate">{setting.name}</span>
+                    <Settings className="h-4 w-4 text-blue-600" />
+                    <span className="font-medium text-sm truncate text-gray-900">{setting.name}</span>
                   </div>
                   {setting.is_default && (
-                    <span className="text-xs text-primary">Padrão</span>
+                    <span className="text-xs text-blue-600">Padrão</span>
                   )}
                 </button>
               ))
@@ -355,27 +377,27 @@ function TikTokConfiguracoesContent() {
           </CardContent>
         </Card>
 
-        <Card className="lg:col-span-3">
-          <CardHeader>
-            <CardTitle>
+        <Card className="lg:col-span-3 border border-blue-200 shadow-lg bg-white">
+          <CardHeader className="bg-blue-50 border-b border-blue-200">
+            <CardTitle className="text-gray-900">
               {isCreating ? 'Nova Configuração' : `Editar: ${selectedSettings?.name}`}
             </CardTitle>
-            <CardDescription>
+            <CardDescription className="text-gray-600">
               Configure as taxas e parâmetros que serão usados nos cálculos de resultado
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-6">
             <div className="grid gap-4 sm:grid-cols-2">
               <div className="space-y-2">
-                <Label htmlFor="name">Nome da Configuração</Label>
+                <Label htmlFor="name" className="text-gray-900">Nome da Configuração</Label>
                 <Input
                   id="name"
                   value={formData.name}
                   onChange={(e) => handleInputChange('name', e.target.value)}
                   placeholder="Ex: Padrão TikTok"
-                  className={errors.name ? 'border-destructive' : ''}
+                  className={`border-blue-200 focus:border-blue-500 ${errors.name ? 'border-red-500' : ''}`}
                 />
-                {errors.name && <p className="text-xs text-destructive">{errors.name}</p>}
+                {errors.name && <p className="text-xs text-red-600">{errors.name}</p>}
               </div>
               <div className="flex items-center space-x-3 pt-6">
                 <Switch
@@ -383,17 +405,17 @@ function TikTokConfiguracoesContent() {
                   checked={formData.is_default}
                   onCheckedChange={(checked) => handleInputChange('is_default', checked)}
                 />
-                <Label htmlFor="is_default">Definir como padrão</Label>
+                <Label htmlFor="is_default" className="text-gray-900">Definir como padrão</Label>
               </div>
             </div>
 
             <Separator />
 
             <div>
-              <h3 className="font-semibold mb-4 text-primary">Taxas do TikTok Shop</h3>
+              <h3 className="font-semibold mb-4 text-blue-600">Taxas do TikTok Shop</h3>
               <div className="grid gap-4 sm:grid-cols-2">
                 <div className="space-y-2">
-                  <Label htmlFor="taxa_comissao_tiktok">Taxa de Comissão (%)</Label>
+                  <Label htmlFor="taxa_comissao_tiktok" className="text-gray-900">Taxa de Comissão (%)</Label>
                   <div className="relative">
                     <Input
                       id="taxa_comissao_tiktok"
@@ -403,14 +425,14 @@ function TikTokConfiguracoesContent() {
                       onChange={(e) => handleLocalChange('taxa_comissao_tiktok', e.target.value, true, false)}
                       onBlur={() => handleLocalBlur('taxa_comissao_tiktok', formData.taxa_comissao_tiktok, true, false)}
                       placeholder="0"
-                      className="pr-8"
+                      className="pr-8 border-blue-200 focus:border-blue-500"
                     />
-                    <span className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground">%</span>
+                    <span className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-600">%</span>
                   </div>
-                  <p className="text-xs text-muted-foreground">Porcentagem cobrada pelo TikTok</p>
+                  <p className="text-xs text-gray-600">Porcentagem cobrada pelo TikTok</p>
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="taxa_afiliado">Taxa de Afiliado (%)</Label>
+                  <Label htmlFor="taxa_afiliado" className="text-gray-900">Taxa de Afiliado (%)</Label>
                   <div className="relative">
                     <Input
                       id="taxa_afiliado"
@@ -420,28 +442,28 @@ function TikTokConfiguracoesContent() {
                       onChange={(e) => handleLocalChange('taxa_afiliado', e.target.value, true, false)}
                       onBlur={() => handleLocalBlur('taxa_afiliado', formData.taxa_afiliado, true, false)}
                       placeholder="0"
-                      className="pr-8"
+                      className="pr-8 border-blue-200 focus:border-blue-500"
                     />
-                    <span className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground">%</span>
+                    <span className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-600">%</span>
                   </div>
-                  <p className="text-xs text-muted-foreground">Comissão paga a afiliados</p>
+                  <p className="text-xs text-gray-600">Comissão paga a afiliados</p>
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="adicional_por_item">Adicional por Item (R$)</Label>
+                  <Label htmlFor="adicional_por_item" className="text-gray-900">Adicional por Item (R$)</Label>
                   <div className="relative">
-                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">R$</span>
+                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-600">R$</span>
                     <Input
                       id="adicional_por_item"
                       type="text"
                       inputMode="decimal"
                       value={getLocalValue('adicional_por_item', formData.adicional_por_item, false, true)}
-                      onChange={(e) => handleLocalChange('adicional_por_item', e.target.value, false, true)}
+                                            onChange={(e) => handleLocalChange('adicional_por_item', e.target.value, false, true)}
                       onBlur={() => handleLocalBlur('adicional_por_item', formData.adicional_por_item, false, true)}
                       placeholder="0,00"
-                      className="pl-10"
+                      className="pl-10 border-blue-200 focus:border-blue-500"
                     />
                   </div>
-                  <p className="text-xs text-muted-foreground">Valor cobrado por cada item vendido</p>
+                  <p className="text-xs text-gray-600">Valor cobrado por cada item vendido</p>
                 </div>
               </div>
             </div>
@@ -449,10 +471,10 @@ function TikTokConfiguracoesContent() {
             <Separator />
 
             <div>
-              <h3 className="font-semibold mb-4 text-primary">Antecipação</h3>
+              <h3 className="font-semibold mb-4 text-blue-600">Antecipação</h3>
               <div className="grid gap-4 sm:grid-cols-2">
                 <div className="space-y-2">
-                  <Label htmlFor="percentual_valor_antecipado">% do Valor Antecipado</Label>
+                  <Label htmlFor="percentual_valor_antecipado" className="text-gray-900">% do Valor Antecipado</Label>
                   <div className="relative">
                     <Input
                       id="percentual_valor_antecipado"
@@ -462,13 +484,13 @@ function TikTokConfiguracoesContent() {
                       onChange={(e) => handleLocalChange('percentual_valor_antecipado', e.target.value, true, false)}
                       onBlur={() => handleLocalBlur('percentual_valor_antecipado', formData.percentual_valor_antecipado, true, false)}
                       placeholder="0"
-                      className="pr-8"
+                      className="pr-8 border-blue-200 focus:border-blue-500"
                     />
-                    <span className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground">%</span>
+                    <span className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-600">%</span>
                   </div>
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="taxa_antecipacao">Taxa de Antecipação (%)</Label>
+                  <Label htmlFor="taxa_antecipacao" className="text-gray-900">Taxa de Antecipação (%)</Label>
                   <div className="relative">
                     <Input
                       id="taxa_antecipacao"
@@ -478,9 +500,9 @@ function TikTokConfiguracoesContent() {
                       onChange={(e) => handleLocalChange('taxa_antecipacao', e.target.value, true, false)}
                       onBlur={() => handleLocalBlur('taxa_antecipacao', formData.taxa_antecipacao, true, false)}
                       placeholder="0"
-                      className="pr-8"
+                      className="pr-8 border-blue-200 focus:border-blue-500"
                     />
-                    <span className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground">%</span>
+                    <span className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-600">%</span>
                   </div>
                 </div>
               </div>
@@ -489,10 +511,10 @@ function TikTokConfiguracoesContent() {
             <Separator />
 
             <div>
-              <h3 className="font-semibold mb-4 text-primary">Impostos e Notas Fiscais</h3>
+              <h3 className="font-semibold mb-4 text-blue-600">Impostos e Notas Fiscais</h3>
               <div className="grid gap-4 sm:grid-cols-3">
                 <div className="space-y-2">
-                  <Label htmlFor="imposto_nf_saida">Imposto NF Saída (%)</Label>
+                  <Label htmlFor="imposto_nf_saida" className="text-gray-900">Imposto NF Saída (%)</Label>
                   <div className="relative">
                     <Input
                       id="imposto_nf_saida"
@@ -502,13 +524,13 @@ function TikTokConfiguracoesContent() {
                       onChange={(e) => handleLocalChange('imposto_nf_saida', e.target.value, true, false)}
                       onBlur={() => handleLocalBlur('imposto_nf_saida', formData.imposto_nf_saida, true, false)}
                       placeholder="0"
-                      className="pr-8"
+                      className="pr-8 border-blue-200 focus:border-blue-500"
                     />
-                    <span className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground">%</span>
+                    <span className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-600">%</span>
                   </div>
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="percentual_nf_entrada">% NF Entrada</Label>
+                  <Label htmlFor="percentual_nf_entrada" className="text-gray-900">% NF Entrada</Label>
                   <div className="relative">
                     <Input
                       id="percentual_nf_entrada"
@@ -518,13 +540,13 @@ function TikTokConfiguracoesContent() {
                       onChange={(e) => handleLocalChange('percentual_nf_entrada', e.target.value, true, false)}
                       onBlur={() => handleLocalBlur('percentual_nf_entrada', formData.percentual_nf_entrada, true, false)}
                       placeholder="0"
-                      className="pr-8"
+                      className="pr-8 border-blue-200 focus:border-blue-500"
                     />
-                    <span className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground">%</span>
+                    <span className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-600">%</span>
                   </div>
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="desconto_nf_saida">Desconto Base Cálculo (%)</Label>
+                  <Label htmlFor="desconto_nf_saida" className="text-gray-900">Desconto Base Cálculo (%)</Label>
                   <div className="relative">
                     <Input
                       id="desconto_nf_saida"
@@ -534,9 +556,9 @@ function TikTokConfiguracoesContent() {
                       onChange={(e) => handleLocalChange('desconto_nf_saida', e.target.value, true, false)}
                       onBlur={() => handleLocalBlur('desconto_nf_saida', formData.desconto_nf_saida, true, false)}
                       placeholder="0"
-                      className="pr-8"
+                      className="pr-8 border-blue-200 focus:border-blue-500"
                     />
-                    <span className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground">%</span>
+                    <span className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-600">%</span>
                   </div>
                 </div>
               </div>
@@ -545,12 +567,12 @@ function TikTokConfiguracoesContent() {
             <Separator />
 
             <div>
-              <h3 className="font-semibold mb-4 text-primary">Custos de Publicidade</h3>
+              <h3 className="font-semibold mb-4 text-blue-600">Custos de Publicidade</h3>
               <div className="grid gap-4 sm:grid-cols-2">
                 <div className="space-y-2">
-                  <Label htmlFor="gasto_tiktok_ads">Gasto com TikTok Ads (R$)</Label>
+                  <Label htmlFor="gasto_tiktok_ads" className="text-gray-900">Gasto com TikTok Ads (R$)</Label>
                   <div className="relative">
-                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">R$</span>
+                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-600">R$</span>
                     <Input
                       id="gasto_tiktok_ads"
                       type="text"
@@ -559,10 +581,10 @@ function TikTokConfiguracoesContent() {
                       onChange={(e) => handleLocalChange('gasto_tiktok_ads', e.target.value, false, true)}
                       onBlur={() => handleLocalBlur('gasto_tiktok_ads', formData.gasto_tiktok_ads, false, true)}
                       placeholder="0,00"
-                      className="pl-10"
+                      className="pl-10 border-blue-200 focus:border-blue-500"
                     />
                   </div>
-                  <p className="text-xs text-muted-foreground">Valor total gasto com anúncios no TikTok</p>
+                  <p className="text-xs text-gray-600">Valor total gasto com anúncios no TikTok</p>
                 </div>
               </div>
             </div>
@@ -570,56 +592,60 @@ function TikTokConfiguracoesContent() {
             <Separator />
 
             <div className="flex flex-col sm:flex-row gap-3 justify-end">
-                          {!isCreating && selectedSettings && (
-                            <AlertDialog>
-                              <AlertDialogTrigger asChild>
-                                <Button variant="destructive" className="sm:order-1">
-                                  <Trash2 className="h-4 w-4 mr-2" />
-                                  Excluir
-                                </Button>
-                              </AlertDialogTrigger>
-                              <AlertDialogContent>
-                                <AlertDialogHeader>
-                                  <AlertDialogTitle>Excluir configuração e dados?</AlertDialogTitle>
-                                  <AlertDialogDescription>
-                                    Esta ação não pode ser desfeita. A configuração "{selectedSettings.name}" e{' '}
-                                    <strong>todos os pedidos importados</strong> serão permanentemente excluídos,
-                                    zerando a análise atual.
-                                  </AlertDialogDescription>
-                                </AlertDialogHeader>
-                                <AlertDialogFooter>
-                                  <AlertDialogCancel disabled={isDeleting}>Cancelar</AlertDialogCancel>
-                                  <AlertDialogAction 
-                                    onClick={handleDelete} 
-                                    className="bg-destructive hover:bg-destructive/90"
-                                    disabled={isDeleting}
-                                  >
-                                    {isDeleting ? (
-                                      <>
-                                        <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                                        Excluindo...
-                                      </>
-                                    ) : (
-                                      'Excluir Tudo'
-                                    )}
-                                  </AlertDialogAction>
-                                </AlertDialogFooter>
-                              </AlertDialogContent>
-                            </AlertDialog>
-                          )}
-                          <Button onClick={handleSave} disabled={isSaving} className="sm:order-2">
-                            {isSaving ? (
-                              <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                            ) : (
-                              <Save className="h-4 w-4 mr-2" />
-                            )}
-                            {isCreating ? 'Criar Configuração' : 'Salvar Alterações'}
-                          </Button>
-                        </div>
+              {!isCreating && selectedSettings && (
+                <AlertDialog>
+                  <AlertDialogTrigger asChild>
+                    <Button variant="destructive" className="sm:order-1">
+                      <Trash2 className="h-4 w-4 mr-2" />
+                      Excluir
+                    </Button>
+                  </AlertDialogTrigger>
+                  <AlertDialogContent>
+                    <AlertDialogHeader>
+                      <AlertDialogTitle>Excluir configuração e dados?</AlertDialogTitle>
+                      <AlertDialogDescription>
+                        Esta ação não pode ser desfeita. A configuração "{selectedSettings.name}" e{' '}
+                        <strong>todos os pedidos importados</strong> serão permanentemente excluídos,
+                        zerando a análise atual.
+                      </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                      <AlertDialogCancel disabled={isDeleting}>Cancelar</AlertDialogCancel>
+                      <AlertDialogAction
+                        onClick={handleDelete}
+                        className="bg-red-600 hover:bg-red-700"
+                        disabled={isDeleting}
+                      >
+                        {isDeleting ? (
+                          <>
+                            <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                            Excluindo...
+                          </>
+                        ) : (
+                          'Excluir Tudo'
+                        )}
+                      </AlertDialogAction>
+                    </AlertDialogFooter>
+                  </AlertDialogContent>
+                </AlertDialog>
+              )}
+              <Button
+                onClick={handleSave}
+                disabled={isSaving}
+                className="sm:order-2 bg-gradient-to-r from-blue-600 to-blue-500 hover:from-blue-700 hover:to-blue-600 text-white"
+              >
+                {isSaving ? (
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                ) : (
+                  <Save className="h-4 w-4 mr-2" />
+                )}
+                {isCreating ? 'Criar Configuração' : 'Salvar Alterações'}
+              </Button>
+            </div>
           </CardContent>
         </Card>
-      </div>
-    </div>
+      </motion.div>
+    </motion.div>
   );
 }
 

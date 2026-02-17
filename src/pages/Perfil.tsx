@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { AppLayout } from '@/components/layout/AppLayout';
@@ -10,6 +10,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { toast } from 'sonner';
 import { Save, Loader2, User, Camera } from 'lucide-react';
+import { motion } from 'framer-motion';
 import { validatePhone, formatPhone, validateEmail, validateName } from '@/lib/validations';
 
 interface ProfileData {
@@ -25,6 +26,19 @@ interface FormErrors {
   email?: string;
   phone?: string;
 }
+
+const fadeInUp = {
+  hidden: { opacity: 0, y: 40 },
+  visible: { opacity: 1, y: 0 },
+};
+
+const staggerContainer = {
+  hidden: { opacity: 0 },
+  visible: {
+    opacity: 1,
+    transition: { staggerChildren: 0.15 },
+  },
+};
 
 function PerfilContent() {
   const { user, refreshProfile } = useAuth();
@@ -42,13 +56,7 @@ function PerfilContent() {
     phone: '',
   });
 
-  useEffect(() => {
-    if (user) {
-      fetchProfile();
-    }
-  }, [user]);
-
-  const fetchProfile = async () => {
+  const fetchProfile = useCallback(async () => {
     setIsLoading(true);
     try {
       const { data, error } = await supabase
@@ -82,7 +90,13 @@ function PerfilContent() {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [user]);
+
+  useEffect(() => {
+    if (user) {
+      fetchProfile();
+    }
+  }, [fetchProfile, user]);
 
   const handleInputChange = (field: string, value: string) => {
     let formattedValue = value;
@@ -92,7 +106,7 @@ function PerfilContent() {
     }
 
     setFormData(prev => ({ ...prev, [field]: formattedValue }));
-    setErrors(prev => ({ ...prev, [field]: undefined }));
+    setErrors(prev => ({ ...prev, [field]: '' }));
   };
 
   const validateForm = (): boolean => {
@@ -222,111 +236,122 @@ function PerfilContent() {
   }
 
   return (
-    <div className="max-w-2xl mx-auto space-y-6 animate-fade-in">
-      <Card>
-        <CardHeader>
-          <div className="flex items-center gap-3">
-            <div className="p-2 rounded-full bg-primary/10">
-              <User className="h-6 w-6 text-primary" />
+    <motion.div
+      className="max-w-2xl mx-auto space-y-6"
+      initial="hidden"
+      animate="visible"
+      variants={staggerContainer}
+    >
+      <motion.div variants={fadeInUp}>
+        <Card className="border border-blue-200 shadow-lg bg-white">
+          <CardHeader className="bg-blue-50 border-b border-blue-200">
+            <div className="flex items-center gap-3">
+              <div className="h-10 w-10 rounded-xl bg-gradient-to-br from-blue-600 to-blue-500 flex items-center justify-center shadow-lg shadow-blue-500/25">
+                <User className="h-5 w-5 text-white" />
+              </div>
+              <div>
+                <CardTitle className="text-gray-900">Meu Perfil</CardTitle>
+                <CardDescription className="text-gray-600">Gerencie suas informações pessoais</CardDescription>
+              </div>
             </div>
-            <div>
-              <CardTitle>Meu Perfil</CardTitle>
-              <CardDescription>Gerencie suas informações pessoais</CardDescription>
-            </div>
-          </div>
-        </CardHeader>
-        <CardContent className="space-y-6">
-          {/* Avatar Section */}
-          <div className="flex flex-col items-center gap-4">
-            <div className="relative group">
-              <Avatar className="h-24 w-24 cursor-pointer" onClick={handleAvatarClick}>
-                <AvatarImage src={avatarUrl || undefined} alt="Avatar" />
-                <AvatarFallback className="bg-primary text-primary-foreground text-2xl">
-                  {getInitials(formData.full_name, formData.email)}
-                </AvatarFallback>
-              </Avatar>
-              <button
-                onClick={handleAvatarClick}
-                disabled={isUploading}
-                className="absolute inset-0 flex items-center justify-center bg-black/50 rounded-full opacity-0 group-hover:opacity-100 transition-opacity"
-              >
-                {isUploading ? (
-                  <Loader2 className="h-6 w-6 text-white animate-spin" />
-                ) : (
-                  <Camera className="h-6 w-6 text-white" />
+          </CardHeader>
+          <CardContent className="space-y-6 pt-6">
+            {/* Avatar Section */}
+            <motion.div variants={fadeInUp} className="flex flex-col items-center gap-4">
+              <div className="relative group">
+                <Avatar className="h-24 w-24 cursor-pointer" onClick={handleAvatarClick}>
+                  <AvatarImage src={avatarUrl || undefined} alt="Avatar" />
+                  <AvatarFallback className="bg-primary text-primary-foreground text-2xl">
+                    {getInitials(formData.full_name, formData.email)}
+                  </AvatarFallback>
+                </Avatar>
+                <button
+                  onClick={handleAvatarClick}
+                  disabled={isUploading}
+                  className="absolute inset-0 flex items-center justify-center bg-black/50 rounded-full opacity-0 group-hover:opacity-100 transition-opacity"
+                >
+                  {isUploading ? (
+                    <Loader2 className="h-6 w-6 text-white animate-spin" />
+                  ) : (
+                    <Camera className="h-6 w-6 text-white" />
+                  )}
+                </button>
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept="image/*"
+                  onChange={handleFileChange}
+                  className="hidden"
+                />
+              </div>
+              <p className="text-sm text-muted-foreground">
+                Clique para alterar a foto
+              </p>
+            </motion.div>
+
+            <motion.div variants={fadeInUp} className="grid gap-4 sm:grid-cols-2">
+              <div className="space-y-2 sm:col-span-2">
+                <Label htmlFor="full_name" className="text-gray-900">Nome Completo *</Label>
+                <Input
+                  id="full_name"
+                  value={formData.full_name}
+                  onChange={(e) => handleInputChange('full_name', e.target.value)}
+                  placeholder="Seu nome completo"
+                  className={`placeholder:text-muted-foreground/50 ${errors.full_name ? 'border-destructive focus-visible:ring-destructive' : 'border-blue-200 focus:border-blue-500'}`}
+                />
+                {errors.full_name && (
+                  <p className="text-xs text-destructive">{errors.full_name}</p>
                 )}
-              </button>
-              <input
-                ref={fileInputRef}
-                type="file"
-                accept="image/*"
-                onChange={handleFileChange}
-                className="hidden"
-              />
-            </div>
-            <p className="text-sm text-muted-foreground">
-              Clique para alterar a foto
-            </p>
-          </div>
+              </div>
 
-          <div className="grid gap-4 sm:grid-cols-2">
-            <div className="space-y-2 sm:col-span-2">
-              <Label htmlFor="full_name">Nome Completo *</Label>
-              <Input
-                id="full_name"
-                value={formData.full_name}
-                onChange={(e) => handleInputChange('full_name', e.target.value)}
-                placeholder="Seu nome completo"
-                className={`placeholder:text-muted-foreground/50 ${errors.full_name ? 'border-destructive focus-visible:ring-destructive' : ''}`}
-              />
-              {errors.full_name && (
-                <p className="text-xs text-destructive">{errors.full_name}</p>
-              )}
-            </div>
+              <div className="space-y-2 sm:col-span-2">
+                <Label htmlFor="email" className="text-gray-900">Email *</Label>
+                <Input
+                  id="email"
+                  type="email"
+                  value={formData.email}
+                  onChange={(e) => handleInputChange('email', e.target.value)}
+                  placeholder="seu@email.com"
+                  className={`placeholder:text-muted-foreground/50 ${errors.email ? 'border-destructive focus-visible:ring-destructive' : 'border-blue-200 focus:border-blue-500'}`}
+                />
+                {errors.email && (
+                  <p className="text-xs text-destructive">{errors.email}</p>
+                )}
+              </div>
 
-            <div className="space-y-2 sm:col-span-2">
-              <Label htmlFor="email">Email *</Label>
-              <Input
-                id="email"
-                type="email"
-                value={formData.email}
-                onChange={(e) => handleInputChange('email', e.target.value)}
-                placeholder="seu@email.com"
-                className={`placeholder:text-muted-foreground/50 ${errors.email ? 'border-destructive focus-visible:ring-destructive' : ''}`}
-              />
-              {errors.email && (
-                <p className="text-xs text-destructive">{errors.email}</p>
-              )}
-            </div>
+              <div className="space-y-2 sm:col-span-2">
+                <Label htmlFor="phone" className="text-gray-900">Telefone *</Label>
+                <Input
+                  id="phone"
+                  value={formData.phone}
+                  onChange={(e) => handleInputChange('phone', e.target.value)}
+                  placeholder="(XX) XXXXX-XXXX"
+                  className={`placeholder:text-muted-foreground/50 ${errors.phone ? 'border-destructive focus-visible:ring-destructive' : 'border-blue-200 focus:border-blue-500'}`}
+                />
+                {errors.phone && (
+                  <p className="text-xs text-destructive">{errors.phone}</p>
+                )}
+              </div>
+            </motion.div>
 
-            <div className="space-y-2 sm:col-span-2">
-              <Label htmlFor="phone">Telefone *</Label>
-              <Input
-                id="phone"
-                value={formData.phone}
-                onChange={(e) => handleInputChange('phone', e.target.value)}
-                placeholder="(XX) XXXXX-XXXX"
-                className={`placeholder:text-muted-foreground/50 ${errors.phone ? 'border-destructive focus-visible:ring-destructive' : ''}`}
-              />
-              {errors.phone && (
-                <p className="text-xs text-destructive">{errors.phone}</p>
-              )}
-            </div>
-          </div>
-
-          <div className="flex justify-end pt-4">
-            <Button onClick={handleSave} disabled={isSaving}>
-              {isSaving ? (
-                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-              ) : (
-                <Save className="h-4 w-4 mr-2" />
-              )}
-              Salvar Alterações
-            </Button>
-          </div>
-        </CardContent>
-      </Card>
-    </div>
+            <motion.div variants={fadeInUp} className="flex justify-end pt-4">
+              <Button
+                onClick={handleSave}
+                disabled={isSaving}
+                className="bg-gradient-to-r from-blue-600 to-blue-500 hover:from-blue-700 hover:to-blue-600 text-white shadow-xl shadow-blue-500/25"
+              >
+                {isSaving ? (
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                ) : (
+                  <Save className="h-4 w-4 mr-2" />
+                )}
+                Salvar Alterações
+              </Button>
+            </motion.div>
+          </CardContent>
+        </Card>
+      </motion.div>
+    </motion.div>
   );
 }
 

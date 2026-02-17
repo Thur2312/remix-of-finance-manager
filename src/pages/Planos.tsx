@@ -149,7 +149,7 @@ export default function Planos() {
         <div className="container mx-auto px-4 h-20 flex items-center justify-between">
           <div className="flex items-center gap-3">
             <button
-              onClick={() => navigate('/')}
+              onClick={() => navigate('/dashboard')}
               className="flex items-center gap-2 text-gray-600 hover:text-gray-900 transition-colors"
             >
               <ArrowLeft className="h-5 w-5" />
@@ -233,7 +233,7 @@ export default function Planos() {
                       </div>
                     </CardHeader>
 
-                    <CardContent className="space-y-6 pb-8 flex flex-col flex-1">
+                    <CardContent className="space-y-6 pb-6 flex-1">
                       <ul className="space-y-3">
                         {plan.features.map((feat, i) => (
                           <li key={i} className="flex items-center gap-3">
@@ -244,10 +244,13 @@ export default function Planos() {
                           </li>
                         ))}
                       </ul>
+                    </CardContent>
 
+                    {/* Botão no final do card */}
+                    <div className="p-6 pt-0">
                       <Button
                         size="lg"
-                        className={`w-full font-bold text-base py-6 mt-auto ${
+                        className={`w-full font-bold text-base py-6 ${
                           plan.popular
                             ? 'bg-gradient-to-r from-blue-600 to-blue-500 hover:from-blue-700 hover:to-blue-600 text-white shadow-xl shadow-blue-500/25'
                             : 'border-blue-200 text-blue-700 hover:bg-blue-50'
@@ -258,7 +261,7 @@ export default function Planos() {
                         {plan.cta}
                         <ArrowRight className="ml-2 h-4 w-4" />
                       </Button>
-                    </CardContent>
+                    </div>
                   </Card>
                 </motion.div>
               );
@@ -410,7 +413,7 @@ export default function Planos() {
             <Accordion type="single" collapsible className="space-y-4">
               {faqs.map((faq, index) => (
                 <AccordionItem key={index} value={`item-${index}`} className="border border-blue-200 bg-white rounded-lg px-6">
-                  <AccordionTrigger className="text-left text-gray-900 hover:text-blue-700">
+                                    <AccordionTrigger className="text-left text-gray-900 hover:text-blue-700">
                     <div className="flex items-center gap-3">
                       <HelpCircle className="h-5 w-5 text-blue-600" />
                       {faq.question}

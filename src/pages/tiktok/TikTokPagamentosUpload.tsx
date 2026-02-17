@@ -12,6 +12,20 @@ import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 import { parseAllSettlements, parseStatementsSheet, ImportSummary, StatementsImportSummary } from '@/lib/tiktok-settlement-helpers';
 import * as XLSX from 'xlsx';
+import { motion } from 'framer-motion';
+
+const fadeInUp = {
+  hidden: { opacity: 0, y: 40 },
+  visible: { opacity: 1, y: 0 },
+};
+
+const staggerContainer = {
+  hidden: { opacity: 0 },
+  visible: {
+    opacity: 1,
+    transition: { staggerChildren: 0.15 },
+  },
+};
 
 interface ExtendedImportSummary extends ImportSummary {
   dataSource: 'detalhes_pedido' | 'statements';
@@ -29,7 +43,7 @@ function TikTokPagamentosUploadContent() {
   const [importSummary, setImportSummary] = useState<ExtendedImportSummary | null>(null);
   const [showSummary, setShowSummary] = useState(false);
 
-  const processFile = async (file: File) => {
+  const processFile = useCallback(async (file: File) => {
     if (!user?.id) {
       toast.error('Você precisa estar logado para fazer upload');
       return;
@@ -286,12 +300,12 @@ function TikTokPagamentosUploadContent() {
     } finally {
       setIsProcessing(false);
     }
-  };
+  }, [user?.id, replaceExisting, navigate]);
 
   const [multiFileQueue, setMultiFileQueue] = useState<File[]>([]);
   const [multiFileProgress, setMultiFileProgress] = useState({ current: 0, total: 0, results: [] as { name: string; success: boolean; count: number }[] });
 
-  const processMultipleFiles = async (files: File[]) => {
+  const processMultipleFiles = useCallback(async (files: File[]) => {
     setMultiFileQueue(files);
     setMultiFileProgress({ current: 0, total: files.length, results: [] });
     
@@ -323,7 +337,7 @@ function TikTokPagamentosUploadContent() {
     setTimeout(() => {
       navigate('/tiktok/pagamentos');
     }, 2000);
-  };
+  }, [processFile, processedCount, navigate]);
 
   const handleDrop = useCallback((e: React.DragEvent) => {
     e.preventDefault();
@@ -335,7 +349,7 @@ function TikTokPagamentosUploadContent() {
     } else if (files.length === 1) {
       processFile(files[0]);
     }
-  }, [user?.id, replaceExisting]);
+  }, [processFile, processMultipleFiles]);
 
   const handleDragOver = useCallback((e: React.DragEvent) => {
     e.preventDefault();
@@ -357,247 +371,265 @@ function TikTokPagamentosUploadContent() {
     } else if (fileArray.length === 1) {
       processFile(fileArray[0]);
     }
-  }, [user?.id, replaceExisting]);
+  }, [processFile, processMultipleFiles]);
 
   return (
     <AppLayout>
-      <div className="space-y-6">
-        <div>
-          <h1 className="text-3xl font-bold text-foreground">Upload de Pagamentos TikTok</h1>
-          <p className="text-muted-foreground mt-2">
+      <motion.div
+        className="space-y-6"
+        initial="hidden"
+        animate="visible"
+        variants={staggerContainer}
+      >
+        <motion.div variants={fadeInUp} className="text-center">
+          <h1 className="text-2xl font-bold tracking-tight text-gray-900">
+            Upload de Pagamentos TikTok
+          </h1>
+          <p className="text-gray-600 mt-1">
             Importe o relatório de pagamentos (Income) do TikTok Shop para visualizar o detalhamento de recebimentos
           </p>
-        </div>
+        </motion.div>
 
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <FileSpreadsheet className="h-5 w-5" />
-              Importar Relatório de Pagamentos
-            </CardTitle>
-            <CardDescription>
-              Faça o download do relatório "Income" no Seller Center do TikTok Shop e importe aqui
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-6">
-            <div className="space-y-3">
-              <div className="flex items-center space-x-2">
-                <Switch
-                  id="replace-existing"
-                  checked={replaceExisting}
-                  onCheckedChange={setReplaceExisting}
-                />
-                <Label htmlFor="replace-existing" className={replaceExisting ? "text-destructive font-medium" : ""}>
-                  {replaceExisting ? "⚠️ Substituir todos os pagamentos anteriores" : "Adicionar aos pagamentos existentes"}
-                </Label>
+        <motion.div variants={fadeInUp}>
+          <Card className="border border-blue-200 shadow-lg bg-white">
+            <CardHeader className="bg-blue-50 border-b border-blue-200">
+              <CardTitle className="flex items-center gap-2 text-gray-900">
+                <FileSpreadsheet className="h-5 w-5 text-blue-600" />
+                Importar Relatório de Pagamentos
+              </CardTitle>
+              <CardDescription className="text-gray-600">
+                Faça o download do relatório "Income" no Seller Center do TikTok Shop e importe aqui
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-6">
+              <div className="space-y-3">
+                <div className="flex items-center space-x-3">
+                  <Switch
+                    id="replace-existing"
+                    checked={replaceExisting}
+                    onCheckedChange={setReplaceExisting}
+                  />
+                  <Label htmlFor="replace-existing" className={replaceExisting ? "text-red-600 font-medium" : "text-gray-900"}>
+                    {replaceExisting ? "⚠️ Substituir todos os pagamentos anteriores" : "Adicionar aos pagamentos existentes"}
+                  </Label>
+                </div>
+                
+                {replaceExisting && (
+                  <div className="bg-red-50 border border-red-200 rounded-lg p-3 flex items-start gap-2">
+                    <AlertTriangle className="h-4 w-4 text-red-600 mt-0.5 shrink-0" />
+                    <div className="text-sm text-red-700">
+                      <p className="font-medium">Atenção: Todos os dados de pagamentos serão apagados!</p>
+                      <p className="text-red-600 mt-1">
+                        Isso removerá permanentemente todos os pagamentos já importados. 
+                        Desative esta opção se deseja acumular dados de múltiplas planilhas.
+                      </p>
+                    </div>
+                  </div>
+                )}
+                
+                {!replaceExisting && (
+                  <div className="bg-green-50 border border-green-200 rounded-lg p-3 flex items-start gap-2">
+                    <CheckCircle className="h-4 w-4 text-green-600 mt-0.5 shrink-0" />
+                    <div className="text-sm text-green-700">
+                      <p className="font-medium">Modo acumulativo ativado</p>
+                      <p className="text-green-600 mt-1">
+                        Os novos pagamentos serão adicionados aos existentes. Duplicatas serão atualizadas automaticamente.
+                      </p>
+                    </div>
+                  </div>
+                )}
               </div>
-              
-              {replaceExisting && (
-                <div className="bg-destructive/10 border border-destructive/30 rounded-lg p-3 flex items-start gap-2">
-                  <AlertTriangle className="h-4 w-4 text-destructive mt-0.5 shrink-0" />
-                  <div className="text-sm text-destructive">
-                    <p className="font-medium">Atenção: Todos os dados de pagamentos serão apagados!</p>
-                    <p className="text-destructive/80 mt-1">
-                      Isso removerá permanentemente todos os pagamentos já importados. 
-                      Desative esta opção se deseja acumular dados de múltiplas planilhas.
-                    </p>
-                  </div>
-                </div>
-              )}
-              
-              {!replaceExisting && (
-                <div className="bg-green-50 dark:bg-green-950/20 border border-green-200 dark:border-green-800 rounded-lg p-3 flex items-start gap-2">
-                  <CheckCircle className="h-4 w-4 text-green-600 dark:text-green-400 mt-0.5 shrink-0" />
-                  <div className="text-sm text-green-700 dark:text-green-300">
-                    <p className="font-medium">Modo acumulativo ativado</p>
-                    <p className="text-green-600/80 dark:text-green-400/80 mt-1">
-                      Os novos pagamentos serão adicionados aos existentes. Duplicatas serão atualizadas automaticamente.
-                    </p>
-                  </div>
-                </div>
-              )}
-            </div>
 
-            <div
-              className={`border-2 border-dashed rounded-lg p-12 text-center transition-colors ${
-                isDragging
-                  ? 'border-primary bg-primary/5'
-                  : 'border-muted-foreground/25 hover:border-primary/50'
-              }`}
-              onDrop={handleDrop}
-              onDragOver={handleDragOver}
-              onDragLeave={handleDragLeave}
-            >
-              {isProcessing ? (
-                <div className="flex flex-col items-center gap-4">
-                  <Loader2 className="h-12 w-12 animate-spin text-primary" />
-                  <div>
-                    <p className="font-medium">Processando arquivo...</p>
-                    <p className="text-sm text-muted-foreground">
-                      {processedCount} registros importados
-                    </p>
+                          <div
+                className={`border-2 border-dashed rounded-xl p-12 text-center transition-all duration-200 ${
+                  isDragging 
+                    ? 'border-blue-600 bg-blue-50 scale-[1.02]' 
+                    : 'border-blue-200 hover:border-blue-500 hover:bg-blue-25'
+                }`}
+                onDrop={handleDrop}
+                onDragOver={handleDragOver}
+                onDragLeave={handleDragLeave}
+              >
+                {isProcessing ? (
+                  <div className="flex flex-col items-center gap-4">
+                    <Loader2 className="h-12 w-12 animate-spin text-blue-600" />
+                    <div>
+                      <p className="font-medium text-gray-900">Processando arquivo...</p>
+                      <p className="text-sm text-gray-600">
+                        {processedCount} registros importados
+                      </p>
+                    </div>
                   </div>
-                </div>
-              ) : multiFileQueue.length > 0 ? (
-                <div className="flex flex-col items-center gap-4">
-                  <Loader2 className="h-12 w-12 animate-spin text-primary" />
-                  <div className="text-center">
-                    <p className="font-medium">Processando múltiplas planilhas...</p>
-                    <p className="text-sm text-muted-foreground">
-                      {multiFileProgress.current} de {multiFileProgress.total} planilhas
-                    </p>
-                    {multiFileProgress.results.length > 0 && (
-                      <div className="mt-2 text-xs text-muted-foreground">
-                        {multiFileProgress.results.map((r, i) => (
-                          <div key={i} className="flex items-center gap-1 justify-center">
-                            {r.success ? <CheckCircle className="h-3 w-3 text-green-500" /> : <AlertCircle className="h-3 w-3 text-red-500" />}
-                            <span>{r.name}</span>
-                          </div>
-                        ))}
+                ) : multiFileQueue.length > 0 ? (
+                  <div className="flex flex-col items-center gap-4">
+                    <Loader2 className="h-12 w-12 animate-spin text-blue-600" />
+                    <div className="text-center">
+                      <p className="font-medium text-gray-900">Processando múltiplas planilhas...</p>
+                      <p className="text-sm text-gray-600">
+                        {multiFileProgress.current} de {multiFileProgress.total} planilhas
+                      </p>
+                      {multiFileProgress.results.length > 0 && (
+                        <div className="mt-2 text-xs text-gray-600">
+                          {multiFileProgress.results.map((r, i) => (
+                            <div key={i} className="flex items-center gap-1 justify-center">
+                              {r.success ? <CheckCircle className="h-3 w-3 text-green-500" /> : <AlertCircle className="h-3 w-3 text-red-500" />}
+                              <span>{r.name}</span>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                ) : (
+                  <div className="flex flex-col items-center gap-4">
+                    <div className={`
+                      mx-auto h-16 w-16 rounded-full flex items-center justify-center transition-colors
+                      ${isDragging ? 'bg-blue-600 text-white' : 'bg-blue-100'}
+                    `}>
+                      <Upload className="h-8 w-8" />
+                    </div>
+                    <div>
+                      <p className="text-lg font-medium text-gray-900">
+                        {isDragging ? 'Solte o arquivo aqui' : 'Arraste arquivos XLSX aqui ou clique para selecionar'}
+                      </p>
+                      <p className="text-sm text-gray-600 mt-1">
+                        Você pode selecionar <strong>múltiplas planilhas</strong> de uma vez
+                      </p>
+                    </div>
+                    <Button
+                      asChild
+                      variant="outline"
+                      className="border-blue-200 text-blue-700 hover:bg-blue-50"
+                    >
+                      <label className="cursor-pointer">
+                        <input
+                          type="file"
+                          accept=".xlsx,.xls"
+                          multiple
+                          className="hidden"
+                          onChange={handleFileSelect}
+                        />
+                        Selecionar Arquivos
+                      </label>
+                    </Button>
+                  </div>
+                )}
+              </div>
+
+              {/* Import Summary */}
+              {showSummary && importSummary && (
+                <motion.div variants={fadeInUp} className="space-y-4">
+                  {/* Limited Data Warning */}
+                  {importSummary.hasLimitedData && importSummary.statementsInfo && (
+                    <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
+                      <h4 className="font-medium mb-2 flex items-center gap-2 text-yellow-800">
+                        <AlertTriangle className="h-4 w-4" />
+                        Dados Parciais Detectados
+                      </h4>
+                      <p className="text-sm text-yellow-700 mb-2">
+                        O relatório Income do TikTok mostra <strong>apenas os pedidos do último pagamento</strong> na aba "Order details".
+                      </p>
+                      <div className="text-sm space-y-1 text-yellow-700">
+                        <p>• Pedidos importados: <strong>{importSummary.validRecords}</strong></p>
+                        <p>• Total de pagamentos no período: <strong>{importSummary.statementsInfo.validRecords}</strong></p>
+                        <p>• Valor total do período: <strong>
+                          {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(importSummary.statementsInfo.totalSettlementAmount)}
+                        </strong></p>
                       </div>
-                    )}
+                      <p className="text-xs text-yellow-600 mt-2">
+                        💡 Para análise histórica completa, exporte relatórios periodicamente (ex: semanal ou após cada pagamento).
+                      </p>
+                    </div>
+                  )}
+
+                  <div className="bg-blue-50 rounded-lg p-4 border border-blue-200">
+                    <h4 className="font-medium mb-3 flex items-center gap-2 text-blue-800">
+                      <CheckCircle className="h-4 w-4 text-green-500" />
+                      Resumo da Importação
+                    </h4>
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
+                      <div>
+                        <p className="text-gray-600">Total no arquivo</p>
+                        <p className="font-semibold text-lg text-gray-900">{importSummary.totalRows}</p>
+                      </div>
+                      <div>
+                        <p className="text-gray-600">Pedidos importados</p>
+                        <p className="font-semibold text-lg text-green-600">{importSummary.validRecords}</p>
+                      </div>
+                      <div>
+                        <p className="text-gray-600">Rejeitados</p>
+                        <p className="font-semibold text-lg text-yellow-600">{importSummary.rejectedRecords}</p>
+                      </div>
+                      <div>
+                        <p className="text-gray-600">Fonte de dados</p>
+                        <p className="font-semibold text-lg text-gray-900">Order details</p>
+                      </div>
+                    </div>
                   </div>
-                </div>
-              ) : (
-                <div className="flex flex-col items-center gap-4">
-                  <Upload className="h-12 w-12 text-muted-foreground" />
-                  <div>
-                    <p className="font-medium">
-                      Arraste arquivos XLSX aqui ou clique para selecionar
-                    </p>
-                    <p className="text-sm text-muted-foreground mt-1">
-                      Você pode selecionar <strong>múltiplas planilhas</strong> de uma vez
-                    </p>
-                  </div>
-                  <Button asChild variant="outline">
-                    <label className="cursor-pointer">
-                      <input
-                        type="file"
-                        accept=".xlsx,.xls"
-                        multiple
-                        className="hidden"
-                        onChange={handleFileSelect}
-                      />
-                      Selecionar Arquivos
-                    </label>
-                  </Button>
-                </div>
+
+                  {/* Rejection Reasons */}
+                  {importSummary.rejectedRecords > 0 && Object.keys(importSummary.rejectionReasons).length > 0 && (
+                    <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
+                      <h4 className="font-medium mb-2 flex items-center gap-2 text-yellow-800">
+                        <FileWarning className="h-4 w-4" />
+                        Motivos de Rejeição
+                      </h4>
+                      <ul className="text-sm space-y-1">
+                        {Object.entries(importSummary.rejectionReasons).map(([reason, count]) => (
+                          <li key={reason} className="flex justify-between text-yellow-700">
+                            <span>{reason}</span>
+                            <span className="font-medium">{count} linhas</span>
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+
+                  {/* Missing Columns Warning */}
+                  {importSummary.missingColumns.length > 10 && (
+                    <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                      <h4 className="font-medium mb-2 flex items-center gap-2 text-blue-800">
+                        <Info className="h-4 w-4" />
+                        Colunas não encontradas (opcional)
+                      </h4>
+                      <p className="text-sm text-blue-700">
+                        Algumas colunas esperadas não foram encontradas no arquivo. 
+                        Isso pode ser normal dependendo do tipo de relatório exportado.
+                      </p>
+                    </div>
+                  )}
+                </motion.div>
               )}
-            </div>
 
-            {/* Import Summary */}
-            {showSummary && importSummary && (
-              <div className="space-y-4">
-                {/* Limited Data Warning */}
-                {importSummary.hasLimitedData && importSummary.statementsInfo && (
-                  <div className="bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-800 rounded-lg p-4">
-                    <h4 className="font-medium mb-2 flex items-center gap-2 text-amber-800 dark:text-amber-200">
-                      <AlertTriangle className="h-4 w-4" />
-                      Dados Parciais Detectados
-                    </h4>
-                    <p className="text-sm text-amber-700 dark:text-amber-300 mb-2">
-                      O relatório Income do TikTok mostra <strong>apenas os pedidos do último pagamento</strong> na aba "Order details".
-                    </p>
-                    <div className="text-sm space-y-1 text-amber-700 dark:text-amber-300">
-                      <p>• Pedidos importados: <strong>{importSummary.validRecords}</strong></p>
-                      <p>• Total de pagamentos no período: <strong>{importSummary.statementsInfo.validRecords}</strong></p>
-                      <p>• Valor total do período: <strong>
-                        {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(importSummary.statementsInfo.totalSettlementAmount)}
-                      </strong></p>
-                    </div>
-                    <p className="text-xs text-amber-600 dark:text-amber-400 mt-2">
-                      💡 Para análise histórica completa, exporte relatórios periodicamente (ex: semanal ou após cada pagamento).
-                    </p>
-                  </div>
-                )}
+              <motion.div variants={fadeInUp} className="bg-blue-50 rounded-lg p-4 border border-blue-200">
+                <h4 className="font-medium mb-2 flex items-center gap-2 text-blue-800">
+                  <AlertCircle className="h-4 w-4 text-yellow-500" />
+                  Como exportar o relatório de pagamentos
+                </h4>
+                <ol className="text-sm text-gray-600 space-y-1 list-decimal list-inside">
+                  <li>Acesse o Seller Center do TikTok Shop</li>
+                  <li>Vá em Finance → Income</li>
+                  <li>Selecione o período desejado</li>
+                  <li>Clique em "Export" para baixar o arquivo XLSX</li>
+                  <li>Importe o arquivo aqui</li>
+                </ol>
+              </motion.div>
 
-                <div className="bg-muted/50 rounded-lg p-4">
-                  <h4 className="font-medium mb-3 flex items-center gap-2">
-                    <CheckCircle className="h-4 w-4 text-green-500" />
-                    Resumo da Importação
-                  </h4>
-                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
-                    <div>
-                      <p className="text-muted-foreground">Total no arquivo</p>
-                      <p className="font-semibold text-lg">{importSummary.totalRows}</p>
-                    </div>
-                    <div>
-                      <p className="text-muted-foreground">Pedidos importados</p>
-                      <p className="font-semibold text-lg text-green-600">{importSummary.validRecords}</p>
-                    </div>
-                    <div>
-                      <p className="text-muted-foreground">Rejeitados</p>
-                      <p className="font-semibold text-lg text-amber-600">{importSummary.rejectedRecords}</p>
-                    </div>
-                    <div>
-                      <p className="text-muted-foreground">Fonte de dados</p>
-                      <p className="font-semibold text-lg">Order details</p>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Rejection Reasons */}
-                {importSummary.rejectedRecords > 0 && Object.keys(importSummary.rejectionReasons).length > 0 && (
-                  <div className="bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-800 rounded-lg p-4">
-                    <h4 className="font-medium mb-2 flex items-center gap-2 text-amber-800 dark:text-amber-200">
-                      <FileWarning className="h-4 w-4" />
-                      Motivos de Rejeição
-                    </h4>
-                    <ul className="text-sm space-y-1">
-                      {Object.entries(importSummary.rejectionReasons).map(([reason, count]) => (
-                        <li key={reason} className="flex justify-between text-amber-700 dark:text-amber-300">
-                          <span>{reason}</span>
-                          <span className="font-medium">{count} linhas</span>
-                        </li>
-                      ))}
-                    </ul>
-                  </div>
-                )}
-
-                {/* Missing Columns Warning */}
-                {importSummary.missingColumns.length > 10 && (
-                  <div className="bg-blue-50 dark:bg-blue-950/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4">
-                    <h4 className="font-medium mb-2 flex items-center gap-2 text-blue-800 dark:text-blue-200">
-                      <Info className="h-4 w-4" />
-                      Colunas não encontradas (opcional)
-                    </h4>
-                    <p className="text-sm text-blue-700 dark:text-blue-300">
-                      Algumas colunas esperadas não foram encontradas no arquivo. 
-                      Isso pode ser normal dependendo do tipo de relatório exportado.
-                    </p>
-                  </div>
-                )}
-              </div>
-            )}
-
-            <div className="bg-muted/50 rounded-lg p-4">
-              <h4 className="font-medium mb-2 flex items-center gap-2">
-                <AlertCircle className="h-4 w-4 text-amber-500" />
-                Como exportar o relatório de pagamentos
-              </h4>
-              <ol className="text-sm text-muted-foreground space-y-1 list-decimal list-inside">
-                <li>Acesse o Seller Center do TikTok Shop</li>
-                <li>Vá em Finance → Income</li>
-                <li>Selecione o período desejado</li>
-                <li>Clique em "Export" para baixar o arquivo XLSX</li>
-                <li>Importe o arquivo aqui</li>
-              </ol>
-            </div>
-
-            <div className="bg-blue-50 dark:bg-blue-950/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4">
-              <h4 className="font-medium mb-2 flex items-center gap-2 text-blue-800 dark:text-blue-200">
-                <Info className="h-4 w-4" />
-                Limitação do relatório TikTok
-              </h4>
-              <p className="text-sm text-blue-700 dark:text-blue-300">
-                O relatório "Income" do TikTok mostra o <strong>detalhamento de pedidos apenas do último pagamento</strong>. 
-                Para ter dados históricos completos por pedido, exporte e importe relatórios periodicamente 
-                (recomendamos exportar após cada pagamento recebido).
-              </p>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
+              <motion.div variants={fadeInUp} className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                <h4 className="font-medium mb-2 flex items-center gap-2 text-blue-800">
+                  <Info className="h-4 w-4" />
+                  Limitação do relatório TikTok
+                </h4>
+                <p className="text-sm text-blue-700">
+                  O relatório "Income" do TikTok mostra o <strong>detalhamento de pedidos apenas do último pagamento</strong>. 
+                  Para ter dados históricos completos por pedido, exporte e importe relatórios periodicamente 
+                  (recomendamos exportar após cada pagamento recebido).
+                </p>
+              </motion.div>
+            </CardContent>
+          </Card>
+        </motion.div>
+      </motion.div>
     </AppLayout>
   );
 }
