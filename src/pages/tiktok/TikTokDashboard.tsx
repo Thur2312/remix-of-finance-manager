@@ -237,6 +237,7 @@ function TikTokDashboardContent() {
               Para começar a usar o sistema, siga estes passos:
             </CardDescription>
           </CardHeader>
+          <br />
           <CardContent>
             <ol className="list-decimal list-inside space-y-3 text-gray-600">
               <li>
