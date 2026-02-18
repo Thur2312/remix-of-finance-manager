@@ -16,6 +16,11 @@ import { Badge } from "@/components/ui/badge";
 import { useFixedCosts } from "@/hooks/useFixedCosts";
 import { parseNumericInputSafe, parsePercentageInput } from "@/lib/numeric-validation";
 import { motion } from "framer-motion";
+import axios from "axios";
+import { Navigate } from "react-router-dom";
+
+
+
 
 const fadeInUp = {
   hidden: { opacity: 0, y: 40 },
@@ -53,6 +58,8 @@ const ABSORCAO_PADRAO = {
 type PapelProduto = 'novo' | 'complementar' | 'principal' | 'avancado';
 
 function CalculadoraPrecificacaoContent() {
+    
+  
   // Dados do Produto - usando strings para permitir digitação de vírgula
   const [custoProduto, setCustoProduto] = useState<string>('');
   const [embalagemEtiqueta, setEmbalagemEtiqueta] = useState<string>('');
@@ -926,10 +933,11 @@ function CalculadoraPrecificacaoContent() {
   );
 }
 
+
 export default function CalculadoraPrecificacao() {
   return (
     <ProtectedRoute>
-      <CalculadoraPrecificacaoContent />
+      <CalculadoraPrecificacaoContent/>
     </ProtectedRoute>
   );
 }

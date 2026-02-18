@@ -3,6 +3,7 @@ import { Progress } from '@/components/ui/progress';
 import { Loader2 } from 'lucide-react';
 import { motion } from 'framer-motion';
 
+
 export interface GeneratedImage {
   url: string;
   prompt?: string;
@@ -21,6 +22,8 @@ interface ImageGenerationSectionProps {
   progress: number;
   generatedImages: GeneratedImage[];
 }
+
+
 
 export const ImageGenerationSection = ({
   isGenerating,
