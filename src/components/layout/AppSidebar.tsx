@@ -10,6 +10,7 @@ import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip
 import { Button } from '@/components/ui/button';
 import { LayoutDashboard, Settings, Upload, FileSpreadsheet, Package, ChevronUp, ChevronDown, LogOut, ShoppingBag, TrendingUp, Calculator, Wallet, List, Tags, Sparkles, Receipt, BarChart3, User, Home, CreditCard } from 'lucide-react';
 import { motion } from 'framer-motion';
+import logo from '@/assets/logo.png';
 
 // Animações (alinhadas com Landing Page)
 const fadeInUp = {
@@ -156,38 +157,69 @@ export function AppSidebar() {
   const avatarUrl = profile?.avatar_url || null;
 
   const renderMenuItems = (items: typeof calculoLucroShopeeItems) => (
-    <SidebarMenu className="space-y-1">
-      {items.map(item => (
-        <SidebarMenuItem key={item.title}>
-          <SidebarMenuButton asChild isActive={location.pathname === item.url} tooltip={item.title}>
-            <NavLink to={item.url} className="flex items-center gap-3 py-2 hover:bg-blue-50 transition-colors" activeClassName="bg-blue-100 text-blue-700">
-              <item.icon className="h-5 w-5 text-blue-600" />
-              <span>{item.title}</span>
-            </NavLink>
-          </SidebarMenuButton>
-        </SidebarMenuItem>
-      ))}
-    </SidebarMenu>
-  );
+  <SidebarMenu className="space-y-1">
+    {items.map(item => (
+      <SidebarMenuItem key={item.title}>
+        <SidebarMenuButton
+          asChild
+          isActive={location.pathname === item.url}
+          tooltip={collapsed ? item.title : undefined}
+          className={collapsed ? "justify-center px-0" : ""}
+        >
+          <NavLink
+            to={item.url}
+            className={`
+              flex items-center w-full rounded-md
+              transition-all duration-300 hover:bg-blue-50
+              ${collapsed
+                ? "justify-center py-3"
+                : "gap-3 px-3 py-2"
+              }
+            `}
+          >
+            <item.icon className="h-5 w-5 text-blue-600 shrink-0" />
+            {!collapsed && <span>{item.title}</span>}
+          </NavLink>
+        </SidebarMenuButton>
+      </SidebarMenuItem>
+    ))}
+  </SidebarMenu>
+);
+
+
 
   return (
-    <Sidebar collapsible="icon" className="transition-all duration-300 ease-in-out border-r border-blue-200 bg-white shadow-lg">
+    <Sidebar
+  collapsible="icon"
+  className={`
+    transition-all duration-300 ease-in-out
+    border-r border-blue-200 bg-white shadow-lg
+    ${collapsed ? "w-16" : "w-64"}
+  `}
+>
       <SidebarHeader className="border-b border-blue-200 bg-white/80">
-        <motion.div 
-          className="flex items-center justify-center gap-3 px-3 py-4"
-          initial="hidden"
-          whileInView="visible"
-          viewport={{ once: true }}
-          variants={fadeInUp}
-        >
-          <div className={`rounded-xl bg-gradient-to-br from-blue-500 to-cyan-500 flex items-center justify-center shadow-lg shadow-blue-300 transition-all duration-300 ${collapsed ? "h-8 w-8" : "h-10 w-10"}`}>
-            <BarChart3 className={`text-white transition-all duration-300 ${collapsed ? "h-4 w-4" : "h-5 w-5"}`} />
-          </div>
-          {!collapsed && <span className="font-bold text-lg text-gray-900">Finance Manager</span>}
-        </motion.div>
-        
+       <motion.div
+            className={`flex items-center transition-all duration-300
+              ${collapsed ? "justify-center py-4" : "gap-3 px-3 py-4"}
+            `}
+          >
+            <img
+              src={logo}
+              alt="Logo"
+              className={`object-contain transition-all duration-300
+                ${collapsed ? "h-10 w-10" : "h-14 w-14"}
+              `}
+            />
+            
+            {!collapsed && (
+              <span className="font-bold text-lg text-gray-900 whitespace-nowrap">
+                Finance Manager
+              </span>
+            )}
+          </motion.div>
+
         {/* Quick Actions */}
-        <motion.div 
+        <motion.div                                               
           className={`flex gap-2 px-3 pb-3 ${collapsed ? 'flex-col items-center' : ''}`}
           variants={stagger}
         >
@@ -233,7 +265,11 @@ export function AppSidebar() {
         </motion.div>
       </SidebarHeader>
 
-      <SidebarContent className="px-2 py-3 space-y-2">
+        <SidebarContent
+              className={`py-3 space-y-2 transition-all duration-300
+                ${collapsed ? "px-0" : "px-2"}
+              `}
+            >
         <SidebarGroup>
           {collapsed ? (
             <SidebarGroupContent>

@@ -33,6 +33,7 @@ import {
   Target,
   Award,
 } from 'lucide-react';
+import logo from '../assets/logo.png'; 
 
 // Animated counter hook (mantido)
 function useCountUp(end: number, duration: number = 2000, startOnView: boolean = true) {
@@ -307,13 +308,19 @@ export default function LandingPage() {
       >
         <div className="container mx-auto px-6 h-16 flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <motion.div 
-              className="h-10 w-10 rounded-xl bg-gradient-to-br from-blue-500 to-cyan-500 flex items-center justify-center shadow-lg shadow-blue-300"
-              whileHover={{ scale: 1.1 }}
-            >
-              <Atom className="h-5 w-5 text-white" />
-            </motion.div>
-            <span className="font-bold text-xl text-gray-900">Finance Manager</span>
+              <motion.div 
+                  className="h-20 w-20 flex items-center justify-center"
+                >
+                  <img 
+                    src={logo} 
+                    alt="Logo Finance Manager" 
+                    className="h-full w-full object-contain"
+                  />
+                </motion.div>
+
+                <span className="font-bold text-xl text-gray-900">
+                  Finance Manager
+                </span>
           </div>
 
           <nav className="hidden md:flex items-center gap-8">
@@ -781,8 +788,8 @@ export default function LandingPage() {
           <div className="grid md:grid-cols-4 gap-8 mb-8">
             <div>
               <div className="flex items-center gap-3 mb-4">
-                <div className="h-10 w-10 bg-blue-500 rounded-xl flex items-center justify-center">
-                    <Atom className="h-5 w-5 text-white" />
+                <div className="h-20 w-20 rounded-xl flex items-center justify-center">
+                    <img src={logo} className="h-full w-full text-white" />
                 </div>
                 <span className="font-bold text-xl">Finance Manager</span>
               </div>

@@ -33,7 +33,6 @@ import EsqueciSenha from "./pages/EsqueciSenha";
 import ResetPassword from "./pages/ResetPassword";
 import NotFound from "./pages/NotFound";
 import Planos from "./pages/Planos";
-import Upgrade from "./pages/Upgrade";
 
 const queryClient = new QueryClient();
 
@@ -250,16 +249,6 @@ const App = () => {
                 element={
                   <ProtectedRoute>
                     <Perfil />
-                  </ProtectedRoute>
-                } 
-              />
-
-              {/* ========== UPGRADE ========== */}
-              <Route 
-                path="/upgrade" 
-                element={
-                  <ProtectedRoute>
-                    <Upgrade />
                   </ProtectedRoute>
                 } 
               />

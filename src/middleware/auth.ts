@@ -1,8 +1,16 @@
-import { request, Response, NextFunction } from 'express';
+import { Request, Response, NextFunction } from 'express';
 import { supabase } from '@/integrations/supabase/client';
+import { User } from '@supabase/supabase-js';
+
+declare module 'express-serve-static-core' {
+  interface Request {
+    user?: User;
+  }
+}
+
 
 export async function authenticate(
-    req: request,
+    req: Request,
     res: Response,
     next: NextFunction
 ) {
