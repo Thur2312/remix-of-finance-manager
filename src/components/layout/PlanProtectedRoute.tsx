@@ -15,7 +15,7 @@ interface PlanProtectedRouteProps {
  * 
  * @param children - Componente a ser renderizado se o usuário tiver permissão
  * @param requiredPermission - Nome da permissão necessária
- * @param fallbackPath - Caminho para redirecionar se o usuário não tiver permissão (padrão: /upgrade)
+ * @param fallbackPath - Caminho para redirecionar se o usuário não tiver permissão 
  * 
  * @example
  * <Route 
@@ -30,7 +30,7 @@ interface PlanProtectedRouteProps {
 export function PlanProtectedRoute({
   children,
   requiredPermission,
-  fallbackPath = '/upgrade'
+  fallbackPath = '/Planos'
 }: PlanProtectedRouteProps) {
   const { loading, user, hasPermission } = useAuth();
 

@@ -1,4 +1,5 @@
 import { Toaster } from "@/components/ui/toaster";
+import { useNavigate } from "react-router-dom";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
@@ -33,10 +34,12 @@ import EsqueciSenha from "./pages/EsqueciSenha";
 import ResetPassword from "./pages/ResetPassword";
 import NotFound from "./pages/NotFound";
 import Planos from "./pages/Planos";
+import { FeatureGate } from "./components/FeatureGate";
 
 const queryClient = new QueryClient();
 
 const App = () => {
+  const navigate = useNavigate();
   return (
     <QueryClientProvider client={queryClient}>
       <TooltipProvider>
@@ -127,8 +130,15 @@ const App = () => {
                 path="/dre" 
                 element={
                   <PlanProtectedRoute requiredPermission="dre_automatizado">
+                    <FeatureGate
+                      permission="advanced_dashboard"
+                      requiredPlanName="Profissional ou superior"
+                      onUpgradeClick={() => navigate("/Planos")}
+                    >
                     <DRE />
+                    </FeatureGate>
                   </PlanProtectedRoute>
+                  
                 } 
               />
 
@@ -137,7 +147,13 @@ const App = () => {
                 path="/fluxo-caixa" 
                 element={
                   <PlanProtectedRoute requiredPermission="fluxo_caixa_avancado">
+                    <FeatureGate
+                      permission="fluxo_caixa_avancado"
+                      requiredPlanName="Empresarial"
+                      onUpgradeClick={() => navigate("/Planos")}
+                    >
                     <FluxoCaixaDashboard />
+                    </FeatureGate>
                   </PlanProtectedRoute>
                 } 
               />
@@ -146,7 +162,13 @@ const App = () => {
                 path="/fluxo-caixa/lancamentos" 
                 element={
                   <PlanProtectedRoute requiredPermission="fluxo_caixa_avancado">
+                    <FeatureGate
+                      permission="fluxo_caixa_avancado"
+                      requiredPlanName="Empresarial"
+                      onUpgradeClick={() => navigate("/Planos")}
+                    >
                     <FluxoCaixaLancamentos />
+                    </FeatureGate>
                   </PlanProtectedRoute>
                 } 
               />
@@ -155,7 +177,13 @@ const App = () => {
                 path="/fluxo-caixa/categorias" 
                 element={
                   <PlanProtectedRoute requiredPermission="fluxo_caixa_avancado">
+                    <FeatureGate
+                      permission="fluxo_caixa_avancado"
+                      requiredPlanName="Empresarial"
+                      onUpgradeClick={() => navigate("/Planos")}
+                    >
                     <FluxoCaixaCategorias />
+                    </FeatureGate>
                   </PlanProtectedRoute>
                 } 
               />
@@ -164,7 +192,13 @@ const App = () => {
                 path="/fluxo-caixa/importacao" 
                 element={
                   <PlanProtectedRoute requiredPermission="fluxo_caixa_avancado">
+                    <FeatureGate
+                      permission="fluxo_caixa_avancado"
+                      requiredPlanName="Empresarial"
+                      onUpgradeClick={() => navigate("/Planos")}
+                    >
                     <FluxoCaixaImportacao />
+                    </FeatureGate>
                   </PlanProtectedRoute>
                 } 
               />
@@ -184,7 +218,13 @@ const App = () => {
                 path="/tiktok/dashboard" 
                 element={
                   <PlanProtectedRoute requiredPermission="tiktok_integration">
+                    <FeatureGate
+                      permission="tiktok_integration"
+                      requiredPlanName="Profissional ou superior para múltiplas contas"
+                      onUpgradeClick={() => navigate("/Planos")}
+                    >
                     <TikTokDashboard />
+                    </FeatureGate>
                   </PlanProtectedRoute>
                 } 
               />
@@ -193,7 +233,13 @@ const App = () => {
                 path="/tiktok/configuracoes" 
                 element={
                   <PlanProtectedRoute requiredPermission="tiktok_integration">
+                    <FeatureGate
+                      permission="tiktok_integration"
+                      requiredPlanName="Profissional ou superior para múltiplas contas"
+                      onUpgradeClick={() => navigate("/Planos")}
+                    >
                     <TikTokConfiguracoes />
+                    </FeatureGate>
                   </PlanProtectedRoute>
                 } 
               />
@@ -202,7 +248,13 @@ const App = () => {
                 path="/tiktok/upload" 
                 element={
                   <PlanProtectedRoute requiredPermission="tiktok_integration">
+                    <FeatureGate
+                      permission="tiktok_integration"
+                      requiredPlanName="Profissional ou superior para múltiplas contas"
+                      onUpgradeClick={() => navigate("/Planos")}
+                    >
                     <TikTokUpload />
+                    </FeatureGate>
                   </PlanProtectedRoute>
                 } 
               />
@@ -211,7 +263,13 @@ const App = () => {
                 path="/tiktok/resultados" 
                 element={
                   <PlanProtectedRoute requiredPermission="tiktok_integration">
+                    <FeatureGate
+                      permission="tiktok_integration"
+                      requiredPlanName="Profissional ou superior para múltiplas contas"
+                      onUpgradeClick={() => navigate("/Planos")}
+                    >
                     <TikTokResultados />
+                    </FeatureGate>
                   </PlanProtectedRoute>
                 } 
               />
@@ -220,7 +278,13 @@ const App = () => {
                 path="/tiktok/variacoes" 
                 element={
                   <PlanProtectedRoute requiredPermission="tiktok_integration">
+                    <FeatureGate
+                      permission="tiktok_integration"
+                      requiredPlanName="Profissional ou superior para múltiplas contas"
+                      onUpgradeClick={() => navigate("/Planos")}
+                    >
                     <TikTokVariacoes />
+                    </FeatureGate>
                   </PlanProtectedRoute>
                 } 
               />
@@ -229,7 +293,13 @@ const App = () => {
                 path="/tiktok/pagamentos" 
                 element={
                   <PlanProtectedRoute requiredPermission="tiktok_integration">
+                    <FeatureGate
+                      permission="tiktok_integration"
+                      requiredPlanName="Profissional ou superior para múltiplas contas"
+                      onUpgradeClick={() => navigate("/Planos")}
+                    >
                     <TikTokPagamentos />
+                    </FeatureGate>
                   </PlanProtectedRoute>
                 } 
               />
@@ -238,7 +308,13 @@ const App = () => {
                 path="/tiktok/pagamentos/upload" 
                 element={
                   <PlanProtectedRoute requiredPermission="tiktok_integration">
+                    <FeatureGate
+                      permission="tiktok_integration"
+                      requiredPlanName="Profissional ou superior para múltiplas contas"
+                      onUpgradeClick={() => navigate("/Planos")}
+                    >
                     <TikTokPagamentosUpload />
+                    </FeatureGate>
                   </PlanProtectedRoute>
                 } 
               />

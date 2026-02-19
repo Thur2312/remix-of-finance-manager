@@ -334,7 +334,7 @@ export default function LandingPage() {
             <Link to="/auth">
               <Button variant="ghost" className="text-gray-700 hover:text-blue-600">Entrar</Button>
             </Link>
-            <Link to="/auth">
+            <Link to="/planos">
               <Button className="bg-gradient-to-r from-blue-500 to-cyan-500 hover:from-blue-600 hover:to-cyan-600 text-white shadow-lg shadow-blue-300">
                 Assinar
               </Button>
@@ -364,7 +364,7 @@ export default function LandingPage() {
                 <Link to="/auth" onClick={() => setMobileMenuOpen(false)}>
                   <Button variant="outline" className="w-full border-blue-300">Entrar</Button>
                 </Link>
-                <Link to="/auth" onClick={() => setMobileMenuOpen(false)}>
+                <Link to="/planos" onClick={() => setMobileMenuOpen(false)}>
                   <Button className="w-full bg-gradient-to-r from-blue-500 to-cyan-500">Teste Grátis</Button>
                 </Link>
               </div>
