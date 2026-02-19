@@ -129,7 +129,7 @@ const App = () => {
               <Route 
                 path="/dre" 
                 element={
-                  <PlanProtectedRoute requiredPermission="dre_automated">
+       
                     <FeatureGate
                       permission="dre_automated"
                       requiredPlanName="Profissional ou superior"
@@ -137,7 +137,7 @@ const App = () => {
                     >
                       <DRE />
                     </FeatureGate>
-                  </PlanProtectedRoute>
+  
                 } 
               />
 
@@ -145,7 +145,7 @@ const App = () => {
               <Route 
                 path="/fluxo-caixa" 
                 element={
-                  <PlanProtectedRoute requiredPermission="cash_flow">
+      
                     <FeatureGate
                       permission="cash_flow"
                       requiredPlanName="Empresarial"
@@ -153,14 +153,14 @@ const App = () => {
                     >
                       <FluxoCaixaDashboard />
                     </FeatureGate>
-                  </PlanProtectedRoute>
+      
                 } 
               />
               
               <Route 
                 path="/fluxo-caixa/lancamentos" 
                 element={
-                  <PlanProtectedRoute requiredPermission="cash_flow">
+   
                     <FeatureGate
                       permission="cash_flow"
                       requiredPlanName="Empresarial"
@@ -168,14 +168,14 @@ const App = () => {
                     >
                       <FluxoCaixaLancamentos />
                     </FeatureGate>
-                  </PlanProtectedRoute>
+
                 } 
               />
               
               <Route 
                 path="/fluxo-caixa/categorias" 
                 element={
-                  <PlanProtectedRoute requiredPermission="cash_flow">
+      
                     <FeatureGate
                       permission="cash_flow"
                       requiredPlanName="Empresarial"
@@ -183,14 +183,14 @@ const App = () => {
                     >
                       <FluxoCaixaCategorias />
                     </FeatureGate>
-                  </PlanProtectedRoute>
+  
                 } 
               />
               
               <Route 
                 path="/fluxo-caixa/importacao" 
                 element={
-                  <PlanProtectedRoute requiredPermission="cash_flow">
+   
                     <FeatureGate
                       permission="cash_flow"
                       requiredPlanName="Empresarial"
@@ -198,7 +198,7 @@ const App = () => {
                     >
                       <FluxoCaixaImportacao />
                     </FeatureGate>
-                  </PlanProtectedRoute>
+        
                 } 
               />
 
@@ -216,7 +216,7 @@ const App = () => {
               <Route 
                 path="/tiktok/dashboard" 
                 element={
-                  <PlanProtectedRoute requiredPermission="upload_files">
+   
                     <FeatureGate
                       permission="upload_files"
                       requiredPlanName="Profissional ou superior para múltiplas contas"
@@ -224,14 +224,14 @@ const App = () => {
                     >
                       <TikTokDashboard />
                     </FeatureGate>
-                  </PlanProtectedRoute>
+    
                 } 
               />
               
               <Route 
                 path="/tiktok/configuracoes" 
                 element={
-                  <PlanProtectedRoute requiredPermission="upload_files">
+         
                     <FeatureGate
                       permission="upload_files"
                       requiredPlanName="Profissional ou superior para múltiplas contas"
@@ -239,14 +239,14 @@ const App = () => {
                     >
                       <TikTokConfiguracoes />
                     </FeatureGate>
-                  </PlanProtectedRoute>
+     
                 } 
               />
               
               <Route 
                 path="/tiktok/upload" 
                 element={
-                  <PlanProtectedRoute requiredPermission="upload_files">
+           
                     <FeatureGate
                       permission="upload_files"
                       requiredPlanName="Profissional ou superior para múltiplas contas"
@@ -254,14 +254,13 @@ const App = () => {
                     >
                       <TikTokUpload />
                     </FeatureGate>
-                  </PlanProtectedRoute>
+           
                 } 
               />
               
               <Route 
                 path="/tiktok/resultados" 
                 element={
-                  <PlanProtectedRoute requiredPermission="upload_files">
                     <FeatureGate
                       permission="upload_files"
                       requiredPlanName="Profissional ou superior para múltiplas contas"
@@ -269,14 +268,14 @@ const App = () => {
                     >
                       <TikTokResultados />
                     </FeatureGate>
-                  </PlanProtectedRoute>
+              
                 } 
               />
               
               <Route 
                 path="/tiktok/variacoes" 
                 element={
-                  <PlanProtectedRoute requiredPermission="upload_files">
+      
                     <FeatureGate
                       permission="upload_files"
                       requiredPlanName="Profissional ou superior para múltiplas contas"
@@ -284,14 +283,14 @@ const App = () => {
                     >
                       <TikTokVariacoes />
                     </FeatureGate>
-                  </PlanProtectedRoute>
+             
                 } 
               />
               
               <Route 
                 path="/tiktok/pagamentos" 
                 element={
-                  <PlanProtectedRoute requiredPermission="upload_files">
+     
                     <FeatureGate
                       permission="upload_files"
                       requiredPlanName="Profissional ou superior para múltiplas contas"
@@ -299,14 +298,14 @@ const App = () => {
                     >
                       <TikTokPagamentos />
                     </FeatureGate>
-                  </PlanProtectedRoute>
+               
                 } 
               />
               
               <Route 
                 path="/tiktok/pagamentos/upload" 
                 element={
-                  <PlanProtectedRoute requiredPermission="upload_files">
+
                     <FeatureGate
                       permission="upload_files"
                       requiredPlanName="Profissional ou superior para múltiplas contas"
@@ -314,7 +313,7 @@ const App = () => {
                     >
                       <TikTokPagamentosUpload />
                     </FeatureGate>
-                  </PlanProtectedRoute>
+ 
                 } 
               />
 
