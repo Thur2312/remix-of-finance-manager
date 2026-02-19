@@ -50,6 +50,7 @@
     "date-fns": "^3.6.0",
     "embla-carousel-react": "^8.6.0",
     "express": "^5.2.1",
+    "express-serve-static-core": "^0.1.1",
     "framer-motion": "^12.30.0",
     "input-otp": "^1.4.2",
     "lucide-react": "^0.462.0",

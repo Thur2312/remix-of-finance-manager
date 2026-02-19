@@ -129,10 +129,10 @@ const App = () => {
               <Route 
                 path="/dre" 
                 element={
-                  <PlanProtectedRoute requiredPermission="dre_automated">
+                  <PlanProtectedRoute requiredPermission="dre_automatizado">
                     <FeatureGate
-                      permission="dre_automated"
-                      requiredPlanName="Profissional ou superior"
+                      permission="dre_automatizado"
+                      requiredPlanName="profissional, trial, empresarial"
                       onUpgradeClick={() => navigate("/planos")}
                     >
                       <DRE />
@@ -145,10 +145,10 @@ const App = () => {
               <Route 
                 path="/fluxo-caixa" 
                 element={
-                  <PlanProtectedRoute requiredPermission="cash_flow">
+                  <PlanProtectedRoute requiredPermission="fluxo_caixa_avancado">
                     <FeatureGate
-                      permission="cash_flow"
-                      requiredPlanName="Empresarial"
+                      permission="fluxo_caixa_avancado"
+                      requiredPlanName="empresarial, trial, basico, profissional"
                       onUpgradeClick={() => navigate("/planos")}
                     >
                       <FluxoCaixaDashboard />
@@ -163,7 +163,7 @@ const App = () => {
                   <PlanProtectedRoute requiredPermission="cash_flow">
                     <FeatureGate
                       permission="cash_flow"
-                      requiredPlanName="Empresarial"
+                      requiredPlanName="empresarial, trial, basico, profissional"
                       onUpgradeClick={() => navigate("/planos")}
                     >
                       <FluxoCaixaLancamentos />
@@ -178,7 +178,7 @@ const App = () => {
                   <PlanProtectedRoute requiredPermission="cash_flow">
                     <FeatureGate
                       permission="cash_flow"
-                      requiredPlanName="Empresarial"
+                      requiredPlanName="empresarial, trial, basico, profissional"
                       onUpgradeClick={() => navigate("/planos")}
                     >
                       <FluxoCaixaCategorias />
@@ -193,7 +193,7 @@ const App = () => {
                   <PlanProtectedRoute requiredPermission="cash_flow">
                     <FeatureGate
                       permission="cash_flow"
-                      requiredPlanName="Empresarial"
+                      requiredPlanName="empresarial, trial, basico, profissional"
                       onUpgradeClick={() => navigate("/planos")}
                     >
                       <FluxoCaixaImportacao />
@@ -219,7 +219,7 @@ const App = () => {
                   <PlanProtectedRoute requiredPermission="upload_files">
                     <FeatureGate
                       permission="upload_files"
-                      requiredPlanName="Profissional ou superior para múltiplas contas"
+                      requiredPlanName="profissional, trial, empresarial"
                       onUpgradeClick={() => navigate("/planos")}
                     >
                       <TikTokDashboard />
@@ -234,7 +234,7 @@ const App = () => {
                   <PlanProtectedRoute requiredPermission="upload_files">
                     <FeatureGate
                       permission="upload_files"
-                      requiredPlanName="Profissional ou superior para múltiplas contas"
+                      requiredPlanName="profissional, trial, empresarial"
                       onUpgradeClick={() => navigate("/planos")}
                     >
                       <TikTokConfiguracoes />
@@ -249,7 +249,7 @@ const App = () => {
                   <PlanProtectedRoute requiredPermission="upload_files">
                     <FeatureGate
                       permission="upload_files"
-                      requiredPlanName="Profissional ou superior para múltiplas contas"
+                      requiredPlanName="profissional, trial, empresarial"
                       onUpgradeClick={() => navigate("/planos")}
                     >
                       <TikTokUpload />
@@ -264,7 +264,7 @@ const App = () => {
                   <PlanProtectedRoute requiredPermission="upload_files">
                     <FeatureGate
                       permission="upload_files"
-                      requiredPlanName="Profissional ou superior para múltiplas contas"
+                      requiredPlanName="Profissional, trial, empresarial"
                       onUpgradeClick={() => navigate("/planos")}
                     >
                       <TikTokResultados />
@@ -279,7 +279,7 @@ const App = () => {
                   <PlanProtectedRoute requiredPermission="upload_files">
                     <FeatureGate
                       permission="upload_files"
-                      requiredPlanName="Profissional ou superior para múltiplas contas"
+                      requiredPlanName="Profissional, trial, empresarial"
                       onUpgradeClick={() => navigate("/planos")}
                     >
                       <TikTokVariacoes />
@@ -294,7 +294,7 @@ const App = () => {
                   <PlanProtectedRoute requiredPermission="upload_files">
                     <FeatureGate
                       permission="upload_files"
-                      requiredPlanName="Profissional ou superior para múltiplas contas"
+                      requiredPlanName="Profissional, trial, empresarial"
                       onUpgradeClick={() => navigate("/planos")}
                     >
                       <TikTokPagamentos />
@@ -309,7 +309,7 @@ const App = () => {
                   <PlanProtectedRoute requiredPermission="upload_files">
                     <FeatureGate
                       permission="upload_files"
-                      requiredPlanName="Profissional ou superior para múltiplas contas"
+                      requiredPlanName="Profissional, trial, empresarial"
                       onUpgradeClick={() => navigate("/planos")}
                     >
                       <TikTokPagamentosUpload />
