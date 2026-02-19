@@ -1,10 +1,9 @@
 import { Toaster } from "@/components/ui/toaster";
-import { useNavigate } from "react-router-dom";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
-import { AuthProvider } from "@/contexts/AuthContext";
+import { AuthProvider, useAuth } from "@/contexts/AuthContext";
 import { ProtectedRoute } from "@/components/layout/ProtectedRoute";
 import { PlanProtectedRoute } from "@/components/layout/PlanProtectedRoute";
 import LandingPage from "./pages/LandingPage";
@@ -34,12 +33,10 @@ import EsqueciSenha from "./pages/EsqueciSenha";
 import ResetPassword from "./pages/ResetPassword";
 import NotFound from "./pages/NotFound";
 import Planos from "./pages/Planos";
-import { FeatureGate } from "./components/FeatureGate";
 
 const queryClient = new QueryClient();
 
 const App = () => {
-  const navigate = useNavigate();
   return (
     <QueryClientProvider client={queryClient}>
       <TooltipProvider>
@@ -129,10 +126,10 @@ const App = () => {
               <Route 
                 path="/dre" 
                 element={
-                  <PlanProtectedRoute requiredPermission="dre_automatizado">
+                  <PlanProtectedRoute requiredPermission="dre_automated">
                     <FeatureGate
-                      permission="dre_automatizado"
-                      requiredPlanName="profissional, trial, empresarial"
+                      permission="dre_automated"
+                      requiredPlanName="Profissional ou superior"
                       onUpgradeClick={() => navigate("/planos")}
                     >
                       <DRE />
@@ -145,10 +142,10 @@ const App = () => {
               <Route 
                 path="/fluxo-caixa" 
                 element={
-                  <PlanProtectedRoute requiredPermission="fluxo_caixa_avancado">
+                  <PlanProtectedRoute requiredPermission="cash_flow">
                     <FeatureGate
-                      permission="fluxo_caixa_avancado"
-                      requiredPlanName="empresarial, trial, basico, profissional"
+                      permission="cash_flow"
+                      requiredPlanName="Empresarial"
                       onUpgradeClick={() => navigate("/planos")}
                     >
                       <FluxoCaixaDashboard />
@@ -163,7 +160,7 @@ const App = () => {
                   <PlanProtectedRoute requiredPermission="cash_flow">
                     <FeatureGate
                       permission="cash_flow"
-                      requiredPlanName="empresarial, trial, basico, profissional"
+                      requiredPlanName="Empresarial"
                       onUpgradeClick={() => navigate("/planos")}
                     >
                       <FluxoCaixaLancamentos />
@@ -178,7 +175,7 @@ const App = () => {
                   <PlanProtectedRoute requiredPermission="cash_flow">
                     <FeatureGate
                       permission="cash_flow"
-                      requiredPlanName="empresarial, trial, basico, profissional"
+                      requiredPlanName="Empresarial"
                       onUpgradeClick={() => navigate("/planos")}
                     >
                       <FluxoCaixaCategorias />
@@ -193,7 +190,7 @@ const App = () => {
                   <PlanProtectedRoute requiredPermission="cash_flow">
                     <FeatureGate
                       permission="cash_flow"
-                      requiredPlanName="empresarial, trial, basico, profissional"
+                      requiredPlanName="Empresarial"
                       onUpgradeClick={() => navigate("/planos")}
                     >
                       <FluxoCaixaImportacao />
@@ -219,7 +216,7 @@ const App = () => {
                   <PlanProtectedRoute requiredPermission="upload_files">
                     <FeatureGate
                       permission="upload_files"
-                      requiredPlanName="profissional, trial, empresarial"
+                      requiredPlanName="Profissional ou superior para múltiplas contas"
                       onUpgradeClick={() => navigate("/planos")}
                     >
                       <TikTokDashboard />
@@ -234,7 +231,7 @@ const App = () => {
                   <PlanProtectedRoute requiredPermission="upload_files">
                     <FeatureGate
                       permission="upload_files"
-                      requiredPlanName="profissional, trial, empresarial"
+                      requiredPlanName="Profissional ou superior para múltiplas contas"
                       onUpgradeClick={() => navigate("/planos")}
                     >
                       <TikTokConfiguracoes />
@@ -249,7 +246,7 @@ const App = () => {
                   <PlanProtectedRoute requiredPermission="upload_files">
                     <FeatureGate
                       permission="upload_files"
-                      requiredPlanName="profissional, trial, empresarial"
+                      requiredPlanName="Profissional ou superior para múltiplas contas"
                       onUpgradeClick={() => navigate("/planos")}
                     >
                       <TikTokUpload />
@@ -264,7 +261,7 @@ const App = () => {
                   <PlanProtectedRoute requiredPermission="upload_files">
                     <FeatureGate
                       permission="upload_files"
-                      requiredPlanName="Profissional, trial, empresarial"
+                      requiredPlanName="Profissional ou superior para múltiplas contas"
                       onUpgradeClick={() => navigate("/planos")}
                     >
                       <TikTokResultados />
@@ -279,7 +276,7 @@ const App = () => {
                   <PlanProtectedRoute requiredPermission="upload_files">
                     <FeatureGate
                       permission="upload_files"
-                      requiredPlanName="Profissional, trial, empresarial"
+                      requiredPlanName="Profissional ou superior para múltiplas contas"
                       onUpgradeClick={() => navigate("/planos")}
                     >
                       <TikTokVariacoes />
@@ -294,7 +291,7 @@ const App = () => {
                   <PlanProtectedRoute requiredPermission="upload_files">
                     <FeatureGate
                       permission="upload_files"
-                      requiredPlanName="Profissional, trial, empresarial"
+                      requiredPlanName="Profissional ou superior para múltiplas contas"
                       onUpgradeClick={() => navigate("/planos")}
                     >
                       <TikTokPagamentos />
@@ -309,7 +306,7 @@ const App = () => {
                   <PlanProtectedRoute requiredPermission="upload_files">
                     <FeatureGate
                       permission="upload_files"
-                      requiredPlanName="Profissional, trial, empresarial"
+                      requiredPlanName="Profissional ou superior para múltiplas contas"
                       onUpgradeClick={() => navigate("/planos")}
                     >
                       <TikTokPagamentosUpload />
