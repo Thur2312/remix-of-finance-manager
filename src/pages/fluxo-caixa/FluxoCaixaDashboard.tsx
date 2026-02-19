@@ -39,7 +39,7 @@ function FluxoCaixaDashboardContent() {
     if (!categoriesLoading && categories.length === 0) {
       initializeDefaultCategories.mutate();
     }
-  }, [categoriesLoading, categories.length]);
+  }, [categoriesLoading, categories.length, initializeDefaultCategories]);
 
   const isLoading = categoriesLoading || entriesLoading;
 

@@ -64,6 +64,44 @@ function FluxoCaixaImportacaoContent() {
     }).format(value);
   };
 
+  const suggestCategory = useCallback((transaction: BankTransaction): string | null => {
+    const desc = transaction.description.toLowerCase();
+    
+    // Sugerir categoria baseado em palavras-chave comuns
+    const incomeCategories = categories.filter(c => c.type === 'income');
+    const expenseCategories = categories.filter(c => c.type === 'expense');
+
+    if (transaction.type === 'income') {
+      if (desc.includes('venda') || desc.includes('mercado livre') || desc.includes('shopee') || desc.includes('tiktok')) {
+        return incomeCategories.find(c => c.name.toLowerCase().includes('venda'))?.id || null;
+      }
+      if (desc.includes('pix') || desc.includes('ted') || desc.includes('transf')) {
+        return incomeCategories.find(c => c.name.toLowerCase().includes('outro'))?.id || null;
+      }
+    } else {
+      if (desc.includes('fornecedor') || desc.includes('compra') || desc.includes('mercadoria')) {
+        return expenseCategories.find(c => c.name.toLowerCase().includes('fornecedor'))?.id || null;
+      }
+      if (desc.includes('imposto') || desc.includes('darf') || desc.includes('tributo')) {
+        return expenseCategories.find(c => c.name.toLowerCase().includes('imposto'))?.id || null;
+      }
+      if (desc.includes('frete') || desc.includes('correios') || desc.includes('logística')) {
+        return expenseCategories.find(c => c.name.toLowerCase().includes('logística'))?.id || null;
+      }
+      if (desc.includes('salário') || desc.includes('folha') || desc.includes('funcionário')) {
+        return expenseCategories.find(c => c.name.toLowerCase().includes('salário'))?.id || null;
+      }
+      if (desc.includes('aluguel') || desc.includes('locação')) {
+        return expenseCategories.find(c => c.name.toLowerCase().includes('aluguel'))?.id || null;
+      }
+      if (desc.includes('marketing') || desc.includes('ads') || desc.includes('anúncio') || desc.includes('facebook') || desc.includes('google')) {
+        return expenseCategories.find(c => c.name.toLowerCase().includes('marketing'))?.id || null;
+      }
+    }
+
+    return null;
+  }, [categories]);
+
   const handleDragOver = useCallback((e: React.DragEvent) => {
     e.preventDefault();
     setIsDragging(true);
@@ -74,7 +112,7 @@ function FluxoCaixaImportacaoContent() {
     setIsDragging(false);
   }, []);
 
-  const processFile = async (file: File) => {
+  const processFile = useCallback(async (file: File) => {
     setIsProcessing(true);
     setError(null);
     setTransactions([]);
@@ -147,45 +185,7 @@ function FluxoCaixaImportacaoContent() {
     } finally {
       setIsProcessing(false);
     }
-  };
-
-  const suggestCategory = (transaction: BankTransaction): string | null => {
-    const desc = transaction.description.toLowerCase();
-    
-    // Sugerir categoria baseado em palavras-chave comuns
-    const incomeCategories = categories.filter(c => c.type === 'income');
-    const expenseCategories = categories.filter(c => c.type === 'expense');
-
-    if (transaction.type === 'income') {
-      if (desc.includes('venda') || desc.includes('mercado livre') || desc.includes('shopee') || desc.includes('tiktok')) {
-        return incomeCategories.find(c => c.name.toLowerCase().includes('venda'))?.id || null;
-      }
-      if (desc.includes('pix') || desc.includes('ted') || desc.includes('transf')) {
-        return incomeCategories.find(c => c.name.toLowerCase().includes('outro'))?.id || null;
-      }
-    } else {
-      if (desc.includes('fornecedor') || desc.includes('compra') || desc.includes('mercadoria')) {
-        return expenseCategories.find(c => c.name.toLowerCase().includes('fornecedor'))?.id || null;
-      }
-      if (desc.includes('imposto') || desc.includes('darf') || desc.includes('tributo')) {
-        return expenseCategories.find(c => c.name.toLowerCase().includes('imposto'))?.id || null;
-      }
-      if (desc.includes('frete') || desc.includes('correios') || desc.includes('logística')) {
-        return expenseCategories.find(c => c.name.toLowerCase().includes('logística'))?.id || null;
-      }
-      if (desc.includes('salário') || desc.includes('folha') || desc.includes('funcionário')) {
-        return expenseCategories.find(c => c.name.toLowerCase().includes('salário'))?.id || null;
-      }
-      if (desc.includes('aluguel') || desc.includes('locação')) {
-        return expenseCategories.find(c => c.name.toLowerCase().includes('aluguel'))?.id || null;
-      }
-      if (desc.includes('marketing') || desc.includes('ads') || desc.includes('anúncio') || desc.includes('facebook') || desc.includes('google')) {
-        return expenseCategories.find(c => c.name.toLowerCase().includes('marketing'))?.id || null;
-      }
-    }
-
-    return null;
-  };
+  }, [selectedBank, toast, suggestCategory]);
 
   const handleDrop = useCallback(async (e: React.DragEvent) => {
     e.preventDefault();
@@ -195,7 +195,7 @@ function FluxoCaixaImportacaoContent() {
     if (files.length > 0) {
       await processFile(files[0]);
     }
-  }, [selectedBank]);
+  }, [processFile]);
 
   const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
