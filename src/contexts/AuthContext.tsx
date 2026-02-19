@@ -1,4 +1,4 @@
-import { createContext, useContext, useEffect, useState, ReactNode, useCallback } from 'react';
+import { createContext, useContext, useEffect, useState, ReactNode } from 'react';
 import { User, Session } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
 import axios from 'axios';
@@ -18,7 +18,7 @@ export interface Profile {
   avatar_url: string | null;
   plan: string | null;
   created_at: string; // Data de criação do perfil
-  data: Record<string, unknown>; // Campo para armazenar dados adicionais, como permissões do plano, etc.
+  data: any; // Campo para armazenar dados adicionais, como permissões do plano, etc.
 }
 
 export interface PlanPermission {
@@ -72,7 +72,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return { isExpired, daysRemaining };
   };
 
-  const fetchProfile = useCallback(async (userId: string) => {
+  const fetchProfile = async (userId: string) => {
     setProfileLoading(true);
     try {
       const { data, error } = await supabase
@@ -87,15 +87,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
 
       if (data) {
-        const profileData = data as unknown as Profile;
-        setProfile(profileData);
+        setProfile(data as unknown as Profile);
         
         // Determinar o plano efetivo
-        let effectivePlan = profileData.plan || 'trial';
+        let effectivePlan = (data as any).plan || 'trial';
         
         // Se o plano é trial, verificar se expirou
         if (effectivePlan === 'trial') {
-          const { isExpired, daysRemaining } = calculateTrialStatus(profileData.created_at);
+          const { isExpired, daysRemaining } = calculateTrialStatus((data as any).created_at);
           setIsTrialExpired(isExpired);
           setTrialDaysRemaining(daysRemaining);
           
@@ -118,14 +117,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     } finally {
       setProfileLoading(false);
     }
-  }, []);
+  };
 
-const fetchPlanPermissions = useCallback(async (planName: string) => {
-  try {
-    const { data, error } = await supabase
-      .from('plan_permissions' as never)
-      .select('permission, limit_value')
-      .eq('plan', planName);
+  const fetchPlanPermissions = async (planName: string) => {
+    try {
+      const { data, error } = await supabase
+        .from('plan_permissions' as any)
+        .select('permission, limit_value')
+        .eq('plan', planName);
 
       if (error) {
         console.error('Error fetching plan permissions:', error);
@@ -138,7 +137,7 @@ const fetchPlanPermissions = useCallback(async (planName: string) => {
     } catch (error) {
       console.error('Error fetching plan permissions:', error);
     }
-  }, []);
+  };
 
   const hasPermission = (permission: string): boolean => {
     return permissions.some(p => p.permission === permission);
@@ -190,7 +189,7 @@ const fetchPlanPermissions = useCallback(async (planName: string) => {
     });
 
     return () => subscription.unsubscribe();
-  }, [fetchProfile]);
+  }, []);
 
   const signUp = async (email: string, password: string, fullName?: string) => {
     const redirectUrl = `${window.location.origin}/`;
