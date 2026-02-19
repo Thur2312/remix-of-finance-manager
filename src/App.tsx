@@ -4,7 +4,7 @@ import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
-import { AuthProvider, useAuth } from "@/contexts/AuthContext";
+import { AuthProvider } from "@/contexts/AuthContext";
 import { ProtectedRoute } from "@/components/layout/ProtectedRoute";
 import { PlanProtectedRoute } from "@/components/layout/PlanProtectedRoute";
 import LandingPage from "./pages/LandingPage";
@@ -129,16 +129,15 @@ const App = () => {
               <Route 
                 path="/dre" 
                 element={
-                  <PlanProtectedRoute requiredPermission="dre_automatizado">
+                  <PlanProtectedRoute requiredPermission="dre_automated">
                     <FeatureGate
-                      permission="advanced_dashboard"
+                      permission="dre_automated"
                       requiredPlanName="Profissional ou superior"
-                      onUpgradeClick={() => navigate("/Planos")}
+                      onUpgradeClick={() => navigate("/planos")}
                     >
-                    <DRE />
+                      <DRE />
                     </FeatureGate>
                   </PlanProtectedRoute>
-                  
                 } 
               />
 
@@ -146,13 +145,13 @@ const App = () => {
               <Route 
                 path="/fluxo-caixa" 
                 element={
-                  <PlanProtectedRoute requiredPermission="fluxo_caixa_avancado">
+                  <PlanProtectedRoute requiredPermission="cash_flow">
                     <FeatureGate
-                      permission="fluxo_caixa_avancado"
+                      permission="cash_flow"
                       requiredPlanName="Empresarial"
-                      onUpgradeClick={() => navigate("/Planos")}
+                      onUpgradeClick={() => navigate("/planos")}
                     >
-                    <FluxoCaixaDashboard />
+                      <FluxoCaixaDashboard />
                     </FeatureGate>
                   </PlanProtectedRoute>
                 } 
@@ -161,13 +160,13 @@ const App = () => {
               <Route 
                 path="/fluxo-caixa/lancamentos" 
                 element={
-                  <PlanProtectedRoute requiredPermission="fluxo_caixa_avancado">
+                  <PlanProtectedRoute requiredPermission="cash_flow">
                     <FeatureGate
-                      permission="fluxo_caixa_avancado"
+                      permission="cash_flow"
                       requiredPlanName="Empresarial"
-                      onUpgradeClick={() => navigate("/Planos")}
+                      onUpgradeClick={() => navigate("/planos")}
                     >
-                    <FluxoCaixaLancamentos />
+                      <FluxoCaixaLancamentos />
                     </FeatureGate>
                   </PlanProtectedRoute>
                 } 
@@ -176,13 +175,13 @@ const App = () => {
               <Route 
                 path="/fluxo-caixa/categorias" 
                 element={
-                  <PlanProtectedRoute requiredPermission="fluxo_caixa_avancado">
+                  <PlanProtectedRoute requiredPermission="cash_flow">
                     <FeatureGate
-                      permission="fluxo_caixa_avancado"
+                      permission="cash_flow"
                       requiredPlanName="Empresarial"
-                      onUpgradeClick={() => navigate("/Planos")}
+                      onUpgradeClick={() => navigate("/planos")}
                     >
-                    <FluxoCaixaCategorias />
+                      <FluxoCaixaCategorias />
                     </FeatureGate>
                   </PlanProtectedRoute>
                 } 
@@ -191,13 +190,13 @@ const App = () => {
               <Route 
                 path="/fluxo-caixa/importacao" 
                 element={
-                  <PlanProtectedRoute requiredPermission="fluxo_caixa_avancado">
+                  <PlanProtectedRoute requiredPermission="cash_flow">
                     <FeatureGate
-                      permission="fluxo_caixa_avancado"
+                      permission="cash_flow"
                       requiredPlanName="Empresarial"
-                      onUpgradeClick={() => navigate("/Planos")}
+                      onUpgradeClick={() => navigate("/planos")}
                     >
-                    <FluxoCaixaImportacao />
+                      <FluxoCaixaImportacao />
                     </FeatureGate>
                   </PlanProtectedRoute>
                 } 
@@ -217,13 +216,13 @@ const App = () => {
               <Route 
                 path="/tiktok/dashboard" 
                 element={
-                  <PlanProtectedRoute requiredPermission="tiktok_integration">
+                  <PlanProtectedRoute requiredPermission="upload_files">
                     <FeatureGate
-                      permission="tiktok_integration"
+                      permission="upload_files"
                       requiredPlanName="Profissional ou superior para múltiplas contas"
-                      onUpgradeClick={() => navigate("/Planos")}
+                      onUpgradeClick={() => navigate("/planos")}
                     >
-                    <TikTokDashboard />
+                      <TikTokDashboard />
                     </FeatureGate>
                   </PlanProtectedRoute>
                 } 
@@ -232,13 +231,13 @@ const App = () => {
               <Route 
                 path="/tiktok/configuracoes" 
                 element={
-                  <PlanProtectedRoute requiredPermission="tiktok_integration">
+                  <PlanProtectedRoute requiredPermission="upload_files">
                     <FeatureGate
-                      permission="tiktok_integration"
+                      permission="upload_files"
                       requiredPlanName="Profissional ou superior para múltiplas contas"
-                      onUpgradeClick={() => navigate("/Planos")}
+                      onUpgradeClick={() => navigate("/planos")}
                     >
-                    <TikTokConfiguracoes />
+                      <TikTokConfiguracoes />
                     </FeatureGate>
                   </PlanProtectedRoute>
                 } 
@@ -247,13 +246,13 @@ const App = () => {
               <Route 
                 path="/tiktok/upload" 
                 element={
-                  <PlanProtectedRoute requiredPermission="tiktok_integration">
+                  <PlanProtectedRoute requiredPermission="upload_files">
                     <FeatureGate
-                      permission="tiktok_integration"
+                      permission="upload_files"
                       requiredPlanName="Profissional ou superior para múltiplas contas"
-                      onUpgradeClick={() => navigate("/Planos")}
+                      onUpgradeClick={() => navigate("/planos")}
                     >
-                    <TikTokUpload />
+                      <TikTokUpload />
                     </FeatureGate>
                   </PlanProtectedRoute>
                 } 
@@ -262,13 +261,13 @@ const App = () => {
               <Route 
                 path="/tiktok/resultados" 
                 element={
-                  <PlanProtectedRoute requiredPermission="tiktok_integration">
+                  <PlanProtectedRoute requiredPermission="upload_files">
                     <FeatureGate
-                      permission="tiktok_integration"
+                      permission="upload_files"
                       requiredPlanName="Profissional ou superior para múltiplas contas"
-                      onUpgradeClick={() => navigate("/Planos")}
+                      onUpgradeClick={() => navigate("/planos")}
                     >
-                    <TikTokResultados />
+                      <TikTokResultados />
                     </FeatureGate>
                   </PlanProtectedRoute>
                 } 
@@ -277,13 +276,13 @@ const App = () => {
               <Route 
                 path="/tiktok/variacoes" 
                 element={
-                  <PlanProtectedRoute requiredPermission="tiktok_integration">
+                  <PlanProtectedRoute requiredPermission="upload_files">
                     <FeatureGate
-                      permission="tiktok_integration"
+                      permission="upload_files"
                       requiredPlanName="Profissional ou superior para múltiplas contas"
-                      onUpgradeClick={() => navigate("/Planos")}
+                      onUpgradeClick={() => navigate("/planos")}
                     >
-                    <TikTokVariacoes />
+                      <TikTokVariacoes />
                     </FeatureGate>
                   </PlanProtectedRoute>
                 } 
@@ -292,13 +291,13 @@ const App = () => {
               <Route 
                 path="/tiktok/pagamentos" 
                 element={
-                  <PlanProtectedRoute requiredPermission="tiktok_integration">
+                  <PlanProtectedRoute requiredPermission="upload_files">
                     <FeatureGate
-                      permission="tiktok_integration"
+                      permission="upload_files"
                       requiredPlanName="Profissional ou superior para múltiplas contas"
-                      onUpgradeClick={() => navigate("/Planos")}
+                      onUpgradeClick={() => navigate("/planos")}
                     >
-                    <TikTokPagamentos />
+                      <TikTokPagamentos />
                     </FeatureGate>
                   </PlanProtectedRoute>
                 } 
@@ -307,13 +306,13 @@ const App = () => {
               <Route 
                 path="/tiktok/pagamentos/upload" 
                 element={
-                  <PlanProtectedRoute requiredPermission="tiktok_integration">
+                  <PlanProtectedRoute requiredPermission="upload_files">
                     <FeatureGate
-                      permission="tiktok_integration"
+                      permission="upload_files"
                       requiredPlanName="Profissional ou superior para múltiplas contas"
-                      onUpgradeClick={() => navigate("/Planos")}
+                      onUpgradeClick={() => navigate("/planos")}
                     >
-                    <TikTokPagamentosUpload />
+                      <TikTokPagamentosUpload />
                     </FeatureGate>
                   </PlanProtectedRoute>
                 } 
