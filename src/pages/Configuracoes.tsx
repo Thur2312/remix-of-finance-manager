@@ -355,7 +355,7 @@ function ConfiguracoesContent() {
         </Button>
       </motion.div>
 
-      <div className="grid gap-6 lg:grid-cols-4">
+      <div className="grid gap-6 lg:grid-cols-3">
         {/* Settings List */}
         <motion.div variants={fadeInUp}>
           <Card className="lg:col-span-1 border border-blue-200 shadow-lg bg-white">
@@ -402,7 +402,7 @@ function ConfiguracoesContent() {
 
         {/* Settings Form */}
         <motion.div variants={fadeInUp}>
-          <Card className="lg:col-span-3 border border-blue-200 shadow-lg bg-white">
+          <Card className="lg:col-span-2 border border-blue-200 shadow-lg bg-white">
             <CardHeader className="border-b border-blue-200 bg-blue-50">
               <CardTitle className="text-xl text-gray-900">
                 {isCreating ? 'Nova Configuração' : `Editar: ${selectedSettings?.name}`}
