@@ -47,7 +47,6 @@ const App = () => {
       <TooltipProvider>
         <Toaster />
         <Sonner />
-        <BrowserRouter>
           <AuthProvider>
             <Routes>
               {/* ========== ROTAS PÚBLICAS ========== */}
@@ -334,7 +333,6 @@ const App = () => {
               <Route path="*" element={<NotFound />} />
             </Routes>
           </AuthProvider>
-        </BrowserRouter>
       </TooltipProvider>
     </QueryClientProvider>
   );
