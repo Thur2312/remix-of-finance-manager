@@ -1,5 +1,6 @@
 import { ReactNode } from "react";
 import { useAuth } from "@/contexts/AuthContext";
+import { Link } from "react-router-dom";
 
 interface FeatureGateProps {
   permission: string;
@@ -38,13 +39,15 @@ export function FeatureGate({
             <p className="text-sm text-gray-600 mb-4">
               Disponível no plano {requiredPlanName ?? "superior"}.
             </p>
-
+            <Link to="/planos">
             <button
               onClick={onUpgradeClick}
-              className="px-4 py-2 bg-black text-white rounded-md hover:opacity-90 transition"
+              className="px-4 py-2 bg-blue-600 text-white rounded-md hover:opacity-90 transition"
+              
             >
               Fazer Upgrade
             </button>
+            </Link>
           </div>
         </div>
       )}
