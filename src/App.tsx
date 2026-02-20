@@ -1,13 +1,13 @@
-import { Toaster } from "@/components/ui/toaster";
+import { Toaster } from "./components/ui/toaster";
 import { useNavigate } from "react-router-dom";
-import { FeatureGate } from "@/components/FeatureGate";
-import { Toaster as Sonner } from "@/components/ui/sonner";
-import { TooltipProvider } from "@/components/ui/tooltip";
+import { FeatureGate } from "./components/FeatureGate";
+import { Toaster as Sonner } from "./components/ui/sonner";
+import { TooltipProvider } from "./components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
-import { AuthProvider, useAuth } from "@/contexts/AuthContext";
-import { ProtectedRoute } from "@/components/layout/ProtectedRoute";
-import { PlanProtectedRoute } from "@/components/layout/PlanProtectedRoute";
+import { AuthProvider, useAuth } from "./contexts/AuthContext";
+import { ProtectedRoute } from "./components/layout/ProtectedRoute";
+import { PlanProtectedRoute } from "./components/layout/PlanProtectedRoute";
 import LandingPage from "./pages/LandingPage";
 import Index from "./pages/Index";
 import Auth from "./pages/Auth";
@@ -40,6 +40,8 @@ const queryClient = new QueryClient();
 
 const App = () => {
   const navigate = useNavigate();
+
+
   return (
     <QueryClientProvider client={queryClient}>
       <TooltipProvider>
