@@ -25,6 +25,7 @@ import {
 } from '@/components/ui/alert-dialog';
 import type { CashFlowEntry } from '@/hooks/useCashFlow';
 import { motion } from 'framer-motion';
+import { FeatureGate } from '@/components/FeatureGate';
 
 function FluxoCaixaLancamentosContent() {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
@@ -118,6 +119,7 @@ function FluxoCaixaLancamentosContent() {
 
   return (
     <AppLayout>
+      <FeatureGate permission="cash_flow_entries" requiredPlanName="Essencial ou superior">
       <motion.div 
         className="space-y-6"
         initial={{ opacity: 0, y: 20 }}
@@ -365,6 +367,7 @@ function FluxoCaixaLancamentosContent() {
           </motion.div>
         </AlertDialogContent>
       </AlertDialog>
+      </FeatureGate>
     </AppLayout>
   );
 }

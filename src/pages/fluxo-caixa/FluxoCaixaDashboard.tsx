@@ -18,6 +18,7 @@ import { cn } from '@/lib/utils';
 import { motion } from 'framer-motion';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
+import { FeatureGate } from '../../components/FeatureGate';
 
 function FluxoCaixaDashboardContent() {
   const navigate = useNavigate();
@@ -122,6 +123,7 @@ function FluxoCaixaDashboardContent() {
 
   return (
     <AppLayout title="Fluxo de Caixa">
+      <FeatureGate permission="cash_flow_dashboard" requiredPlanName="Essencial ou superior">
       <motion.div 
         className="space-y-8"
         initial={{ opacity: 0, y: 20 }}
@@ -474,6 +476,7 @@ function FluxoCaixaDashboardContent() {
           </SectionCard>
         </motion.div>
       </motion.div>
+      </FeatureGate>
     </AppLayout>
   );
 }

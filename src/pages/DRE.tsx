@@ -19,6 +19,7 @@ import { FileSpreadsheet, RefreshCw, Download, Calendar, TrendingUp, AlertCircle
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { motion } from 'framer-motion';
+import { FeatureGate } from '../components/FeatureGate';
 
 const fadeInUp = {
   hidden: { opacity: 0, y: 40 },
@@ -134,6 +135,7 @@ function DREContent() {
   const dreSections = formatDREForDisplay(dreData);
 
   return (
+    <FeatureGate permission="dre_automated" requiredPlanName="Profissional ou superior">
     <motion.div
       className="space-y-6"
       initial="hidden"
@@ -244,6 +246,7 @@ function DREContent() {
         </Tabs>
       </motion.div>
     </motion.div>
+    </FeatureGate>
   );
 }
 

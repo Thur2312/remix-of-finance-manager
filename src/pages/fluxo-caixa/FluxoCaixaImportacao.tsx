@@ -35,6 +35,7 @@ import {
   SUPPORTED_BANKS,
 } from '@/lib/bank-statement-helpers';
 import { motion } from 'framer-motion';
+import { FeatureGate } from '@/components/FeatureGate';
 
 type FileFormat = 'ofx' | 'csv' | 'xlsx' | 'pdf' | 'unknown';
 
@@ -284,6 +285,7 @@ function FluxoCaixaImportacaoContent() {
 
   return (
     <AppLayout>
+      <FeatureGate permission="cash_flow_import" requiredPlanName="Essencial ou superior">
       <motion.div 
         className="space-y-6"
         initial={{ opacity: 0, y: 20 }}
@@ -651,6 +653,7 @@ function FluxoCaixaImportacaoContent() {
           </motion.div>
         )}
       </motion.div>
+      </FeatureGate>
     </AppLayout>
   );
 }

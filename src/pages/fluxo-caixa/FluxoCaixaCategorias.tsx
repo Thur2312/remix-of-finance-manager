@@ -34,6 +34,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { motion } from 'framer-motion';
+import { FeatureGate } from '../../components/FeatureGate';
 
 const PRESET_COLORS = [
   '#10B981', '#3B82F6', '#8B5CF6', '#EC4899', 
@@ -153,6 +154,7 @@ function FluxoCaixaCategoriasContent() {
 
   return (
     <AppLayout>
+      <FeatureGate permission="cash_flow_categories" requiredPlanName="Essencial ou superior">
       <motion.div 
         className="space-y-6"
         initial={{ opacity: 0, y: 20 }}
@@ -368,6 +370,7 @@ function FluxoCaixaCategoriasContent() {
           </motion.div>
         </AlertDialogContent>
       </AlertDialog>
+      </FeatureGate>
     </AppLayout>
   );
 }
