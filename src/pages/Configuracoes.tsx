@@ -24,6 +24,7 @@ import {
   AlertDialogTrigger,
 } from '@/components/ui/alert-dialog';
 import { z } from 'zod';
+import { FeatureGate } from '@/components/FeatureGate';
 
 const fadeInUp = {
   hidden: { opacity: 0, y: 40 },
@@ -327,6 +328,7 @@ function ConfiguracoesContent() {
   }
 
   return (
+    <FeatureGate permission="configurations_access" requiredPlanName="Essencial">
     <motion.div
       className="space-y-6"
       initial="hidden"
@@ -673,6 +675,7 @@ function ConfiguracoesContent() {
         </motion.div>
       </div>
     </motion.div>
+    </FeatureGate>
   );
 }
 

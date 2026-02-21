@@ -12,7 +12,10 @@ import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 import { parseAllSettlements, parseStatementsSheet, ImportSummary, StatementsImportSummary } from '@/lib/tiktok-settlement-helpers';
 import * as XLSX from 'xlsx';
-import { motion } from 'framer-motion';
+import { FeatureGate } from '@/components/FeatureGate';
+import { Feature, motion } from 'framer-motion';
+
+
 
 const fadeInUp = {
   hidden: { opacity: 0, y: 40 },
@@ -375,6 +378,7 @@ function TikTokPagamentosUploadContent() {
 
   return (
     <AppLayout>
+      <FeatureGate permission="payments_access" requiredPlanName="Essencial">
       <motion.div
         className="space-y-6"
         initial="hidden"
@@ -631,6 +635,7 @@ function TikTokPagamentosUploadContent() {
           </Card>
         </motion.div>
       </motion.div>
+      </FeatureGate>
     </AppLayout>
   );
 }

@@ -10,7 +10,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Switch } from '@/components/ui/switch';
 import { Separator } from '@/components/ui/separator';
 import { toast } from 'sonner';
-import { motion } from 'framer-motion';
+import { Feature, motion } from 'framer-motion';
 import { Save, Plus, Trash2, Settings, Loader2 } from 'lucide-react';
 import {
   AlertDialog,
@@ -25,6 +25,9 @@ import {
 } from '@/components/ui/alert-dialog';
 import { z } from 'zod';
 import { TikTokSettingsData } from '@/lib/tiktok-calculations';
+import { FeatureGate } from '@/components/FeatureGate';
+
+
 
 const fadeInUp = {
   hidden: { opacity: 0, y: 40 },
@@ -321,6 +324,7 @@ function TikTokConfiguracoesContent() {
   }
 
   return (
+    <FeatureGate permission="config_access" requiredPlanName="Essencial">
     <motion.div
       className="space-y-6"
       initial="hidden"
@@ -646,6 +650,7 @@ function TikTokConfiguracoesContent() {
         </Card>
       </motion.div>
     </motion.div>
+      </FeatureGate>
   );
 }
 

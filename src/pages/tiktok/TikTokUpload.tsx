@@ -9,7 +9,7 @@ import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
 import { Progress } from '@/components/ui/progress';
 import { toast } from 'sonner';
-import { motion } from 'framer-motion';
+import { Feature, motion } from 'framer-motion';
 import {
   Upload as UploadIcon,
   FileSpreadsheet,
@@ -27,6 +27,8 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { parseTikTokCSVRow, ParsedTikTokRow, excludedStatuses } from '@/lib/tiktok-helpers';
+import { FeatureGate } from '@/components/FeatureGate';
+
 
 const fadeInUp = {
   hidden: { opacity: 0, y: 40 },
@@ -245,6 +247,7 @@ function TikTokUploadContent() {
   };
 
   const renderUploadStep = () => (
+   <FeatureGate permission="upload_access" requiredPlanName="Essencial">
     <motion.div variants={fadeInUp}>
       <Card className="max-w-2xl mx-auto border border-blue-200 shadow-lg bg-white">
         <CardHeader className="bg-blue-50 border-b border-blue-200">
@@ -321,9 +324,11 @@ function TikTokUploadContent() {
         </CardContent>
       </Card>
     </motion.div>
+    </FeatureGate>
   );
 
   const renderPreviewStep = () => (
+      <FeatureGate permission="upload_access" requiredPlanName="Essencial">
     <motion.div variants={fadeInUp}>
       <Card className="max-w-6xl mx-auto border border-blue-200 shadow-lg bg-white">
         <CardHeader className="bg-blue-50 border-b border-blue-200">
@@ -408,9 +413,11 @@ function TikTokUploadContent() {
         </CardContent>
       </Card>
     </motion.div>
+      </FeatureGate>
   );
 
   const renderImportingStep = () => (
+    <FeatureGate permission="upload_access" requiredPlanName="Essencial">
     <motion.div variants={fadeInUp}>
       <Card className="max-w-md mx-auto border border-blue-200 shadow-lg bg-white">
         <CardContent className="py-12">
@@ -425,9 +432,11 @@ function TikTokUploadContent() {
         </CardContent>
       </Card>
     </motion.div>
+    </FeatureGate>
   );
 
   const renderSuccessStep = () => (
+    <FeatureGate permission="upload_access" requiredPlanName="Essencial">
     <motion.div variants={fadeInUp}>
       <Card className="max-w-md mx-auto border border-blue-200 shadow-lg bg-white">
         <CardContent className="py-12">
@@ -452,9 +461,11 @@ function TikTokUploadContent() {
         </CardContent>
       </Card>
     </motion.div>
+      </FeatureGate>
   );
 
   return (
+    <FeatureGate permission="upload_access" requiredPlanName="Essencial">
     <motion.div
       className="space-y-6"
       initial="hidden"
@@ -466,6 +477,7 @@ function TikTokUploadContent() {
       {step === 'importing' && renderImportingStep()}
       {step === 'success' && renderSuccessStep()}
     </motion.div>
+      </FeatureGate>
   );
 }
 

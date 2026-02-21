@@ -135,7 +135,7 @@ function DREContent() {
   const dreSections = formatDREForDisplay(dreData);
 
   return (
-    <FeatureGate permission="dre_automated" requiredPlanName="Profissional ou superior">
+    <FeatureGate permission="dre_automated" requiredPlanName="Empresarial">
     <motion.div
       className="space-y-6"
       initial="hidden"

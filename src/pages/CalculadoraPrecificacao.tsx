@@ -18,6 +18,7 @@ import { parseNumericInputSafe, parsePercentageInput } from "@/lib/numeric-valid
 import { motion } from "framer-motion";
 import axios from "axios";
 import { Navigate } from "react-router-dom";
+import { FeatureGate } from "@/components/FeatureGate";
 
 
 
@@ -267,6 +268,7 @@ function CalculadoraPrecificacaoContent() {
 
   return (
     <AppLayout>
+      <FeatureGate permission="calculator_access" requiredPlanName="Essencial ou superior">
       <motion.div
         className="max-w-5xl mx-auto space-y-6"
         initial="hidden"
@@ -929,6 +931,7 @@ function CalculadoraPrecificacaoContent() {
           </div>
         </motion.div>
       </motion.div>
+      </FeatureGate>
     </AppLayout>
   );
 }

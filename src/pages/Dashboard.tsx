@@ -13,7 +13,8 @@ import { useState, useEffect, useMemo } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { calculateResults, formatCurrency, RawOrder, SettingsData } from '@/lib/calculations';
 import { fetchAllOrders } from '@/lib/supabase-helpers';
-import { motion } from 'framer-motion';
+import { Feature, motion } from 'framer-motion';
+import { FeatureGate } from '@/components/FeatureGate';
 
 // Animações (alinhadas com Landing Page)
 const fadeInUp = {
@@ -104,6 +105,7 @@ export default function Dashboard() {
     <AppLayout title="Dashboard">
       <div className="min-h-screen bg-gradient-to-br from-blue-100 to-blue-200 space-y-8 animate-fade-in">
         {/* Stats Cards */}
+        <FeatureGate  permission="dashboard_access" requiredPlanName="Essencial">
         <motion.div 
           className="grid gap-4 md:grid-cols-3"
           initial="hidden"
@@ -241,7 +243,9 @@ export default function Dashboard() {
             </ol>
           </SectionCard>
         </motion.div>
+        </FeatureGate>
       </div>
+      
     </AppLayout>
   );
 }

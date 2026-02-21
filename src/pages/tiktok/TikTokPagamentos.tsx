@@ -44,6 +44,8 @@ import { Link } from 'react-router-dom';
 import { fetchAllTikTokSettlements, fetchAllTikTokStatements, fetchTikTokOrdersCosts } from '@/lib/tiktok-settlement-helpers';
 import { SettlementDetailModal } from '@/components/tiktok/SettlementDetailModal';
 import { PaymentCharts } from '@/components/tiktok/PaymentCharts';
+import { FeatureGate } from '@/components/FeatureGate';
+
 
 const fadeInUp = {
   hidden: { opacity: 0, y: 40 },
@@ -321,6 +323,7 @@ function TikTokPagamentosContent() {
   if (loading) {
     return (
       <AppLayout>
+        <FeatureGate permission="payments_access" requiredPlanName="Essencial">
         <motion.div
           className="space-y-6"
           initial="hidden"
@@ -341,6 +344,7 @@ function TikTokPagamentosContent() {
             <Skeleton className="h-96" />
           </motion.div>
         </motion.div>
+        </FeatureGate>
       </AppLayout>
     );
   }
@@ -348,6 +352,7 @@ function TikTokPagamentosContent() {
   if (settlements.length === 0 && statements.length === 0) {
     return (
       <AppLayout>
+          <FeatureGate permission="payments_access" requiredPlanName="Essencial">
         <motion.div
           className="space-y-6"
           initial="hidden"
@@ -384,6 +389,7 @@ function TikTokPagamentosContent() {
             </Card>
           </motion.div>
         </motion.div>
+        </FeatureGate>
       </AppLayout>
     );
   }
@@ -392,6 +398,7 @@ function TikTokPagamentosContent() {
 
   return (
     <AppLayout>
+      <FeatureGate permission="payments_access" requiredPlanName="Essencial">
       <motion.div
         className="space-y-6"
         initial="hidden"
@@ -825,6 +832,7 @@ function TikTokPagamentosContent() {
           onOpenChange={setModalOpen}
         />
       </motion.div>
+      </FeatureGate>
     </AppLayout>
   );
 }

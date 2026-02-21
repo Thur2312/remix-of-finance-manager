@@ -15,9 +15,9 @@ export function FeatureGate({
   requiredPlanName,
   onUpgradeClick,
 }: FeatureGateProps) {
-  const { hasPermission, profileLoading } = useAuth();
+  const { hasPermission, loading,  profileLoading } = useAuth();
 
-  if (profileLoading) return null;
+  if (loading || profileLoading) return null;
 
   const allowed = hasPermission(permission);
 

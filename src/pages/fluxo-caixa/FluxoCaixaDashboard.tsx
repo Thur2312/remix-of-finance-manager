@@ -123,7 +123,7 @@ function FluxoCaixaDashboardContent() {
 
   return (
     <AppLayout title="Fluxo de Caixa">
-      <FeatureGate permission="cash_flow_dashboard" requiredPlanName="Essencial ou superior">
+      <FeatureGate permission="cash_flow_dashboard" requiredPlanName="Profissional ou superior">
       <motion.div 
         className="space-y-8"
         initial={{ opacity: 0, y: 20 }}

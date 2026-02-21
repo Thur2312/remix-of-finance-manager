@@ -18,6 +18,7 @@ import { parseCurrencyInput, parseNumericInputSafe } from '@/lib/numeric-validat
 import { toast } from 'sonner';
 import { DollarSign, Package, ShoppingBag, Percent, Plus, Pencil, Trash2, RefreshCw, Lightbulb, Building2, Laptop, Megaphone, CreditCard, Receipt, Truck, FolderOpen } from 'lucide-react';
 import { motion } from 'framer-motion';
+import { FeatureGate } from '@/components/FeatureGate';
 
 const formatCurrency = (value: number) => {
   return new Intl.NumberFormat('pt-BR', {
@@ -138,7 +139,9 @@ function CadastroCustosContent() {
   }
 
   return (
+    
     <AppLayout>
+      <FeatureGate permission="dashboard_access" requiredPlanName="Essencial ou superior">
       <motion.div 
         className="container mx-auto px-4 py-6 space-y-6"
         initial={{ opacity: 0, y: 20 }}
@@ -383,7 +386,9 @@ function CadastroCustosContent() {
           </Card>
         </motion.div>
       </motion.div>
+      </FeatureGate>
     </AppLayout>
+    
   );
 }
 

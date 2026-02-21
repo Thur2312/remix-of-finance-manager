@@ -13,6 +13,8 @@ import { TikTokSettingsData, TikTokOrder, calculateTikTokResults, formatCurrency
 import { fetchAllTikTokOrders } from '@/lib/tiktok-helpers';
 import { DashboardCharts } from '@/components/charts/DashboardCharts';
 import { TopVariationsSection } from '@/components/charts/TopVariationsSection';
+import { FeatureGate } from '@/components/FeatureGate';
+
 
 const fadeInUp = {
   hidden: { opacity: 0, y: 40 },
@@ -150,6 +152,7 @@ function TikTokDashboardContent() {
   }
 
   return (
+    <FeatureGate permission="dashboard_access" requiredPlanName="Essencial">
     <motion.div
       className="space-y-8"
       initial="hidden"
@@ -257,6 +260,7 @@ function TikTokDashboardContent() {
         </Card>
       </motion.div>
     </motion.div>
+    </FeatureGate>
   );
 }
 

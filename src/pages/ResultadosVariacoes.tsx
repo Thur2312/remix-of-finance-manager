@@ -45,6 +45,7 @@ import {
 } from '@/lib/calculations';
 import { ResultsCharts } from '@/components/charts/ResultsCharts';
 import { motion } from 'framer-motion';
+import { FeatureGate } from '../components/FeatureGate';
 
 function ResultadosVariacoesContent() {
   const { user } = useAuth();
@@ -165,6 +166,7 @@ function ResultadosVariacoesContent() {
 
   if (allSettings.length === 0) {
     return (
+      <FeatureGate permission="variation_access" requiredPlanName="Essencial">
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
@@ -177,6 +179,7 @@ function ResultadosVariacoesContent() {
           action={{ label: 'Ir para Configurações', href: '/configuracoes' }}
         />
       </motion.div>
+      </FeatureGate>
     );
   }
 

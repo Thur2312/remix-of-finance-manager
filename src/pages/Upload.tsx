@@ -46,7 +46,9 @@ import {
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { MissingCostsModal, MissingSku } from '@/components/upload/MissingCostsModal';
-import { motion } from 'framer-motion';
+import { Feature, motion } from 'framer-motion';
+import { FeatureGate } from '@/components/FeatureGate';
+
 
 // Animações (alinhadas com Landing Page)
 const fadeInUp = {
@@ -451,6 +453,7 @@ function UploadContent() {
   };
 
   const renderUploadStep = () => (
+    <FeatureGate permission="upload_access" requiredPlanName="Essencial">
     <motion.div 
       className="max-w-2xl mx-auto"
       initial="hidden"
@@ -528,9 +531,11 @@ function UploadContent() {
         </CardContent>
       </Card>
     </motion.div>
+    </FeatureGate>
   );
 
   const renderMappingStep = () => (
+    <FeatureGate permission="upload_access" requiredPlanName="Essencial">
     <motion.div 
       className="max-w-4xl mx-auto"
       initial="hidden"
@@ -608,12 +613,14 @@ function UploadContent() {
         </CardContent>
       </Card>
     </motion.div>
+      </FeatureGate>
   );
 
   const renderPreviewStep = () => {
     const previewRows = processDataForImport().slice(0, 5);
 
     return (
+      <FeatureGate permission="upload_access" requiredPlanName="Essencial">
       <motion.div 
         className="max-w-6xl mx-auto"
         initial="hidden"
@@ -721,10 +728,12 @@ function UploadContent() {
           </CardContent>
         </Card>
       </motion.div>
+        </FeatureGate>
     );
   };
 
   const renderSuccessStep = () => (
+    <FeatureGate permission="upload_access" requiredPlanName="Essencial">
     <motion.div 
       className="max-w-md mx-auto text-center"
       initial="hidden"
@@ -775,9 +784,11 @@ function UploadContent() {
         </CardContent>
       </Card>
     </motion.div>
+      </FeatureGate>
   );
 
   return (
+    <FeatureGate permission="upload_access" requiredPlanName="Essencial">
     <div className="space-y-6 animate-fade-in">
       {step === 'upload' && renderUploadStep()}
       {step === 'mapping' && renderMappingStep()}
@@ -792,6 +803,7 @@ function UploadContent() {
         isLoading={isSavingCosts}
       />
     </div>
+      </FeatureGate>
   );
 }
 

@@ -285,7 +285,7 @@ function FluxoCaixaImportacaoContent() {
 
   return (
     <AppLayout>
-      <FeatureGate permission="cash_flow_import" requiredPlanName="Essencial ou superior">
+      <FeatureGate permission="cash_flow_import" requiredPlanName="Profissional ou superior">
       <motion.div 
         className="space-y-6"
         initial={{ opacity: 0, y: 20 }}

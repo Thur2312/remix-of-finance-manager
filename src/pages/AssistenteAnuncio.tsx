@@ -16,6 +16,8 @@ import { ImageGenerationSection } from '@/components/assistente/ImageGenerationS
 import { GeneratedImage } from '@/components/assistente/GeneratedImageGrid';
 import { MedidasProdutoSection } from '@/components/assistente/MedidasProdutoSection';
 import { MedidaLinha } from '@/components/assistente/medidas.types';
+import { Feature } from 'framer-motion';
+import { FeatureGate } from '@/components/FeatureGate';
 
 interface FormData {
   nomeProduto: string;
@@ -462,6 +464,7 @@ const AssistenteAnuncio = () => {
 
   return (
     <AppLayout>
+      <FeatureGate permission="ad_access" requiredPlanName="Essencial ou superior">
       <div className="space-y-6">
         {/* Header */}
         <div>
@@ -943,6 +946,7 @@ const AssistenteAnuncio = () => {
           </TabsContent>
         </Tabs>
       </div>
+      </FeatureGate>
     </AppLayout>
   );
 };

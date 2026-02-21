@@ -31,6 +31,8 @@ import { TikTokSettingsData, TikTokOrder, calculateTikTokResults, formatCurrency
 import { fetchAllTikTokOrders } from '@/lib/tiktok-helpers';
 import { EditableCostCell } from '@/components/EditableCostCell';
 import { ResultsCharts } from '@/components/charts/ResultsCharts';
+import { FeatureGate } from '@/components/FeatureGate';
+
 
 const fadeInUp = {
   hidden: { opacity: 0, y: 40 },
@@ -327,6 +329,7 @@ function TikTokResultadosContent() {
     }
 
     return (
+      <FeatureGate permission="result_access" requiredPlanName="Essencial">
       <motion.div
         className={cn('grid gap-4', totals.gasto_ads > 0 ? 'md:grid-cols-5' : 'md:grid-cols-4')}
         variants={staggerContainer}
@@ -352,10 +355,12 @@ function TikTokResultadosContent() {
           </motion.div>
         ))}
       </motion.div>
+      </FeatureGate>
     );
   };
 
   const renderFilters = () => (
+    <FeatureGate permission="result_access" requiredPlanName="Essencial">
     <motion.div variants={fadeInUp}>
       <Card className="border border-blue-200 shadow-lg bg-white">
         <CardHeader className="pb-4 bg-blue-50 border-b border-blue-200">
@@ -396,12 +401,14 @@ function TikTokResultadosContent() {
         </CardContent>
       </Card>
     </motion.div>
+    </FeatureGate>
   );
 
   const renderBatchActions = () => {
     if (selectedProducts.size === 0) return null;
 
     return (
+      <FeatureGate permission="result_access" requiredPlanName="Essencial">
       <div className="flex items-center gap-3 p-3 bg-blue-50 rounded-lg border border-blue-200 mb-4">
         <span className="text-sm font-medium text-gray-900">
           {selectedProducts.size} produto(s) selecionado(s)
@@ -463,12 +470,14 @@ function TikTokResultadosContent() {
           Limpar Seleção
         </Button>
       </div>
+      </FeatureGate>
     );
   };
 
   const renderResultsTable = () => {
     if (!calculatedResults || calculatedResults.groups.length === 0) {
       return (
+        <FeatureGate permission="result_access" requiredPlanName="Essencial">
         <motion.div variants={fadeInUp}>
           <Card className="border border-blue-200 shadow-lg bg-white">
             <CardContent className="py-12 text-center">
@@ -480,12 +489,14 @@ function TikTokResultadosContent() {
             </CardContent>
           </Card>
         </motion.div>
+        </FeatureGate>
       );
     }
 
     const { groups, totals } = calculatedResults;
 
     return (
+      <FeatureGate permission="result_access" requiredPlanName="Essencial">
       <motion.div variants={fadeInUp}>
         <Card className="border border-blue-200 shadow-lg bg-white">
           <CardHeader className="bg-blue-50 border-b border-blue-200">
@@ -569,6 +580,7 @@ function TikTokResultadosContent() {
           </CardContent>
         </Card>
       </motion.div>
+      </FeatureGate>
     );
   };
 
@@ -582,6 +594,7 @@ function TikTokResultadosContent() {
 
   if (allSettings.length === 0) {
     return (
+     <FeatureGate permission="result_access" requiredPlanName="Essencial">
       <motion.div
         initial="hidden"
         animate="visible"
@@ -604,10 +617,12 @@ function TikTokResultadosContent() {
           </CardContent>
         </Card>
       </motion.div>
+      </FeatureGate>
     );
   }
 
   return (
+    <FeatureGate permission="result_access" requiredPlanName="Essencial">
     <motion.div
       className="space-y-6"
       initial="hidden"
@@ -623,6 +638,7 @@ function TikTokResultadosContent() {
       )}
       {renderResultsTable()}
     </motion.div>
+      </FeatureGate>
   );
 }
 
