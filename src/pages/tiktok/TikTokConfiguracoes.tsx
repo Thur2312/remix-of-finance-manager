@@ -321,98 +321,111 @@ function TikTokConfiguracoesContent() {
   }
 
   return (
-    <motion.div
-      className="space-y-6"
-      initial="hidden"
-      animate="visible"
-      variants={staggerContainer}
+   <motion.div
+  className="space-y-6"
+  initial="hidden"
+  animate="visible"
+  variants={staggerContainer}
+>
+  {/* Header */}
+  <motion.div variants={fadeInUp} className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+    <div className="flex items-start gap-4">
+      <div className="hidden sm:flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-blue-600 to-blue-500 text-white shadow-lg shadow-blue-500/25">
+        <Settings className="h-6 w-6" />
+      </div>
+      <div>
+        <h2 className="text-2xl font-bold tracking-tight text-gray-900">
+          Configurações Financeiras
+        </h2>
+        <p className="text-gray-600">
+          Defina os parâmetros de cálculo para suas vendas no TikTok Shop
+        </p>
+      </div>
+    </div>
+    <Button
+      onClick={handleNewSettings}
+      className="bg-gradient-to-r from-blue-600 to-blue-500 hover:from-blue-700 hover:to-blue-600 text-white shadow-xl shadow-blue-500/25"
     >
-      <motion.div variants={fadeInUp} className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-        <div>
-          <h2 className="text-2xl font-bold text-gray-900">Configurações TikTok Shop</h2>
-          <p className="text-gray-600">
-            Defina os parâmetros de cálculo para suas vendas no TikTok Shop
-          </p>
-        </div>
-        <Button
-          onClick={handleNewSettings}
-          className="bg-gradient-to-r from-blue-600 to-blue-500 hover:from-blue-700 hover:to-blue-600 text-white"
-        >
-          <Plus className="h-4 w-4 mr-2" />
-          Nova Configuração
-        </Button>
-      </motion.div>
+      <Plus className="h-4 w-4 mr-2" />
+      Nova Configuração
+    </Button>
+  </motion.div>
 
-      <motion.div variants={fadeInUp} className="grid gap-6 lg:grid-cols-4">
-        <Card className="lg:col-span-1 border border-blue-200 shadow-lg bg-white">
-          <CardHeader className="pb-3 bg-blue-50 border-b border-blue-200">
-            <CardTitle className="text-base text-gray-900">Configurações Salvas</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-2">
-            {settings.length === 0 ? (
-              <p className="text-sm text-gray-600 text-center py-4">
-                Nenhuma configuração salva
-              </p>
-            ) : (
-              settings.map((setting) => (
-                <button
-                  key={setting.id}
-                  onClick={() => selectSettings(setting)}
-                  className={`w-full text-left p-3 rounded-lg border transition-colors ${
-                    selectedSettings?.id === setting.id
-                      ? 'border-blue-600 bg-blue-50'
-                      : 'border-transparent hover:bg-blue-25'
-                  }`}
-                >
-                  <div className="flex items-center gap-2">
-                    <Settings className="h-4 w-4 text-blue-600" />
-                    <span className="font-medium text-sm truncate text-gray-900">{setting.name}</span>
+
+    {/* Settings List */}
+    <motion.div variants={fadeInUp}>
+      <Card className="lg:col-span-1 border border-blue-200 shadow-lg bg-white">
+        <CardHeader className="pb-3 border-b border-blue-200 bg-blue-50">
+          <CardTitle className="text-base font-semibold text-gray-900">
+            Configurações Salvas
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-2 pt-4">
+          {settings.length === 0 ? (
+            <p className="text-sm text-gray-600 text-center py-4">
+              Nenhuma configuração salva
+            </p>
+          ) : (
+            settings.map((setting) => (
+              <button
+                key={setting.id}
+                onClick={() => selectSettings(setting)}
+                className={`w-full text-left p-3 rounded-xl border-2 transition-all duration-200 ${
+                  selectedSettings?.id === setting.id
+                    ? "border-blue-600 bg-blue-50 shadow-sm"
+                    : "border-transparent hover:bg-blue-25"
+                }`}
+              >
+                <div className="flex items-center gap-2">
+                  <div
+                    className={`h-8 w-8 rounded-lg flex items-center justify-center ${
+                      selectedSettings?.id === setting.id
+                        ? "bg-blue-600 text-white"
+                        : "bg-gray-100"
+                    }`}
+                  >
+                    <Settings className="h-4 w-4" />
                   </div>
-                  {setting.is_default && (
-                    <span className="text-xs text-blue-600">Padrão</span>
-                  )}
-                </button>
-              ))
-            )}
-          </CardContent>
-        </Card>
+                  <div className="flex-1 min-w-0">
+                    <span className="font-medium text-sm truncate block text-gray-900">
+                      {setting.name}
+                    </span>
+                    {setting.is_default && (
+                      <span className="text-xs text-blue-600 font-medium">
+                        Padrão
+                      </span>
+                    )}
+                  </div>
+                </div>
+              </button>
+            ))
+          )}
+        </CardContent>
+      </Card>
+    </motion.div>
 
-        <Card className="lg:col-span-3 border border-blue-200 shadow-lg bg-white">
-          <CardHeader className="bg-blue-50 border-b border-blue-200">
-            <CardTitle className="text-gray-900">
-              {isCreating ? 'Nova Configuração' : `Editar: ${selectedSettings?.name}`}
-            </CardTitle>
-            <CardDescription className="text-gray-600">
-              Configure as taxas e parâmetros que serão usados nos cálculos de resultado
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-6">
-            <div className="grid gap-4 sm:grid-cols-2">
-              <div className="space-y-2">
-                <Label htmlFor="name" className="text-gray-900">Nome da Configuração</Label>
-                <Input
-                  id="name"
-                  value={formData.name}
-                  onChange={(e) => handleInputChange('name', e.target.value)}
-                  placeholder="Ex: Padrão TikTok"
-                  className={`border-blue-200 focus:border-blue-500 ${errors.name ? 'border-red-500' : ''}`}
-                />
-                {errors.name && <p className="text-xs text-red-600">{errors.name}</p>}
+    {/* Settings Form */}
+    <motion.div variants={fadeInUp}>
+      <Card className="w-full border border-blue-200 shadow-lg bg-white">
+        <CardHeader className="border-b border-blue-200 bg-blue-50">
+          <CardTitle className="text-xl text-gray-900">
+            {isCreating ? "Nova Configuração" : `Editar: ${selectedSettings?.name}`}
+          </CardTitle>
+          <CardDescription className="text-gray-600">
+            Configure as taxas e parâmetros que serão usados nos cálculos de resultado
+          </CardDescription>
+        </CardHeader>
+
+        <CardContent className="space-y-6 pt-6">
+
+          {/* TikTok Fees */}
+          <div className="bg-gradient-to-r from-blue-50 to-white p-4 rounded-xl -mx-2 border border-blue-200">
+            <h3 className="font-semibold mb-4 text-blue-700 flex items-center gap-2">
+              <div className="h-6 w-6 rounded-md bg-blue-100 flex items-center justify-center">
+                <Settings className="h-3.5 w-3.5 text-blue-600" />
               </div>
-              <div className="flex items-center space-x-3 pt-6">
-                <Switch
-                  id="is_default"
-                  checked={formData.is_default}
-                  onCheckedChange={(checked) => handleInputChange('is_default', checked)}
-                />
-                <Label htmlFor="is_default" className="text-gray-900">Definir como padrão</Label>
-              </div>
-            </div>
-
-            <Separator />
-
-            <div>
-              <h3 className="font-semibold mb-4 text-blue-600">Taxas do TikTok Shop</h3>
+              Taxas do TikTok Shop
+            </h3>
               <div className="grid gap-4 sm:grid-cols-2">
                 <div className="space-y-2">
                   <Label htmlFor="taxa_comissao_tiktok" className="text-gray-900">Taxa de Comissão (%)</Label>
@@ -468,45 +481,6 @@ function TikTokConfiguracoesContent() {
               </div>
             </div>
 
-            <Separator />
-
-            <div>
-              <h3 className="font-semibold mb-4 text-blue-600">Antecipação</h3>
-              <div className="grid gap-4 sm:grid-cols-2">
-                <div className="space-y-2">
-                  <Label htmlFor="percentual_valor_antecipado" className="text-gray-900">% do Valor Antecipado</Label>
-                  <div className="relative">
-                    <Input
-                      id="percentual_valor_antecipado"
-                      type="text"
-                      inputMode="decimal"
-                      value={getLocalValue('percentual_valor_antecipado', formData.percentual_valor_antecipado, true, false)}
-                      onChange={(e) => handleLocalChange('percentual_valor_antecipado', e.target.value, true, false)}
-                      onBlur={() => handleLocalBlur('percentual_valor_antecipado', formData.percentual_valor_antecipado, true, false)}
-                      placeholder="0"
-                      className="pr-8 border-blue-200 focus:border-blue-500"
-                    />
-                    <span className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-600">%</span>
-                  </div>
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="taxa_antecipacao" className="text-gray-900">Taxa de Antecipação (%)</Label>
-                  <div className="relative">
-                    <Input
-                      id="taxa_antecipacao"
-                      type="text"
-                      inputMode="decimal"
-                      value={getLocalValue('taxa_antecipacao', formData.taxa_antecipacao, true, false)}
-                      onChange={(e) => handleLocalChange('taxa_antecipacao', e.target.value, true, false)}
-                      onBlur={() => handleLocalBlur('taxa_antecipacao', formData.taxa_antecipacao, true, false)}
-                      placeholder="0"
-                      className="pr-8 border-blue-200 focus:border-blue-500"
-                    />
-                    <span className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-600">%</span>
-                  </div>
-                </div>
-              </div>
-            </div>
 
             <Separator />
 
