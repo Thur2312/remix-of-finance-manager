@@ -347,7 +347,7 @@ function TikTokConfiguracoesContent() {
         </Button>
       </motion.div>
 
-      <motion.div variants={fadeInUp} className="grid gap-6 lg:grid-cols-4">
+      <motion.div variants={fadeInUp} className="grid gap-6 lg:grid-cols-3">
         <Card className="lg:col-span-1 border border-blue-200 shadow-lg bg-white">
           <CardHeader className="pb-3 bg-blue-50 border-b border-blue-200">
             <CardTitle className="text-base text-gray-900">Configurações Salvas</CardTitle>
@@ -416,8 +416,13 @@ function TikTokConfiguracoesContent() {
             <Separator />
 
             <div>
-              <h3 className="font-semibold mb-4 text-blue-600">Taxas do TikTok Shop</h3>
-              <div className="grid gap-4 sm:grid-cols-2">
+              <div className="bg-gradient-to-r from-blue-50 to-white p-4 rounded-xl border border-blue-200">
+                <h3 className="font-semibold mb-4 text-blue-700 flex items-center gap-2">
+                  <div className="h-6 w-6 rounded-md bg-blue-100 flex items-center justify-center">
+                    <Settings className="h-3.5 w-3.5 text-blue-600" />
+                  </div>
+                  Taxas do TikTok
+                </h3>
                 <div className="space-y-2">
                   <Label htmlFor="taxa_comissao_tiktok" className="text-gray-900">Taxa de Comissão (%)</Label>
                   <div className="relative">
