@@ -404,7 +404,7 @@ function ConfiguracoesContent() {
 
         {/* Settings Form */}
         <motion.div variants={fadeInUp} className="grid gap-6 lg:grid-cols-3">
-          <Card className="lg:col-span-1 border border-blue-200 shadow-lg bg-white">
+          <Card className="lg:col-span-4 border border-blue-200 shadow-lg bg-white">
             <CardHeader className="border-b border-blue-200 bg-blue-50">
               <CardTitle className="text-xl text-gray-900">
                 {isCreating ? 'Nova Configuração' : `Editar: ${selectedSettings?.name}`}
@@ -440,7 +440,7 @@ function ConfiguracoesContent() {
               <Separator />
 
               {/* Shopee Fees */}
-             <div className="bg-gradient-to-r from-blue-50 to-white p-4 rounded-xl border border-blue-200">
+              <div className="bg-gradient-to-r from-blue-50 to-white p-4 rounded-xl -mx-2 border border-blue-200">
                 <h3 className="font-semibold mb-4 text-blue-700 flex items-center gap-2">
                   <div className="h-6 w-6 rounded-md bg-blue-100 flex items-center justify-center">
                     <Settings className="h-3.5 w-3.5 text-blue-600" />
