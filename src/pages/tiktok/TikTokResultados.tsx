@@ -62,6 +62,8 @@ function TikTokResultadosContent() {
   const [isBatchSaving, setIsBatchSaving] = useState(false);
   const [showBatchInput, setShowBatchInput] = useState(false);
 
+  
+
   const fetchSettings = async () => {
     try {
       const { data, error } = await supabase
@@ -512,8 +514,27 @@ function TikTokResultadosContent() {
             {renderBatchActions()}
             <div className="rounded-lg border border-blue-200 overflow-x-auto">
               <Table>
-                <TableHeader>
-                                  </TableHeader>
+               <TableHeader>
+                <TableRow className="bg-blue-50">
+                  <TableHead className="w-[50px]">
+                    <Checkbox
+                      checked={selectedProducts.size === groups.length}
+                      onCheckedChange={(checked) => handleSelectAll(!!checked)}
+                    />
+                  </TableHead>
+                  <TableHead className="min-w-[200px] font-semibold text-gray-900">Produto</TableHead>
+                  <TableHead className="font-semibold text-gray-900">SKU</TableHead>
+                  <TableHead className="text-right w-[110px] font-semibold text-gray-900">Custo Unit.</TableHead>
+                  <TableHead className="text-right font-semibold text-gray-900">Qtd</TableHead>
+                  <TableHead className="text-right font-semibold text-gray-900">Faturado</TableHead>
+                  <TableHead className="text-right font-semibold text-gray-900">Taxa Shopee</TableHead>
+                  <TableHead className="text-right font-semibold text-gray-900">A Receber</TableHead>
+                  <TableHead className="text-right font-semibold text-gray-900">Custo Total</TableHead>
+                  <TableHead className="text-right font-semibold text-gray-900">Imposto</TableHead>
+                  <TableHead className="text-right font-semibold text-gray-900">Lucro R$</TableHead>
+                  <TableHead className="text-right font-semibold text-gray-900">Margem</TableHead>
+                </TableRow>
+              </TableHeader>
                 <TableBody>
                   {groups.map((row) => (
                     <TableRow

@@ -213,7 +213,7 @@ export function AppSidebar() {
             
             {!collapsed && (
               <span className="font-bold text-lg text-gray-900 whitespace-nowrap">
-                Finance Manager
+                Seller Finance
               </span>
             )}
           </motion.div>

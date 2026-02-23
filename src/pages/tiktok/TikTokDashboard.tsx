@@ -159,16 +159,6 @@ function TikTokDashboardContent() {
       animate="visible"
       variants={staggerContainer}
     >
-      {/* Welcome Section */}
-      <motion.div variants={fadeInUp} className="text-center">
-        <h1 className="text-3xl font-bold tracking-tight text-gray-900">
-          TikTok Shop Dashboard
-        </h1>
-        <p className="text-gray-600 mt-2">
-          Acompanhe seus resultados e tome decisões estratégicas
-        </p>
-      </motion.div>
-
       {/* Stats Cards */}
       <motion.div variants={fadeInUp} className="grid gap-4 md:grid-cols-3">
         {stats.map((stat) => (
