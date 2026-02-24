@@ -508,12 +508,12 @@ function UploadContent() {
                 <p className="text-lg font-semibold text-gray-900">
                   {isDragActive ? 'Solte o arquivo aqui' : 'Arraste o arquivo ou clique para selecionar'}
                 </p>
-                               <p className="text-sm text-gray-600 mt-1">
+                  <p className="text-sm text-gray-600 mt-1">
                   Apenas arquivos Excel (.xlsx, .xls)
                 </p>
               </div>
 
-              <Button variant="secondary" className="pointer-events-none shadow-sm border-blue-200 text-blue-700 hover:bg-blue-50">
+              <Button variant="default" className="pointer-events-none shadow-sm border-blue-200 hover:bg-blue-50">
                 Selecionar Arquivo
               </Button>
             </div>
@@ -606,7 +606,7 @@ function UploadContent() {
               <XCircle className="h-4 w-4 mr-2" />
               Cancelar
             </Button>
-            <Button onClick={handlePreview} className="shadow-md bg-blue-600 hover:bg-blue-700">
+            <Button onClick={handlePreview} className="shadow-md bg-blue-600">
               Continuar para Preview
             </Button>
           </div>

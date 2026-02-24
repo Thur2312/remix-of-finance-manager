@@ -47,11 +47,11 @@ export function parseSettlementDate(value: string | null | undefined): string | 
 // Column mapping for TikTok Settlement XLSX - with aliases for flexible matching
 export const settlementColumnMapping: Record<string, string[]> = {
   // Basic info
-  statement_date: ['Statement date', 'Data do extrato'],
-  statement_id: ['Statement ID', 'ID do extrato'],
+  statement_date: ['Statement date', 'Data do extrato', 'Data do demonstrativo'],
+  statement_id: ['Statement ID', 'ID do extrato', 'ID do demonstrativo'],
   payment_id: ['Payment ID', 'ID do pagamento'],
   status: ['Status'],
-  type: ['Type', 'Tipo'],
+  type: ['Type', 'Tipo', 'Tipo de Transação'],
   currency: ['Currency', 'Moeda'],
   
   // Order info
@@ -64,20 +64,20 @@ export const settlementColumnMapping: Record<string, string[]> = {
   
   // Dates
   data_criacao_pedido: ['Order created date', 'Data de criação do pedido', 'Created date'],
-  data_entrega: ['Order delivery date', 'Data de entrega', 'Delivery date'],
+  data_entrega: ['Order delivery date', 'Data de entrega', 'Delivery date', 'Data de entrega do pedido'],
   
   // Delivery info
   delivery_option: ['Delivery option', 'Opção de entrega'],
   collection_method: ['Collection methods', 'Collection method', 'Método de coleta'],
-  chargeable_weight: ['Chargeable package weight', 'Peso tarifável'],
+  chargeable_weight: ['Chargeable package weight', 'Peso tarifável', 'Peso da emabalagem cobrável'],
   
   // Main amounts
-  total_settlement_amount: ['Total settlement amount', 'Valor total de liquidação', 'Settlement amount'],
+  total_settlement_amount: ['Total settlement amount', 'Valor total de liquidação', 'Settlement amount', 'Valor total a ser liquidado'],
   customer_payment: ['Customer payment', 'Pagamento do cliente'],
   customer_refund: ['Customer refund', 'Reembolso do cliente'],
   net_sales: ['Net sales', 'Vendas líquidas'],
   subtotal_before_discounts: ['Subtotal before discounts', 'Subtotal antes dos descontos'],
-  refund_subtotal: ['Refund subtotal before seller discounts', 'Subtotal de reembolso'],
+  refund_subtotal: ['Refund subtotal before seller discounts', 'Subtotal de reembolso antes dos descontos do vendedor'],
   
   // Seller discounts
   seller_discounts: ['Seller discounts', 'Descontos do vendedor'],
@@ -92,7 +92,7 @@ export const settlementColumnMapping: Record<string, string[]> = {
   
   // Shipping
   shipping_total: ['Shipping', 'Frete'],
-  tiktok_shipping_fee: ['TikTok Shop shipping fee', 'Taxa de frete TikTok Shop'],
+  tiktok_shipping_fee: ['TikTok Shop shipping fee', 'Taxa de frete TikTok Shop','Taxa de Envio do TikTok Shop'],
   customer_shipping_fee: ['Customer shipping fee', 'Frete do cliente'],
   refunded_shipping: ['Refunded customer shipping fee', 'Frete reembolsado'],
   shipping_incentive: ['TikTok Shop shipping incentive', 'Incentivo de frete TikTok Shop'],
@@ -103,8 +103,8 @@ export const settlementColumnMapping: Record<string, string[]> = {
   // Fees
   total_fees: ['Fees', 'Taxas'],
   tiktok_commission_fee: ['TikTok Shop commission fee', 'Taxa de comissão TikTok Shop', 'Commission fee'],
-  affiliate_commission: ['Affiliate commission', 'Comissão de afiliado'],
-  affiliate_partner_commission: ['Affiliate partner commission', 'Comissão de parceiro afiliado'],
+  affiliate_commission: ['Affiliate commission', 'Comissão de afiliado', 'Comissão de afiliados'],
+  affiliate_partner_commission: ['Affiliate partner commission', 'Comissão de parceiro afiliado', 'Comissão de affiliate partner'],
   affiliate_shop_ads_commission: ['Affiliate Shop Ads commission', 'Comissão de anúncios de afiliados'],
   sfp_service_fee: ['SFP service fee', 'Taxa de serviço SFP'],
   fee_per_item: ['Fee per item sold', 'Taxa por item vendido', 'Fee per item'],

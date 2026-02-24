@@ -253,12 +253,13 @@ function TikTokUploadContent() {
         <CardHeader className="bg-blue-50 border-b border-blue-200">
           <CardTitle className="flex items-center gap-2 text-gray-900">
             <FileText className="h-6 w-6 text-blue-600" />
-            Upload de Relatório do TikTok Shop
+            Upload de Relatório 
           </CardTitle>
           <CardDescription className="text-gray-600">
             Faça upload do arquivo CSV exportado do TikTok Shop para importar seus pedidos
           </CardDescription>
         </CardHeader>
+        <br />
         <CardContent>
           <div
             onDragEnter={handleDrag}
@@ -484,7 +485,7 @@ function TikTokUploadContent() {
 export default function TikTokUpload() {
   return (
     <ProtectedRoute>
-      <AppLayout title="Upload TikTok">
+      <AppLayout title="Upload de Relatório">
         <TikTokUploadContent />
       </AppLayout>
     </ProtectedRoute>

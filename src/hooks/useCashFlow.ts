@@ -2,6 +2,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
+import { useEffect, useCallback } from 'react';
 
 export interface CashFlowCategory {
   id: string;
@@ -76,7 +77,7 @@ export function useCashFlowCategories() {
     enabled: !!user?.id,
   });
 
-  const initializeDefaultCategories = useMutation({
+const initializeDefaultCategories = useMutation({
     mutationFn: async () => {
       if (!user?.id) throw new Error('User not authenticated');
 
@@ -88,7 +89,9 @@ export function useCashFlowCategories() {
 
       const { error } = await supabase
         .from('cash_flow_categories')
-        .insert(categories);
+        .upsert(categories, {
+          onConflict: 'user_id,name'
+        });
 
       if (error) throw error;
     },

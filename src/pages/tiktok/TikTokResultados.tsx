@@ -371,6 +371,7 @@ function TikTokResultadosContent() {
             Filtros
           </CardTitle>
         </CardHeader>
+        <br />
         <CardContent>
           <div className="flex flex-wrap gap-4 items-end">
             <div className="space-y-2">
@@ -666,7 +667,7 @@ function TikTokResultadosContent() {
 export default function TikTokResultados() {
   return (
     <ProtectedRoute>
-      <AppLayout title="Resultados TikTok">
+      <AppLayout title="Resultados simplificados">
         <TikTokResultadosContent />
       </AppLayout>
     </ProtectedRoute>

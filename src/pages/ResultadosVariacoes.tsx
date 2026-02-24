@@ -45,7 +45,6 @@ import {
 } from '@/lib/calculations';
 import { ResultsCharts } from '@/components/charts/ResultsCharts';
 import { motion } from 'framer-motion';
-import { FeatureGate } from '../components/FeatureGate';
 
 function ResultadosVariacoesContent() {
   const { user } = useAuth();
@@ -166,7 +165,6 @@ function ResultadosVariacoesContent() {
 
   if (allSettings.length === 0) {
     return (
-      <FeatureGate permission="variation_access" requiredPlanName="Essencial">
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
@@ -179,7 +177,6 @@ function ResultadosVariacoesContent() {
           action={{ label: 'Ir para Configurações', href: '/configuracoes' }}
         />
       </motion.div>
-      </FeatureGate>
     );
   }
 
@@ -197,18 +194,13 @@ function ResultadosVariacoesContent() {
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.6, delay: 0.1 }}
       >
-        <PageHeader
-          title="Resultados com Variações"
-          description="Análise detalhada de lucro por produto e variação"
-          icon={Layers}
-        >
           {results && results.groups.length > 0 && (
             <Button onClick={handleExport} variant="outline" className="shadow-sm border-blue-200 text-blue-700 hover:bg-blue-50">
               <Download className="h-4 w-4 mr-2" />
               Exportar CSV
             </Button>
           )}
-        </PageHeader>
+
       </motion.div>
 
       {/* Filters */}
@@ -223,6 +215,7 @@ function ResultadosVariacoesContent() {
           headerClassName="bg-blue-50 border-b border-blue-200"
           className="border border-blue-200 bg-white shadow-lg"
         >
+          <br />
           <div className="flex flex-wrap gap-4 items-end">
             <div className="space-y-2">
               <Label className="text-gray-900">Configuração</Label>
@@ -412,7 +405,7 @@ function ResultadosVariacoesContent() {
 export default function ResultadosVariacoes() {
   return (
     <ProtectedRoute>
-      <AppLayout title="Resultados com Variações">
+      <AppLayout title="Resultados por Variação">
         <ResultadosVariacoesContent />
       </AppLayout>
     </ProtectedRoute>

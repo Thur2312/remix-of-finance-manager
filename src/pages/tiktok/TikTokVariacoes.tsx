@@ -32,6 +32,7 @@ import { fetchAllTikTokOrders } from '@/lib/tiktok-helpers';
 import { EditableCostCell } from '@/components/EditableCostCell';
 import { ResultsCharts } from '@/components/charts/ResultsCharts';
 import { FeatureGate} from '@/components/FeatureGate';
+import { PageHeader } from '@/components/ui/page-header';
 
 
 const fadeInUp = {
@@ -333,6 +334,7 @@ function TikTokVariacoesContent() {
 
   const renderFilters = () => (
     <FeatureGate permission="variation_access" requiredPlanName="Essencial">
+
     <motion.div variants={fadeInUp}>
       <Card className="border border-blue-200 shadow-lg bg-white">
         <CardHeader className="pb-4 bg-blue-50 border-b border-blue-200">
@@ -341,8 +343,9 @@ function TikTokVariacoesContent() {
             Filtros
           </CardTitle>
         </CardHeader>
+        <br />
         <CardContent>
-          <div className="flex flex-wrap gap-4 items-end">
+            <div className="flex flex-wrap gap-4 items-end">
             <div className="space-y-2">
               <Label className="text-gray-900">Configuração</Label>
               <Select value={selectedSettingsId} onValueChange={handleSettingsChange}>
@@ -636,7 +639,7 @@ function TikTokVariacoesContent() {
 export default function TikTokVariacoes() {
   return (
     <ProtectedRoute>
-      <AppLayout title="Variações TikTok">
+      <AppLayout title="Resultado por Variação">
         <TikTokVariacoesContent />
       </AppLayout>
     </ProtectedRoute>

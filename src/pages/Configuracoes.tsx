@@ -328,7 +328,7 @@ function ConfiguracoesContent() {
   }
 
   return (
-    <FeatureGate permission="configurations_access" requiredPlanName="Essencial">
+    <FeatureGate permission="configurations_access" requiredPlanName="Empresarial">
     <motion.div
       className="space-y-6"
       initial="hidden"
@@ -356,15 +356,15 @@ function ConfiguracoesContent() {
           Nova Configuração
         </Button>
       </motion.div>
-
-      <div className="grid gap-6 lg:grid-cols-3">
+        <div>
         {/* Settings List */}
-        <motion.div variants={fadeInUp}>
-          <Card className="lg:col-span-1 border border-blue-200 shadow-lg bg-white">
+        <motion.div variants={fadeInUp} className="grid gap-6 lg:grid-cols-4">
+          <Card className="w-full lg:col-span-1 border-blue-200 shadow-lg bg-white">
             <CardHeader className="pb-3 border-b border-blue-200 bg-blue-50">
               <CardTitle className="text-base font-semibold text-gray-900">Configurações Salvas</CardTitle>
             </CardHeader>
-            <CardContent className="space-y-2 pt-4">
+            <br />
+            <CardContent className="space-y-2 ">
               {settings.length === 0 ? (
                 <p className="text-sm text-gray-600 text-center py-4">
                   Nenhuma configuração salva
@@ -400,11 +400,11 @@ function ConfiguracoesContent() {
               )}
             </CardContent>
           </Card>
-        </motion.div>
+        
 
         {/* Settings Form */}
-        <motion.div variants={fadeInUp}>
-  <Card className="w-full border border-blue-200 shadow-lg bg-white">
+       
+          <Card className="lg:col-span-3 border border-blue-200 shadow-lg bg-white">
             <CardHeader className="border-b border-blue-200 bg-blue-50">
               <CardTitle className="text-xl text-gray-900">
                 {isCreating ? 'Nova Configuração' : `Editar: ${selectedSettings?.name}`}
@@ -676,6 +676,7 @@ function ConfiguracoesContent() {
       </div>
     </motion.div>
     </FeatureGate>
+    
   );
 }
 

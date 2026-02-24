@@ -200,14 +200,14 @@ export function AppSidebar() {
       <SidebarHeader className="border-b border-blue-200 bg-white/80">
        <motion.div
             className={`flex items-center transition-all duration-300
-              ${collapsed ? "justify-center py-4" : "gap-3 px-3 py-4"}
+              ${collapsed ? "justify-center py-4" : "mr-6 px-2 py-2"}
             `}
           >
             <img
               src={logo}
               alt="Logo"
               className={`object-contain transition-all duration-300
-                ${collapsed ? "h-10 w-10" : "h-14 w-14"}
+                ${collapsed ? "h-10 w-10" : "h-16 w-16"}
               `}
             />
             

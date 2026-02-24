@@ -387,7 +387,7 @@ function TikTokPagamentosUploadContent() {
       >
         <motion.div variants={fadeInUp} className="text-center">
           <h1 className="text-2xl font-bold tracking-tight text-gray-900">
-            Upload de Pagamentos TikTok
+            Upload de Pagamentos
           </h1>
           <p className="text-gray-600 mt-1">
             Importe o relatório de pagamentos (Income) do TikTok Shop para visualizar o detalhamento de recebimentos

@@ -257,7 +257,7 @@ function TikTokDashboardContent() {
 export default function TikTokDashboard() {
   return (
     <ProtectedRoute>
-      <AppLayout title="TikTok Shop">
+      <AppLayout title="DashBoard">
         <TikTokDashboardContent />
       </AppLayout>
     </ProtectedRoute>

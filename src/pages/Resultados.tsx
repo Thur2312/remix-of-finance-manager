@@ -51,8 +51,7 @@ import {
 } from '@/lib/calculations';
 import { ResultsCharts } from '@/components/charts/ResultsCharts';
 import { EditableCostCell } from '@/components/EditableCostCell';
-import { Feature, motion } from 'framer-motion';
-import { FeatureGate } from '@/components/FeatureGate';
+import { motion } from 'framer-motion';
 
 function ResultadosContent() {
   const { user } = useAuth();
@@ -337,7 +336,6 @@ function ResultadosContent() {
     const { totals } = results;
 
     return (
-      <FeatureGate permission="result_access" requiredPlanName="Essencial">
       <motion.div 
         className={cn('grid gap-4', totals.gasto_ads > 0 ? 'md:grid-cols-5' : 'md:grid-cols-4')}
         initial={{ opacity: 0, y: 20 }}
@@ -383,7 +381,6 @@ function ResultadosContent() {
           className="border border-blue-200 bg-white"
         />
       </motion.div>
-      </FeatureGate>
     );
   };
 
@@ -399,6 +396,7 @@ function ResultadosContent() {
         headerClassName="bg-blue-50 border-b border-blue-200"
         className="border border-blue-200 bg-white shadow-lg"
       >
+        <br />
         <div className="flex flex-wrap gap-4 items-end">
           <div className="space-y-2">
             <Label className="text-gray-900">Configuração</Label>
@@ -431,7 +429,6 @@ function ResultadosContent() {
     if (selectedProducts.size === 0) return null;
 
     return (
-      <FeatureGate permission="result_access" requiredPlanName="Essencial">
       <motion.div 
         className="flex items-center gap-3 p-3 bg-blue-100 rounded-lg border border-blue-200 mb-4"
         initial={{ opacity: 0, scale: 0.95 }}
@@ -499,14 +496,12 @@ function ResultadosContent() {
           Limpar Seleção
         </Button>
       </motion.div>
-      </FeatureGate>
     );
   };
 
   const renderResultsTable = () => {
     if (!results || results.groups.length === 0) {
       return (
-        <FeatureGate permission="result_access" requiredPlanName="Essencial">
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
@@ -518,7 +513,6 @@ function ResultadosContent() {
             description="Ajuste os filtros ou faça upload de pedidos para visualizar os resultados."
           />
         </motion.div>
-        </FeatureGate>
       );
     }
 
@@ -527,7 +521,6 @@ function ResultadosContent() {
     const someSelected = selectedProducts.size > 0 && selectedProducts.size < groups.length;
 
     return (
-      <FeatureGate permission="result_access" requiredPlanName="Essencial">
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
@@ -640,7 +633,6 @@ function ResultadosContent() {
           </div>
         </SectionCard>
       </motion.div>
-     </FeatureGate>
     );
   };
 
@@ -659,7 +651,6 @@ function ResultadosContent() {
 
   if (allSettings.length === 0) {
     return (
-      <FeatureGate permission="result_access" requiredPlanName="Essencial">
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
@@ -672,12 +663,10 @@ function ResultadosContent() {
           action={{ label: 'Ir para Configurações', href: '/configuracoes' }}
         />
       </motion.div>
-      </FeatureGate>
     );
   }
 
   return (
-    <FeatureGate permission="result_access" requiredPlanName="Essencial">
     <motion.div 
       className="space-y-6"
       initial={{ opacity: 0, y: 20 }}
@@ -689,11 +678,7 @@ function ResultadosContent() {
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.6, delay: 0.1 }}
       >
-        <PageHeader
-          title="Resultados Simplificados"
-          description="Análise de lucro por produto"
-          icon={FileSpreadsheet}
-        />
+    
       </motion.div>
       {renderFilters()}
       {renderSummaryCards()}
@@ -707,9 +692,7 @@ function ResultadosContent() {
         </motion.div>
       )}
       {renderResultsTable()}
-      
     </motion.div>
-    </FeatureGate>
   );
 }
 

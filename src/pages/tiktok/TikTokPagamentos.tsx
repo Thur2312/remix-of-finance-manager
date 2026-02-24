@@ -361,7 +361,7 @@ function TikTokPagamentosContent() {
         >
           <motion.div variants={fadeInUp} className="text-center">
             <h1 className="text-2xl font-bold tracking-tight text-gray-900">
-              Pagamentos TikTok Shop
+              Pagamentos 
             </h1>
             <p className="text-gray-600 mt-1">
               Visualize o detalhamento completo de recebimentos do TikTok Shop
