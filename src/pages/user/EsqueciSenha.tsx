@@ -118,7 +118,7 @@ export default function EsqueciSenha() {
             </CardHeader>
             <CardContent className="space-y-4 pt-6">
               <Button
-                onClick={() => navigate('/auth')}
+                onClick={() => navigate('/user/auth')}
                 className="w-full h-11 bg-gradient-to-r from-blue-600 to-blue-500 text-white"
               >
                 Voltar para Login
@@ -142,7 +142,7 @@ export default function EsqueciSenha() {
           <Card className="border border-blue-200 shadow-lg bg-white">
             <CardHeader className="space-y-4 bg-blue-50 border-b border-blue-200">
               <button
-                onClick={() => navigate('/auth')}
+                onClick={() => navigate('/user/auth')}
                 className="flex items-center gap-2 text-sm text-gray-600 hover:text-gray-900"
               >
                 <ArrowLeft className="h-4 w-4" />
