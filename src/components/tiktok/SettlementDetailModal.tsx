@@ -17,7 +17,6 @@ import {
   TrendingUp,
   AlertTriangle,
 } from 'lucide-react';
-import { motion } from 'framer-motion';
 
 interface Settlement {
   order_id: string;
@@ -72,22 +71,6 @@ interface SettlementDetailModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
 }
-
-// Animações (alinhadas com Landing Page)
-const fadeInUp = {
-  hidden: { opacity: 0, y: 60 },
-  visible: { opacity: 1, y: 0, transition: { duration: 0.6 } }
-};
-
-const stagger = {
-  hidden: { opacity: 0 },
-  visible: {
-    opacity: 1,
-    transition: {
-      staggerChildren: 0.2
-    }
-  }
-};
 
 export function SettlementDetailModal({
   settlement,
@@ -163,132 +146,114 @@ export function SettlementDetailModal({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto bg-white border border-blue-200">
+      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle className="flex items-center gap-2 text-gray-900">
-            <Package className="h-5 w-5 text-blue-600" />
+          <DialogTitle className="flex items-center gap-2">
+            <Package className="h-5 w-5" />
             Pedido #{settlement.order_id.slice(0, 15)}...
             {getStatusBadge()}
             {getTypeBadge()}
           </DialogTitle>
         </DialogHeader>
 
-        <motion.div 
-          className="space-y-4"
-          initial="hidden"
-          whileInView="visible"
-          viewport={{ once: true }}
-          variants={stagger}
-        >
+        <div className="space-y-4">
           {/* Product Info */}
-          <motion.div 
-            className="bg-blue-50 rounded-lg p-4 border border-blue-200"
-            variants={fadeInUp}
-          >
-            <h4 className="font-medium mb-2 flex items-center gap-2 text-gray-900">
-              <Package className="h-4 w-4 text-blue-600" />
+          <div className="bg-muted/50 rounded-lg p-4">
+            <h4 className="font-medium mb-2 flex items-center gap-2">
+              <Package className="h-4 w-4" />
               Produto
             </h4>
-            <p className="text-sm font-medium text-gray-900">{settlement.nome_produto || '-'}</p>
+            <p className="text-sm font-medium">{settlement.nome_produto || '-'}</p>
             {settlement.variacao && (
-              <p className="text-sm text-gray-600">Variação: {settlement.variacao}</p>
+              <p className="text-sm text-muted-foreground">Variação: {settlement.variacao}</p>
             )}
             {settlement.sku_id && (
-              <p className="text-xs text-gray-500 font-mono">SKU: {settlement.sku_id}</p>
+              <p className="text-xs text-muted-foreground font-mono">SKU: {settlement.sku_id}</p>
             )}
-            <p className="text-sm mt-1 text-gray-900">Quantidade: <span className="font-medium">{settlement.quantidade}</span></p>
-          </motion.div>
+            <p className="text-sm mt-1">Quantidade: <span className="font-medium">{settlement.quantidade}</span></p>
+          </div>
 
           {/* Dates */}
-          <motion.div 
-            className="bg-blue-50 rounded-lg p-4 border border-blue-200"
-            variants={fadeInUp}
-          >
-            <h4 className="font-medium mb-2 flex items-center gap-2 text-gray-900">
-              <Calendar className="h-4 w-4 text-blue-600" />
+          <div className="bg-muted/50 rounded-lg p-4">
+            <h4 className="font-medium mb-2 flex items-center gap-2">
+              <Calendar className="h-4 w-4" />
               Datas
             </h4>
             <div className="grid grid-cols-3 gap-4 text-sm">
               <div>
-                <p className="text-gray-600">Criado</p>
-                <p className="font-medium text-gray-900">{formatDate(settlement.data_criacao_pedido)}</p>
+                <p className="text-muted-foreground">Criado</p>
+                <p className="font-medium">{formatDate(settlement.data_criacao_pedido)}</p>
               </div>
               <div>
-                <p className="text-gray-600">Entregue</p>
-                <p className="font-medium text-gray-900">{formatDate(settlement.data_entrega)}</p>
+                <p className="text-muted-foreground">Entregue</p>
+                <p className="font-medium">{formatDate(settlement.data_entrega)}</p>
               </div>
               <div>
-                <p className="text-gray-600">Pago</p>
-                <p className="font-medium text-gray-900">{formatDate(settlement.statement_date)}</p>
+                <p className="text-muted-foreground">Pago</p>
+                <p className="font-medium">{formatDate(settlement.statement_date)}</p>
               </div>
             </div>
             {settlement.delivery_option && (
-              <p className="text-xs text-gray-500 mt-2">
+              <p className="text-xs text-muted-foreground mt-2">
                 Entrega: {settlement.delivery_option} | {settlement.collection_method || '-'}
               </p>
             )}
-          </motion.div>
+          </div>
 
           {/* Values */}
-          <motion.div 
-            className="bg-blue-50 rounded-lg p-4 border border-blue-200"
-            variants={fadeInUp}
-          >
-            <h4 className="font-medium mb-2 flex items-center gap-2 text-gray-900">
-              <DollarSign className="h-4 w-4 text-blue-600" />
+          <div className="bg-muted/50 rounded-lg p-4">
+            <h4 className="font-medium mb-2 flex items-center gap-2">
+              <DollarSign className="h-4 w-4" />
               Valores
             </h4>
             <div className="grid grid-cols-2 gap-4 text-sm">
               <div>
-                <p className="text-gray-600">Preço Original</p>
-                <p className="font-medium text-gray-900">{formatCurrency(settlement.subtotal_before_discounts || 0)}</p>
+                <p className="text-muted-foreground">Preço Original</p>
+                <p className="font-medium">{formatCurrency(settlement.subtotal_before_discounts || 0)}</p>
               </div>
               <div>
-                <p className="text-gray-600">Pago pelo Cliente</p>
+                <p className="text-muted-foreground">Pago pelo Cliente</p>
                 <p className="font-medium text-blue-600">{formatCurrency(settlement.customer_payment || 0)}</p>
               </div>
             </div>
-          </motion.div>
+          </div>
 
           {/* Discounts */}
-          <motion.div 
-            className="bg-blue-50 rounded-lg p-4 border border-blue-200"
-            variants={fadeInUp}
-          >
-            <h4 className="font-medium mb-2 flex items-center gap-2 text-gray-900">
-              <Tag className="h-4 w-4 text-blue-600" />
+          <div className="bg-muted/50 rounded-lg p-4">
+            <h4 className="font-medium mb-2 flex items-center gap-2">
+              <Tag className="h-4 w-4" />
               Descontos Aplicados
             </h4>
             <div className="space-y-2 text-sm">
               <div className="flex justify-between">
-                <span className="text-gray-600">Desconto Vendedor:</span>
+                <span className="text-muted-foreground">Desconto Vendedor:</span>
                 <span className="text-rose-600">-{formatCurrency(Math.abs(settlement.seller_discounts || 0))}</span>
               </div>
               {(settlement.seller_cofunded_discount || 0) !== 0 && (
                 <div className="flex justify-between">
-                  <span className="text-gray-600">Cupom Co-financiado Vendedor:</span>
+                  <span className="text-muted-foreground">Cupom Co-financiado Vendedor:</span>
                   <span className="text-rose-600">-{formatCurrency(Math.abs(settlement.seller_cofunded_discount))}</span>
                 </div>
               )}
               {(settlement.seller_cofunded_discount_refund || 0) !== 0 && (
                 <div className="flex justify-between">
-                  <span className="text-gray-600">Reembolso Cupom Vendedor:</span>
+                  <span className="text-muted-foreground">Reembolso Cupom Vendedor:</span>
                   <span className="text-emerald-600">+{formatCurrency(Math.abs(settlement.seller_cofunded_discount_refund || 0))}</span>
                 </div>
               )}
               <div className="flex justify-between">
-                <span className="text-gray-600">Desconto Plataforma:</span>
+                <span className="text-muted-foreground">Desconto Plataforma:</span>
                 <span className="text-rose-600">-{formatCurrency(Math.abs(settlement.platform_discounts || 0))}</span>
               </div>
               {(settlement.platform_cofunded_discount || 0) !== 0 && (
                 <div className="flex justify-between">
-                  <span className="text-gray-600">Cupom Co-financiado Plataforma:</span>
+                  <span className="text-muted-foreground">Cupom Co-financiado Plataforma:</span>
                   <span className="text-rose-600">-{formatCurrency(Math.abs(settlement.platform_cofunded_discount))}</span>
                 </div>
               )}
               {(settlement.platform_discounts_refund || 0) !== 0 && (
                 <div className="flex justify-between">
-                  <span className="text-gray-600">Reembolso Cupom Plataforma:</span>
+                  <span className="text-muted-foreground">Reembolso Cupom Plataforma:</span>
                   <span className="text-emerald-600">+{formatCurrency(Math.abs(settlement.platform_discounts_refund || 0))}</span>
                 </div>
               )}
@@ -298,61 +263,58 @@ export function SettlementDetailModal({
                 <span className="text-rose-600">-{formatCurrency(totalDiscounts)}</span>
               </div>
             </div>
-          </motion.div>
+          </div>
 
           {/* Shipping */}
-          <motion.div 
-            className="bg-blue-50 rounded-lg p-4 border border-blue-200"
-            variants={fadeInUp}
-          >
-            <h4 className="font-medium mb-2 flex items-center gap-2 text-gray-900">
-              <Truck className="h-4 w-4 text-blue-600" />
+          <div className="bg-muted/50 rounded-lg p-4">
+            <h4 className="font-medium mb-2 flex items-center gap-2">
+              <Truck className="h-4 w-4" />
               Frete
             </h4>
             <div className="space-y-2 text-sm">
               {(settlement.shipping_total || 0) !== 0 && (
                 <div className="flex justify-between">
-                  <span className="text-gray-600">Frete Total (consolidado):</span>
+                  <span className="text-muted-foreground">Frete Total (consolidado):</span>
                   <span className={settlement.shipping_total! >= 0 ? 'text-emerald-600' : 'text-rose-600'}>
                     {formatCurrency(settlement.shipping_total || 0)}
                   </span>
                 </div>
               )}
               <div className="flex justify-between">
-                <span className="text-gray-600">Frete TikTok:</span>
+                <span className="text-muted-foreground">Frete TikTok:</span>
                 <span className="text-rose-600">-{formatCurrency(Math.abs(settlement.tiktok_shipping_fee || 0))}</span>
               </div>
               <div className="flex justify-between">
-                <span className="text-gray-600">Frete Cliente:</span>
+                <span className="text-muted-foreground">Frete Cliente:</span>
                 <span className="text-emerald-600">+{formatCurrency(settlement.customer_shipping_fee || 0)}</span>
               </div>
               {(settlement.shipping_incentive || 0) > 0 && (
                 <div className="flex justify-between">
-                  <span className="text-gray-600">Incentivo Frete:</span>
+                  <span className="text-muted-foreground">Incentivo Frete:</span>
                   <span className="text-emerald-600">+{formatCurrency(settlement.shipping_incentive)}</span>
                 </div>
               )}
               {(settlement.shipping_incentive_refund || 0) !== 0 && (
                 <div className="flex justify-between">
-                  <span className="text-gray-600">Reembolso Incentivo Frete:</span>
+                  <span className="text-muted-foreground">Reembolso Incentivo Frete:</span>
                   <span className="text-rose-600">-{formatCurrency(Math.abs(settlement.shipping_incentive_refund || 0))}</span>
                 </div>
               )}
               {(settlement.shipping_subsidy || 0) !== 0 && (
                 <div className="flex justify-between">
-                  <span className="text-gray-600">Subsídio Frete:</span>
+                  <span className="text-muted-foreground">Subsídio Frete:</span>
                   <span className="text-emerald-600">+{formatCurrency(settlement.shipping_subsidy || 0)}</span>
                 </div>
               )}
               {(settlement.refunded_shipping || 0) !== 0 && (
                 <div className="flex justify-between">
-                  <span className="text-gray-600">Frete Reembolsado:</span>
+                  <span className="text-muted-foreground">Frete Reembolsado:</span>
                   <span className="text-rose-600">-{formatCurrency(Math.abs(settlement.refunded_shipping))}</span>
                 </div>
               )}
               {(settlement.actual_return_shipping_fee || 0) !== 0 && (
                 <div className="flex justify-between">
-                  <span className="text-gray-600">Frete Devolução Real:</span>
+                  <span className="text-muted-foreground">Frete Devolução Real:</span>
                   <span className="text-rose-600">-{formatCurrency(Math.abs(settlement.actual_return_shipping_fee || 0))}</span>
                 </div>
               )}
@@ -364,77 +326,74 @@ export function SettlementDetailModal({
                 </span>
               </div>
             </div>
-          </motion.div>
+          </div>
 
           {/* Fees */}
-          <motion.div 
-            className="bg-blue-50 rounded-lg p-4 border border-blue-200"
-            variants={fadeInUp}
-          >
-            <h4 className="font-medium mb-2 flex items-center gap-2 text-gray-900">
-              <Receipt className="h-4 w-4 text-blue-600" />
+          <div className="bg-muted/50 rounded-lg p-4">
+            <h4 className="font-medium mb-2 flex items-center gap-2">
+              <Receipt className="h-4 w-4" />
               Taxas Cobradas
             </h4>
             <div className="space-y-2 text-sm">
               <div className="flex justify-between">
-                <span className="text-gray-600">Comissão TikTok:</span>
+                <span className="text-muted-foreground">Comissão TikTok:</span>
                 <span className="text-amber-600">-{formatCurrency(Math.abs(settlement.tiktok_commission_fee || 0))}</span>
               </div>
               <div className="flex justify-between">
-                <span className="text-gray-600">SFP Service Fee:</span>
+                <span className="text-muted-foreground">SFP Service Fee:</span>
                 <span className="text-amber-600">-{formatCurrency(Math.abs(settlement.sfp_service_fee || 0))}</span>
               </div>
               {(settlement.affiliate_commission || 0) !== 0 && (
                 <div className="flex justify-between">
-                  <span className="text-gray-600">Comissão Afiliado:</span>
+                  <span className="text-muted-foreground">Comissão Afiliado:</span>
                   <span className="text-amber-600">-{formatCurrency(Math.abs(settlement.affiliate_commission))}</span>
                 </div>
               )}
               {(settlement.affiliate_partner_commission || 0) !== 0 && (
                 <div className="flex justify-between">
-                  <span className="text-gray-600">Comissão Parceiro Afiliado:</span>
+                  <span className="text-muted-foreground">Comissão Parceiro Afiliado:</span>
                   <span className="text-amber-600">-{formatCurrency(Math.abs(settlement.affiliate_partner_commission || 0))}</span>
                 </div>
               )}
-                           {(settlement.affiliate_shop_ads_commission || 0) !== 0 && (
+              {(settlement.affiliate_shop_ads_commission || 0) !== 0 && (
                 <div className="flex justify-between">
-                  <span className="text-gray-600">Comissão Afiliado Shop Ads:</span>
+                  <span className="text-muted-foreground">Comissão Afiliado Shop Ads:</span>
                   <span className="text-amber-600">-{formatCurrency(Math.abs(settlement.affiliate_shop_ads_commission || 0))}</span>
                 </div>
               )}
               {(settlement.fee_per_item || 0) !== 0 && (
                 <div className="flex justify-between">
-                  <span className="text-gray-600">Taxa por Item:</span>
+                  <span className="text-muted-foreground">Taxa por Item:</span>
                   <span className="text-amber-600">-{formatCurrency(Math.abs(settlement.fee_per_item))}</span>
                 </div>
               )}
               {(settlement.live_specials_fee || 0) !== 0 && (
                 <div className="flex justify-between">
-                  <span className="text-gray-600">LIVE Specials Fee:</span>
+                  <span className="text-muted-foreground">LIVE Specials Fee:</span>
                   <span className="text-amber-600">-{formatCurrency(Math.abs(settlement.live_specials_fee))}</span>
                 </div>
               )}
               {(settlement.voucher_xtra_fee || 0) !== 0 && (
                 <div className="flex justify-between">
-                  <span className="text-gray-600">Voucher Xtra Fee:</span>
+                  <span className="text-muted-foreground">Voucher Xtra Fee:</span>
                   <span className="text-amber-600">-{formatCurrency(Math.abs(settlement.voucher_xtra_fee))}</span>
                 </div>
               )}
               {(settlement.bonus_cashback_fee || 0) !== 0 && (
                 <div className="flex justify-between">
-                  <span className="text-gray-600">Bonus Cashback Fee:</span>
+                  <span className="text-muted-foreground">Bonus Cashback Fee:</span>
                   <span className="text-amber-600">-{formatCurrency(Math.abs(settlement.bonus_cashback_fee || 0))}</span>
                 </div>
               )}
               {(settlement.icms_difal || 0) !== 0 && (
                 <div className="flex justify-between">
-                  <span className="text-gray-600">ICMS DIFAL:</span>
+                  <span className="text-muted-foreground">ICMS DIFAL:</span>
                   <span className="text-amber-600">-{formatCurrency(Math.abs(settlement.icms_difal))}</span>
                 </div>
               )}
               {(settlement.icms_penalty || 0) !== 0 && (
                 <div className="flex justify-between">
-                  <span className="text-gray-600">ICMS Penalty:</span>
+                  <span className="text-muted-foreground">ICMS Penalty:</span>
                   <span className="text-amber-600">-{formatCurrency(Math.abs(settlement.icms_penalty || 0))}</span>
                 </div>
               )}
@@ -444,34 +403,28 @@ export function SettlementDetailModal({
                 <span className="text-amber-600">-{formatCurrency(totalFees)}</span>
               </div>
             </div>
-          </motion.div>
+          </div>
 
           {/* Adjustment if any */}
           {(settlement.adjustment_amount || 0) !== 0 && (
-            <motion.div 
-              className="bg-amber-50 rounded-lg p-4 border border-amber-200"
-              variants={fadeInUp}
-            >
-              <h4 className="font-medium mb-2 flex items-center gap-2 text-gray-900">
+            <div className="bg-amber-50 dark:bg-amber-950/20 rounded-lg p-4">
+              <h4 className="font-medium mb-2 flex items-center gap-2">
                 <AlertTriangle className="h-4 w-4 text-amber-600" />
                 Ajuste
               </h4>
               <div className="flex justify-between text-sm">
-                <span className="text-gray-600">{settlement.adjustment_reason || 'Ajuste'}</span>
+                <span className="text-muted-foreground">{settlement.adjustment_reason || 'Ajuste'}</span>
                 <span className={settlement.adjustment_amount >= 0 ? 'text-emerald-600' : 'text-rose-600'}>
                   {settlement.adjustment_amount >= 0 ? '+' : ''}{formatCurrency(settlement.adjustment_amount)}
                 </span>
               </div>
-            </motion.div>
+            </div>
           )}
 
           {/* Final Amount */}
-          <motion.div 
-            className="bg-emerald-50 rounded-lg p-4 border border-emerald-200"
-            variants={fadeInUp}
-          >
+          <div className="bg-emerald-50 dark:bg-emerald-950/20 rounded-lg p-4">
             <div className="flex justify-between items-center">
-              <h4 className="font-medium flex items-center gap-2 text-gray-900">
+              <h4 className="font-medium flex items-center gap-2">
                 <CheckCircle className="h-5 w-5 text-emerald-600" />
                 VALOR RECEBIDO
               </h4>
@@ -479,28 +432,25 @@ export function SettlementDetailModal({
                 {formatCurrency(settlement.total_settlement_amount || 0)}
               </span>
             </div>
-          </motion.div>
+          </div>
 
           {/* Real Profit Section */}
-          <motion.div 
-            className={`rounded-lg p-4 border ${realProfit >= 0 ? 'bg-blue-50 border-blue-200' : 'bg-rose-50 border-rose-200'}`}
-            variants={fadeInUp}
-          >
-            <h4 className="font-medium mb-3 flex items-center gap-2 text-gray-900">
-              <TrendingUp className="h-4 w-4 text-blue-600" />
+          <div className={`rounded-lg p-4 ${realProfit >= 0 ? 'bg-blue-50 dark:bg-blue-950/20' : 'bg-rose-50 dark:bg-rose-950/20'}`}>
+            <h4 className="font-medium mb-3 flex items-center gap-2">
+              <TrendingUp className="h-4 w-4" />
               Análise de Lucro
             </h4>
             <div className="space-y-2 text-sm">
               <div className="flex justify-between">
-                <span className="text-gray-600">Custo Unitário:</span>
-                <span className={unitCost > 0 ? 'text-gray-900' : 'text-amber-600'}>
+                <span className="text-muted-foreground">Custo Unitário:</span>
+                <span className={unitCost > 0 ? '' : 'text-amber-600'}>
                   {unitCost > 0 ? formatCurrency(unitCost) : 'Não informado'}
                 </span>
               </div>
               {unitCost > 0 && (
                 <>
                   <div className="flex justify-between">
-                    <span className="text-gray-600">Custo Total ({settlement.quantidade} un):</span>
+                    <span className="text-muted-foreground">Custo Total ({settlement.quantidade} un):</span>
                     <span className="text-rose-600">-{formatCurrency(totalCost)}</span>
                   </div>
                   <Separator />
@@ -511,7 +461,7 @@ export function SettlementDetailModal({
                     </span>
                   </div>
                   <div className="flex justify-between">
-                    <span className="text-gray-600">Margem de Lucro:</span>
+                    <span className="text-muted-foreground">Margem de Lucro:</span>
                     <span className={profitMargin >= 0 ? 'text-emerald-600' : 'text-rose-600'}>
                       {profitMargin.toFixed(1)}%
                     </span>
@@ -524,8 +474,8 @@ export function SettlementDetailModal({
                 </p>
               )}
             </div>
-          </motion.div>
-        </motion.div>
+          </div>
+        </div>
       </DialogContent>
     </Dialog>
   );

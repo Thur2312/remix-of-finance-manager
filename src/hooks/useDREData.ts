@@ -42,84 +42,6 @@ export function useDREData(): UseDREDataResult {
   const periods = useMemo(() => getDefaultPeriods(), []);
   const [selectedPeriod, setSelectedPeriod] = useState<DREPeriod>(periods[0]);
 
-  // Fetch all data
-  const fetchAllData = async () => {
-    if (!user) return;
-    
-    setIsLoading(true);
-    setError(null);
-
-    try {
-      // Fetch all data in parallel
-      const [
-        shopeeOrdersData,
-        tiktokOrdersResult,
-        tiktokSettlementsResult,
-        fixedCostsResult,
-        shopeeSettingsResult,
-        tiktokSettingsResult
-      ] = await Promise.all([
-        // Shopee orders (using the helper for pagination)
-        fetchAllOrders(),
-        
-        // TikTok orders
-        fetchAllTikTokOrders(user.id),
-        
-        // TikTok settlements
-        fetchAllTikTokSettlements(user.id),
-        
-        // Fixed costs
-        supabase
-          .from('fixed_costs')
-          .select('*')
-          .eq('user_id', user.id),
-        
-        // Shopee settings (get default or first)
-        supabase
-          .from('settings')
-          .select('taxa_comissao_shopee, adicional_por_item, percentual_nf_entrada, gasto_shopee_ads, imposto_nf_saida')
-          .eq('user_id', user.id)
-          .eq('is_default', true)
-          .maybeSingle(),
-        
-        // TikTok settings (get default or first)
-        supabase
-          .from('tiktok_settings')
-          .select('taxa_comissao_tiktok, taxa_afiliado, adicional_por_item, percentual_nf_entrada, gasto_tiktok_ads, imposto_nf_saida')
-          .eq('user_id', user.id)
-          .eq('is_default', true)
-          .maybeSingle()
-      ]);
-
-      setShopeeOrders(shopeeOrdersData);
-      
-      if (tiktokOrdersResult.error) throw tiktokOrdersResult.error;
-      setTiktokOrders(tiktokOrdersResult.data || []);
-      
-      if (tiktokSettlementsResult.error) throw tiktokSettlementsResult.error;
-      setTiktokSettlements(tiktokSettlementsResult.data || []);
-      
-      if (fixedCostsResult.error) throw fixedCostsResult.error;
-      setFixedCosts(fixedCostsResult.data || []);
-      
-      if (shopeeSettingsResult.error && shopeeSettingsResult.error.code !== 'PGRST116') {
-        throw shopeeSettingsResult.error;
-      }
-      setShopeeSettings(shopeeSettingsResult.data);
-      
-      if (tiktokSettingsResult.error && tiktokSettingsResult.error.code !== 'PGRST116') {
-        throw tiktokSettingsResult.error;
-      }
-      setTiktokSettings(tiktokSettingsResult.data);
-
-    } catch (err) {
-      console.error('Error fetching DRE data:', err);
-      setError(err instanceof Error ? err.message : 'Erro ao carregar dados do DRE');
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
   // Helper to fetch all TikTok orders with pagination
   async function fetchAllTikTokOrders(userId: string) {
     const PAGE_SIZE = 1000;
@@ -190,6 +112,83 @@ export function useDREData(): UseDREDataResult {
 
   // Initial fetch
   useEffect(() => {
+    const fetchAllData = async () => {
+      if (!user) return;
+      
+      setIsLoading(true);
+      setError(null);
+
+      try {
+        // Fetch all data in parallel
+        const [
+          shopeeOrdersData,
+          tiktokOrdersResult,
+          tiktokSettlementsResult,
+          fixedCostsResult,
+          shopeeSettingsResult,
+          tiktokSettingsResult
+        ] = await Promise.all([
+          // Shopee orders (using the helper for pagination)
+          fetchAllOrders(),
+          
+          // TikTok orders
+          fetchAllTikTokOrders(user.id),
+          
+          // TikTok settlements
+          fetchAllTikTokSettlements(user.id),
+          
+          // Fixed costs
+          supabase
+            .from('fixed_costs')
+            .select('*')
+            .eq('user_id', user.id),
+          
+          // Shopee settings (get default or first)
+          supabase
+            .from('settings')
+            .select('taxa_comissao_shopee, adicional_por_item, percentual_nf_entrada, gasto_shopee_ads, imposto_nf_saida')
+            .eq('user_id', user.id)
+            .eq('is_default', true)
+            .maybeSingle(),
+          
+          // TikTok settings (get default or first)
+          supabase
+            .from('tiktok_settings')
+            .select('taxa_comissao_tiktok, taxa_afiliado, adicional_por_item, percentual_nf_entrada, gasto_tiktok_ads, imposto_nf_saida')
+            .eq('user_id', user.id)
+            .eq('is_default', true)
+            .maybeSingle()
+        ]);
+
+        setShopeeOrders(shopeeOrdersData);
+        
+        if (tiktokOrdersResult.error) throw tiktokOrdersResult.error;
+        setTiktokOrders(tiktokOrdersResult.data || []);
+        
+        if (tiktokSettlementsResult.error) throw tiktokSettlementsResult.error;
+        setTiktokSettlements(tiktokSettlementsResult.data || []);
+        
+        if (fixedCostsResult.error) throw fixedCostsResult.error;
+        setFixedCosts(fixedCostsResult.data || []);
+        
+        if (shopeeSettingsResult.error && shopeeSettingsResult.error.code !== 'PGRST116') {
+          throw shopeeSettingsResult.error;
+        }
+        setShopeeSettings(shopeeSettingsResult.data);
+        
+        if (tiktokSettingsResult.error && tiktokSettingsResult.error.code !== 'PGRST116') {
+          throw tiktokSettingsResult.error;
+        }
+        setTiktokSettings(tiktokSettingsResult.data);
+
+      } catch (err) {
+        console.error('Error fetching DRE data:', err);
+        setError(err instanceof Error ? err.message : 'Erro ao carregar dados do DRE');
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
     if (user) {
       fetchAllData();
     }
@@ -220,6 +219,69 @@ export function useDREData(): UseDREDataResult {
     user
   ]);
 
+  const refetch = async () => {
+    setIsLoading(true);
+    setError(null);
+
+    try {
+      const [
+        shopeeOrdersData,
+        tiktokOrdersResult,
+        tiktokSettlementsResult,
+        fixedCostsResult,
+        shopeeSettingsResult,
+        tiktokSettingsResult
+      ] = await Promise.all([
+        fetchAllOrders(),
+        fetchAllTikTokOrders(user!.id),
+        fetchAllTikTokSettlements(user!.id),
+        supabase
+          .from('fixed_costs')
+          .select('*')
+          .eq('user_id', user!.id),
+        supabase
+          .from('settings')
+          .select('taxa_comissao_shopee, adicional_por_item, percentual_nf_entrada, gasto_shopee_ads, imposto_nf_saida')
+          .eq('user_id', user!.id)
+          .eq('is_default', true)
+          .maybeSingle(),
+        supabase
+          .from('tiktok_settings')
+          .select('taxa_comissao_tiktok, taxa_afiliado, adicional_por_item, percentual_nf_entrada, gasto_tiktok_ads, imposto_nf_saida')
+          .eq('user_id', user!.id)
+          .eq('is_default', true)
+          .maybeSingle()
+      ]);
+
+      setShopeeOrders(shopeeOrdersData);
+      
+      if (tiktokOrdersResult.error) throw tiktokOrdersResult.error;
+      setTiktokOrders(tiktokOrdersResult.data || []);
+      
+      if (tiktokSettlementsResult.error) throw tiktokSettlementsResult.error;
+      setTiktokSettlements(tiktokSettlementsResult.data || []);
+      
+      if (fixedCostsResult.error) throw fixedCostsResult.error;
+      setFixedCosts(fixedCostsResult.data || []);
+      
+      if (shopeeSettingsResult.error && shopeeSettingsResult.error.code !== 'PGRST116') {
+        throw shopeeSettingsResult.error;
+      }
+      setShopeeSettings(shopeeSettingsResult.data);
+      
+      if (tiktokSettingsResult.error && tiktokSettingsResult.error.code !== 'PGRST116') {
+        throw tiktokSettingsResult.error;
+      }
+      setTiktokSettings(tiktokSettingsResult.data);
+
+    } catch (err) {
+      console.error('Error fetching DRE data:', err);
+      setError(err instanceof Error ? err.message : 'Erro ao carregar dados do DRE');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   return {
     dreData,
     isLoading,
@@ -227,6 +289,6 @@ export function useDREData(): UseDREDataResult {
     periods,
     selectedPeriod,
     setSelectedPeriod,
-    refetch: fetchAllData
+    refetch
   };
 }

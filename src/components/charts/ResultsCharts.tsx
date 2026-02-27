@@ -1,9 +1,8 @@
-import { PieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
+import { PieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, TooltipProps } from 'recharts';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { GroupedResult } from '@/lib/calculations';
 import { formatCurrency } from '@/lib/calculations';
-import { motion } from 'framer-motion';
 
 interface ResultsChartsProps {
   data: GroupedResult[];
@@ -11,53 +10,49 @@ interface ResultsChartsProps {
 }
 
 const COLORS = [
-  'hsl(217, 91%, 60%)',  // Blue
+  'hsl(11, 85%, 56%)',   // Primary orange
   'hsl(142, 76%, 36%)',  // Green
-  'hsl(11, 85%, 56%)',   // Orange
+  'hsl(217, 91%, 60%)',  // Blue
   'hsl(280, 65%, 60%)',  // Purple
   'hsl(45, 93%, 47%)',   // Yellow
   'hsl(340, 75%, 55%)',  // Pink
   'hsl(180, 65%, 45%)',  // Teal
-  'hsl(30, 80%, 55%)',   // Orange variant
+  'hsl(30, 80%, 55%)',   // Orange
   'hsl(260, 60%, 55%)',  // Violet
   'hsl(160, 60%, 45%)',  // Emerald
 ];
 
-const CustomTooltip = ({ active, payload, label }: { active?: boolean; payload?: Array<{ color: string; name: string; value: number; payload: { nome: string } }>; label?: string }) => {
+interface CustomPayloadEntry {
+  color: string;
+  name: string;
+  value: number;
+}
+
+const CustomTooltip = ({ active, payload, label }: TooltipProps<number, string>) => {
   if (active && payload && payload.length) {
     return (
-      <motion.div 
-        className="bg-white border border-blue-200 rounded-lg shadow-lg p-3 text-sm"
-        initial={{ opacity: 0, scale: 0.9 }}
-        animate={{ opacity: 1, scale: 1 }}
-        transition={{ duration: 0.2 }}
-      >
-        <p className="font-medium mb-1 text-gray-900">{payload[0]?.payload?.nome || label}</p>
-        {payload.map((entry, index: number) => (
-          <p key={index} style={{ color: entry.color }} className="text-gray-700">
+      <div className="bg-popover border rounded-lg shadow-lg p-3 text-sm">
+        <p className="font-medium mb-1">{payload[0]?.payload?.nome || label}</p>
+        {payload.map((entry: CustomPayloadEntry, index: number) => (
+          <p key={index} style={{ color: entry.color }}>
             {entry.name}: {formatCurrency(entry.value)}
           </p>
         ))}
-      </motion.div>
+      </div>
     );
   }
   return null;
 };
 
-const PieTooltip = ({ active, payload }: { active?: boolean; payload?: Array<{ payload: { nome: string; value: number; percent: number } }> }) => {
+const PieTooltip = ({ active, payload }: TooltipProps<number, string>) => {
   if (active && payload && payload.length) {
     const data = payload[0].payload;
     return (
-      <motion.div 
-        className="bg-white border border-blue-200 rounded-lg shadow-lg p-3 text-sm"
-        initial={{ opacity: 0, scale: 0.9 }}
-        animate={{ opacity: 1, scale: 1 }}
-        transition={{ duration: 0.2 }}
-      >
-        <p className="font-medium text-gray-900">{data.nome}</p>
-        <p className="text-blue-600">Lucro: {formatCurrency(data.value)}</p>
-        <p className="text-gray-600">Participação: {data.percent.toFixed(1)}%</p>
-      </motion.div>
+      <div className="bg-popover border rounded-lg shadow-lg p-3 text-sm">
+        <p className="font-medium">{data.nome}</p>
+        <p className="text-muted-foreground">Lucro: {formatCurrency(data.value)}</p>
+        <p className="text-muted-foreground">Participação: {data.percent.toFixed(1)}%</p>
+      </div>
     );
   }
   return null;
@@ -110,93 +105,86 @@ export function ResultsCharts({ data, type }: ResultsChartsProps) {
   }
 
   return (
-    <motion.div
-      initial={{ opacity: 0, y: 20 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.6 }}
-    >
-      <Card className="border border-blue-200 shadow-lg bg-white">
-        <CardHeader className="bg-blue-50 border-b border-blue-200">
-          <CardTitle className="text-gray-900">Análise Visual</CardTitle>
-          <CardDescription className="text-gray-600">
-            Gráficos de desempenho por {type === 'variacao' ? 'variação' : 'produto'}
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <Tabs defaultValue="pie" className="w-full">
-            <TabsList className="grid w-full grid-cols-2 mb-6 bg-blue-50 border border-blue-200">
-              <TabsTrigger value="pie" className="data-[state=active]:bg-blue-100 data-[state=active]:text-blue-700">Distribuição de Lucro</TabsTrigger>
-              <TabsTrigger value="bar" className="data-[state=active]:bg-blue-100 data-[state=active]:text-blue-700">Faturamento x Lucro</TabsTrigger>
-            </TabsList>
+    <Card>
+      <CardHeader>
+        <CardTitle>Análise Visual</CardTitle>
+        <CardDescription>
+          Gráficos de desempenho por {type === 'variacao' ? 'variação' : 'produto'}
+        </CardDescription>
+      </CardHeader>
+      <CardContent>
+        <Tabs defaultValue="pie" className="w-full">
+          <TabsList className="grid w-full grid-cols-2 mb-6">
+            <TabsTrigger value="pie">Distribuição de Lucro</TabsTrigger>
+            <TabsTrigger value="bar">Faturamento x Lucro</TabsTrigger>
+          </TabsList>
 
-            <TabsContent value="pie" className="h-[350px]">
-              {pieData.length > 0 ? (
-                <ResponsiveContainer width="100%" height="100%">
-                  <PieChart>
-                    <Pie
-                      data={pieData}
-                      cx="50%"
-                      cy="50%"
-                      labelLine={false}
-                      outerRadius={120}
-                      innerRadius={60}
-                      fill="#8884d8"
-                      dataKey="value"
-                      label={({ nome, percent }) => percent > 5 ? `${percent.toFixed(0)}%` : ''}
-                    >
-                      {pieData.map((_, index) => (
-                        <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                      ))}
-                    </Pie>
-                    <Tooltip content={<PieTooltip />} />
-                    <Legend 
-                      layout="vertical" 
-                      align="right" 
-                      verticalAlign="middle"
-                      formatter={(value) => <span className="text-xs text-gray-700">{value}</span>}
-                    />
-                  </PieChart>
-                </ResponsiveContainer>
-              ) : (
-                <div className="flex items-center justify-center h-full text-gray-500">
-                  Nenhum produto com lucro positivo para exibir
-                </div>
-              )}
-            </TabsContent>
-
-            <TabsContent value="bar" className="h-[350px]">
+          <TabsContent value="pie" className="h-[350px]">
+            {pieData.length > 0 ? (
               <ResponsiveContainer width="100%" height="100%">
-                <BarChart
-                  data={barData}
-                  margin={{ top: 20, right: 30, left: 20, bottom: 60 }}
-                >
-                  <CartesianGrid strokeDasharray="3 3" className="stroke-blue-200" />
-                  <XAxis 
-                    dataKey="nome" 
-                    angle={-45} 
-                    textAnchor="end" 
-                    height={80}
-                    tick={{ fontSize: 11 }}
-                    className="fill-gray-600"
-                  />
-                  <YAxis 
-                    tickFormatter={(value) => `R$${(value / 1000).toFixed(0)}k`}
-                    className="fill-gray-600"
-                    tick={{ fontSize: 11 }}
-                  />
-                  <Tooltip content={<CustomTooltip />} />
+                <PieChart>
+                  <Pie
+                    data={pieData}
+                    cx="50%"
+                    cy="50%"
+                    labelLine={false}
+                    outerRadius={120}
+                    innerRadius={60}
+                    fill="#8884d8"
+                    dataKey="value"
+                    label={({ nome, percent }) => percent > 5 ? `${percent.toFixed(0)}%` : ''}
+                  >
+                    {pieData.map((_, index) => (
+                      <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                    ))}
+                  </Pie>
+                  <Tooltip content={<PieTooltip />} />
                   <Legend 
-                    wrapperStyle={{ fontSize: '12px', color: '#374151' }}
+                    layout="vertical" 
+                    align="right" 
+                    verticalAlign="middle"
+                    formatter={(value) => <span className="text-xs">{value}</span>}
                   />
-                  <Bar dataKey="faturado" name="Faturado" fill="hsl(217, 91%, 60%)" radius={[4, 4, 0, 0]} />
-                  <Bar dataKey="receber" name="A Receber" fill="hsl(45, 93%, 47%)" radius={[4, 4, 0, 0]} />
-                  <Bar dataKey="lucro" name="Lucro" fill="hsl(142, 76%, 36%)" radius={[4, 4, 0, 0]} />
-                </BarChart>
+                </PieChart>
               </ResponsiveContainer>
-            </TabsContent>
-          </Tabs>
-        </CardContent>
-      </Card>
-    </motion.div>
+            ) : (
+              <div className="flex items-center justify-center h-full text-muted-foreground">
+                Nenhum produto com lucro positivo para exibir
+              </div>
+            )}
+          </TabsContent>
+
+          <TabsContent value="bar" className="h-[350px]">
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart
+                data={barData}
+                margin={{ top: 20, right: 30, left: 20, bottom: 60 }}
+              >
+                <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
+                <XAxis 
+                  dataKey="nome" 
+                  angle={-45} 
+                  textAnchor="end" 
+                  height={80}
+                  tick={{ fontSize: 11 }}
+                  className="fill-muted-foreground"
+                />
+                <YAxis 
+                  tickFormatter={(value) => `R$${(value / 1000).toFixed(0)}k`}
+                  className="fill-muted-foreground"
+                  tick={{ fontSize: 11 }}
+                />
+                <Tooltip content={<CustomTooltip />} />
+                <Legend />
+                <Bar dataKey="faturado" name="Faturado" fill="hsl(217, 91%, 60%)" radius={[4, 4, 0, 0]} />
+                <Bar dataKey="receber" name="A Receber" fill="hsl(45, 93%, 47%)" radius={[4, 4, 0, 0]} />
+                <Bar dataKey="lucro" name="Lucro" fill="hsl(142, 76%, 36%)" radius={[4, 4, 0, 0]} />
+              </BarChart>
+            </ResponsiveContainer>
+          </TabsContent>
+
+        </Tabs>
+      </CardContent>
+    </Card>
   );
 }

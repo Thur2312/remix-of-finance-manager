@@ -22,6 +22,7 @@ import {
 } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
+import logo from '@/assets/logo-new.svg';
 
 const fadeInUp = {
   hidden: { opacity: 0, y: 40 },
@@ -38,8 +39,8 @@ const staggerContainer = {
 
 const plans = [
   {
-    name: 'Básico',
-    price: 'R$ 19,90',
+    name: 'Starter',
+    price: 'Free',
     period: '/mês',
     description: 'Ideal para vendedores iniciantes',
     icon: Zap,
@@ -47,16 +48,16 @@ const plans = [
     borderColor: 'border-blue-200',
     features: [
       'Lucro real por venda',
-      'Dashboard básico',
+      'Dashboard Básico',
       'Integração com 1 marketplace',
       'Suporte por e-mail',
     ],
-    cta: 'Assinar Básico',
+    cta: 'Plano Atual',
     popular: false,
   },
   {
     name: 'Profissional',
-    price: 'R$ 39,90',
+    price: 'R$ 37,90',
     period: '/mês',
     description: 'Para vendedores em crescimento',
     icon: Crown,
@@ -65,50 +66,33 @@ const plans = [
     features: [
       'Lucro real por venda',
       'Dashboard avançado',
-      'Integração com 2 marketplaces',
+      'Integrações Ilimitadas',
       'Análise inteligente por produto',
       'DRE automatizado',
       'Precificação otimizada',
       'Suporte prioritário',
+      'Fluxo de caixa avançado',
+      'Relatórios customizados',
+      'Consultoria dedicada'
     ],
     cta: 'Assinar Profissional',
     popular: true,
   },
-  {
-    name: 'Empresarial',
-    price: 'R$ 79,90',
-    period: '/mês',
-    description: 'Para grandes operações',
-    icon: Star,
-    gradient: 'from-gray-100 to-gray-50',
-    borderColor: 'border-gray-200',
-    features: [
-      'Análise Inteligente por produto',
-      'DRE automatizado',
-      'Precificação otimizada',
-      'Suporte prioritário',
-      'Fluxo de caixa avançado',
-      'Integração ilimitada',
-      'Relatórios customizados',
-      'Consultoria dedicada',
-    ],
-    cta: 'Assinar Empresarial',
-    popular: false,
-  },
+  
 ];
 
 const comparisonFeatures = [
-  { feature: 'Lucro real por venda', basico: true, profissional: true, empresarial: true },
-  { feature: 'Dashboard básico', basico: true, profissional: false, empresarial: false },
-  { feature: 'Dashboard avançado', basico: false, profissional: true, empresarial: true },
-  { feature: 'Integração com marketplaces', basico: '1', profissional: '2', empresarial: 'Ilimitada' },
-  { feature: 'Análise inteligente por produto', basico: false, profissional: true, empresarial: true },
-  { feature: 'DRE automatizado', basico: false, profissional: true, empresarial: true },
-  { feature: 'Precificação otimizada', basico: false, profissional: true, empresarial: true },
-  { feature: 'Suporte prioritário', basico: false, profissional: true, empresarial: true },
-  { feature: 'Fluxo de caixa avançado', basico: false, profissional: false, empresarial: true },
-  { feature: 'Relatórios customizados', basico: false, profissional: false, empresarial: true },
-  { feature: 'Consultoria dedicada', basico: false, profissional: false, empresarial: true },
+  { feature: 'Lucro real por venda', basico: true, profissional: true },
+  { feature: 'Dashboard básico', basico: true, profissional: true },
+  { feature: 'Dashboard avançado', basico: false, profissional: true },
+  { feature: 'Integração com marketplaces', basico: '1', profissional: 'ilimitada' },
+  { feature: 'Análise inteligente por produto', basico: false, profissional: true },
+  { feature: 'DRE automatizado', basico: false, profissional: true },
+  { feature: 'Precificação otimizada', basico: false, profissional: true },
+  { feature: 'Suporte prioritário', basico: false, profissional: true },
+  { feature: 'Fluxo de caixa avançado', basico: false, profissional: true },
+  { feature: 'Relatórios customizados', basico: false, profissional: true },
+  { feature: 'Consultoria dedicada', basico: false, profissional: true }
 ];
 
 const faqs = [
@@ -136,7 +120,7 @@ export default function Planos() {
 
   const handleSelectPlan = () => {
     if (user) {
-      navigate('/dashboard');
+      navigate('/fluxo-caixa ');
     } else {
       navigate('/auth?redirect=/planos');
     }
@@ -149,22 +133,24 @@ export default function Planos() {
         <div className="container mx-auto px-4 h-20 flex items-center justify-between">
           <div className="flex items-center gap-3">
             <button
-              onClick={() => navigate('/dashboard')}
+              onClick={() => navigate('/fluxo-caixa')}
               className="flex items-center gap-2 text-gray-600 hover:text-gray-900 transition-colors"
             >
               <ArrowLeft className="h-5 w-5" />
             </button>
-            <div className="h-10 w-10 rounded-xl bg-gradient-to-br from-blue-600 to-blue-500 flex items-center justify-center shadow-lg shadow-blue-500/25">
-              <BarChart3 className="h-5 w-5 text-white" />
-            </div>
-            <span className="font-bold text-xl text-gray-900">Seller Finance</span>
+            <div>
+            <img
+              src={logo}
+              alt="Seller Finance"
+              className="h-14 w-auto object-contain"/>
+              </div>
           </div>
         </div>
       </header>
 
       {/* Hero */}
       <motion.section
-        className="pt-20 pb-8 text-center"
+        className="pt-5 pb-8 text-center"
         initial="hidden"
         animate="visible"
         transition={{ duration: 0.5 }}
@@ -192,7 +178,7 @@ export default function Planos() {
         variants={staggerContainer}
       >
         <div className="container mx-auto px-4">
-          <div className="grid md:grid-cols-3 gap-8 max-w-6xl mx-auto items-stretch">
+          <div className="grid md:grid-cols-2 gap-8 max-w-6xl mx-auto items-stretch">
             {plans.map((plan) => {
               const Icon = plan.icon;
               return (
@@ -200,7 +186,7 @@ export default function Planos() {
                   <Card
                     className={`relative overflow-hidden border-2 ${plan.borderColor} ${
                       plan.popular
-                        ? 'shadow-2xl shadow-blue-500/10 scale-[1.03]'
+                        ? 'shadow-2xl shadow-blue-500/10'
                         : 'shadow-lg'
                     } bg-white h-full flex flex-col`}
                   >
@@ -291,9 +277,9 @@ export default function Planos() {
                   <TableHeader>
                     <TableRow className="bg-blue-50">
                       <TableHead className="font-semibold text-gray-900">Funcionalidades</TableHead>
-                      <TableHead className="text-center font-semibold text-gray-900">Básico</TableHead>
+                      <TableHead className="text-center font-semibold text-gray-900">Starter</TableHead>
                       <TableHead className="text-center font-semibold text-gray-900">Profissional</TableHead>
-                      <TableHead className="text-center font-semibold text-gray-900">Empresarial</TableHead>
+  
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -314,13 +300,7 @@ export default function Planos() {
                             <Badge variant="outline" className="border-blue-200 text-blue-700">{item.profissional}</Badge>
                           )}
                         </TableCell>
-                        <TableCell className="text-center">
-                          {typeof item.empresarial === 'boolean' ? (
-                            item.empresarial ? <Check className="h-5 w-5 text-green-600 mx-auto" /> : <X className="h-5 w-5 text-red-500 mx-auto" />
-                          ) : (
-                            <Badge variant="outline" className="border-blue-200 text-blue-700">{item.empresarial}</Badge>
-                          )}
-                        </TableCell>
+        
                       </TableRow>
                     ))}
                   </TableBody>

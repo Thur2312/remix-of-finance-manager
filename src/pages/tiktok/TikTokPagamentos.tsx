@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { ProtectedRoute } from '@/components/layout/ProtectedRoute';
@@ -39,12 +40,14 @@ import {
   Package,
   AlertTriangle,
   Calendar,
+  ArrowLeft
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { fetchAllTikTokSettlements, fetchAllTikTokStatements, fetchTikTokOrdersCosts } from '@/lib/tiktok-settlement-helpers';
 import { SettlementDetailModal } from '@/components/tiktok/SettlementDetailModal';
 import { PaymentCharts } from '@/components/tiktok/PaymentCharts';
 import { FeatureGate } from '@/components/FeatureGate';
+import { InPageNav,tiktokNavTabs } from '@/components/layout/InPageNav';
 
 
 const fadeInUp = {
@@ -132,6 +135,7 @@ interface Settlement {
 
 function TikTokPagamentosContent() {
   const { user } = useAuth();
+  const navigate = useNavigate();
   const [settlements, setSettlements] = useState<Settlement[]>([]);
   const [statements, setStatements] = useState<Statement[]>([]);
   const [orderCosts, setOrderCosts] = useState<Map<string, number>>(new Map());
@@ -322,8 +326,10 @@ function TikTokPagamentosContent() {
 
   if (loading) {
     return (
-      <AppLayout>
-        <FeatureGate permission="payments_access" requiredPlanName="Essencial">
+      <AppLayout title='Gestão TikTok'>
+        <FeatureGate permission="payments_access" requiredPlanName="Profissional">
+          <InPageNav tabs={tiktokNavTabs} />
+
         <motion.div
           className="space-y-6"
           initial="hidden"
@@ -351,8 +357,9 @@ function TikTokPagamentosContent() {
 
   if (settlements.length === 0 && statements.length === 0) {
     return (
-      <AppLayout>
-          <FeatureGate permission="payments_access" requiredPlanName="Essencial">
+      <AppLayout title='Gestão TikTok'>
+          <FeatureGate permission="payments_access" requiredPlanName="Profissional">
+            <InPageNav tabs={tiktokNavTabs} />
         <motion.div
           className="space-y-6"
           initial="hidden"
@@ -360,8 +367,9 @@ function TikTokPagamentosContent() {
           variants={staggerContainer}
         >
           <motion.div variants={fadeInUp} className="text-center">
+           
             <h1 className="text-2xl font-bold tracking-tight text-gray-900">
-              Pagamentos 
+              Pagamentos TikTok Shop
             </h1>
             <p className="text-gray-600 mt-1">
               Visualize o detalhamento completo de recebimentos do TikTok Shop
@@ -397,8 +405,9 @@ function TikTokPagamentosContent() {
   const totalDiscounts = summary.totalSellerDiscounts + summary.totalPlatformDiscounts;
 
   return (
-    <AppLayout>
-      <FeatureGate permission="payments_access" requiredPlanName="Essencial">
+    <AppLayout title='Gestão TikTok'>
+      <FeatureGate permission="payments_access" requiredPlanName="Profissional">
+        <InPageNav tabs={tiktokNavTabs} />
       <motion.div
         className="space-y-6"
         initial="hidden"

@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
@@ -67,7 +67,7 @@ export function useFixedCosts() {
   const [isLoading, setIsLoading] = useState(true);
 
   // Fetch fixed costs
-  const fetchCosts = async () => {
+  const fetchCosts = useCallback(async () => {
     if (!user) return;
     
     try {
@@ -83,10 +83,10 @@ export function useFixedCosts() {
       console.error('Erro ao buscar custos fixos:', error);
       toast.error('Erro ao carregar custos fixos');
     }
-  };
+  }, [user]);
 
   // Fetch settings
-  const fetchSettings = async () => {
+  const fetchSettings = useCallback(async () => {
     if (!user) return;
 
     try {
@@ -118,7 +118,7 @@ export function useFixedCosts() {
     } catch (error) {
       console.error('Erro ao buscar configurações:', error);
     }
-  };
+  }, [user]);
 
   // Load data on mount
   useEffect(() => {
@@ -131,7 +131,7 @@ export function useFixedCosts() {
     if (user) {
       loadData();
     }
-  }, [user]);
+  }, [user, fetchCosts, fetchSettings]);
 
   // Add cost
   const addCost = async (cost: Omit<FixedCost, 'id' | 'user_id' | 'created_at' | 'updated_at'>) => {

@@ -1,56 +1,85 @@
-import { useState, useEffect, useMemo, useCallback } from 'react';
+import { useState, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
+import { fetchAllOrders } from '@/lib/supabase-helpers';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { ProtectedRoute } from '@/components/layout/ProtectedRoute';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Label } from '@/components/ui/label';
-import { Input } from '@/components/ui/input';
-import { Checkbox } from '@/components/ui/checkbox';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow, TableFooter } from '@/components/ui/table';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
-import { parseBatchCostInput } from '@/lib/numeric-validation';
 import {
-  Download,
   Loader2,
   TrendingUp,
   TrendingDown,
   DollarSign,
-  Layers,
+  Package,
   AlertCircle,
   Filter,
-  Edit,
-  X,
+  Download,
+  Layers,
   Megaphone,
 } from 'lucide-react';
-import { TikTokSettingsData, TikTokOrder, calculateTikTokResults, formatCurrency, formatPercent } from '@/lib/tiktok-calculations';
-import { fetchAllTikTokOrders } from '@/lib/tiktok-helpers';
-import { EditableCostCell } from '@/components/EditableCostCell';
+import {
+  Table,
+  TableBody,
+  TableFooter,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table';
+import {
+  calculateResults,
+  formatCurrency,
+  formatPercent,
+  SettingsData,
+  RawOrder,
+  CalculationResult,
+} from '@/lib/calculations';
 import { ResultsCharts } from '@/components/charts/ResultsCharts';
-import { InPageNav, tiktokNavTabs } from '@/components/layout/InPageNav';
+import { InPageNav, shopeeNavTabs } from '@/components/layout/InPageNav';
 
-function TikTokVariacoesContent() {
+function ResultadosVariacoesContent() {
   const { user } = useAuth();
   const [isSettingsLoaded, setIsSettingsLoaded] = useState(false);
   const [isOrdersLoading, setIsOrdersLoading] = useState(false);
-  const [orders, setOrders] = useState<TikTokOrder[]>([]);
-  const [settings, setSettings] = useState<TikTokSettingsData | null>(null);
-  const [allSettings, setAllSettings] = useState<TikTokSettingsData[]>([]);
-  const [selectedSettingsId, setSelectedSettingsId] = useState<string>('');
+  const [orders, setOrders] = useState<RawOrder[]>([]);
+  const [settings, setSettings] = useState<SettingsData | null>(null);
+  const [allSettings, setAllSettings] = useState<SettingsData[]>([]);
+  const [results, setResults] = useState<CalculationResult | null>(null);
   
-  // Selection for batch editing
-  const [selectedProducts, setSelectedProducts] = useState<Set<string>>(new Set());
-  const [batchCostValue, setBatchCostValue] = useState('');
-  const [isBatchSaving, setIsBatchSaving] = useState(false);
-  const [showBatchInput, setShowBatchInput] = useState(false);
+  // Filters
+  const [selectedSettingsId, setSelectedSettingsId] = useState<string>('');
+
+  useEffect(() => {
+    if (user) {
+      fetchSettings();
+    }
+  }, [user]);
+
+  useEffect(() => {
+    if (user && settings) {
+      fetchOrders();
+    }
+  }, [user, settings]);
+
+  useEffect(() => {
+    if (orders.length > 0 && settings) {
+      // Group by variation (SKU + variação)
+      const calculatedResults = calculateResults(orders, settings, 'variacao');
+      setResults(calculatedResults);
+    } else {
+      setResults(null);
+    }
+  }, [orders, settings]);
 
   const fetchSettings = async () => {
     try {
       const { data, error } = await supabase
-        .from('tiktok_settings')
+        .from('settings')
         .select('*')
         .order('is_default', { ascending: false });
 
@@ -63,7 +92,7 @@ function TikTokVariacoesContent() {
       
       if (data && data.length > 0) {
         const defaultSettings = data.find(s => s.is_default) || data[0];
-        setSettings(defaultSettings as TikTokSettingsData);
+        setSettings(defaultSettings as SettingsData);
         setSelectedSettingsId(defaultSettings.id);
       }
     } finally {
@@ -71,12 +100,12 @@ function TikTokVariacoesContent() {
     }
   };
 
-  const fetchOrders = useCallback(async () => {
-    if (!user) return;
+  const fetchOrders = async () => {
     setIsOrdersLoading(true);
     
     try {
-      const data = await fetchAllTikTokOrders(user.id);
+      // Fetch ALL orders using pagination (Supabase limits to 1000 per query)
+      const data = await fetchAllOrders();
       setOrders(data);
     } catch (error) {
       toast.error('Erro ao carregar pedidos');
@@ -84,117 +113,18 @@ function TikTokVariacoesContent() {
     }
     
     setIsOrdersLoading(false);
-  }, [user]);
-
-  useEffect(() => {
-    if (user) {
-      fetchSettings();
-    }
-  }, [user]);
-
-  useEffect(() => {
-    if (user && settings) {
-      fetchOrders();
-    }
-  }, [user, settings, fetchOrders]);
+  };
 
   const handleSettingsChange = (settingsId: string) => {
     const selected = allSettings.find(s => s.id === settingsId);
     if (selected) {
-      setSettings(selected as TikTokSettingsData);
+      setSettings(selected as SettingsData);
       setSelectedSettingsId(settingsId);
     }
   };
 
-  const calculatedResults = useMemo(() => {
-    if (!settings || orders.length === 0) return null;
-    return calculateTikTokResults(orders, settings, 'variacao');
-  }, [orders, settings]);
-
-  const handleCostSave = useCallback(async (sku: string, nomeProduto: string, variacao: string, newCost: number) => {
-    if (!user) return;
-    
-    let query = supabase
-      .from('tiktok_orders')
-      .update({ custo_unitario: newCost })
-      .eq('user_id', user.id)
-      .eq('variacao', variacao);
-
-    if (sku && sku !== '-') {
-      query = query.eq('sku', sku);
-    } else {
-      query = query.eq('nome_produto', nomeProduto);
-    }
-
-    const { error } = await query;
-
-    if (error) {
-      toast.error('Erro ao salvar custo');
-      console.error(error);
-      throw error;
-    }
-
-    setOrders(prev => {
-      const updated = prev.map(order => {
-        const matches = sku && sku !== '-' 
-          ? order.sku === sku && order.variacao === variacao
-          : order.nome_produto === nomeProduto && order.variacao === variacao;
-        return matches ? { ...order, custo_unitario: newCost } : order;
-      });
-      return [...updated];
-    });
-  }, [user]);
-
-  const handleSelectProduct = (key: string, checked: boolean) => {
-    setSelectedProducts(prev => {
-      const next = new Set(prev);
-      if (checked) {
-        next.add(key);
-      } else {
-        next.delete(key);
-      }
-      return next;
-    });
-  };
-
-  const handleSelectAll = (checked: boolean) => {
-    if (checked && calculatedResults) {
-      setSelectedProducts(new Set(calculatedResults.groups.map(g => g.key)));
-    } else {
-      setSelectedProducts(new Set());
-    }
-  };
-
-  const handleBatchSave = async () => {
-    if (selectedProducts.size === 0 || !user) return;
-    
-    const parseResult = parseBatchCostInput(batchCostValue);
-    if (!parseResult.isValid) {
-      toast.error(parseResult.error || 'Digite um valor válido maior que zero');
-      return;
-    }
-    const numValue = parseResult.value;
-
-    setIsBatchSaving(true);
-    
-    try {
-      const selectedGroups = calculatedResults?.groups.filter(g => selectedProducts.has(g.key)) || [];
-      
-      for (const group of selectedGroups) {
-        await handleCostSave(group.sku, group.nome_produto, group.variacao || '', numValue);
-      }
-
-      toast.success(`Custo atualizado para ${selectedGroups.length} variação(ões)`);
-      setSelectedProducts(new Set());
-      setBatchCostValue('');
-      setShowBatchInput(false);
-    } finally {
-      setIsBatchSaving(false);
-    }
-  };
-
   const handleExport = () => {
-    if (!calculatedResults) return;
+    if (!results) return;
 
     const headers = [
       'Produto',
@@ -202,7 +132,8 @@ function TikTokVariacoesContent() {
       'Variação',
       'Itens Vendidos',
       'Total Faturado',
-      'Taxa TikTok',
+      'Rebates',
+      'Taxa Shopee',
       'Taxa Adicional',
       'Total a Receber',
       'Custo Produtos',
@@ -212,13 +143,14 @@ function TikTokVariacoesContent() {
       'Lucro %',
     ];
 
-    const rows = calculatedResults.groups.map(r => [
+    const rows = results.groups.map(r => [
       r.nome_produto,
       r.sku,
       r.variacao || '-',
       r.itens_vendidos,
       r.total_faturado.toFixed(2),
-      r.taxa_tiktok_reais.toFixed(2),
+      r.rebates_shopee.toFixed(2),
+      r.taxa_shopee_reais.toFixed(2),
       r.taxa_adicional_itens.toFixed(2),
       r.total_a_receber.toFixed(2),
       r.total_gasto_produtos.toFixed(2),
@@ -233,15 +165,15 @@ function TikTokVariacoesContent() {
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
     link.href = url;
-    link.download = `tiktok_variacoes_${new Date().toISOString().split('T')[0]}.csv`;
+    link.download = `resultados_variacoes_${new Date().toISOString().split('T')[0]}.csv`;
     link.click();
     URL.revokeObjectURL(url);
     toast.success('Relatório exportado!');
   };
 
   const renderSummaryCards = () => {
-    if (!calculatedResults) return null;
-    const { totals } = calculatedResults;
+    if (!results) return null;
+    const { totals } = results;
 
     const cards = [
       {
@@ -268,13 +200,14 @@ function TikTokVariacoesContent() {
       },
       {
         title: 'Variações Analisadas',
-        value: calculatedResults.groups.length.toString(),
+        value: results.groups.length.toString(),
         icon: Layers,
         color: 'text-primary',
         bg: 'bg-primary/10',
       },
     ];
 
+    // Add Ads card if there's ads spending
     if (totals.gasto_ads > 0) {
       cards.splice(3, 0, {
         title: 'Gasto com Ads',
@@ -319,6 +252,7 @@ function TikTokVariacoesContent() {
       </CardHeader>
       <CardContent>
         <div className="flex flex-wrap gap-4 items-end">
+          {/* Settings Selection */}
           <div className="space-y-2">
             <Label>Configuração</Label>
             <Select value={selectedSettingsId} onValueChange={handleSettingsChange}>
@@ -335,7 +269,7 @@ function TikTokVariacoesContent() {
             </Select>
           </div>
 
-          {calculatedResults && calculatedResults.groups.length > 0 && (
+          {results && results.groups.length > 0 && (
             <Button onClick={handleExport} variant="outline">
               <Download className="h-4 w-4 mr-2" />
               Exportar CSV
@@ -346,73 +280,8 @@ function TikTokVariacoesContent() {
     </Card>
   );
 
-  const renderBatchActions = () => {
-    if (selectedProducts.size === 0) return null;
-
-    return (
-      <div className="flex items-center gap-3 p-3 bg-primary/10 rounded-lg border border-primary/20 mb-4">
-        <span className="text-sm font-medium">
-          {selectedProducts.size} variação(ões) selecionada(s)
-        </span>
-        
-        {showBatchInput ? (
-          <div className="flex items-center gap-2">
-            <span className="text-sm text-muted-foreground">R$</span>
-            <Input
-              type="text"
-              inputMode="decimal"
-              placeholder="0,00"
-              value={batchCostValue}
-              onChange={(e) => setBatchCostValue(e.target.value)}
-              className="w-24 h-8"
-              autoFocus
-            />
-            <Button
-              size="sm"
-              onClick={handleBatchSave}
-              disabled={isBatchSaving}
-            >
-              {isBatchSaving ? (
-                <Loader2 className="h-4 w-4 animate-spin" />
-              ) : (
-                'Aplicar'
-              )}
-            </Button>
-            <Button
-              size="sm"
-              variant="ghost"
-              onClick={() => {
-                setShowBatchInput(false);
-                setBatchCostValue('');
-              }}
-            >
-              <X className="h-4 w-4" />
-            </Button>
-          </div>
-        ) : (
-          <Button
-            size="sm"
-            variant="secondary"
-            onClick={() => setShowBatchInput(true)}
-          >
-            <Edit className="h-4 w-4 mr-1" />
-            Editar Custo em Massa
-          </Button>
-        )}
-
-        <Button
-          size="sm"
-          variant="ghost"
-          onClick={() => setSelectedProducts(new Set())}
-        >
-          Limpar Seleção
-        </Button>
-      </div>
-    );
-  };
-
   const renderResultsTable = () => {
-    if (!calculatedResults || calculatedResults.groups.length === 0) {
+    if (!results || results.groups.length === 0) {
       return (
         <Card>
           <CardContent className="py-12 text-center">
@@ -426,7 +295,7 @@ function TikTokVariacoesContent() {
       );
     }
 
-    const { groups, totals } = calculatedResults;
+    const { groups, totals } = results;
 
     return (
       <Card>
@@ -440,64 +309,42 @@ function TikTokVariacoesContent() {
           </CardDescription>
         </CardHeader>
         <CardContent>
-          {renderBatchActions()}
           <div className="rounded-lg border overflow-x-auto">
             <Table>
               <TableHeader>
                 <TableRow className="bg-muted/50">
-                  <TableHead className="w-10">
-                    <Checkbox
-                      checked={selectedProducts.size === groups.length && groups.length > 0}
-                      onCheckedChange={(checked) => handleSelectAll(!!checked)}
-                    />
-                  </TableHead>
                   <TableHead className="min-w-[180px]">Produto</TableHead>
                   <TableHead>SKU</TableHead>
                   <TableHead className="min-w-[120px]">Variação</TableHead>
-                  <TableHead className="text-right">Custo Unit.</TableHead>
                   <TableHead className="text-right">Qtd</TableHead>
                   <TableHead className="text-right">Faturado</TableHead>
-                  <TableHead className="text-right">Taxa TikTok</TableHead>
+                  <TableHead className="text-right">Taxa Shopee</TableHead>
                   <TableHead className="text-right">A Receber</TableHead>
+                  <TableHead className="text-right">Custo</TableHead>
+                  <TableHead className="text-right">Imposto</TableHead>
                   <TableHead className="text-right">Lucro R$</TableHead>
                   <TableHead className="text-right">Margem</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
+                {/* Variation Rows */}
                 {groups.map((row) => (
-                  <TableRow 
-                    key={row.key}
-                    className={cn(
-                      row.custo_unitario_medio === 0 && 'bg-warning/10'
-                    )}
-                  >
-                    <TableCell>
-                      <Checkbox
-                        checked={selectedProducts.has(row.key)}
-                        onCheckedChange={(checked) => handleSelectProduct(row.key, !!checked)}
-                      />
-                    </TableCell>
+                  <TableRow key={row.key}>
                     <TableCell className="max-w-[200px] truncate" title={row.nome_produto}>
                       {row.nome_produto}
                     </TableCell>
-                    <TableCell className="text-muted-foreground text-sm">{row.sku || '-'}</TableCell>
+                    <TableCell className="text-muted-foreground text-sm">{row.sku}</TableCell>
                     <TableCell>
                       <span className="inline-flex items-center px-2 py-1 rounded-md bg-accent text-accent-foreground text-xs">
                         {row.variacao || 'Sem variação'}
                       </span>
                     </TableCell>
-                    <TableCell className="text-right">
-                      <EditableCostCell
-                        initialCost={row.custo_unitario_medio}
-                        onCostSave={(sku, nomeProduto, cost) => handleCostSave(sku, nomeProduto, row.variacao || '', cost)}
-                        sku={row.sku}
-                        nomeProduto={row.nome_produto}
-                      />
-                    </TableCell>
                     <TableCell className="text-right">{row.itens_vendidos}</TableCell>
                     <TableCell className="text-right">{formatCurrency(row.total_faturado)}</TableCell>
-                    <TableCell className="text-right text-muted-foreground">{formatCurrency(row.taxa_tiktok_reais)}</TableCell>
+                    <TableCell className="text-right text-muted-foreground">{formatCurrency(row.taxa_shopee_reais)}</TableCell>
                     <TableCell className="text-right">{formatCurrency(row.total_a_receber)}</TableCell>
+                    <TableCell className="text-right text-muted-foreground">{formatCurrency(row.total_gasto_produtos)}</TableCell>
+                    <TableCell className="text-right text-muted-foreground">{formatCurrency(row.imposto)}</TableCell>
                     <TableCell className={cn('text-right font-medium', row.lucro_reais >= 0 ? 'text-success' : 'text-destructive')}>
                       {formatCurrency(row.lucro_reais)}
                     </TableCell>
@@ -508,16 +355,16 @@ function TikTokVariacoesContent() {
                 ))}
               </TableBody>
               <TableFooter>
-                <TableRow className="bg-primary/10 font-semibold">
-                  <TableCell>-</TableCell>
+                <TableRow className="bg-muted font-semibold">
                   <TableCell className="font-bold">TOTAL GERAL</TableCell>
-                  <TableCell>-</TableCell>
                   <TableCell>-</TableCell>
                   <TableCell>-</TableCell>
                   <TableCell className="text-right font-bold">{totals.itens_vendidos}</TableCell>
                   <TableCell className="text-right font-bold">{formatCurrency(totals.total_faturado)}</TableCell>
-                  <TableCell className="text-right">{formatCurrency(totals.taxa_tiktok_reais)}</TableCell>
+                  <TableCell className="text-right">{formatCurrency(totals.taxa_shopee_reais)}</TableCell>
                   <TableCell className="text-right font-bold">{formatCurrency(totals.total_a_receber)}</TableCell>
+                  <TableCell className="text-right">{formatCurrency(totals.total_gasto_produtos)}</TableCell>
+                  <TableCell className="text-right">{formatCurrency(totals.imposto)}</TableCell>
                   <TableCell className={cn('text-right font-bold', totals.lucro_bruto >= 0 ? 'text-success' : 'text-destructive')}>
                     {formatCurrency(totals.lucro_bruto)}
                   </TableCell>
@@ -551,7 +398,7 @@ function TikTokVariacoesContent() {
             Você precisa criar uma configuração financeira antes de visualizar os resultados.
           </p>
           <Button asChild className="mt-4">
-            <a href="/tiktok/configuracoes">Ir para Configurações</a>
+            <a href="/configuracoes">Ir para Configurações</a>
           </Button>
         </CardContent>
       </Card>
@@ -562,20 +409,20 @@ function TikTokVariacoesContent() {
     <div className="space-y-6 animate-fade-in">
       {renderFilters()}
       {renderSummaryCards()}
-      {calculatedResults && calculatedResults.groups.length > 0 && (
-        <ResultsCharts data={calculatedResults.groups.map(g => ({ ...g, rebates_shopee: 0, taxa_shopee_reais: g.taxa_tiktok_reais }))} type="variacao" />
+      {results && results.groups.length > 0 && (
+        <ResultsCharts data={results.groups} type="variacao" />
       )}
       {renderResultsTable()}
     </div>
   );
 }
 
-export default function TikTokVariacoes() {
+export default function ResultadosVariacoes() {
   return (
     <ProtectedRoute>
-      <AppLayout title="Gestão TikTok">
-        <InPageNav tabs={tiktokNavTabs} />
-        <TikTokVariacoesContent />
+      <AppLayout title="Gestão Shopee">
+        <InPageNav tabs={shopeeNavTabs} />
+        <ResultadosVariacoesContent />
       </AppLayout>
     </ProtectedRoute>
   );

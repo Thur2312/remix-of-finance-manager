@@ -6,10 +6,6 @@ import { set } from 'date-fns';
 import { differenceInDays } from 'date-fns';
 
 
-
-//* Toma ai tua merenda, n sei pq funciona, mas funciona, obrigado meu Deus
-
-
 export interface Profile {
   id: string;
   full_name: string | null;

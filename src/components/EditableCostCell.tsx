@@ -3,7 +3,6 @@ import { Input } from '@/components/ui/input';
 import { Loader2, Check } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { parseCurrencyInput } from '@/lib/numeric-validation';
-import { motion, AnimatePresence } from 'framer-motion';
 
 interface EditableCostCellProps {
   sku: string;
@@ -93,13 +92,8 @@ export const EditableCostCell = memo(function EditableCostCell({
   const hasNoCost = numericValue === 0 && localValue === '';
 
   return (
-    <motion.div 
-      className="relative flex items-center justify-end gap-1"
-      initial={{ opacity: 0, scale: 0.95 }}
-      animate={{ opacity: 1, scale: 1 }}
-      transition={{ duration: 0.3 }}
-    >
-      <span className="text-gray-600 text-xs">R$</span>
+    <div className="relative flex items-center justify-end gap-1">
+      <span className="text-muted-foreground text-xs">R$</span>
       <Input
         type="text"
         inputMode="decimal"
@@ -107,35 +101,17 @@ export const EditableCostCell = memo(function EditableCostCell({
         onChange={handleChange}
         placeholder="0,00"
         className={cn(
-          'w-20 h-8 text-right text-sm px-2 border-blue-200 focus:border-blue-500',
-          hasNoCost && 'border-yellow-500 bg-yellow-50',
-          isSaved && 'border-green-500 bg-green-50'
+          'w-20 h-8 text-right text-sm px-2',
+          hasNoCost && 'border-warning bg-warning/10',
+          isSaved && 'border-success bg-success/10'
         )}
       />
-      <AnimatePresence>
-        {isSaving && (
-          <motion.div
-            initial={{ opacity: 0, scale: 0.8 }}
-            animate={{ opacity: 1, scale: 1 }}
-            exit={{ opacity: 0, scale: 0.8 }}
-            transition={{ duration: 0.2 }}
-            className="absolute -right-4"
-          >
-            <Loader2 className="h-3 w-3 animate-spin text-blue-600" />
-          </motion.div>
-        )}
-        {isSaved && !isSaving && (
-          <motion.div
-            initial={{ opacity: 0, scale: 0.8 }}
-            animate={{ opacity: 1, scale: 1 }}
-            exit={{ opacity: 0, scale: 0.8 }}
-            transition={{ duration: 0.2 }}
-            className="absolute -right-4"
-          >
-            <Check className="h-3 w-3 text-green-600" />
-          </motion.div>
-        )}
-      </AnimatePresence>
-    </motion.div>
+      {isSaving && (
+        <Loader2 className="h-3 w-3 animate-spin text-muted-foreground absolute -right-4" />
+      )}
+      {isSaved && !isSaving && (
+        <Check className="h-3 w-3 text-success absolute -right-4" />
+      )}
+    </div>
   );
 });

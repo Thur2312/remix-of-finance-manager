@@ -23,58 +23,68 @@ import {
   AlertDialogTrigger,
 } from '@/components/ui/alert-dialog';
 import { z } from 'zod';
-import { TikTokSettingsData } from '@/lib/tiktok-calculations';
-import { InPageNav, tiktokNavTabs } from '@/components/layout/InPageNav';
+import { InPageNav, shopeeNavTabs } from '@/components/layout/InPageNav';
+
+interface SettingsData {
+  id: string;
+  user_id: string;
+  name: string;
+  taxa_comissao_shopee: number;
+  adicional_por_item: number;
+  percentual_valor_antecipado: number;
+  taxa_antecipacao: number;
+  imposto_nf_saida: number;
+  percentual_nf_entrada: number;
+  desconto_nf_saida: number;
+  gasto_shopee_ads: number;
+  is_default: boolean;
+  created_at: string;
+  updated_at: string;
+}
 
 const settingsSchema = z.object({
   name: z.string().min(1, 'Nome é obrigatório').max(100, 'Nome muito longo'),
-  taxa_comissao_tiktok: z.number().min(0).max(1),
-  taxa_afiliado: z.number().min(0).max(1),
+  taxa_comissao_shopee: z.number().min(0).max(1),
   adicional_por_item: z.number().min(0),
   percentual_valor_antecipado: z.number().min(0).max(1),
   taxa_antecipacao: z.number().min(0).max(1),
   imposto_nf_saida: z.number().min(0).max(1),
   percentual_nf_entrada: z.number().min(0).max(1),
   desconto_nf_saida: z.number().min(0).max(1),
-  gasto_tiktok_ads: z.number().min(0),
+  gasto_shopee_ads: z.number().min(0),
   is_default: z.boolean(),
 });
 
 const defaultSettings = {
-  name: 'Padrão TikTok Shop',
-  taxa_comissao_tiktok: 0.20,
-  taxa_afiliado: 0,
+  name: 'Padrão Shopee',
+  taxa_comissao_shopee: 0.20,
   adicional_por_item: 0,
   percentual_valor_antecipado: 0,
   taxa_antecipacao: 0,
   imposto_nf_saida: 0,
   percentual_nf_entrada: 0,
   desconto_nf_saida: 0,
-  gasto_tiktok_ads: 0,
+  gasto_shopee_ads: 0,
   is_default: true,
 };
 
-interface SettingsRow extends TikTokSettingsData {
-  created_at: string;
-  updated_at: string;
-}
-
-function TikTokConfiguracoesContent() {
+function ConfiguracoesContent() {
   const { user } = useAuth();
-  const [settings, setSettings] = useState<SettingsRow[]>([]);
-  const [selectedSettings, setSelectedSettings] = useState<SettingsRow | null>(null);
+  const [settings, setSettings] = useState<SettingsData[]>([]);
+  const [selectedSettings, setSelectedSettings] = useState<SettingsData | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [isCreating, setIsCreating] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
 
+  // Form state
   const [formData, setFormData] = useState(defaultSettings);
   const [errors, setErrors] = useState<Record<string, string>>({});
 
   const fetchSettings = useCallback(async () => {
     setIsLoading(true);
     const { data, error } = await supabase
-      .from('tiktok_settings')
+      .from('settings')
       .select('*')
       .order('is_default', { ascending: false })
       .order('created_at', { ascending: true });
@@ -100,20 +110,19 @@ function TikTokConfiguracoesContent() {
     }
   }, [fetchSettings, user]);
 
-  const selectSettings = (setting: SettingsRow) => {
+  const selectSettings = (setting: SettingsData) => {
     setSelectedSettings(setting);
     setIsCreating(false);
     setFormData({
       name: setting.name,
-      taxa_comissao_tiktok: Number(setting.taxa_comissao_tiktok),
-      taxa_afiliado: Number(setting.taxa_afiliado),
+      taxa_comissao_shopee: Number(setting.taxa_comissao_shopee),
       adicional_por_item: Number(setting.adicional_por_item),
       percentual_valor_antecipado: Number(setting.percentual_valor_antecipado),
       taxa_antecipacao: Number(setting.taxa_antecipacao),
       imposto_nf_saida: Number(setting.imposto_nf_saida),
       percentual_nf_entrada: Number(setting.percentual_nf_entrada),
       desconto_nf_saida: Number(setting.desconto_nf_saida),
-      gasto_tiktok_ads: Number(setting.gasto_tiktok_ads) || 0,
+      gasto_shopee_ads: Number(setting.gasto_shopee_ads) || 0,
       is_default: setting.is_default,
     });
     setErrors({});
@@ -220,16 +229,17 @@ function TikTokConfiguracoesContent() {
     setIsSaving(true);
 
     try {
+      // If setting as default, unset other defaults
       if (formData.is_default && settings.some(s => s.is_default && s.id !== selectedSettings?.id)) {
         await supabase
-          .from('tiktok_settings')
+          .from('settings')
           .update({ is_default: false })
           .eq('user_id', user.id);
       }
 
       if (isCreating) {
         const { data, error } = await supabase
-          .from('tiktok_settings')
+          .from('settings')
           .insert({
             user_id: user.id,
             ...formData,
@@ -244,7 +254,7 @@ function TikTokConfiguracoesContent() {
         if (data) selectSettings(data);
       } else if (selectedSettings) {
         const { error } = await supabase
-          .from('tiktok_settings')
+          .from('settings')
           .update(formData)
           .eq('id', selectedSettings.id);
 
@@ -253,9 +263,9 @@ function TikTokConfiguracoesContent() {
         toast.success('Configuração salva com sucesso!');
         await fetchSettings();
       }
-    } catch (error: unknown) {
-      const message = error instanceof Error ? error.message : 'Erro ao salvar configuração';
-      toast.error(message);
+    } catch (error: Error | unknown) {
+      const errorMessage = error instanceof Error ? error.message : 'Erro ao salvar configuração';
+      toast.error(errorMessage);
     } finally {
       setIsSaving(false);
     }
@@ -267,33 +277,31 @@ function TikTokConfiguracoesContent() {
     setIsDeleting(true);
 
     try {
-      // Apagar todos os dados relacionados ao TikTok
-      const [ordersResult, settlementsResult, statementsResult] = await Promise.all([
-        supabase.from('tiktok_orders').delete().eq('user_id', user.id),
-        supabase.from('tiktok_settlements').delete().eq('user_id', user.id),
-        supabase.from('tiktok_statements').delete().eq('user_id', user.id),
-      ]);
+      // Always delete orders when deleting configuration
+      const { error: ordersError } = await supabase
+        .from('raw_orders')
+        .delete()
+        .eq('user_id', user.id);
 
-      if (ordersResult.error || settlementsResult.error || statementsResult.error) {
-        console.error('Error deleting data:', { ordersResult, settlementsResult, statementsResult });
-        toast.error('Erro ao excluir dados');
+      if (ordersError) {
+        console.error('Error deleting orders:', ordersError);
+        toast.error('Erro ao excluir pedidos');
         setIsDeleting(false);
         return;
       }
 
-      // Apagar configuração
       const { error } = await supabase
-        .from('tiktok_settings')
+        .from('settings')
         .delete()
         .eq('id', selectedSettings.id);
 
       if (error) throw error;
 
-      toast.success('Configuração e todos os dados TikTok excluídos com sucesso!');
+      toast.success('Configuração e dados excluídos com sucesso!');
       await fetchSettings();
-    } catch (error: unknown) {
-      const message = error instanceof Error ? error.message : 'Erro ao excluir configuração';
-      toast.error(message);
+    } catch (error: Error | unknown) {
+      const errorMessage = error instanceof Error ? error.message : 'Erro ao excluir configuração';
+      toast.error(errorMessage);
     } finally {
       setIsDeleting(false);
     }
@@ -309,11 +317,12 @@ function TikTokConfiguracoesContent() {
 
   return (
     <div className="space-y-6 animate-fade-in">
+      {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <h2 className="text-2xl font-bold">Configurações TikTok Shop</h2>
+          <h2 className="text-2xl font-bold">Configurações Financeiras</h2>
           <p className="text-muted-foreground">
-            Defina os parâmetros de cálculo para suas vendas no TikTok Shop
+            Defina os parâmetros de cálculo para suas vendas na Shopee
           </p>
         </div>
         <Button onClick={handleNewSettings}>
@@ -323,6 +332,7 @@ function TikTokConfiguracoesContent() {
       </div>
 
       <div className="grid gap-6 lg:grid-cols-4">
+        {/* Settings List */}
         <Card className="lg:col-span-1">
           <CardHeader className="pb-3">
             <CardTitle className="text-base">Configurações Salvas</CardTitle>
@@ -339,8 +349,8 @@ function TikTokConfiguracoesContent() {
                   onClick={() => selectSettings(setting)}
                   className={`w-full text-left p-3 rounded-lg border transition-colors ${
                     selectedSettings?.id === setting.id
-                      ? 'border-primary bg-accent'
-                      : 'border-transparent hover:bg-muted'
+                      ? 'border-primary bg-muted'
+                      : 'border-transparent hover:bg-muted/50'
                   }`}
                 >
                   <div className="flex items-center gap-2">
@@ -356,6 +366,7 @@ function TikTokConfiguracoesContent() {
           </CardContent>
         </Card>
 
+        {/* Settings Form */}
         <Card className="lg:col-span-3">
           <CardHeader>
             <CardTitle>
@@ -366,6 +377,7 @@ function TikTokConfiguracoesContent() {
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-6">
+            {/* Name and Default */}
             <div className="grid gap-4 sm:grid-cols-2">
               <div className="space-y-2">
                 <Label htmlFor="name">Nome da Configuração</Label>
@@ -373,7 +385,7 @@ function TikTokConfiguracoesContent() {
                   id="name"
                   value={formData.name}
                   onChange={(e) => handleInputChange('name', e.target.value)}
-                  placeholder="Ex: Padrão TikTok"
+                  placeholder="Ex: Padrão Shopee"
                   className={errors.name ? 'border-destructive' : ''}
                 />
                 {errors.name && <p className="text-xs text-destructive">{errors.name}</p>}
@@ -390,42 +402,26 @@ function TikTokConfiguracoesContent() {
 
             <Separator />
 
+            {/* Shopee Fees */}
             <div>
-              <h3 className="font-semibold mb-4 text-primary">Taxas do TikTok Shop</h3>
+              <h3 className="font-semibold mb-4 text-foreground">Taxas da Shopee</h3>
               <div className="grid gap-4 sm:grid-cols-2">
                 <div className="space-y-2">
-                  <Label htmlFor="taxa_comissao_tiktok">Taxa de Comissão (%)</Label>
+                  <Label htmlFor="taxa_comissao_shopee">Taxa de Comissão (%)</Label>
                   <div className="relative">
                     <Input
-                      id="taxa_comissao_tiktok"
+                      id="taxa_comissao_shopee"
                       type="text"
                       inputMode="decimal"
-                      value={getLocalValue('taxa_comissao_tiktok', formData.taxa_comissao_tiktok, true, false)}
-                      onChange={(e) => handleLocalChange('taxa_comissao_tiktok', e.target.value, true, false)}
-                      onBlur={() => handleLocalBlur('taxa_comissao_tiktok', formData.taxa_comissao_tiktok, true, false)}
+                      value={getLocalValue('taxa_comissao_shopee', formData.taxa_comissao_shopee, true, false)}
+                      onChange={(e) => handleLocalChange('taxa_comissao_shopee', e.target.value, true, false)}
+                      onBlur={() => handleLocalBlur('taxa_comissao_shopee', formData.taxa_comissao_shopee, true, false)}
                       placeholder="0"
                       className="pr-8"
                     />
                     <span className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground">%</span>
                   </div>
-                  <p className="text-xs text-muted-foreground">Porcentagem cobrada pelo TikTok</p>
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="taxa_afiliado">Taxa de Afiliado (%)</Label>
-                  <div className="relative">
-                    <Input
-                      id="taxa_afiliado"
-                      type="text"
-                      inputMode="decimal"
-                      value={getLocalValue('taxa_afiliado', formData.taxa_afiliado, true, false)}
-                      onChange={(e) => handleLocalChange('taxa_afiliado', e.target.value, true, false)}
-                      onBlur={() => handleLocalBlur('taxa_afiliado', formData.taxa_afiliado, true, false)}
-                      placeholder="0"
-                      className="pr-8"
-                    />
-                    <span className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground">%</span>
-                  </div>
-                  <p className="text-xs text-muted-foreground">Comissão paga a afiliados</p>
+                  <p className="text-xs text-muted-foreground">Porcentagem cobrada pela Shopee sobre o valor vendido</p>
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="adicional_por_item">Adicional por Item (R$)</Label>
@@ -449,8 +445,9 @@ function TikTokConfiguracoesContent() {
 
             <Separator />
 
+            {/* Anticipation */}
             <div>
-              <h3 className="font-semibold mb-4 text-primary">Antecipação</h3>
+              <h3 className="font-semibold mb-4 text-foreground">Antecipação</h3>
               <div className="grid gap-4 sm:grid-cols-2">
                 <div className="space-y-2">
                   <Label htmlFor="percentual_valor_antecipado">% do Valor Antecipado</Label>
@@ -467,6 +464,7 @@ function TikTokConfiguracoesContent() {
                     />
                     <span className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground">%</span>
                   </div>
+                  <p className="text-xs text-muted-foreground">Percentual do valor que é antecipado</p>
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="taxa_antecipacao">Taxa de Antecipação (%)</Label>
@@ -483,14 +481,16 @@ function TikTokConfiguracoesContent() {
                     />
                     <span className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground">%</span>
                   </div>
+                  <p className="text-xs text-muted-foreground">Taxa cobrada sobre o valor antecipado</p>
                 </div>
               </div>
             </div>
 
             <Separator />
 
+            {/* Taxes */}
             <div>
-              <h3 className="font-semibold mb-4 text-primary">Impostos e Notas Fiscais</h3>
+              <h3 className="font-semibold mb-4 text-foreground">Impostos e Notas Fiscais</h3>
               <div className="grid gap-4 sm:grid-cols-3">
                 <div className="space-y-2">
                   <Label htmlFor="imposto_nf_saida">Imposto NF Saída (%)</Label>
@@ -507,6 +507,7 @@ function TikTokConfiguracoesContent() {
                     />
                     <span className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground">%</span>
                   </div>
+                  <p className="text-xs text-muted-foreground">Imposto sobre NF de saída</p>
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="percentual_nf_entrada">% NF Entrada</Label>
@@ -523,9 +524,10 @@ function TikTokConfiguracoesContent() {
                     />
                     <span className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground">%</span>
                   </div>
+                  <p className="text-xs text-muted-foreground">% do custo para NF entrada</p>
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="desconto_nf_saida">Desconto Base Cálculo (%)</Label>
+                  <Label htmlFor="desconto_nf_saida">Desconto NF Saída (%)</Label>
                   <div className="relative">
                     <Input
                       id="desconto_nf_saida"
@@ -539,78 +541,88 @@ function TikTokConfiguracoesContent() {
                     />
                     <span className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground">%</span>
                   </div>
+                  <p className="text-xs text-muted-foreground">Desconto aplicado antes do imposto</p>
                 </div>
               </div>
             </div>
 
             <Separator />
 
+            {/* Shopee Ads */}
             <div>
-              <h3 className="font-semibold mb-4 text-primary">Custos de Publicidade</h3>
+              <h3 className="font-semibold mb-4 text-foreground">Shopee Ads (Opcional)</h3>
               <div className="grid gap-4 sm:grid-cols-2">
                 <div className="space-y-2">
-                  <Label htmlFor="gasto_tiktok_ads">Gasto com TikTok Ads (R$)</Label>
+                  <Label htmlFor="gasto_shopee_ads">Gasto Total com Ads (R$)</Label>
                   <div className="relative">
                     <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">R$</span>
                     <Input
-                      id="gasto_tiktok_ads"
+                      id="gasto_shopee_ads"
                       type="text"
                       inputMode="decimal"
-                      value={getLocalValue('gasto_tiktok_ads', formData.gasto_tiktok_ads, false, true)}
-                      onChange={(e) => handleLocalChange('gasto_tiktok_ads', e.target.value, false, true)}
-                      onBlur={() => handleLocalBlur('gasto_tiktok_ads', formData.gasto_tiktok_ads, false, true)}
-                      placeholder="0,00"
+                      value={getLocalValue('gasto_shopee_ads', formData.gasto_shopee_ads, false, true)}
+                      onChange={(e) => handleLocalChange('gasto_shopee_ads', e.target.value, false, true)}
+                      onBlur={() => handleLocalBlur('gasto_shopee_ads', formData.gasto_shopee_ads, false, true)}
                       className="pl-10"
+                      placeholder="0,00"
                     />
                   </div>
-                  <p className="text-xs text-muted-foreground">Valor total gasto com anúncios no TikTok</p>
+                  <p className="text-xs text-muted-foreground">
+                    Valor total gasto com anúncios no período. Será descontado do lucro total.
+                  </p>
                 </div>
               </div>
             </div>
 
             <Separator />
 
-            <div className="flex flex-col sm:flex-row gap-3 justify-between">
-              <div className="flex gap-3">
-                <Button onClick={handleSave} disabled={isSaving}>
-                  {isSaving ? (
-                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                  ) : (
-                    <Save className="h-4 w-4 mr-2" />
-                  )}
-                  Salvar
-                </Button>
-              </div>
-
-              {selectedSettings && !isCreating && (
+            {/* Actions */}
+            <div className="flex flex-col sm:flex-row gap-3 justify-end">
+              {!isCreating && selectedSettings && (
                 <AlertDialog>
                   <AlertDialogTrigger asChild>
-                    <Button variant="destructive" disabled={isDeleting}>
-                      {isDeleting ? (
-                        <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                      ) : (
-                        <Trash2 className="h-4 w-4 mr-2" />
-                      )}
+                    <Button variant="destructive" className="sm:order-1">
+                      <Trash2 className="h-4 w-4 mr-2" />
                       Excluir
                     </Button>
                   </AlertDialogTrigger>
                   <AlertDialogContent>
                     <AlertDialogHeader>
-                      <AlertDialogTitle>Excluir configuração?</AlertDialogTitle>
+                      <AlertDialogTitle>Excluir configuração e dados?</AlertDialogTitle>
                       <AlertDialogDescription>
-                        Esta ação irá excluir a configuração "{selectedSettings.name}" e <strong>todos os pedidos importados</strong>.
-                        Esta ação não pode ser desfeita.
+                        Esta ação não pode ser desfeita. A configuração "{selectedSettings.name}" e{' '}
+                        <strong>todos os pedidos importados</strong> serão permanentemente excluídos,
+                        zerando a análise atual.
                       </AlertDialogDescription>
                     </AlertDialogHeader>
                     <AlertDialogFooter>
-                      <AlertDialogCancel>Cancelar</AlertDialogCancel>
-                      <AlertDialogAction onClick={handleDelete} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
-                        Excluir
+                      <AlertDialogCancel disabled={isDeleting}>Cancelar</AlertDialogCancel>
+                      <AlertDialogAction 
+                        onClick={handleDelete} 
+                        className="bg-destructive hover:bg-destructive/90"
+                        disabled={isDeleting}
+                      >
+                        {isDeleting ? (
+                          <>
+                            <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                            Excluindo...
+                          </>
+                        ) : (
+                          'Excluir Tudo'
+                        )}
                       </AlertDialogAction>
                     </AlertDialogFooter>
                   </AlertDialogContent>
                 </AlertDialog>
               )}
+              <Button onClick={handleSave} disabled={isSaving} className="sm:order-2">
+                {isSaving ? (
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                ) : (
+                  <Save className="h-4 w-4 mr-2" />
+                )}
+                {isCreating ? 'Criar Configuração' : 'Salvar Alterações'}
+              </Button>
             </div>
           </CardContent>
         </Card>
@@ -619,12 +631,12 @@ function TikTokConfiguracoesContent() {
   );
 }
 
-export default function TikTokConfiguracoes() {
+export default function Configuracoes() {
   return (
     <ProtectedRoute>
-      <AppLayout title="Gestão TikTok">
-        <InPageNav tabs={tiktokNavTabs} />
-        <TikTokConfiguracoesContent />
+      <AppLayout title="Gestão Shopee">
+        <InPageNav tabs={shopeeNavTabs} />
+        <ConfiguracoesContent />
       </AppLayout>
     </ProtectedRoute>
   );

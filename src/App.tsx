@@ -7,11 +7,11 @@ import { AuthProvider } from "@/contexts/AuthContext";
 import { ProtectedRoute } from "@/components/layout/ProtectedRoute";
 import LandingPage from "./pages/LandingPage";
 import Index from "./pages/Index";
-import Auth from "./pages/Auth";
-import Configuracoes from "./pages/Configuracoes";
-import Upload from "./pages/Upload";
-import Resultados from "./pages/Resultados";
-import ResultadosVariacoes from "./pages/ResultadosVariacoes";
+import Auth from "./pages/user/Auth";
+import Configuracoes from "./pages/shopee/Configuracoes";
+import Upload from "./pages/shopee/Upload";
+import Resultados from "./pages/shopee/Resultados";
+import ResultadosVariacoes from "./pages/shopee/ResultadosVariacoes";
 import CalculadoraPrecificacao from "./pages/CalculadoraPrecificacao";
 import CadastroCustos from "./pages/precificacao/CadastroCustos";
 import FluxoCaixaDashboard from "./pages/fluxo-caixa/FluxoCaixaDashboard";
@@ -28,8 +28,8 @@ import TikTokPagamentos from "./pages/tiktok/TikTokPagamentos";
 import TikTokPagamentosUpload from "./pages/tiktok/TikTokPagamentosUpload";
 import DRE from "./pages/DRE";
 import Perfil from "./pages/Perfil";
-import EsqueciSenha from "./pages/EsqueciSenha";
-import ResetPassword from "./pages/ResetPassword";
+import EsqueciSenha from "./pages/user/EsqueciSenha";
+import ResetPassword from "./pages/user/ResetPassword";
 import NotFound from "./pages/NotFound";
 import Planos from "./pages/Planos";
 
@@ -45,17 +45,17 @@ const App = () => {
           <Routes>
             {/* Public routes */}
             <Route path="/" element={<LandingPage />} />
-            <Route path="/auth" element={<Auth />} />
+            <Route path="user/auth" element={<Auth />} />
             <Route path="/planos" element={<Planos />} />
-            <Route path="/esqueci-senha" element={<EsqueciSenha />} />
-            <Route path="/reset-password" element={<ResetPassword />} />
+            <Route path="user/esqueci-senha" element={<EsqueciSenha />} />
+            <Route path="user/reset-password" element={<ResetPassword />} />
 
             {/* Protected routes */}
-            <Route path="/dashboard" element={<ProtectedRoute><Index /></ProtectedRoute>} />
-            <Route path="/configuracoes" element={<ProtectedRoute><Configuracoes /></ProtectedRoute>} />
-            <Route path="/upload" element={<ProtectedRoute><Upload /></ProtectedRoute>} />
-            <Route path="/resultados" element={<ProtectedRoute><Resultados /></ProtectedRoute>} />
-            <Route path="/resultados-variacoes" element={<ProtectedRoute><ResultadosVariacoes /></ProtectedRoute>} />
+            <Route path="shopee/dashboard" element={<ProtectedRoute><Index /></ProtectedRoute>} />
+            <Route path="shopee/configuracoes" element={<ProtectedRoute><Configuracoes /></ProtectedRoute>} />
+            <Route path="shopee/upload" element={<ProtectedRoute><Upload /></ProtectedRoute>} />
+            <Route path="shopee/resultados" element={<ProtectedRoute><Resultados /></ProtectedRoute>} />
+            <Route path="shopee/variacoes" element={<ProtectedRoute><ResultadosVariacoes /></ProtectedRoute>} />
             <Route path="/calculadora" element={<ProtectedRoute><CalculadoraPrecificacao /></ProtectedRoute>} />
             <Route path="/precificacao/custos" element={<ProtectedRoute><CadastroCustos /></ProtectedRoute>} />
             <Route path="/fluxo-caixa" element={<ProtectedRoute><FluxoCaixaDashboard /></ProtectedRoute>} />

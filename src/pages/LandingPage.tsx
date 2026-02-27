@@ -331,7 +331,7 @@ export default function LandingPage() {
           </nav>
 
           <div className="hidden md:flex items-center gap-2">
-            <Link to="/auth">
+            <Link to="/user/auth">
               <Button variant="ghost" className="text-gray-700 hover:text-blue-600">Entrar</Button>
             </Link>
             <Link to="/planos">

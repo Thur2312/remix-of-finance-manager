@@ -1,5 +1,5 @@
 import { ProtectedRoute } from '@/components/layout/ProtectedRoute';
-import Dashboard from './Dashboard';
+import Dashboard from './shopee/Dashboard';
 
 export default function Index() {
   return (
