@@ -117,9 +117,12 @@ function Navbar() {
             LOGIN
           </button>
 
-          <a href="user/auth?redirect=planos" className="btn-cta !py-2.5 !px-5 !text-sm">
-            ASSINE JÁ →
-          </a>
+            <button
+            onClick={() => navigate("/user/auth?redirect=planos")}
+            className="btn-cta !py-2.5 !px-5 !text-sm"
+          >
+              ASSINE JÁ →
+            </button>
         </div>
 
         {/* Mobile menu button */}
@@ -144,13 +147,12 @@ function Navbar() {
               {link.label}
             </a>
           ))}
-          <a
-            href="user/auth?redirect=planos"
-            rel="noopener noreferrer"
-            className="btn-cta text-center justify-center"
+          <button
+            onClick={() => navigate("/user/auth?redirect=planos")}
+            className="btn-cta"
           >
-            ASSINE JÁ →
-          </a>
+            ASSINE AGORA →
+          </button>
         </div>
       )}
     </nav>
@@ -159,6 +161,8 @@ function Navbar() {
 
 // ─── Hero Section ─────────────────────────────────────────────────────────────
 function HeroSection() {
+  const navigate = useNavigate();
+
   return (
     <section className="section-dark min-h-screen flex items-center pt-20 pb-32 overflow-hidden relative">
       {/* Background gradient */}
@@ -194,13 +198,12 @@ function HeroSection() {
             </p>
 
             <div className="flex flex-col sm:flex-row gap-4 mb-10">
-              <a
-                href="user/auth?redirect=planos"
-                rel="noopener noreferrer"
-                className="btn-cta text-base"
+             <button
+                onClick={() => navigate("/user/auth?redirect=planos")}
+                className="btn-cta"
               >
                 ASSINE AGORA →
-              </a>
+              </button>
               <span className="text-white/50 text-sm self-center">
                 Cancele quando quiser
               </span>
@@ -359,6 +362,8 @@ function WhatIsSection() {
 
 // ─── How it Works Section (cyan bg) ──────────────────────────────────────────
 function HowItWorksSection() {
+  const navigate = useNavigate();
+
   return (
    <section className="section-cyan relative py-20 md:py-28 overflow-hidden">
       <div className="container">
@@ -410,13 +415,12 @@ function HowItWorksSection() {
         </div>
 
         <div className="text-center animate-fade-up">
-          <a
-            href="user/auth?redirect=planos"
-            rel="noopener noreferrer"
-            className="btn-outline-white"
-          >
-            ASSINE AGORA →
-          </a>
+          <button
+          onClick={() => navigate("/user/auth?redirect=planos")}
+          className="btn-cta"
+        >
+          ASSINE AGORA →
+        </button>
         </div>
       </div>
       <svg
@@ -621,6 +625,8 @@ function StatsSection() {
 
 // ─── Pricing Section ──────────────────────────────────────────────────────────
 function PricingSection() {
+  const navigate = useNavigate();
+
   const features = [
     "Cálculo de lucro por pedido",
     "Calculadora de precificação",
@@ -668,14 +674,12 @@ function PricingSection() {
 
             {/* CTA */}
             <div className="px-8 py-4">
-              <a
-                href="user/auth?redirect=planos"
-                rel="noopener noreferrer"
-                className="btn-cta w-full justify-center text-center"
-                style={{ display: "flex" }}
-              >
-                Assinar agora
-              </a>
+              <button
+              onClick={() => navigate("/user/auth?redirect=planos")}
+              className="btn-cta"
+            >
+              ASSINE AGORA →
+            </button>
             </div>
 
             {/* Features */}
@@ -722,6 +726,8 @@ function PricingSection() {
 
 // ─── CTA Final Section ────────────────────────────────────────────────────────
 function CTASection() {
+  const navigate = useNavigate();
+
   return (
     <section className="section-cyan py-20 md:py-28 relative overflow-hidden">
       <div
@@ -742,13 +748,12 @@ function CTASection() {
               Crie sua conta hoje e experimente o impacto real que o Seller Finance
               gera na clareza financeira e lucratividade da sua loja.
             </p>
-            <a
-              href="user/auth?redirect=planos"
-              rel="noopener noreferrer"
-              className="btn-outline-white"
-            >
-              ASSINE AGORA →
-            </a>
+          <button
+            onClick={() => navigate("/user/auth?redirect=planos")}
+            className="btn-cta"
+          >
+            ASSINE AGORA →
+          </button>
           </div>
 
           {/* Floating cards */}
