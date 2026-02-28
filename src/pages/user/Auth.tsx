@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -16,47 +16,52 @@ const passwordSchema = z.string()
   .min(8, 'Mínimo 8 caracteres')
   .regex(/[A-Z]/, 'Deve ter letra maiúscula')
   .regex(/[0-9]/, 'Deve ter número');
+
 export default function Auth() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [fullName, setFullName] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [rememberMe, setRememberMe] = useState(false);
-  const {
-    signIn,
-    signUp,
-    user
-  } = useAuth();
-const navigate = useNavigate();
-useEffect(() => {
-  if (user) {
-    navigate('/user/auth');
-  }
-}, [user, navigate]);
 
-useEffect(() => {
-  const savedEmail = localStorage.getItem('rememberedEmail');
-  if (savedEmail) {
-    setEmail(savedEmail);
-    setRememberMe(true);
-  }
-}, []);
+  const { signIn, signUp, user } = useAuth();
+  const navigate = useNavigate();
+  const location = useLocation();
 
-const handleSignIn = async (e: React.FormEvent) => {
-  e.preventDefault();
-  setIsLoading(true);
-  
-  // Validar email
-  const emailResult = emailSchema.safeParse(email);
-  if (!emailResult.success) {
-    toast.error(emailResult.error.errors[0].message);
-    setIsLoading(false);
-    return;
-  }
- 
-  const {
-    error
-  } = await signIn(email, password);
+  // Pegar o redirect da URL, ou usar /fluxo-caixa por padrão
+  const searchParams = new URLSearchParams(location.search);
+  const redirectPath = searchParams.get('redirect') || '/fluxo-caixa';
+
+  // Redirecionar se já estiver logado
+  useEffect(() => {
+    if (user) {
+      navigate(redirectPath);
+    }
+  }, [user, navigate, redirectPath]);
+
+  // Lembrar email
+  useEffect(() => {
+    const savedEmail = localStorage.getItem('rememberedEmail');
+    if (savedEmail) {
+      setEmail(savedEmail);
+      setRememberMe(true);
+    }
+  }, []);
+
+  // Login
+  const handleSignIn = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsLoading(true);
+
+    // Validar email
+    const emailResult = emailSchema.safeParse(email);
+    if (!emailResult.success) {
+      toast.error(emailResult.error.errors[0].message);
+      setIsLoading(false);
+      return;
+    }
+
+    const { error } = await signIn(email, password);
     if (error) {
       if (error.message.includes('Invalid login credentials')) {
         toast.error('Email ou senha incorretos');
@@ -65,21 +70,23 @@ const handleSignIn = async (e: React.FormEvent) => {
       }
     } else {
       toast.success('Login realizado com sucesso!');
-      navigate('/fluxo-caixa');
+      navigate(redirectPath); // usa redirect da URL
     }
+
     setIsLoading(false);
   };
+
+  // Cadastro
   const handleSignUp = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
 
     if (rememberMe) {
-  localStorage.setItem('rememberedEmail', email);
-} else {
-  localStorage.removeItem('rememberedEmail');
-}
+      localStorage.setItem('rememberedEmail', email);
+    } else {
+      localStorage.removeItem('rememberedEmail');
+    }
 
-    
     // Validar email
     const emailResult = emailSchema.safeParse(email);
     if (!emailResult.success) {
@@ -87,7 +94,7 @@ const handleSignIn = async (e: React.FormEvent) => {
       setIsLoading(false);
       return;
     }
-    
+
     // Validar senha
     const passwordResult = passwordSchema.safeParse(password);
     if (!passwordResult.success) {
@@ -95,10 +102,8 @@ const handleSignIn = async (e: React.FormEvent) => {
       setIsLoading(false);
       return;
     }
-    
-    const {
-      error
-    } = await signUp(email, password, fullName);
+
+    const { error } = await signUp(email, password, fullName);
     if (error) {
       if (error.message.includes('already registered')) {
         toast.error('Este email já está cadastrado');
@@ -107,18 +112,22 @@ const handleSignIn = async (e: React.FormEvent) => {
       }
     } else {
       toast.success('Conta criada com sucesso! Você já pode fazer login.');
-      navigate('/fluxo-caixa');
+      navigate(redirectPath); // usa redirect da URL
     }
+
     setIsLoading(false);
   };
-  return <div className="min-h-screen flex">
-      {/* Left side - Branding */}
-       <button
-      onClick={() => navigate('/')}
-      className="fixed top-4 left-4 z-50 text-gray-600 hover:text-gray-900 transition-colors"
+  return (
+    <div className="min-h-screen flex">
+      {/* Botão voltar */}
+      <button
+        onClick={() => navigate('/')}
+        className="fixed top-4 left-4 z-50 text-gray-600 hover:text-gray-900 transition-colors"
       >
-      <ArrowLeft className="h-5 w-5" />
+        <ArrowLeft className="h-5 w-5" />
       </button>
+
+      {/* Left side - Branding */}
       <div className="hidden lg:flex lg:w-1/2 bg-primary items-center justify-center p-12">
         <div className="text-primary-foreground max-w-md space-y-8">
           <div className="flex items-center gap-3">
@@ -128,7 +137,7 @@ const handleSignIn = async (e: React.FormEvent) => {
           <p className="text-xl opacity-90">
             Gerencie seus resultados de vendas de forma simples e eficiente.
           </p>
-          
+
           <div className="space-y-6 pt-8">
             <div className="flex items-center gap-4">
               <div className="bg-primary-foreground/20 p-3 rounded-lg">
@@ -139,7 +148,7 @@ const handleSignIn = async (e: React.FormEvent) => {
                 <p className="text-sm opacity-80">Visualize relatórios detalhados</p>
               </div>
             </div>
-            
+
             <div className="flex items-center gap-4">
               <div className="bg-primary-foreground/20 p-3 rounded-lg">
                 <DollarSign className="h-6 w-6" />
@@ -149,7 +158,7 @@ const handleSignIn = async (e: React.FormEvent) => {
                 <p className="text-sm opacity-80">Taxas, impostos e custos automáticos</p>
               </div>
             </div>
-            
+
             <div className="flex items-center gap-4">
               <div className="bg-primary-foreground/20 p-3 rounded-lg">
                 <BarChart3 className="h-6 w-6" />
@@ -178,6 +187,7 @@ const handleSignIn = async (e: React.FormEvent) => {
               <TabsTrigger value="register">Cadastrar</TabsTrigger>
             </TabsList>
 
+            {/* Login */}
             <TabsContent value="login">
               <Card>
                 <CardHeader>
@@ -190,37 +200,53 @@ const handleSignIn = async (e: React.FormEvent) => {
                   <form onSubmit={handleSignIn} className="space-y-4">
                     <div className="space-y-2">
                       <Label htmlFor="email-login">Email</Label>
-                      <Input id="email-login" type="email" placeholder="seu@email.com" value={email} onChange={e => setEmail(e.target.value)} required />
+                      <Input
+                        id="email-login"
+                        type="email"
+                        placeholder="seu@email.com"
+                        value={email}
+                        onChange={e => setEmail(e.target.value)}
+                        required
+                      />
                     </div>
                     <div className="space-y-2">
                       <Label htmlFor="password-login">Senha</Label>
-                      <Input id="password-login" type="password" placeholder="••••••••" value={password} onChange={e => setPassword(e.target.value)} required />
+                      <Input
+                        id="password-login"
+                        type="password"
+                        placeholder="••••••••"
+                        value={password}
+                        onChange={e => setPassword(e.target.value)}
+                        required
+                      />
                     </div>
                     <Button type="submit" className="w-full" disabled={isLoading}>
                       {isLoading ? 'Entrando...' : 'Entrar'}
                     </Button>
                     <div className="flex items-center space-x-2">
-                    <input
-                      type="checkbox"
-                      id="remember"
-                      checked={rememberMe}
-                      onChange={(e) => setRememberMe(e.target.checked)}
-                      className="h-4 w-4 rounded border-gray-300"
-                    />
-                    <label htmlFor="remember" className="text-sm text-muted-foreground cursor-pointer">
-                      Lembrar de mim
-                    </label>
-                  </div>
+                      <input
+                        type="checkbox"
+                        id="remember"
+                        checked={rememberMe}
+                        onChange={(e) => setRememberMe(e.target.checked)}
+                        className="h-4 w-4 rounded border-gray-300"
+                      />
+                      <label htmlFor="remember" className="text-sm text-muted-foreground cursor-pointer">
+                        Lembrar de mim
+                      </label>
+                    </div>
                   </form>
-                  <div>
                   <p className="text-sm text-center text-muted-foreground mt-4">
-                    Esqueceu a Senha? <span className="text-primary cursor-pointer" onClick={() => navigate('/user/esqueci-senha')}>Recuperar senha</span>
+                    Esqueceu a Senha?{' '}
+                    <span className="text-primary cursor-pointer" onClick={() => navigate('/user/esqueci-senha')}>
+                      Recuperar senha
+                    </span>
                   </p>
-                  </div>
                 </CardContent>
               </Card>
             </TabsContent>
 
+            {/* Cadastro */}
             <TabsContent value="register">
               <Card>
                 <CardHeader>
@@ -233,15 +259,37 @@ const handleSignIn = async (e: React.FormEvent) => {
                   <form onSubmit={handleSignUp} className="space-y-4">
                     <div className="space-y-2">
                       <Label htmlFor="name-register">Nome completo</Label>
-                      <Input id="name-register" type="text" placeholder="Seu nome" value={fullName} onChange={e => setFullName(e.target.value)} required />
+                      <Input
+                        id="name-register"
+                        type="text"
+                        placeholder="Seu nome"
+                        value={fullName}
+                        onChange={e => setFullName(e.target.value)}
+                        required
+                      />
                     </div>
                     <div className="space-y-2">
                       <Label htmlFor="email-register">Email</Label>
-                      <Input id="email-register" type="email" placeholder="seu@email.com" value={email} onChange={e => setEmail(e.target.value)} required />
+                      <Input
+                        id="email-register"
+                        type="email"
+                        placeholder="seu@email.com"
+                        value={email}
+                        onChange={e => setEmail(e.target.value)}
+                        required
+                      />
                     </div>
                     <div className="space-y-2">
                       <Label htmlFor="password-register">Senha</Label>
-                      <Input id="password-register" type="password" placeholder="Mínimo 8 caracteres" value={password} onChange={e => setPassword(e.target.value)} required minLength={8} />
+                      <Input
+                        id="password-register"
+                        type="password"
+                        placeholder="Mínimo 8 caracteres"
+                        value={password}
+                        onChange={e => setPassword(e.target.value)}
+                        required
+                        minLength={8}
+                      />
                     </div>
                     <Button type="submit" className="w-full" disabled={isLoading}>
                       {isLoading ? 'Criando conta...' : 'Criar conta'}
@@ -253,5 +301,6 @@ const handleSignIn = async (e: React.FormEvent) => {
           </Tabs>
         </div>
       </div>
-    </div>;
+    </div>
+  );
 }
