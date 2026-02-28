@@ -117,7 +117,7 @@ function Navbar() {
             LOGIN
           </button>
 
-          <a href="/planos" className="btn-cta !py-2.5 !px-5 !text-sm">
+          <a href="user/auth?redirect=planos" className="btn-cta !py-2.5 !px-5 !text-sm">
             ASSINE JÁ →
           </a>
         </div>
@@ -145,7 +145,7 @@ function Navbar() {
             </a>
           ))}
           <a
-            href="/planos"
+            href="user/auth?redirect=planos"
             rel="noopener noreferrer"
             className="btn-cta text-center justify-center"
           >
@@ -195,7 +195,7 @@ function HeroSection() {
 
             <div className="flex flex-col sm:flex-row gap-4 mb-10">
               <a
-                href="/planos"
+                href="user/auth?redirect=planos"
                 rel="noopener noreferrer"
                 className="btn-cta text-base"
               >
@@ -411,7 +411,7 @@ function HowItWorksSection() {
 
         <div className="text-center animate-fade-up">
           <a
-            href="/planos"
+            href="user/auth?redirect=planos"
             rel="noopener noreferrer"
             className="btn-outline-white"
           >
@@ -669,7 +669,7 @@ function PricingSection() {
             {/* CTA */}
             <div className="px-8 py-4">
               <a
-                href="/planos"
+                href="user/auth?redirect=planos"
                 rel="noopener noreferrer"
                 className="btn-cta w-full justify-center text-center"
                 style={{ display: "flex" }}
@@ -743,7 +743,7 @@ function CTASection() {
               gera na clareza financeira e lucratividade da sua loja.
             </p>
             <a
-              href="/planos"
+              href="user/auth?redirect=planos"
               rel="noopener noreferrer"
               className="btn-outline-white"
             >
