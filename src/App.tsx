@@ -52,6 +52,7 @@ const App = () => {
 
             {/* Protected routes */}
             <Route path="/planos" element={<Planos />} />
+            <Route path="/user/auth/planos" element={<Planos />} />
             <Route path="shopee/dashboard" element={<ProtectedRoute><Index /></ProtectedRoute>} />
             <Route path="shopee/configuracoes" element={<ProtectedRoute><Configuracoes /></ProtectedRoute>} />
             <Route path="shopee/upload" element={<ProtectedRoute><Upload /></ProtectedRoute>} />
