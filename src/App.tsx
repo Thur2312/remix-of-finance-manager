@@ -46,11 +46,12 @@ const App = () => {
             {/* Public routes */}
             <Route path="/" element={<LandingPage />} />
             <Route path="user/auth" element={<Auth />} />
-            <Route path="/planos" element={<Planos />} />
+            
             <Route path="user/esqueci-senha" element={<EsqueciSenha />} />
             <Route path="user/reset-password" element={<ResetPassword />} />
 
             {/* Protected routes */}
+            <Route path="/planos" element={<Planos />} />
             <Route path="shopee/dashboard" element={<ProtectedRoute><Index /></ProtectedRoute>} />
             <Route path="shopee/configuracoes" element={<ProtectedRoute><Configuracoes /></ProtectedRoute>} />
             <Route path="shopee/upload" element={<ProtectedRoute><Upload /></ProtectedRoute>} />

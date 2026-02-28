@@ -327,7 +327,6 @@ function TikTokPagamentosContent() {
   if (loading) {
     return (
       <AppLayout title='Gestão TikTok'>
-        <FeatureGate permission="payments_access" requiredPlanName="Profissional">
           <InPageNav tabs={tiktokNavTabs} />
 
         <motion.div
@@ -350,7 +349,6 @@ function TikTokPagamentosContent() {
             <Skeleton className="h-96" />
           </motion.div>
         </motion.div>
-        </FeatureGate>
       </AppLayout>
     );
   }
@@ -358,7 +356,7 @@ function TikTokPagamentosContent() {
   if (settlements.length === 0 && statements.length === 0) {
     return (
       <AppLayout title='Gestão TikTok'>
-          <FeatureGate permission="payments_access" requiredPlanName="Profissional">
+
             <InPageNav tabs={tiktokNavTabs} />
         <motion.div
           className="space-y-6"
@@ -397,7 +395,7 @@ function TikTokPagamentosContent() {
             </Card>
           </motion.div>
         </motion.div>
-        </FeatureGate>
+    
       </AppLayout>
     );
   }
@@ -406,7 +404,6 @@ function TikTokPagamentosContent() {
 
   return (
     <AppLayout title='Gestão TikTok'>
-      <FeatureGate permission="payments_access" requiredPlanName="Profissional">
         <InPageNav tabs={tiktokNavTabs} />
       <motion.div
         className="space-y-6"
@@ -841,7 +838,6 @@ function TikTokPagamentosContent() {
           onOpenChange={setModalOpen}
         />
       </motion.div>
-      </FeatureGate>
     </AppLayout>
   );
 }
