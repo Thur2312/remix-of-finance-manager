@@ -895,7 +895,7 @@ function Footer() {
           <div>
             <div className="flex items-center gap-1 mb-4">
               <img
-                src="/src/assets/logo-new.svg"
+                src={logo}
                 alt="Seller Finance"
                 className="h-12 w-auto"
               />
