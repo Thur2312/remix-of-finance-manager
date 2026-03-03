@@ -57,7 +57,7 @@ const plans = [
   },
   {
     name: 'Profissional',
-    price: 'R$ 37,90',
+    price: 'R$ 37,00',
     period: '/mês',
     description: 'Para vendedores em crescimento',
     icon: Crown,
