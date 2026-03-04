@@ -43,7 +43,7 @@ export default function IntegrationsOverview() {
   return (
     <ProtectedRoute>
       <AppLayout title="Integrações">
-        <div className="space-y-6 max-w-4xl">
+        <div className="space-y-6 max-w">
           <div>
             <div className="flex items-center gap-2 mb-1">
               <Plug className="h-5 w-5 text-primary" />
@@ -54,7 +54,7 @@ export default function IntegrationsOverview() {
             </p>
           </div>
 
-          <div className="grid gap-4 md:grid-cols-2">
+          <div className="grid gap-3 md:grid-cols-2">
             <IntegrationCard
               provider="shopee"
               status={shopee?.status || 'disconnected'}
