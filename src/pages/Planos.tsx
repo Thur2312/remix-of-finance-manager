@@ -120,7 +120,7 @@ export default function Planos() {
 
   const handleSelectPlan = () => {
     if (user) {
-      navigate('/fluxo-caixa ');
+      navigate('https://payfast.greenn.com.br/m56nu2k');
     } else {
       navigate('/auth?redirect=/planos');
     }

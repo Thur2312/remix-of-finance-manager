@@ -32,6 +32,9 @@ import EsqueciSenha from "./pages/user/EsqueciSenha";
 import ResetPassword from "./pages/user/ResetPassword";
 import NotFound from "./pages/NotFound";
 import Planos from "./pages/Planos";
+import IntegrationsOverview from "./pages/integrations/IntegrationsOverview";
+import IntegrationManage from "./pages/integrations/IntegrationManage";
+import IntegrationCallback from "./pages/integrations/IntegrationCallback";
 
 const queryClient = new QueryClient();
 
@@ -74,6 +77,9 @@ const App = () => {
             <Route path="/tiktok/pagamentos/upload" element={<ProtectedRoute><TikTokPagamentosUpload /></ProtectedRoute>} />
             <Route path="/dre" element={<ProtectedRoute><DRE /></ProtectedRoute>} />
             <Route path="/perfil" element={<ProtectedRoute><Perfil /></ProtectedRoute>} />
+            <Route path="/integrations" element={<ProtectedRoute><IntegrationsOverview /></ProtectedRoute>} />
+            <Route path="/integrations/:provider" element={<ProtectedRoute><IntegrationManage /></ProtectedRoute>} />
+            <Route path="/integrations/callback/:provider" element={<IntegrationCallback />} />
 
             {/* Catch-all */}
             <Route path="*" element={<NotFound />} />
