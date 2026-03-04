@@ -5,7 +5,7 @@ const supabase = createClient(process.env.SUPABASE_URL!, process.env.SUPABASE_SE
 /**
  * Processa o Webhook da Green usando a sua tabela existente
  */
-export async function handleGreenWebhook(headers: any, body: any) {
+export async function handleGreenWebhook(headers: { 'x-green-token': string }, body: { status: string, external_id: string, transaction_id: string, product: { name: string } }) {
     // 1. Validar Token da Green (Segurança)
     if (headers['x-green-token'] !== process.env.GREEN_WEBHOOK_TOKEN) {
         throw new Error('Não autorizado');
