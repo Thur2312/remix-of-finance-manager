@@ -35,6 +35,8 @@ import Planos from "./pages/Planos";
 import IntegrationsOverview from "./pages/integrations/IntegrationsOverview";
 import IntegrationManage from "./pages/integrations/IntegrationManage";
 import IntegrationCallback from "./pages/integrations/IntegrationCallback";
+import TermosDeUso from "./pages/TermosDeUso";
+import PoliticaDePrivacidade from "./pages/PoliticaDePrivacidade";
 
 const queryClient = new QueryClient();
 
@@ -49,7 +51,9 @@ const App = () => {
             {/* Public routes */}
             <Route path="/" element={<LandingPage />} />
             <Route path="user/auth" element={<Auth />} />
-            
+            <Route path="termos-de-uso" element={<TermosDeUso />} />
+            <Route path="politica-de-privacidade" element={<PoliticaDePrivacidade />} />
+
             <Route path="user/esqueci-senha" element={<EsqueciSenha />} />
             <Route path="user/reset-password" element={<ResetPassword />} />
 

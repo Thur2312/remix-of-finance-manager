@@ -960,10 +960,10 @@ function Footer() {
             © {new Date().getFullYear()} Seller Finance. Todos os direitos reservados.
           </p>
           <div className="flex gap-4">
-            <a href="#" className="text-white/40 hover:text-white/70 text-xs transition-colors">
+            <a href="/termos-de-uso" className="text-white/40 hover:text-white/70 text-xs transition-colors">
               Termos de uso
             </a>
-            <a href="#" className="text-white/40 hover:text-white/70 text-xs transition-colors">
+            <a href="/politica-de-privacidade" className="text-white/40 hover:text-white/70 text-xs transition-colors">
               Política de privacidade
             </a>
           </div>

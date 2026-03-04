@@ -23,6 +23,8 @@ export default function Auth() {
   const [fullName, setFullName] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [rememberMe, setRememberMe] = useState(false);
+  const [termsAccepted, setTermsAccepted] = useState(false);
+  const [privacyPolicyAccepted, setPrivacyPolicyAccepted] = useState(false);
 
   const { signIn, signUp, user } = useAuth();
   const navigate = useNavigate();
@@ -77,6 +79,8 @@ export default function Auth() {
   };
 
   // Cadastro
+
+
   const handleSignUp = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
@@ -242,6 +246,7 @@ export default function Auth() {
                       Recuperar senha
                     </span>
                   </p>
+              
                 </CardContent>
               </Card>
             </TabsContent>
