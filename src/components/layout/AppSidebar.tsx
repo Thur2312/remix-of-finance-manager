@@ -5,7 +5,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { Sidebar, SidebarContent, SidebarFooter, SidebarGroup, SidebarGroupContent, SidebarHeader, SidebarMenu, SidebarMenuButton, SidebarMenuItem, useSidebar } from '@/components/ui/sidebar';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
-import { User, ChevronUp, LogOut, TrendingUp, Calculator, Receipt, Sparkles, BarChart3, HandCoins,Wallet } from 'lucide-react';
+import { User, ChevronUp, LogOut, TrendingUp, Calculator, Receipt, Sparkles, BarChart3, HandCoins,Wallet, Plug } from 'lucide-react';
 import logo from '@/assets/logo-new.svg';
 
 const sidebarItems = [
@@ -16,7 +16,8 @@ const sidebarItems = [
   { title: 'Custos Fixos', url: '/precificacao/custos', icon: Receipt },
   { title: 'Assistente', url: '/assistente-anuncio', icon: Sparkles },
   { title: 'DRE', url: '/dre', icon: BarChart3 },
-  { title: 'Planos', url: '/planos', icon: Wallet}
+  { title: 'Planos', url: '/planos', icon: Wallet},
+  { title: 'Integrações', url: '/integrations', icon: Plug }
 ];
 
 // Routes that belong to each section for active highlighting
@@ -24,6 +25,7 @@ const sectionRoutes: Record<string, string[]> = {
   '/fluxo-caixa': ['/fluxo-caixa', '/fluxo-caixa/lancamentos', '/fluxo-caixa/categorias'],
   '/shopee/dashboard': ['/shopee/dashboard', '/shopee/resultados', '/shopee/variacoes', '/shopee/upload', '/shopee/pagamentos', '/shopee/pagamentos/upload', '/shopee/configuracoes'],
   '/tiktok/dashboard': ['/tiktok/dashboard', '/tiktok/resultados', '/tiktok/variacoes', '/tiktok/upload', '/tiktok/pagamentos', '/tiktok/pagamentos/upload', '/tiktok/configuracoes'],
+  '/integrations': ['/integrations', '/integrations/shopee', '/integrations/tiktok', '/integrations/callback'],
 };
 
 export function AppSidebar() {
