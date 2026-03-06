@@ -9,6 +9,7 @@ import { IntegrationHealthPanel } from '@/components/integrations/IntegrationHea
 import { useIntegrations } from '@/hooks/useIntegrations';
 import { useToast } from '@/hooks/use-toast';
 import { Plug } from 'lucide-react';
+import { TikTokAuthService } from '@/features/tiktok-integrations/tiktokAuthService';
 
 export default function IntegrationsOverview() {
   const [searchParams] = useSearchParams();
@@ -17,6 +18,10 @@ export default function IntegrationsOverview() {
   const { connections, logs, isLoading, getConnection, startAuth, manualAuth, syncNow } = useIntegrations();
   const [connectProvider, setConnectProvider] = useState<'shopee' | 'tiktok' | null>(null);
   const [isSyncing, setIsSyncing] = useState(false);
+   
+
+   // colocar tiktokauthservice para redirecionar para o callback correto // se n dar certo coloca esse link : https://auth.tiktok-shops.com/oauth/shop_redirect?app_key=6j9urmh6tjl14&pc_sign=hLOoJwAAAACi380wuTVVeGBkyq8R0SJEvjioC9cVgU6YVNMuHToWGg&redirect=%2F%2Fpartner.tiktokshop.com%2Fdev%2Fapi-testing-tool&apiId=7141470215171081986&pkgId=430596&versionId=202212
+
 
   // Handle callback success
   useEffect(() => {
