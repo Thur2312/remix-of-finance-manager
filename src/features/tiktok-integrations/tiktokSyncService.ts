@@ -1,8 +1,7 @@
-import fetch from 'node-fetch';
 import { Pool } from 'pg';
-import { TikTokIntegration, TikTokOrdersResponse, TikTokFinancialResponse, TikTokErrorResponse,} from './tiktok_types';
+import { TikTokIntegration, TikTokOrdersResponse, TikTokFinancialResponse, TikTokErrorResponse, TikTokOrder, TikTokFinancialTransaction} from './tiktok_types';
 import { tiktokAuthService } from './tiktokAuthService';
-
+import axios from 'axios';
 // Classe responsável pela sincronização de dados do TikTok Shop
 // Namoral parece muito que eu to fazendo codigo em java sabo muito
 
@@ -67,7 +66,21 @@ export class TikTokSyncService {
 
       // Iterar sobre os pedidos e salvá-los no banco de dados
       for (const order of ordersResponse.data.orders) {
-        await this.saveOrderToDatabase(integration.shop_id, order);
+        const mappedOrder: TikTokOrder = {
+          id: order.order_id,
+          shop_id: integration.shop_id,
+          tiktok_order_id: order.order_id,
+          order_status: order.order_status,
+          total_amount: parseFloat(order.order_amount?.amount || '0'),
+          currency: order.order_amount?.currency || 'BRL',
+          created_time: new Date(order.create_time * 1000),
+          update_time: new Date(order.update_time * 1000),
+          buyer_user_id: order.buyer_user_id,
+          raw_data: JSON.parse(JSON.stringify(order)),
+          created_at: new Date(),
+          updated_at: new Date(),
+        };
+        await this.saveOrderToDatabase(integration.shop_id, mappedOrder);
       }
 
       console.log(`${ordersResponse.data.orders.length} pedidos sincronizados para shop_id: ${integration.shop_id}`);
@@ -93,7 +106,20 @@ export class TikTokSyncService {
 
       // Iterar sobre as transações e salvá-las no banco de dados
       for (const transaction of financialResponse.data.transactions) {
-        await this.saveFinancialTransactionToDatabase(integration.shop_id, transaction);
+        const mappedTransaction: TikTokFinancialTransaction = {
+          id: transaction.transaction_id,
+          shop_id: integration.shop_id,
+          transaction_id: transaction.transaction_id,
+          transaction_type: transaction.transaction_type,
+          amount: parseFloat(transaction.amount || '0'),
+          currency: transaction.currency || 'BRL',
+          transaction_time: new Date(transaction.transaction_time * 1000),
+          description: transaction.description,
+          raw_data: JSON.parse(JSON.stringify(transaction)),
+          created_at: new Date(),
+          updated_at: new Date(),
+        };
+        await this.saveFinancialTransactionToDatabase(integration.shop_id, mappedTransaction);
       }
 
       console.log(
@@ -117,8 +143,7 @@ export class TikTokSyncService {
       const url = `${this.apiBaseUrl}/v2/orders/search`;
 
       // Fazer requisição GET com o token de acesso
-      const response = await fetch(url, {
-        method: 'GET',
+      const response = await axios.get(url, {
         headers: {
           Authorization: `Bearer ${accessToken}`,
           'Content-Type': 'application/json',
@@ -126,13 +151,13 @@ export class TikTokSyncService {
       });
 
       // Verificar se a resposta foi bem-sucedida
-      if (!response.ok) {
-        const errorData = (await response.json()) as TikTokErrorResponse;
+      if (response.status < 200 || response.status >= 300) {
+        const errorData = response.data as TikTokErrorResponse;
         throw new Error(`Erro ao buscar pedidos: ${errorData.message}`);
       }
 
       // Parsear e retornar a resposta
-      return (await response.json()) as TikTokOrdersResponse;
+      return response.data as TikTokOrdersResponse;
     } catch (error) {
       console.error('Erro ao buscar pedidos do TikTok:', error);
       throw error;
@@ -154,8 +179,7 @@ export class TikTokSyncService {
       const url = `${this.apiBaseUrl}/v2/financial/transactions`;
 
       // Fazer requisição GET com o token de acesso
-      const response = await fetch(url, {
-        method: 'GET',
+      const response = await axios.get(url, {
         headers: {
           Authorization: `Bearer ${accessToken}`,
           'Content-Type': 'application/json',
@@ -163,13 +187,13 @@ export class TikTokSyncService {
       });
 
       // Verificar se a resposta foi bem-sucedida
-      if (!response.ok) {
-        const errorData = (await response.json()) as TikTokErrorResponse;
+      if (response.status < 200 || response.status >= 300) {
+        const errorData = response.data as TikTokErrorResponse;
         throw new Error(`Erro ao buscar transações financeiras: ${errorData.message}`);
       }
 
       // Parsear e retornar a resposta
-      return (await response.json()) as TikTokFinancialResponse;
+      return response.data as TikTokFinancialResponse;
     } catch (error) {
       console.error('Erro ao buscar transações financeiras do TikTok:', error);
       throw error;
@@ -181,7 +205,7 @@ export class TikTokSyncService {
    * @param shopId - ID da loja no TikTok
    * @param order - Dados do pedido
    */
-  private async saveOrderToDatabase(shopId: string, order: any): Promise<void> {
+  private async saveOrderToDatabase(shopId: string, order: TikTokOrder): Promise<void> {
     try {
       // Query para inserir ou atualizar o pedido (UPSERT)
       const query = `
@@ -199,15 +223,14 @@ export class TikTokSyncService {
       `;
 
       // Extrair os valores do pedido
-      const orderAmount = order.order_amount || {};
       const values = [
         shopId,
-        order.order_id,
+        order.tiktok_order_id,
         order.order_status,
-        parseFloat(orderAmount.amount || 0),
-        orderAmount.currency || 'BRL',
-        new Date(order.create_time * 1000), // Converter timestamp para Date
-        new Date(order.update_time * 1000),
+        order.total_amount,
+        order.currency,
+        order.created_time,
+        order.update_time,
         order.buyer_user_id,
         JSON.stringify(order), // Armazenar o JSON completo
       ];
@@ -215,7 +238,7 @@ export class TikTokSyncService {
       // Executar a query
       await this.db.query(query, values);
     } catch (error) {
-      console.error(`Erro ao salvar pedido ${order.order_id}:`, error);
+      console.error(`Erro ao salvar pedido ${order.tiktok_order_id}:`, error);
       throw error;
     }
   }
@@ -225,7 +248,7 @@ export class TikTokSyncService {
    * @param shopId - ID da loja no TikTok
    * @param transaction - Dados da transação
    */
-  private async saveFinancialTransactionToDatabase(shopId: string, transaction: any): Promise<void> {
+  private async saveFinancialTransactionToDatabase(shopId: string, transaction: TikTokFinancialTransaction): Promise<void> {
     try {
       // Query para inserir ou atualizar a transação (UPSERT)
       const query = `
@@ -248,9 +271,9 @@ export class TikTokSyncService {
         shopId,
         transaction.transaction_id,
         transaction.transaction_type,
-        parseFloat(transaction.amount || 0),
+        parseFloat(String(transaction.amount) || '0'),
         transaction.currency || 'BRL',
-        new Date(transaction.transaction_time * 1000), // Converter timestamp para Date
+        new Date(parseFloat(String(transaction.transaction_time)) * 1000), // Converter timestamp para Date
         transaction.description,
         JSON.stringify(transaction), // Armazenar o JSON completo
       ];
@@ -308,7 +331,7 @@ export class TikTokSyncService {
    * @param shopId - ID da loja no TikTok
    * @returns Array de pedidos
    */
-  public async getOrdersByShop(shopId: string): Promise<any[]> {
+  public async getOrdersByShop(shopId: string): Promise<TikTokOrder[]> {
     try {
       const query = `
         SELECT * FROM tiktok_orders
@@ -329,7 +352,7 @@ export class TikTokSyncService {
    * @param shopId - ID da loja no TikTok
    * @returns Array de transações
    */
-  public async getFinancialTransactionsByShop(shopId: string): Promise<any[]> {
+  public async getFinancialTransactionsByShop(shopId: string): Promise<TikTokFinancialTransaction[]> {
     try {
       const query = `
         SELECT * FROM tiktok_financial_transactions

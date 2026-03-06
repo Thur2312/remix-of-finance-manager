@@ -23,7 +23,7 @@ export interface TikTokOrder {
   created_time: Date; // Data de criação do pedido no TikTok
   update_time: Date; // Data da última atualização do pedido
   buyer_user_id?: string; // ID do comprador no TikTok (opcional)
-  raw_data?: Record<string, any>; // Dados brutos do pedido em JSON
+  raw_data?: Record<string, string>; // Dados brutos do pedido em JSON
   created_at: Date; // Data de criação do registro
   updated_at: Date; // Data da última atualização
 }
@@ -38,7 +38,7 @@ export interface TikTokFinancialTransaction {
   currency: string; // Moeda (BRL, USD, etc)
   transaction_time: Date; // Data/hora da transação
   description?: string; // Descrição da transação (opcional)
-  raw_data?: Record<string, any>; // Dados brutos da transação em JSON
+  raw_data?: Record<string, string>; // Dados brutos da transação em JSON
   created_at: Date; // Data de criação do registro
   updated_at: Date; // Data da última atualização
 }

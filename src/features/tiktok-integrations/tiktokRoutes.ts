@@ -12,7 +12,7 @@ interface AuthRequest extends Express.Request {
 interface AuthResponse extends Express.Response {
   redirect(url: string): void;
   status(code: number): AuthResponse;
-  json(body: any): void;
+  json(body: Record<string, unknown>): void;
 }
 
 /**
@@ -131,7 +131,7 @@ export function createTikTokRoutes(db: Pool): Router {
       const result = await db.query(query, [userId]);
       const integrations = result.rows;
 
-      res.json(integrations);
+      res.json({ integrations });
     } catch (error) {
       console.error('Erro ao buscar integrações:', error);
       res.status(500).json({ error: 'Erro ao buscar integrações' });
@@ -232,6 +232,8 @@ export function createTikTokRoutes(db: Pool): Router {
       res.status(500).json({ error: 'Erro ao renovar token' });
     }
   });
+
+  
 
   return router;
 }

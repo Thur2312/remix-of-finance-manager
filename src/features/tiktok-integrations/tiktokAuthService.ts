@@ -1,5 +1,4 @@
-
-import fetch from 'node-fetch';
+import axios from 'axios';
 import { TikTokAuthResponse, TikTokRefreshTokenResponse, TikTokErrorResponse, TikTokConfig, TikTokTokenRequest,} from './tiktok_types';
 
 // Classe responsável por gerenciar a autenticação com o TikTok Shop
@@ -50,22 +49,14 @@ export class TikTokAuthService {
 
     try {
       // Fazer requisição POST para obter o token
-      const response = await fetch(this.tokenEndpoint, {
-        method: 'POST',
+      const response = await axios.post(this.tokenEndpoint, payload, {
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify(payload),
       });
 
-      // Verificar se a resposta foi bem-sucedida
-      if (!response.ok) {
-        const errorData = (await response.json()) as TikTokErrorResponse;
-        throw new Error(`Erro ao trocar código por token: ${errorData.message}`);
-      }
-
       // Parsear a resposta JSON
-      const data = (await response.json()) as TikTokAuthResponse;
+      const data = response.data as TikTokAuthResponse;
 
       // Validar se a resposta contém os campos necessários
       if (!data.access_token || !data.refresh_token) {
@@ -161,8 +152,41 @@ export class TikTokAuthService {
  * Certifique-se de configurar as variáveis de ambiente antes de usar
  */
 export const tiktokAuthService = new TikTokAuthService({
-  client_key: process.env.TIKTOK_CLIENT_KEY || '',
-  client_secret: process.env.TIKTOK_CLIENT_SECRET || '',
-  redirect_uri: process.env.TIKTOK_REDIRECT_URI || '',
-  api_base_url: process.env.TIKTOK_API_BASE_URL || 'https://open-api.tiktokshop.com',
+  client_key: import.meta.env.VITE_TIKTOK_APP_KEY || '',
+  client_secret: import.meta.env.VITE_TIKTOK_CLIENT_SECRET || '',
+  redirect_uri: import.meta.env.VITE_TIKTOK_REDIRECT_URI || '',
+  api_base_url: import.meta.env.VITE_TIKTOK_API_BASE_URL || 'https://open-api.tiktokshop.com',
 });
+
+/**
+ * Gera a URL de autorização OAuth do TikTok Shop
+ * e redireciona o usuário
+ */
+export function getAuthorizationUrl(): string {
+  const state = crypto.randomUUID(); // proteção CSRF
+  sessionStorage.setItem('tiktok_oauth_state', state);
+
+  const params = new URLSearchParams({
+    app_key: import.meta.env.VITE_TIKTOK_APP_KEY || '6j9urmh6tjl14',
+    state,
+  });
+
+  return `https://auth.tiktok-shops.com/oauth/authorize?${params.toString()}`;
+}
+
+/**
+ * Redireciona o navegador para o TikTok OAuth
+ */
+export function authorize(): void {
+  const url = getAuthorizationUrl();
+  window.location.href = url;
+}
+
+/**
+ * Valida o state retornado no callback
+ */
+export function validateState(returnedState: string): boolean {
+  const savedState = sessionStorage.getItem('tiktok_oauth_state');
+  sessionStorage.removeItem('tiktok_oauth_state');
+  return savedState === returnedState;
+}
