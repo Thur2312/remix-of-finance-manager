@@ -23,7 +23,7 @@ export class TikTokAuthService {
   public generateAuthorizationUrl(): string {
     // Parâmetros necessários para a autorização
     const params = new URLSearchParams({
-      client_id: this.config.client_id,
+      client_key: this.config.client_key,
       response_type: 'code', // Sempre 'code' para o fluxo de autorização
       scope: 'shop.orders:read shop.financial:read', // Escopos necessários para ler pedidos e dados financeiros
       redirect_uri: this.config.redirect_uri,
@@ -42,7 +42,7 @@ export class TikTokAuthService {
     // Payload da requisição
     const payload: TikTokTokenRequest = {
       grant_type: 'authorization_code',
-      client_id: this.config.client_id,
+      client_key: this.config.client_key,
       client_secret: this.config.client_secret,
       code: authorizationCode,
       redirect_uri: this.config.redirect_uri,
@@ -88,7 +88,7 @@ export class TikTokAuthService {
     // Payload da requisição
     const payload: TikTokTokenRequest = {
       grant_type: 'refresh_token',
-      client_id: this.config.client_id,
+      client_key: this.config.client_key,
       client_secret: this.config.client_secret,
       refresh_token: refreshToken,
     };
@@ -161,7 +161,7 @@ export class TikTokAuthService {
  * Certifique-se de configurar as variáveis de ambiente antes de usar
  */
 export const tiktokAuthService = new TikTokAuthService({
-  client_id: process.env.TIKTOK_CLIENT_ID || '',
+  client_key: process.env.TIKTOK_CLIENT_KEY || '',
   client_secret: process.env.TIKTOK_CLIENT_SECRET || '',
   redirect_uri: process.env.TIKTOK_REDIRECT_URI || '',
   api_base_url: process.env.TIKTOK_API_BASE_URL || 'https://open-api.tiktokshop.com',

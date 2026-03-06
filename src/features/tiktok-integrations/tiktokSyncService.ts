@@ -4,6 +4,7 @@ import { TikTokIntegration, TikTokOrdersResponse, TikTokFinancialResponse, TikTo
 import { tiktokAuthService } from './tiktokAuthService';
 
 // Classe responsável pela sincronização de dados do TikTok Shop
+// Namoral parece muito que eu to fazendo codigo em java sabo muito
 
 export class TikTokSyncService {
   private db: Pool;

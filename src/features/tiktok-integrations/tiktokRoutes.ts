@@ -23,7 +23,6 @@ export function createTikTokRoutes(db: Pool): Router {
   const router = Router();
 
   /**
-   * GET /api/tiktok/auth/authorize
    * Inicia o fluxo de autorização OAuth 2.0
    * Redireciona o usuário para o TikTok para fazer login e autorizar a integração
    */
@@ -41,7 +40,6 @@ export function createTikTokRoutes(db: Pool): Router {
   });
 
   /**
-   * GET /api/tiktok/auth/callback
    * Callback do TikTok após o usuário autorizar a integração
    * Recebe o authorization_code e o troca por um access_token
    */
@@ -56,7 +54,7 @@ export function createTikTokRoutes(db: Pool): Router {
       }
 
       // Validar se o usuário está autenticado (você pode usar seu middleware de autenticação aqui)
-      const userId = req.user?.id; // Assumindo que você tem um middleware que popula req.user
+      const userId = req.user?.id; 
       if (!userId) {
         return res.status(401).json({ error: 'Usuário não autenticado' });
       }
@@ -141,7 +139,6 @@ export function createTikTokRoutes(db: Pool): Router {
   });
 
   /**
-   * DELETE /api/tiktok/integrations/:shopId
    * Remover uma integração do TikTok
    */
   router.delete('/integrations/:shopId', async (req: AuthRequest, res: AuthResponse) => {
@@ -180,10 +177,7 @@ export function createTikTokRoutes(db: Pool): Router {
     }
   });
 
-  /**
-   * POST /api/tiktok/integrations/:shopId/refresh-token
-   * Renovar o access_token usando o refresh_token
-   */
+
   router.post('/integrations/:shopId/refresh-token', async (req: AuthRequest, res: AuthResponse) => {
     try {
       const { shopId } = req.params;
@@ -241,3 +235,4 @@ export function createTikTokRoutes(db: Pool): Router {
 
   return router;
 }
+// tatica infalivel faz o codigo e manda a ia refatorar num clean code
