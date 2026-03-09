@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { ShopeeController } from '../controller/controller';
+import { AuthenticatedRequest, ShopeeController } from '../controller/controller';
 import { ShopeeAuthService } from '../services/shopeeAuth.service';
 import { ShopeeApiService } from '../services/shopee-api.service';
 import { ShopeeIntegrationRepository } from '../repositories/integration.repository';
