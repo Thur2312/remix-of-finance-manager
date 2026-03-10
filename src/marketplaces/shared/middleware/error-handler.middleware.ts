@@ -1,5 +1,10 @@
 import { Request, Response, NextFunction } from 'express';
-import { AppError } from '../errors';
+import { AppError } from '../errors/errors';
+
+interface ResponseNew extends Response {
+  status (code: number): ResponseNew;
+  json: (body: unknown) => ResponseNew;
+}
 
 export function errorHandler(
   error: Error,
@@ -8,7 +13,7 @@ export function errorHandler(
   _next: NextFunction,
 ): void {
   if (error instanceof AppError) {
-    res.status(error.statusCode).json({
+    (res as ResponseNew).status(error.statusCode).json({
       status: 'error',
       message: error.message,
     });
@@ -17,7 +22,7 @@ export function errorHandler(
 
   console.error('[Unhandled Error]', error);
 
-  res.status(500).json({
+  (res as ResponseNew).status(500).json({
     status: 'error',
     message: 'Internal server error',
   });

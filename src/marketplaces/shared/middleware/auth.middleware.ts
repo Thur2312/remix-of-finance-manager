@@ -2,17 +2,26 @@ import { Request, Response, NextFunction } from 'express';
 import { createClient } from '@supabase/supabase-js';
 import { UnauthorizedError } from '../errors/errors';
 
-interface AuthenticatedRequest extends Request {
+export interface AuthenticatedRequest extends Request {
   userId: string;
+  headers: {
+    authorization?: string;
+  };
+
+}
+
+export interface AuthenticatedResponse extends Response {
+  status (code: number): AuthenticatedResponse;
+  json 
 }
 
 export async function authMiddleware(
-  req: Request,
-  _res: Response,
+  req: Response,
+  res: Response,
   next: NextFunction,
 ): Promise<void> {
   try {
-    const authHeader = req.headers.authorization;
+    const authHeader =(<AuthenticatedRequest> req).headers.authorization;
     if (!authHeader?.startsWith('Bearer ')) {
       throw new UnauthorizedError('Missing or invalid authorization header');
     }

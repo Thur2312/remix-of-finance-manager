@@ -1,13 +1,4 @@
-import {
-  MarketplaceAuthorizationUrl,
-  MarketplaceTokenSet,
-  MarketplaceOrder,
-  MarketplacePayment,
-  MarketplaceOrdersParams,
-  MarketplacePaymentsParams,
-  MarketplacePaginatedResult,
-  MarketplaceName,
-} from '../types/marketplace.types';
+import { MarketplaceAuthorizationUrl, MarketplaceTokenSet, MarketplaceOrder, MarketplacePayment, MarketplaceOrdersParams, MarketplacePaymentsParams, MarketplacePaginatedResult, MarketplaceName,} from '../types/marketplace.types';
 
 export interface MarketplaceAdapter {
   readonly marketplace: MarketplaceName;

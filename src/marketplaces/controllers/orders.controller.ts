@@ -16,7 +16,8 @@ interface AuthenticatedRequest extends Request {
 }
 
 interface AuthenticatedResponse extends Response {
-  json
+  json: (body: unknown) => AuthenticatedResponse;
+  status (code: number): AuthenticatedResponse; 
 }
 
 export class OrdersController {
@@ -25,33 +26,33 @@ export class OrdersController {
     private readonly paymentsRepository: PaymentsRepository,
     private readonly integrationRepository: IntegrationRepository,
   ) {}
-
-  listOrders = async (req: Request, res: AuthenticatedResponse, next: NextFunction): Promise<void> => {
+ 
+  listOrders = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
       const userId = (req as AuthenticatedRequest).userId;
       const integrations = await this.integrationRepository.findByUserId(userId);
       const integrationIds = integrations.map((i) => i.id);
       const orders = await this.ordersRepository.findByUserId(userId, integrationIds);
-      res.json(orders);
+      (res as AuthenticatedResponse).json(orders);
     } catch (error) {
       next(error);
     }
   };
 
-  listOrdersByIntegration = async (req: AuthenticatedRequest, res: AuthenticatedResponse, next: NextFunction): Promise<void> => {
+  listOrdersByIntegration = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
-      const { integrationId } = req.params;
+      const { integrationId } = (req as AuthenticatedRequest).params;
       const orders = await this.ordersRepository.findByIntegrationId(integrationId);
-      res.json(orders);
+      (res as AuthenticatedResponse).json(orders);
     } catch (error) {
       next(error);
     }
   };
 
-  getFinanceSummary = async (req: AuthenticatedRequest, res: AuthenticatedResponse, next: NextFunction): Promise<void> => {
+  getFinanceSummary = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
       const userId = (req as AuthenticatedRequest).userId;
-      const { from, to } = req.query;
+      const { from, to } = (req as AuthenticatedRequest).query;
 
       const fromDate = from ? new Date(from) : new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
       const toDate = to ? new Date(to) : new Date();
@@ -68,7 +69,7 @@ export class OrdersController {
         (o) => o.orderCreatedAt >= fromDate && o.orderCreatedAt <= toDate,
       );
 
-      res.json({
+      (res as AuthenticatedResponse).json({
         ...summary,
         totalOrders: ordersInPeriod.length,
         completedOrders: ordersInPeriod.filter((o) => o.status === 'COMPLETED').length,

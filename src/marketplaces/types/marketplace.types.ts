@@ -92,7 +92,7 @@ export interface Integration {
   refreshToken: string;
   accessTokenExpiresAt: Date;
   refreshTokenExpiresAt: Date;
-  isActive: boolean;
+  isActive: unknown;
   createdAt: Date;
   updatedAt: Date;
 }

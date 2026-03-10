@@ -84,7 +84,7 @@ export class PaymentsRepository {
     const totalRevenue = payments.reduce((sum, p) => sum + p.amount, 0);
     const totalFees = payments.reduce((sum, p) => sum + p.marketplace_fee, 0);
     const totalNetAmount = payments.reduce((sum, p) => sum + p.net_amount, 0);
-    const currency = payments[0]?.currency ?? 'BRL';
+    const currency = payments[0]?.currency?? 'BRL';
 
     return {
       totalRevenue,

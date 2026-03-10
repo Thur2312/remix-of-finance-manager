@@ -20,8 +20,8 @@ import {
   TikTokTransaction,
   TikTokTransactionListData,
 } from '../types/tiktok-api.types';
-import { MarketplaceApiError } from '../../../shared/errors';
-import { secondsFromNow, unixToDate, parseFloatSafe } from '../../../shared/utils';
+import { MarketplaceApiError } from '../shared/errors/errors';
+import { secondsFromNow, unixToDate, parseFloatSafe } from '../shared/utils';
 
 export interface TikTokConfig {
   appKey: string;
