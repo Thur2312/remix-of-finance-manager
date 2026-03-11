@@ -5,9 +5,9 @@ export interface Database {
     Tables: {
       integrations: { Row: IntegrationRow; Insert: IntegrationInsert; Update: IntegrationUpdate };
       orders: { Row: OrderRow; Insert: OrderInsert; Update: OrderUpdate };
-      order_items: { Row: OrderItemRow; Insert: OrderItemInsert; Update: Record<string, never> };
+      order_items: { Row: OrderItemRow; Insert: OrderItemInsert; Update: Partial<OrderItemRow> };
       payments: { Row: PaymentRow; Insert: PaymentInsert; Update: PaymentUpdate };
-      fees: { Row: FeeRow; Insert: FeeInsert; Update: Record<string, never> };
+      fees: { Row: FeeRow; Insert: FeeInsert; Update: Partial<FeeRow> };
       payouts: { Row: PayoutRow; Insert: PayoutInsert; Update: PayoutUpdate };
     };
   };

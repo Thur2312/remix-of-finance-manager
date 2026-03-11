@@ -7,8 +7,8 @@ import {
   MarketplaceName,
   MarketplaceAuthorizationUrl,
 } from '../types/marketplace.types';
-import { TokenExpiredError } from '../../../shared/errors';
-import { secondsFromNow, isTokenNearExpiry, generateState } from '../../../shared/utils';
+import { TokenExpiredError } from '../shared/errors/errors';
+import { secondsFromNow, isTokenNearExpiry, generateState } from '../shared/utils/index';
 
 export class MarketplaceAuthService {
   constructor(private readonly integrationRepository: IntegrationRepository) {}

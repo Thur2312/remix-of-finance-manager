@@ -1,11 +1,6 @@
 import { SupabaseClient } from '@supabase/supabase-js';
 import { Database, PayoutInsert, PayoutUpdate } from '../infra/database/supabase';
 import { Payout, CreatePayoutDto, PayoutStatus } from '../types/marketplace.types';
-
-
-
-
-
 export class PayoutsRepository {
   constructor(private readonly db: SupabaseClient<Database>) {}
 
@@ -55,11 +50,12 @@ export class PayoutsRepository {
       scheduled_at: dto.scheduledAt.toISOString(),
       completed_at: dto.completedAt?.toISOString() ?? null,
       synced_at: new Date().toISOString(),
+      update: new Date().toISOString(),
     };
 
     const { data, error } = await this.db
       .from('payouts')
-      .upsert(row, { onConflict: 'integration_id,external_payout_id' })
+      .upsert([row], { onConflict: 'integration_id,external_payout_id' })
       .select()
       .single();
 

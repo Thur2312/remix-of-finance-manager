@@ -80,7 +80,7 @@ export class PaymentsRepository {
 
     if (error) throw new Error(error.message);
 
-    const payments = data ?? [];
+    const payments = (data ?? []) as Array<{ amount: number; marketplace_fee: number; net_amount: number; status: string; currency: string }>;
     const totalRevenue = payments.reduce((sum, p) => sum + p.amount, 0);
     const totalFees = payments.reduce((sum, p) => sum + p.marketplace_fee, 0);
     const totalNetAmount = payments.reduce((sum, p) => sum + p.net_amount, 0);

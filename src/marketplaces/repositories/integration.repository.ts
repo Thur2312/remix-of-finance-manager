@@ -97,9 +97,14 @@ export class IntegrationRepository {
   }
 
   async deactivate(id: string): Promise<void> {
+    const update: IntegrationUpdate = {
+      is_active: false,
+      updated_at: new Date().toISOString(),
+    };
+
     const { error } = await this.db
       .from('integrations')
-      .update({ is_active: false, updated_at: new Date().toISOString() })
+      .update(update)
       .eq('id', id);
 
     if (error) throw new Error(error.message);

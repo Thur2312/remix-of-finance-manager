@@ -3,7 +3,7 @@ import { AppError } from '../errors/errors';
 
 interface ResponseNew extends Response {
   status (code: number): ResponseNew;
-  json: (body: unknown) => ResponseNew;
+  json: (body: { status: string; message: string }) => ResponseNew;
 }
 
 export function errorHandler(

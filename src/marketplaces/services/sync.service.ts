@@ -1,5 +1,5 @@
 import { getAdapter } from '../adapters/adapter.registry';
-import { MarketplaceAuthService } from './marketplaces/services/auth.service';
+import { MarketplaceAuthService } from './auth.service';
 import { IntegrationRepository } from '../repositories/integration.repository';
 import { OrdersRepository } from '../repositories/orders.repository';
 import { PaymentsRepository } from '../repositories/payments.repository';
@@ -11,7 +11,7 @@ import {
   CreatePaymentDto,
   SyncResult,
 } from '../types/marketplace.types';
-import { daysAgoUnix, nowUnix } from '../../../shared/utils';
+import { daysAgoUnix, nowUnix } from '../shared/utils';
 
 const SYNC_WINDOW_DAYS = 30;
 const PAGE_SIZE = 50;

@@ -29,11 +29,11 @@ export class FeesRepository {
   async upsert(dto: CreateFeeDto): Promise<Fee> {
     const row: FeeInsert = {
       integration_id: dto.integrationId,
-      order_id: dto.orderId,
       external_fee_id: dto.externalFeeId,
-      fee_type: dto.feeType,
+      order_id: dto.orderId,
       amount: dto.amount,
       currency: dto.currency,
+      fee_type: dto.feeType,
       description: dto.description,
       fee_date: dto.feeDate.toISOString(),
       synced_at: new Date().toISOString(),
@@ -41,7 +41,7 @@ export class FeesRepository {
 
     const { data, error } = await this.db
       .from('fees')
-      .upsert(row, { onConflict: 'integration_id,external_fee_id' })
+      .upsert([row], { onConflict: 'integration_id,external_fee_id' })
       .select()
       .single();
 
@@ -70,7 +70,7 @@ export class FeesRepository {
       .lte('fee_date', to.toISOString());
 
     if (error) throw new Error(error.message);
-    return (data ?? []).reduce((sum, row) => sum + row.amount, 0);
+    return (data as Array<{ amount: number }> ?? []).reduce((sum, row) => sum + row.amount, 0);
   }
 
   private toEntity = (row: Database['public']['Tables']['fees']['Row']): Fee => ({

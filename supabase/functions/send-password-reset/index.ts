@@ -161,11 +161,12 @@ const handler = async (req: Request): Promise<Response> => {
       JSON.stringify({ success: true, message: "Email de recuperação enviado com sucesso!" }),
       { status: 200, headers: { "Content-Type": "application/json", ...corsHeaders } }
     );
-  } catch (error: any) {
+  } catch (error: Error) {
     console.error("Error in send-password-reset function:", error);
     const corsHeaders = getCorsHeaders(req);
+    const errorMessage = error instanceof Error ? error.message : "Erro ao processar solicitação";
     return new Response(
-      JSON.stringify({ error: error.message || "Erro ao processar solicitação" }),
+      JSON.stringify({ error: errorMessage }),
       { status: 500, headers: { "Content-Type": "application/json", ...corsHeaders } }
     );
   }

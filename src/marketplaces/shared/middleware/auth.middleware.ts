@@ -12,7 +12,7 @@ export interface AuthenticatedRequest extends Request {
 
 export interface AuthenticatedResponse extends Response {
   status (code: number): AuthenticatedResponse;
-  json 
+  json: (body: { status: string; message: string }) => AuthenticatedResponse; 
 }
 
 export async function authMiddleware(
