@@ -9,7 +9,6 @@ import { IntegrationHealthPanel } from '@/components/integrations/IntegrationHea
 import { useIntegrations } from '@/hooks/useIntegrations';
 import { useToast } from '@/hooks/use-toast';
 import { Plug } from 'lucide-react';
-import { TikTokAuthService } from '@/features/tiktok-integrations/tiktokAuthService';
 
 export default function IntegrationsOverview() {
   const [searchParams] = useSearchParams();

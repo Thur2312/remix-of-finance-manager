@@ -115,7 +115,7 @@ export interface PayoutRow {
   completed_at: string | null;
   synced_at: string;
   created_at: string;
-  update: string;
+  updated_at: string;
 }
 
 export type PayoutInsert = Omit<PayoutRow, 'id' | 'created_at'>;

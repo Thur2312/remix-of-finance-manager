@@ -1,7 +1,8 @@
 import { SupabaseClient } from '@supabase/supabase-js';
-import { Database, IntegrationInsert, IntegrationUpdate } from '../infra/database/supabase';
+import { IntegrationInsert, IntegrationUpdate } from '../infra/database/supabase';
 import { Integration, CreateIntegrationDto, UpdateTokensDto, MarketplaceName } from '../types/marketplace.types';
 import { IntegrationNotFoundError } from '../shared/errors/errors';
+import { Database } from "../../../database.types";
 
 export class IntegrationRepository {
   constructor(private readonly db: SupabaseClient<Database>) {}

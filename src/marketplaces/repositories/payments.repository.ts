@@ -1,6 +1,7 @@
 import { SupabaseClient } from '@supabase/supabase-js';
-import { Database, PaymentInsert } from '../infra/database/supabase';
+import { PaymentInsert } from '../infra/database/supabase';
 import { Payment, CreatePaymentDto, FinanceSummary } from '../types/marketplace.types';
+import { Database } from "../../../database.types";
 
 export class PaymentsRepository {
   constructor(private readonly db: SupabaseClient<Database>) {}
