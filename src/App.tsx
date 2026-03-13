@@ -31,7 +31,7 @@ import Perfil from "./pages/Perfil";
 import EsqueciSenha from "./pages/user/EsqueciSenha";
 import ResetPassword from "./pages/user/ResetPassword";
 import NotFound from "./pages/NotFound";
-import Planos from "./pages/Planos";
+import Planos, { PlanosContent } from "./pages/Planos";
 import IntegrationsOverview from "./pages/integrations/IntegrationsOverview";
 import IntegrationManage from "./pages/integrations/IntegrationManage";
 import IntegrationCallback from "./pages/integrations/IntegrationCallback";

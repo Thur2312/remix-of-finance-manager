@@ -5,10 +5,11 @@ import { useAuth } from '@/contexts/AuthContext';
 import { Sidebar, SidebarContent, SidebarFooter, SidebarGroup, SidebarGroupContent, SidebarHeader, SidebarMenu, SidebarMenuButton, SidebarMenuItem, useSidebar } from '@/components/ui/sidebar';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
-import { User, ChevronUp, LogOut, TrendingUp, Calculator, Receipt, Sparkles, BarChart3, HandCoins,Wallet, Plug } from 'lucide-react';
+import { User, ChevronUp, LogOut, TrendingUp, Calculator, Receipt, Sparkles, BarChart3, HandCoins,Wallet, Plug, House } from 'lucide-react';
 import logo from '@/assets/logo-new.svg';
 
-const sidebarItems = [
+const sidebarItems = [  
+
   { title: 'Fluxo de Caixa', url: '/fluxo-caixa', icon: HandCoins },
   { title: 'Gestão Shopee', url: '/shopee/dashboard', icon: TrendingUp },
   { title: 'Gestão TikTok', url: '/tiktok/dashboard', icon: TrendingUp },
@@ -16,8 +17,8 @@ const sidebarItems = [
   { title: 'Custos Fixos', url: '/precificacao/custos', icon: Receipt },
   { title: 'Assistente', url: '/assistente-anuncio', icon: Sparkles },
   { title: 'DRE', url: '/dre', icon: BarChart3 },
-  { title: 'Planos', url: '/planos', icon: Wallet},
-  { title: 'Integrações', url: '/integrations', icon: Plug }
+  { title: 'Integrações', url: '/integrations', icon: Plug },
+  { title: 'Planos', url: '/planos', icon: Wallet}
 ];
 
 // Routes that belong to each section for active highlighting
@@ -99,7 +100,7 @@ export function AppSidebar() {
                   {!collapsed && (
                     <div className="flex flex-1 flex-col text-left text-sm">
                       <span className="truncate font-medium">
-                        {user?.user_metadata?.full_name || 'Usuário'}
+                        {user?.user_metadata?.full_name || 'Você'}
                       </span>
                       <span className="truncate text-xs text-muted-foreground">
                         {user?.email}

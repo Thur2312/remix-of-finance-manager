@@ -13,6 +13,7 @@ import { ProtectedRoute } from '@/components/layout/ProtectedRoute';
 import { supabase } from '@/integrations/supabase/client';
 import { ImageGenerationSection } from '@/components/assistente/ImageGenerationSection';
 import { MedidasProdutoSection } from '@/components/assistente/MedidasProdutoSection';
+import { Developer } from '@/components/Developer';
 
 interface MedidaLinha {
   id: string;
