@@ -9,7 +9,7 @@ const registry = new Map<MarketplaceName, MarketplaceAdapter>();
 function getOrCreate(marketplace: MarketplaceName): MarketplaceAdapter {
   if (!registry.has(marketplace)) {
     const adapter =
-      marketplace === 'shopee' ? createShopeeAdapter() : createTikTokAdapter();
+      marketplace !== 'shopee' && marketplace !== 'tiktok' ? createShopeeAdapter() : createTikTokAdapter();
     registry.set(marketplace, adapter);
   }
   return registry.get(marketplace)!;

@@ -94,7 +94,7 @@ export default function IntegrationsOverview() {
         </div>
 
         <ConnectDialog
-          provider={connectProvider || 'shopee'}
+          provider={connectProvider || 'shopee' || 'tiktok'}
           open={!!connectProvider}
           onOpenChange={(open) => !open && setConnectProvider(null)}
           onConfirm={() => connectProvider && startAuth.mutate(connectProvider)}

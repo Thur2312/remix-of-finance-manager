@@ -3,14 +3,7 @@ import { MarketplaceAuthService } from './auth.service';
 import { IntegrationRepository } from '../repositories/integration.repository';
 import { OrdersRepository } from '../repositories/orders.repository';
 import { PaymentsRepository } from '../repositories/payments.repository';
-import {
-  Integration,
-  MarketplaceOrder,
-  MarketplacePayment,
-  CreateOrderDto,
-  CreatePaymentDto,
-  SyncResult,
-} from '../types/marketplace.types';
+import {  Integration,  MarketplaceOrder,  MarketplacePayment, CreateOrderDto,  CreatePaymentDto, SyncResult,} from '../types/marketplace.types';
 import { daysAgoUnix, nowUnix } from '../shared/utils';
 
 const SYNC_WINDOW_DAYS = 30;
