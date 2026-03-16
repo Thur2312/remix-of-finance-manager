@@ -78,7 +78,7 @@ export default function IntegrationsOverview() {
               lastSyncAt={tiktok?.last_sync_at}
               nextSyncAt={tiktok?.next_sync_at}
               onConnect={() => setConnectProvider('tiktok')}
-              onManage={() => navigate('/integrations/tiktok')}
+              onManage={() => navigate('https://auth.tiktok-shops.com/oauth/shop_redirect?app_key=6j9urmh6tjl14&pc_sign=hLOoJwAAAACi380wuTVVeGBkyq8R0SJEvjioC9cVgU6YVNMuHToWGg&redirect=%2F%2Fpartner.tiktokshop.com%2Fdev%2Fapi-testing-tool&apiId=7141470215171081986&pkgId=430596&versionId=202212')}
               isConnecting={startAuth.isPending}
             />
           </div>

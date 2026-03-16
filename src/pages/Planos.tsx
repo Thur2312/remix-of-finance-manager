@@ -23,6 +23,9 @@ import {
 import { useAuth } from '@/contexts/AuthContext';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import logo from '@/assets/logo-new.svg';
+import { AppLayout } from '@/components/layout/AppLayout';
+import { ProtectedRoute } from '@/components/layout/ProtectedRoute';
+
 
 const fadeInUp = {
   hidden: { opacity: 0, y: 40 },
@@ -114,7 +117,7 @@ const faqs = [
   },
 ];
 
-export default function Planos() {
+export function PlanosContent() {
   const navigate = useNavigate();
   const { user } = useAuth();
 
@@ -126,28 +129,8 @@ export default function Planos() {
     }
   };
 
-  return (
+  return (  
     <div className="min-h-screen bg-gradient-to-b from-white via-blue-50 to-white">
-      {/* Header */}
-      <header className="bg-white/95 backdrop-blur-xl border-b border-blue-200 sticky top-0 z-50">
-        <div className="container mx-auto px-4 h-20 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <button
-              onClick={() => navigate('/fluxo-caixa')}
-              className="flex items-center gap-2 text-gray-600 hover:text-gray-900 transition-colors"
-            >
-              <ArrowLeft className="h-5 w-5" />
-            </button>
-            <div>
-            <img
-              src={logo}
-              alt="Seller Finance"
-              className="h-14 w-auto object-contain"/>
-              </div>
-          </div>
-        </div>
-      </header>
-
       {/* Hero */}
       <motion.section
         className="pt-5 pb-8 text-center"
@@ -442,5 +425,16 @@ export default function Planos() {
         Todos os planos incluem criptografia de dados e suporte técnico. Cancele a qualquer momento, sem multas.
       </p>
     </div>
+     
   );
+}
+
+export default function Planos() {
+  return (
+    <ProtectedRoute>
+      <AppLayout>
+        <PlanosContent />
+      </AppLayout>
+    </ProtectedRoute>);
+
 }
