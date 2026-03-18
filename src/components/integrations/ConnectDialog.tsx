@@ -88,7 +88,7 @@ export function ConnectDialog({ provider, open, onOpenChange, onConfirm, onManua
 
         {step === 2 && (
           <>
-            <div className="py-4 text-center space-y-3">
+            <div className="py-4 text-center align-middle space-y-3">
               <p className="text-sm text-muted-foreground">
                 Você será redirecionado para o {info.name} para autorizar o acesso à sua loja.
                 Após autorizar, retornará automaticamente.
@@ -98,8 +98,8 @@ export function ConnectDialog({ provider, open, onOpenChange, onConfirm, onManua
               </p>
             </div>
             <DialogFooter className="flex-col gap-2 sm:flex-col">
-              <div className="flex gap-2 w-full justify-end">
-                <Button variant="outline" onClick={() => setStep(1)}>Voltar</Button>
+              <div className="flex gap-2 w-full justify-end mr-7">
+                <Button variant="outline" onClick ={() => setStep(1)}>Voltar</Button>
                 <Button onClick={onConfirm} disabled={isLoading}>
                   {isLoading ? (
                     <><RefreshCw className="mr-2 h-4 w-4 animate-spin" /> Redirecionando...</>
@@ -107,18 +107,10 @@ export function ConnectDialog({ provider, open, onOpenChange, onConfirm, onManua
                     `Continuar e autorizar no ${info.name}`
                   )}
                 </Button>
-              </div>
-              {provider === 'shopee' && onManualAuth && (
-                <button
-                  onClick={() => setStep(3)}
-                  className="text-xs text-muted-foreground hover:text-primary underline mt-1"
-                >
-                  <KeyRound className="inline h-3 w-3 mr-1" />
-                  Já tenho os tokens (via API Test Tool)
-                </button>
-              )}
+                </div>
             </DialogFooter>
           </>
+
         )}
 
         {step === 3 && (
