@@ -63,8 +63,8 @@ export class ShopeeAdapter implements MarketplaceAdapter {
       refreshToken: response.refresh_token,
       accessTokenExpiresIn: response.expire_in,
       refreshTokenExpiresIn: response.refresh_token_expire_in,
-      shopId: String(response.shop_id_list?.[0] ?? ''),
-      shopName: response.seller_name,
+      shopId: String(response.shop_id?.[0] ?? ''),
+      shopName: response.shope_name,
       openId: response.open_id,
     };
   }
@@ -85,7 +85,7 @@ export class ShopeeAdapter implements MarketplaceAdapter {
       accessTokenExpiresIn: response.expire_in,
       refreshTokenExpiresIn: response.refresh_token_expire_in,
       shopId,
-      shopName: response.seller_name,
+      shopName: response.shope_name,
     };
   }
 
@@ -95,14 +95,16 @@ export class ShopeeAdapter implements MarketplaceAdapter {
     params: MarketplaceOrdersParams,
   ): Promise<MarketplacePaginatedResult<MarketplaceOrder>> {
     const timestamp = this.timestamp();
+    const detailTimestamp = this.timestamp();
+    const detailSign = this.signWithToken(ORDER_LIST_PATH, detailTimestamp, accessToken, Number(shopId));
     const sign = this.signWithToken(ORDER_LIST_PATH, timestamp, accessToken, Number(shopId));
-
+    
     const listResponse = await this.get<ShopeeOrderListResponse>(ORDER_LIST_PATH, {
       partner_id: this.config.partnerId,
       shop_id: Number(shopId),
       access_token: accessToken,
-      timestamp,
-      sign,
+      timestamp: detailTimestamp,
+      sign: detailSign,
       time_range_field: 'create_time',
       time_from: params.timeFrom,
       time_to: params.timeTo,
@@ -120,8 +122,8 @@ export class ShopeeAdapter implements MarketplaceAdapter {
       partner_id: this.config.partnerId,
       shop_id: Number(shopId),
       access_token: accessToken,
-      timestamp,
-      sign,
+      timestamp: detailTimestamp,
+      sign: detailSign,
       order_sn_list: orderSns.join(','),
       response_optional_fields: 'item_list,pay_time,buyer_username,tracking_no,shipping_carrier',
     });
