@@ -66,7 +66,7 @@ export default function IntegrationsOverview() {
               lastSyncAt={shopee?.last_sync_at}
               nextSyncAt={shopee?.next_sync_at}
               onConnect={() => setConnectProvider('shopee')}
-              onManage={() => navigate('/integrations/shopee/auth-url')}
+              onManage={() => navigate('/integrations/:marketplace/auth-url'.replace(':marketplace', 'shopee'))}
               isConnecting={startAuth.isPending}
             />
             <IntegrationCard
@@ -77,7 +77,7 @@ export default function IntegrationsOverview() {
               lastSyncAt={tiktok?.last_sync_at}
               nextSyncAt={tiktok?.next_sync_at}
               onConnect={() => setConnectProvider('tiktok')}
-              onManage={() => navigate('/integrations/tiktok/auth-url')}
+              onManage={() => navigate('/integrations/:marketplace/auth-url'.replace(':marketplace', 'tiktok'))}
               isConnecting={startAuth.isPending}
             />
           </div>
