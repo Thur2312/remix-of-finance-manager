@@ -2,26 +2,24 @@ import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
 import { createHmac } from "https://deno.land/std@0.168.0/node/crypto.ts"
 import { z } from "https://deno.land/x/zod@v3.22.2/mod.ts"
 
-// ✅ CORS padrão
+// ✅ CORS
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
   "Access-Control-Allow-Methods": "POST, OPTIONS",
 }
 
-// ✅ validação do body
+// ✅ validação
 const bodySchema = z.object({
   provider: z.enum(["shopee", "tiktok"]),
 })
 
 serve(async (req) => {
-  // ✅ preflight
   if (req.method === "OPTIONS") {
     return new Response("ok", { headers: corsHeaders })
   }
 
   try {
-    // ✅ valida método
     if (req.method !== "POST") {
       return new Response(
         JSON.stringify({ error: "Method not allowed" }),
@@ -32,7 +30,6 @@ serve(async (req) => {
       )
     }
 
-    // ✅ parse + validação
     const body = await req.json()
     const { provider } = bodySchema.parse(body)
 
@@ -52,7 +49,9 @@ serve(async (req) => {
       }
 
       const timestamp = Math.floor(Date.now() / 1000)
-      const path = "/api/v2/auth/token"
+
+      // ✅ endpoint correto
+      const path = "/api/v2/shop/auth_partner"
 
       const baseString = `${PARTNER_ID}${path}${timestamp}`
 
@@ -65,7 +64,7 @@ serve(async (req) => {
         `?partner_id=${PARTNER_ID}` +
         `&timestamp=${timestamp}` +
         `&sign=${signature}` +
-        `&redirect_url=${encodeURIComponent(REDIRECT_URI)}`
+        `&redirect=${encodeURIComponent(REDIRECT_URI)}`
     }
 
     // =========================
@@ -87,7 +86,6 @@ serve(async (req) => {
         `&scope=user_info,order_read`
     }
 
-    // ✅ resposta padrão
     return new Response(
       JSON.stringify({ authorization_url }),
       {
