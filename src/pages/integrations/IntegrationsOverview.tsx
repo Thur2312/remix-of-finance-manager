@@ -4,7 +4,7 @@ import { AppLayout } from '@/components/layout/AppLayout';
 import { ProtectedRoute } from '@/components/layout/ProtectedRoute';
 import { IntegrationCard } from '@/components/integrations/IntegrationCard';
 import { ConnectDialog } from '@/components/integrations/ConnectDialog';
-import { supabase } from '@/integrations/supabase/client';
+import axios from 'axios'
 import { IntegrationHealthPanel } from '@/components/integrations/IntegrationHealthPanel';
 import { useIntegrations } from '@/hooks/useIntegrations';
 import { useToast } from '@/hooks/use-toast';
@@ -19,7 +19,6 @@ export default function IntegrationsOverview() {
   const [isSyncing, setIsSyncing] = useState(false);
    
 
-   // colocar tiktokauthservice para redirecionar para o callback correto // se n dar certo coloca esse link : https://auth.tiktok-shops.com/oauth/shop_redirect?app_key=6j9urmh6tjl14&pc_sign=hLOoJwAAAACi380wuTVVeGBkyq8R0SJEvjioC9cVgU6YVNMuHToWGg&redirect=%2F%2Fpartner.tiktokshop.com%2Fdev%2Fapi-testing-tool&apiId=7141470215171081986&pkgId=430596&versionId=202212
 
 
   // Handle callback success
@@ -67,7 +66,7 @@ export default function IntegrationsOverview() {
               lastSyncAt={shopee?.last_sync_at}
               nextSyncAt={shopee?.next_sync_at}
               onConnect={() => setConnectProvider('shopee')}
-              onManage={() => navigate('/integrations/shopee')}
+              onManage={() => navigate('/integrations/shopee/auth-url')}
               isConnecting={startAuth.isPending}
             />
             <IntegrationCard
@@ -78,7 +77,7 @@ export default function IntegrationsOverview() {
               lastSyncAt={tiktok?.last_sync_at}
               nextSyncAt={tiktok?.next_sync_at}
               onConnect={() => setConnectProvider('tiktok')}
-              onManage={() => navigate('https://auth.tiktok-shops.com/oauth/shop_redirect?app_key=6j9urmh6tjl14&pc_sign=hLOoJwAAAACi380wuTVVeGBkyq8R0SJEvjioC9cVgU6YVNMuHToWGg&redirect=%2F%2Fpartner.tiktokshop.com%2Fdev%2Fapi-testing-tool&apiId=7141470215171081986&pkgId=430596&versionId=202212')}
+              onManage={() => navigate('/integrations/tiktok/auth-url')}
               isConnecting={startAuth.isPending}
             />
           </div>
@@ -108,7 +107,7 @@ export default function IntegrationsOverview() {
                   setIsSyncing(true);
                   // Wait for integrations data to refresh, then sync
                   setTimeout(async () => {
-                    const updated = await supabase.functions.invoke('integration-list');
+                    const updated = await axios('integration-list');
                     const conn = updated.data?.connections?.find((c: { provider: string; status: string }) => c.provider === connectProvider && c.status === 'connected');
                     if (conn) {
                       syncNow.mutate(conn.id, {

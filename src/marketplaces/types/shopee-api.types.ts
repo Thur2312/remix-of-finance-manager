@@ -13,8 +13,8 @@ export interface ShopeeTokenResponse {
   expire_in: number;
   refresh_token_expire_in: number;
   open_id: string;
-  seller_name: string;
-  shop_id_list: number[];
+  shope_name: string; 
+  shop_id: number[];
 }
 
 export interface ShopeeShopTokenResponse {

@@ -1,25 +1,8 @@
 import axios, { AxiosInstance } from 'axios';
 import crypto from 'crypto';
 import { MarketplaceAdapter } from './marketplace.adapter';
-import {
-  MarketplaceAuthorizationUrl,
-  MarketplaceTokenSet,
-  MarketplaceOrder,
-  MarketplacePayment,
-  MarketplaceOrdersParams,
-  MarketplacePaymentsParams,
-  MarketplacePaginatedResult,
-  MarketplaceName,
-  OrderStatus,
-} from '../types/marketplace.types';
-import {
-  TikTokApiResponse,
-  TikTokTokenResponse,
-  TikTokOrder,
-  TikTokOrderListData,
-  TikTokTransaction,
-  TikTokTransactionListData,
-} from '../types/tiktok-api.types';
+import {  MarketplaceAuthorizationUrl, MarketplaceTokenSet,  MarketplaceOrder,  MarketplacePayment,  MarketplaceOrdersParams,  MarketplacePaymentsParams,  MarketplacePaginatedResult, MarketplaceName, OrderStatus,} from '../types/marketplace.types';
+import { TikTokApiResponse,  TikTokTokenResponse,  TikTokOrder,  TikTokOrderListData, TikTokTransaction,TikTokTransactionListData,} from '../types/tiktok-api.types';
 import { MarketplaceApiError } from '../shared/errors/errors';
 import { secondsFromNow, unixToDate, parseFloatSafe } from '../shared/utils';
 
@@ -36,6 +19,9 @@ const REFRESH_PATH = '/api/v2/token/refresh';
 const ORDERS_PATH = '/api/orders/search';
 const TRANSACTIONS_PATH = '/api/finance/transaction/list';
 
+// adaptação acces token e refresh token do tiktok para o formato genérico da aplicação, além de normalização dos dados de pedidos e pagamentos para os formatos genéricos usados na aplicação. 
+// Implementação de paginação para listagem de pedidos e pagamentos, utilizando os parâmetros de cursor e page_no fornecidos pela API do TikTok. Tratamento de erros específicos da API do TikTok, 
+// lançando erros genéricos da aplicação com mensagens e códigos apropriados. Geração de assinatura HMAC para autenticação das requisições, conforme exigido pela API do TikTok. Utilização de variáveis de ambiente para configuração das credenciais e URLs da API do TikTok, garantindo flexibilidade e segurança.
 export class TikTokAdapter implements MarketplaceAdapter {
   readonly marketplace: MarketplaceName = 'tiktok';
   private readonly http: AxiosInstance;
@@ -54,6 +40,7 @@ export class TikTokAdapter implements MarketplaceAdapter {
       redirect_uri: this.config.redirectUrl,
       state,
       response_type: 'code',
+      scope: 'user.info.basic,order.list.get,transaction.list.get',
     });
     return {
       url: `${AUTHORIZE_BASE}?${params.toString()}`,
