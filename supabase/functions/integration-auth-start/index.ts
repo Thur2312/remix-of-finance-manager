@@ -38,28 +38,30 @@ serve(async (req) => {
     // =========================
     // 🟠 SHOPEE
     // =========================
-    if (provider === "shopee") {
-    const PARTNER_ID = Deno.env.get("SHOPEE_PARTNER_ID")!
-    const PARTNER_KEY = Deno.env.get("SHOPEE_PARTNER_KEY")!.trim()
-    const REDIRECT_URI = Deno.env.get("SHOPEE_REDIRECT_URI")!
-    const BASE_URL = Deno.env.get("SHOPEE_BASE_URL")!
+   if (provider === "shopee") {
+  const PARTNER_ID = Deno.env.get("SHOPEE_PARTNER_ID")!
+  const PARTNER_KEY = Deno.env.get("SHOPEE_PARTNER_KEY")!.trim()
+  const REDIRECT_URI = Deno.env.get("SHOPEE_REDIRECT_URI")!
+  const BASE_URL = Deno.env.get("SHOPEE_BASE_URL")!
 
-    const path = "/api/v2/shop/auth_partner"
-    const timestamp = Math.floor(Date.now() / 1000)
+  const path = "/api/v2/shop/auth_partner"
+  const timestamp = Math.floor(Date.now() / 1000)
 
-    const baseString = `${PARTNER_ID}${path}${timestamp}`
+  const baseString = `${PARTNER_ID}${path}${timestamp}`
 
-    const sign = createHmac("sha256", PARTNER_KEY)
-      .update(baseString)
-      .digest("hex")
+  const sign = createHmac("sha256", PARTNER_KEY)
+    .update(baseString)
+    .digest("hex")
 
-    const authorization_url =
-      `${BASE_URL}${path}` +
-      `?partner_id=${PARTNER_ID}` +
-      `&timestamp=${timestamp}` +
-      `&sign=${sign}` +
-      `&redirect_url=${encodeURIComponent(REDIRECT_URI)}`
-    }
+  authorization_url =
+    `${BASE_URL}${path}` +
+    `?partner_id=${PARTNER_ID}` +
+    `&timestamp=${timestamp}` +
+    `&sign=${sign}` +
+    `&redirect_url=${encodeURIComponent(REDIRECT_URI)}`
+
+  console.log("Shopee URL:", authorization_url)
+}
 
     // =========================
     // 🟣 TIKTOK
