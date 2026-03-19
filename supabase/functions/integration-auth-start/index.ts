@@ -38,15 +38,21 @@ serve(async (req) => {
     // =========================
     // 🟠 SHOPEE
     // =========================
-   if (provider === "shopee") {
+if (provider === "shopee") {
   const PARTNER_ID = Deno.env.get("SHOPEE_PARTNER_ID")!
   const PARTNER_KEY = Deno.env.get("SHOPEE_PARTNER_KEY")!.trim()
   const REDIRECT_URI = Deno.env.get("SHOPEE_REDIRECT_URI")!
   const BASE_URL = Deno.env.get("SHOPEE_BASE_URL")!
 
-  const path = "/api/v2/shop/auth_partner"
   const timestamp = Math.floor(Date.now() / 1000)
 
+  // ✅ PATH CORRETO PARA ASSINATURA
+  const path = "/shop/auth_partner"
+
+  // ✅ ENDPOINT REAL
+  const endpoint = "/api/v2/shop/auth_partner"
+
+  // ✅ BASE STRING CORRETA
   const baseString = `${PARTNER_ID}${path}${timestamp}`
 
   const sign = createHmac("sha256", PARTNER_KEY)
@@ -54,13 +60,11 @@ serve(async (req) => {
     .digest("hex")
 
   authorization_url =
-    `${BASE_URL}${path}` +
+    `${BASE_URL}${endpoint}` +
     `?partner_id=${PARTNER_ID}` +
     `&timestamp=${timestamp}` +
     `&sign=${sign}` +
-    `&redirect_url=${encodeURIComponent(REDIRECT_URI)}`
-
-  console.log("Shopee URL:", authorization_url)
+    `&redirect=${encodeURIComponent(REDIRECT_URI)}`
 }
 
     // =========================
