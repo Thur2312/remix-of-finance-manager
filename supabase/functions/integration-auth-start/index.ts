@@ -49,21 +49,20 @@ serve(async (req) => {
     }
 
     const timestamp = Math.floor(Date.now() / 1000)
+const path = "/api/v2/shop/auth_partner"
 
-    const path = "/api/v2/shop/auth_partner"
+const baseString = `${PARTNER_ID}${path}${timestamp}`
 
-    const baseString = `${PARTNER_ID}${path}${timestamp}`
+const sign = createHmac("sha256", PARTNER_KEY.trim())
+  .update(baseString)
+  .digest("hex")
 
-    const sign = createHmac("sha256", PARTNER_KEY)
-      .update(baseString)
-      .digest("hex")
-
-    authorization_url =
-      `${BASE_URL}${path}` +
-      `?partner_id=${PARTNER_ID}` +
-      `&timestamp=${timestamp}` +
-      `&sign=${sign}` +
-      `&redirect_url=${encodeURIComponent(REDIRECT_URI)}`
+const url =
+  `${BASE_URL}${path}` +
+  `?partner_id=${PARTNER_ID}` +
+  `&timestamp=${timestamp}` +
+  `&sign=${sign}` +
+  `&redirect_url=${encodeURIComponent(REDIRECT_URI)}`
     }
 
     // =========================
