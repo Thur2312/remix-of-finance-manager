@@ -39,31 +39,26 @@ serve(async (req) => {
     // 🟠 SHOPEE
     // =========================
     if (provider === "shopee") {
-      const PARTNER_ID = Deno.env.get("SHOPEE_PARTNER_ID")
-      const PARTNER_KEY = Deno.env.get("SHOPEE_PARTNER_KEY")?.trim()  
-      const REDIRECT_URI = Deno.env.get("SHOPEE_REDIRECT_URI")
-      const BASE_URL = Deno.env.get("SHOPEE_BASE_URL")
+    const PARTNER_ID = Deno.env.get("SHOPEE_PARTNER_ID")!
+    const PARTNER_KEY = Deno.env.get("SHOPEE_PARTNER_KEY")!.trim()
+    const REDIRECT_URI = Deno.env.get("SHOPEE_REDIRECT_URI")!
+    const BASE_URL = Deno.env.get("SHOPEE_BASE_URL")!
 
-      if (!PARTNER_ID || !PARTNER_KEY || !REDIRECT_URI || !BASE_URL) {
-        throw new Error("Shopee env vars não configuradas")
-      }
-      const timestamp = Math.floor(Date.now() / 1000)
+    const path = "/api/v2/shop/auth_partner"
+    const timestamp = Math.floor(Date.now() / 1000)
 
-      // 🔥 path SEM /api/v2
-        const path = "/api/v2/shop/auth_partner"
+    const baseString = `${PARTNER_ID}${path}${timestamp}`
 
-      const baseString = `${PARTNER_ID}${path}${timestamp}`
+    const sign = createHmac("sha256", PARTNER_KEY)
+      .update(baseString)
+      .digest("hex")
 
-      const signature = createHmac("sha256", PARTNER_KEY)
-        .update(baseString)
-        .digest("hex")
-
-      authorization_url =
-        `${BASE_URL}${path}` +
-        `?partner_id=${PARTNER_ID}` +
-        `&timestamp=${timestamp}` +
-        `&sign=${signature}` +
-        `&redirect_url=${encodeURIComponent(REDIRECT_URI)}`
+    const authorization_url =
+      `${BASE_URL}${path}` +
+      `?partner_id=${PARTNER_ID}` +
+      `&timestamp=${timestamp}` +
+      `&sign=${sign}` +
+      `&redirect_url=${encodeURIComponent(REDIRECT_URI)}`
     }
 
     // =========================
