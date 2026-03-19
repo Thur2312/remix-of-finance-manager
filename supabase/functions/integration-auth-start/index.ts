@@ -47,11 +47,13 @@ serve(async (req) => {
       if (!PARTNER_ID || !PARTNER_KEY || !REDIRECT_URI || !BASE_URL) {
         throw new Error("Shopee env vars não configuradas")
       }
-
       const timestamp = Math.floor(Date.now() / 1000)
 
-      // ✅ endpoint correto
-      const path = "/api/v2/shop/auth_partner"
+      // 🔥 path SEM /api/v2
+      const path = "/shop/auth_partner"
+
+      // 🔥 URL COM /api/v2
+      const urlPath = "/api/v2/shop/auth_partner"
 
       const baseString = `${PARTNER_ID}${path}${timestamp}`
 
@@ -60,7 +62,7 @@ serve(async (req) => {
         .digest("hex")
 
       authorization_url =
-        `${BASE_URL}${path}` +
+        `${BASE_URL}${urlPath}` +
         `?partner_id=${PARTNER_ID}` +
         `&timestamp=${timestamp}` +
         `&sign=${signature}` +
