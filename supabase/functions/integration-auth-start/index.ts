@@ -39,34 +39,39 @@ serve(async (req) => {
     // 🟠 SHOPEE
     // =========================
 if (provider === "shopee") {
-  const PARTNER_ID = Deno.env.get("SHOPEE_PARTNER_ID")!
-  const PARTNER_KEY = Deno.env.get("SHOPEE_PARTNER_KEY")!.trim()
-  const REDIRECT_URI = Deno.env.get("SHOPEE_REDIRECT_URI")!
-  const BASE_URL = Deno.env.get("SHOPEE_BASE_URL")!
+  const PARTNER_ID = Deno.env.get("SHOPEE_PARTNER_ID")?.trim()
+  const PARTNER_KEY = Deno.env.get("SHOPEE_PARTNER_KEY")?.trim()
+  const REDIRECT_URI = Deno.env.get("SHOPEE_REDIRECT_URI")?.trim()
+  const BASE_URL = Deno.env.get("SHOPEE_BASE_URL")?.trim()
+
+  // validação de env
+  if (!PARTNER_ID || !PARTNER_KEY || !REDIRECT_URI || !BASE_URL) {
+    throw new Error("Variáveis de ambiente da Shopee não configuradas corretamente")
+  }
 
   const timestamp = Math.floor(Date.now() / 1000)
+  const path = "/shop/auth_partner"           // usado na assinatura
+  const endpoint = "/api/v2/shop/auth_partner" // usado na URL final
 
-  // ✅ PATH CORRETO PARA ASSINATURA
-  const path = "/shop/auth_partner"
-
-  // ✅ ENDPOINT REAL
-  const endpoint = "/api/v2/shop/auth_partner"
-
-  // ✅ BASE STRING CORRETA
+  // ✅ base string exata que a Shopee espera
   const baseString = `${PARTNER_ID}${path}${timestamp}`
 
+  // ✅ assinatura HMAC-SHA256 em hex lowercase
   const sign = createHmac("sha256", PARTNER_KEY)
     .update(baseString)
     .digest("hex")
 
+  // ✅ URL final de autorização
   authorization_url =
     `${BASE_URL}${endpoint}` +
     `?partner_id=${PARTNER_ID}` +
     `&timestamp=${timestamp}` +
     `&sign=${sign}` +
     `&redirect=${encodeURIComponent(REDIRECT_URI)}`
-}
 
+  // opcional: log para debug (remova em produção)
+  console.log({ PARTNER_ID, timestamp, baseString, sign, authorization_url })
+}
     // =========================
     // 🟣 TIKTOK
     // =========================
