@@ -1,14 +1,14 @@
-// functions/shopee-auth/index.ts
+// functions/shopee-auth-test/index.ts
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createHmac } from "https://deno.land/std@0.168.0/node/crypto.ts";
 
 serve(async (_req) => {
   try {
     // Variáveis de ambiente
-    const PARTNER_ID = Deno.env.get("SHOPEE_PARTNER_ID");
-    const PARTNER_KEY = Deno.env.get("SHOPEE_PARTNER_KEY")?.trim();
-    const REDIRECT_URI = Deno.env.get("SHOPEE_REDIRECT_URI");
-    const BASE_URL = "https://partner.shopeemobile.com"; // produção
+    const PARTNER_ID = Deno.env.get("SHOPEE_PARTNER_ID"); // ID de teste fornecido pela Shopee
+    const PARTNER_KEY = Deno.env.get("SHOPEE_PARTNER_KEY")?.trim(); // Key de teste
+    const REDIRECT_URI = Deno.env.get("SHOPEE_REDIRECT_URI"); // Callback do seu site
+    const BASE_URL = "https://partner.test-stable.shopeemobile.com"; // Sandbox
 
     if (!PARTNER_ID || !PARTNER_KEY || !REDIRECT_URI) {
       return new Response("Shopee env vars não configuradas", { status: 500 });
@@ -28,14 +28,14 @@ serve(async (_req) => {
       .update(baseString)
       .digest("hex");
 
-    // Montar URL de autorização da Shopee
+    // Montar URL de autorização Shopee sandbox
     const authorizationUrl = `${BASE_URL}/api/v2/shop/auth_partner?partner_id=${PARTNER_ID}&timestamp=${timestamp}&sign=${sign}&redirect=${encodeURIComponent(REDIRECT_URI)}`;
 
     // Redirecionar usuário
     return Response.redirect(authorizationUrl, 302);
 
   } catch (error) {
-    console.error("Erro na Shopee Auth:", error);
-    return new Response("Erro interno na Shopee Auth", { status: 500 });
+    console.error("Erro na Shopee Auth Test:", error);
+    return new Response("Erro interno na Shopee Auth Test", { status: 500 });
   }
 });
