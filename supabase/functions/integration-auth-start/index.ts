@@ -63,6 +63,8 @@ const url =
   `&timestamp=${timestamp}` +
   `&sign=${sign}` +
   `&redirect_url=${encodeURIComponent(REDIRECT_URI)}`
+
+  console.log("AUTH URL:", authorization_url)
     }
 
     // =========================
