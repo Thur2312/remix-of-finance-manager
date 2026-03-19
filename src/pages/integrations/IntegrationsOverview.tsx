@@ -99,7 +99,7 @@ export default function IntegrationsOverview() {
           onConfirm={() => {
             if (connectProvider === 'shopee') {
               // Redireciona o navegador para sua Edge Function Supabase
-              window.location.href = "https://YOUR-PROJECT-NAME.functions.supabase.co/shopee-auth";
+              window.location.href = "https://opzsrqdvotozawuqpapo.functions.supabase.co/shopee-auth";
             } else if (connectProvider === 'tiktok') {
               // Mantém o fluxo normal do TikTok
               startAuth.mutate(connectProvider);
