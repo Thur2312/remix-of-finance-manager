@@ -50,10 +50,7 @@ serve(async (req) => {
       const timestamp = Math.floor(Date.now() / 1000)
 
       // 🔥 path SEM /api/v2
-      const path = "/shop/auth_partner"
-
-      // 🔥 URL COM /api/v2
-      const urlPath = "/api/v2/shop/auth_partner"
+        const path = "/api/v2/shop/auth_partner"
 
       const baseString = `${PARTNER_ID}${path}${timestamp}`
 
@@ -62,7 +59,7 @@ serve(async (req) => {
         .digest("hex")
 
       authorization_url =
-        `${BASE_URL}${urlPath}` +
+        `${BASE_URL}${path}` +
         `?partner_id=${PARTNER_ID}` +
         `&timestamp=${timestamp}` +
         `&sign=${signature}` +
