@@ -96,7 +96,15 @@ export default function IntegrationsOverview() {
           provider={connectProvider || 'shopee'}
           open={!!connectProvider}
           onOpenChange={(open) => !open && setConnectProvider(null)}
-          onConfirm={() => connectProvider && startAuth.mutate(connectProvider)}
+          onConfirm={() => {
+            if (connectProvider === 'shopee') {
+              // Redireciona o navegador para sua Edge Function Supabase
+              window.location.href = "https://YOUR-PROJECT-NAME.functions.supabase.co/shopee-auth";
+            } else if (connectProvider === 'tiktok') {
+              // Mantém o fluxo normal do TikTok
+              startAuth.mutate(connectProvider);
+            }
+          }}
           onManualAuth={({ shopId, accessToken, refreshToken }) => {
             if (connectProvider) {
               manualAuth.mutate({ provider: connectProvider, shopId, accessToken, refreshToken }, {

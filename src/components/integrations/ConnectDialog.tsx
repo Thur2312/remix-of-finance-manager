@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Checkbox } from '@/components/ui/checkbox';
-import { ShoppingBag, Store, ArrowRight, RefreshCw, KeyRound } from 'lucide-react';
+import { ShoppingBag, Store, ArrowRight, RefreshCw } from 'lucide-react';
 
 interface ConnectDialogProps {
   provider: 'shopee' | 'tiktok';
@@ -29,7 +29,15 @@ const providerInfo = {
   tiktok: { name: 'TikTok Shop', icon: Store, color: 'text-foreground' },
 };
 
-export function ConnectDialog({ provider, open, onOpenChange, onConfirm, onManualAuth, isLoading, isManualLoading }: ConnectDialogProps) {
+export function ConnectDialog({
+  provider,
+  open,
+  onOpenChange,
+  onConfirm,
+  onManualAuth,
+  isLoading,
+  isManualLoading,
+}: ConnectDialogProps) {
   const [step, setStep] = useState(1);
   const [shopId, setShopId] = useState('');
   const [accessToken, setAccessToken] = useState('');
@@ -67,6 +75,7 @@ export function ConnectDialog({ provider, open, onOpenChange, onConfirm, onManua
           )}
         </DialogHeader>
 
+        {/* Passo 1: mostrar itens que serão sincronizados */}
         {step === 1 && (
           <>
             <div className="space-y-3 py-2">
@@ -86,12 +95,12 @@ export function ConnectDialog({ provider, open, onOpenChange, onConfirm, onManua
           </>
         )}
 
+        {/* Passo 2: redirecionamento para OAuth */}
         {step === 2 && (
           <>
-            <div className="py-4 text-center align-middle space-y-3">
+            <div className="py-4 text-center space-y-3">
               <p className="text-sm text-muted-foreground">
                 Você será redirecionado para o {info.name} para autorizar o acesso à sua loja.
-                Após autorizar, retornará automaticamente.
               </p>
               <p className="text-xs text-muted-foreground">
                 Seus tokens serão armazenados de forma segura e criptografada no servidor.
@@ -99,7 +108,7 @@ export function ConnectDialog({ provider, open, onOpenChange, onConfirm, onManua
             </div>
             <DialogFooter className="flex-col gap-2 sm:flex-col">
               <div className="flex gap-2 w-full justify-end mr-7">
-                <Button variant="outline" onClick ={() => setStep(1)}>Voltar</Button>
+                <Button variant="outline" onClick={() => setStep(1)}>Voltar</Button>
                 <Button onClick={onConfirm} disabled={isLoading}>
                   {isLoading ? (
                     <><RefreshCw className="mr-2 h-4 w-4 animate-spin" /> Redirecionando...</>
@@ -107,12 +116,12 @@ export function ConnectDialog({ provider, open, onOpenChange, onConfirm, onManua
                     `Continuar e autorizar no ${info.name}`
                   )}
                 </Button>
-                </div>
+              </div>
             </DialogFooter>
           </>
-
         )}
 
+        {/* Passo 3: autenticação manual (opcional, tokens do API Test Tool) */}
         {step === 3 && (
           <>
             <div className="space-y-4 py-2">
@@ -143,9 +152,6 @@ export function ConnectDialog({ provider, open, onOpenChange, onConfirm, onManua
                   onChange={(e) => setRefreshToken(e.target.value)}
                 />
               </div>
-              <p className="text-xs text-muted-foreground">
-                No API Test Tool da Shopee, clique em <strong>"Get Access Token"</strong> para obter os tokens. Cole o <code>access_token</code> e o <code>shop_id</code> acima.
-              </p>
             </div>
             <DialogFooter>
               <Button variant="outline" onClick={() => setStep(2)}>Voltar</Button>
