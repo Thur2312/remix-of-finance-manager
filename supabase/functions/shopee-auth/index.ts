@@ -4,34 +4,27 @@ import { createHmac } from "https://deno.land/std@0.168.0/node/crypto.ts";
 
 serve(async (_req) => {
   try {
-    // Variáveis de ambiente
-    const PARTNER_ID = Deno.env.get("SHOPEE_PARTNER_ID"); // ID de teste fornecido pela Shopee
-    const PARTNER_KEY = Deno.env.get("SHOPEE_PARTNER_KEY")?.trim(); // Key de teste
-    const REDIRECT_URI = Deno.env.get("SHOPEE_REDIRECT_URI"); // Callback do seu site
-    const BASE_URL = "https://partner.test-stable.shopeemobile.com"; // Sandbox
+    const PARTNER_ID = Deno.env.get("SHOPEE_PARTNER_ID");
+    const PARTNER_KEY = Deno.env.get("SHOPEE_PARTNER_KEY")?.trim();
+    const REDIRECT_URI = Deno.env.get("SHOPEE_REDIRECT_URI");
+    const BASE_URL = "https://partner.test-stable.shopeemobile.com";
 
     if (!PARTNER_ID || !PARTNER_KEY || !REDIRECT_URI) {
       return new Response("Shopee env vars não configuradas", { status: 500 });
     }
 
-    // Timestamp atual em segundos
     const timestamp = Math.floor(Date.now() / 1000);
+    const path = "/api/v2/shop/auth_partner"; // ✅ path completo
 
-    // Path usado para gerar o sign
-    const path = "/shop/auth_partner";
+    // ✅ Base string correta para auth_partner inclui o redirect_uri
+    const baseString = `${PARTNER_ID}${path}${timestamp}${REDIRECT_URI}`;
 
-    // Base string para HMAC
-    const baseString = `${PARTNER_ID}${path}${timestamp}`;
-
-    // Criar sign SHA256
     const sign = createHmac("sha256", PARTNER_KEY)
       .update(baseString)
       .digest("hex");
 
-    // Montar URL de autorização Shopee sandbox
-    const authorizationUrl = `${BASE_URL}/api/v2/shop/auth_partner?partner_id=${PARTNER_ID}&timestamp=${timestamp}&sign=${sign}&redirect=${encodeURIComponent(REDIRECT_URI)}`;
+    const authorizationUrl = `${BASE_URL}${path}?partner_id=${PARTNER_ID}&timestamp=${timestamp}&sign=${sign}&redirect=${encodeURIComponent(REDIRECT_URI)}`;
 
-    // Redirecionar usuário
     return Response.redirect(authorizationUrl, 302);
 
   } catch (error) {

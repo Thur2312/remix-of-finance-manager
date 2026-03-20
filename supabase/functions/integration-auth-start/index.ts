@@ -44,33 +44,29 @@ if (provider === "shopee") {
   const REDIRECT_URI = Deno.env.get("SHOPEE_REDIRECT_URI")?.trim()
   const BASE_URL = Deno.env.get("SHOPEE_BASE_URL")?.trim()
 
-  // validação de env
   if (!PARTNER_ID || !PARTNER_KEY || !REDIRECT_URI || !BASE_URL) {
     throw new Error("Variáveis de ambiente da Shopee não configuradas corretamente")
   }
 
+  const partnerIdNum = parseInt(PARTNER_ID, 10) // ✅ converte para número
   const timestamp = Math.floor(Date.now() / 1000)
-  const path = "/shop/auth_partner"           // usado na assinatura
-  const endpoint = "/api/v2/shop/auth_partner" // usado na URL final
+  const path = "/api/v2/shop/auth_partner" // ✅ path completo nos dois lugares
 
-  // ✅ base string exata que a Shopee espera
-  const baseString = `${PARTNER_ID}${path}${timestamp}`
+  // ✅ base string com path completo
+  const baseString = `${partnerIdNum}${path}${timestamp}`
 
-  // ✅ assinatura HMAC-SHA256 em hex lowercase
   const sign = createHmac("sha256", PARTNER_KEY)
     .update(baseString)
     .digest("hex")
 
-  // ✅ URL final de autorização
   authorization_url =
-    `${BASE_URL}${endpoint}` +
-    `?partner_id=${PARTNER_ID}` +
+    `${BASE_URL}${path}` +
+    `?partner_id=${partnerIdNum}` +
     `&timestamp=${timestamp}` +
     `&sign=${sign}` +
     `&redirect=${encodeURIComponent(REDIRECT_URI)}`
 
-  // opcional: log para debug (remova em produção)
-  console.log({ PARTNER_ID, timestamp, baseString, sign, authorization_url })
+  console.log({ partnerIdNum, timestamp, baseString, sign, authorization_url })
 }
     // =========================
     // 🟣 TIKTOK
