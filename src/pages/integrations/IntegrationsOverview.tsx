@@ -96,15 +96,30 @@ export default function IntegrationsOverview() {
           provider={connectProvider || 'shopee'}
           open={!!connectProvider}
           onOpenChange={(open) => !open && setConnectProvider(null)}
-          onConfirm={() => {
-            if (connectProvider === 'shopee') {
-              // Redireciona o navegador para sua Edge Function Supabase
-              window.location.href = "https://opzsrqdvotozawuqpapo.functions.supabase.co/shopee-auth";
-            } else if (connectProvider === 'tiktok') {
-              // Mantém o fluxo normal do TikTok
-              startAuth.mutate(connectProvider);
-            }
-          }}
+          onConfirm={async () => {
+  if (connectProvider === 'shopee') {
+    try {
+      const response = await fetch(
+        "https://opzsrqdvotozawuqpapo.functions.supabase.co/shopee-auth",
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ provider: "shopee" }),
+        }
+      );
+      const data = await response.json();
+      if (data.authorization_url) {
+        window.location.href = data.authorization_url; 
+      } else {
+        toast({ title: "Erro ao conectar Shopee", variant: "destructive" });
+      }
+    } catch (err) {
+      toast({ title: "Erro ao conectar Shopee", variant: "destructive" });
+    }
+  } else if (connectProvider === 'tiktok') {
+    startAuth.mutate(connectProvider);
+  }
+}}
           onManualAuth={({ shopId, accessToken, refreshToken }) => {
             if (connectProvider) {
               manualAuth.mutate({ provider: connectProvider, shopId, accessToken, refreshToken }, {
