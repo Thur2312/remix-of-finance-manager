@@ -392,12 +392,16 @@ const AssistenteAnuncio = () => {
           }
 
           // Start polling for status
-          if (imageData?.jobId) {
+        if (imageData?.images && imageData.images.length > 0) {
+            setGeneratedImages(imageData.images);
+            setImageProgress(100);
+            setIsGeneratingImages(false);
             toast({
-              title: 'Geração iniciada',
-              description: 'As imagens estão sendo geradas em segundo plano. Acompanhe o progresso abaixo.',
+              title: 'Imagens geradas!',
+              description: `${imageData.images.length} imagens criadas com sucesso.`,
             });
-            pollJobStatus(imageData.jobId);
+          } else {
+            throw new Error('Nenhuma imagem foi gerada');
           }
         } catch (imageError) {
           const errorMessage = imageError instanceof Error ? imageError.message : 'Erro desconhecido';
