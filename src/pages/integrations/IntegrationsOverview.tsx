@@ -56,13 +56,14 @@ export default function IntegrationsOverview() {
           </div>
 
           <div className="grid gap-3 md:grid-cols-2">
-            <IntegrationCard
+           <IntegrationCard
               provider="shopee"
               status={shopee?.status || 'disconnected'}
               shopName={shopee?.shop_name}
               shopId={shopee?.external_shop_id}
               lastSyncAt={shopee?.last_sync_at}
               nextSyncAt={shopee?.next_sync_at}
+              lastErrorMessage={shopee?.last_error_message} 
               onConnect={() => setConnectProvider('shopee')}
               onManage={() => navigate('/integrations/shopee')}
               isConnecting={startAuth.isPending}
@@ -74,10 +75,11 @@ export default function IntegrationsOverview() {
               shopId={tiktok?.external_shop_id}
               lastSyncAt={tiktok?.last_sync_at}
               nextSyncAt={tiktok?.next_sync_at}
+              lastErrorMessage={tiktok?.last_error_message} 
               onConnect={() => setConnectProvider('tiktok')}
               onManage={() => navigate('/integrations/tiktok')}
               isConnecting={startAuth.isPending}
-            />
+/>
           </div>
 
           <IntegrationHealthPanel

@@ -8,14 +8,58 @@ const corsHeaders = {
   "Access-Control-Allow-Methods": "POST, OPTIONS",
 }
 
-// ============= SHOPEE HELPERS =============
-function sign(partnerId: number, path: string, timestamp: number, accessToken: string, shopId: number, partnerKey: string): string {
-  const base = `${partnerId}${path}${timestamp}${accessToken}${shopId}`
+function sign(partnerId: number, path: string, timestamp: number, partnerKey: string, accessToken?: string, shopId?: number): string {
+  const base = accessToken && shopId
+    ? `${partnerId}${path}${timestamp}${accessToken}${shopId}`
+    : `${partnerId}${path}${timestamp}`
   return createHmac("sha256", partnerKey).update(base).digest("hex")
 }
 
-function timestamp(): number {
+function ts(): number {
   return Math.floor(Date.now() / 1000)
+}
+
+async function refreshShopeeToken(
+  baseUrl: string,
+  partnerId: number,
+  partnerKey: string,
+  refreshToken: string,
+  shopId: number,
+): Promise<{ access_token: string; refresh_token: string; expire_in: number; refresh_token_expire_in: number } | null> {
+  try {
+    const timestamp = ts()
+    const path = "/api/v2/auth/access_token/get"
+    const s = sign(partnerId, path, timestamp, partnerKey)
+
+    const res = await fetch(
+      `${baseUrl}${path}?partner_id=${partnerId}&timestamp=${timestamp}&sign=${s}`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          refresh_token: refreshToken,
+          partner_id: partnerId,
+          shop_id: shopId,
+        }),
+      }
+    )
+
+    const data = await res.json()
+    if (data.error && data.error !== "") {
+      console.error("Token refresh error:", data.message)
+      return null
+    }
+
+    return {
+      access_token: data.access_token,
+      refresh_token: data.refresh_token,
+      expire_in: data.expire_in,
+      refresh_token_expire_in: data.refresh_token_expire_in,
+    }
+  } catch (err) {
+    console.error("Token refresh exception:", err)
+    return null
+  }
 }
 
 async function shopeeGet<T>(
@@ -27,13 +71,13 @@ async function shopeeGet<T>(
   accessToken: string,
   shopId: number,
 ): Promise<T> {
-  const ts = timestamp()
-  const s = sign(partnerId, path, ts, accessToken, shopId, partnerKey)
+  const timestamp = ts()
+  const s = sign(partnerId, path, timestamp, partnerKey, accessToken, shopId)
   const query = new URLSearchParams({
     partner_id: String(partnerId),
     shop_id: String(shopId),
     access_token: accessToken,
-    timestamp: String(ts),
+    timestamp: String(timestamp),
     sign: s,
     ...Object.fromEntries(Object.entries(params).map(([k, v]) => [k, String(v)])),
   })
@@ -45,7 +89,6 @@ async function shopeeGet<T>(
   return data.response as T
 }
 
-// ============= MAIN =============
 serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { status: 200, headers: corsHeaders })
@@ -84,7 +127,6 @@ serve(async (req) => {
       })
     }
 
-    // Busca conexão com service role para pegar access_token
     const { data: connection, error: connError } = await supabaseAdmin
       .from("integration_connections")
       .select("*")
@@ -107,11 +149,57 @@ serve(async (req) => {
     const PARTNER_ID = parseInt(Deno.env.get("SHOPEE_PARTNER_ID")!, 10)
     const PARTNER_KEY = Deno.env.get("SHOPEE_PARTNER_KEY")!
     const BASE_URL = Deno.env.get("SHOPEE_BASE_URL")!
-    const accessToken = connection.access_token
     const shopId = parseInt(connection.external_shop_id, 10)
 
+    let accessToken = connection.access_token
+
+    // ✅ Verifica se o token está próximo de expirar (menos de 1 hora)
+    const tokenExpiresAt = new Date(connection.token_expires_at).getTime()
+    const oneHourFromNow = Date.now() + 60 * 60 * 1000
+
+    if (tokenExpiresAt < oneHourFromNow) {
+      console.log("Token expiring soon, refreshing...")
+      const refreshed = await refreshShopeeToken(
+        BASE_URL, PARTNER_ID, PARTNER_KEY,
+        connection.refresh_token, shopId
+      )
+
+      if (refreshed) {
+        const now = new Date()
+        await supabaseAdmin
+          .from("integration_connections")
+          .update({
+            access_token: refreshed.access_token,
+            refresh_token: refreshed.refresh_token,
+            token_expires_at: new Date(now.getTime() + refreshed.expire_in * 1000).toISOString(),
+            refresh_token_expires_at: new Date(now.getTime() + refreshed.refresh_token_expire_in * 1000).toISOString(),
+            updated_at: now.toISOString(),
+          })
+          .eq("id", connection_id)
+
+        accessToken = refreshed.access_token
+        console.log("Token refreshed successfully")
+      } else {
+        // ✅ Marca a conexão como expirada se não conseguir renovar
+        await supabaseAdmin
+          .from("integration_connections")
+          .update({
+            status: "expired",
+            last_error_code: "token_expired",
+            last_error_message: "Token expirado e não foi possível renovar. Reconecte a integração.",
+            updated_at: new Date().toISOString(),
+          })
+          .eq("id", connection_id)
+
+        return new Response(
+          JSON.stringify({ error: "Token expirado. Por favor reconecte a integração." }),
+          { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        )
+      }
+    }
+
     const now = new Date()
-    const timeFrom = Math.floor((now.getTime() - 30 * 24 * 60 * 60 * 1000) / 1000) // 30 dias atrás
+    const timeFrom = Math.floor((now.getTime() - 30 * 24 * 60 * 60 * 1000) / 1000)
     const timeTo = Math.floor(now.getTime() / 1000)
 
     let ordersCount = 0
@@ -119,7 +207,7 @@ serve(async (req) => {
 
     // ============= SYNC ORDERS =============
     try {
-      const orderList = await shopeeGet<{ order_list: { order_sn: string }[], more: boolean, next_cursor: string }>(
+      const orderList = await shopeeGet<{ order_list: { order_sn: string }[], more: boolean }>(
         BASE_URL, "/api/v2/order/get_order_list", {
           time_range_field: "create_time",
           time_from: timeFrom,
@@ -171,6 +259,14 @@ serve(async (req) => {
       }
     } catch (orderError) {
       console.error("Error syncing orders:", orderError)
+      await supabaseAdmin
+        .from("integration_connections")
+        .update({
+          last_error_code: "sync_orders_failed",
+          last_error_message: orderError instanceof Error ? orderError.message : "Erro ao sincronizar pedidos",
+          updated_at: now.toISOString(),
+        })
+        .eq("id", connection_id)
     }
 
     // ============= SYNC PAYMENTS =============
@@ -221,6 +317,14 @@ serve(async (req) => {
       }
     } catch (paymentError) {
       console.error("Error syncing payments:", paymentError)
+      await supabaseAdmin
+        .from("integration_connections")
+        .update({
+          last_error_code: "sync_payments_failed",
+          last_error_message: paymentError instanceof Error ? paymentError.message : "Erro ao sincronizar pagamentos",
+          updated_at: now.toISOString(),
+        })
+        .eq("id", connection_id)
     }
 
     // Atualiza last_sync_at

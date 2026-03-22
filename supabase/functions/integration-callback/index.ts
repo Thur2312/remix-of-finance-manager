@@ -66,10 +66,7 @@ serve(async (req) => {
       shope_name,
     } = tokenData
 
-    // Conecta ao Supabase com service role para bypassar RLS
     const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_KEY)
-
-    // Pega o usuário pelo token
     const { data: { user }, error: userError } = await supabase.auth.getUser(userToken)
     if (userError || !user) {
       return Response.redirect(`${FRONTEND_URL}/integrations?error=unauthorized`, 302)
@@ -78,20 +75,21 @@ serve(async (req) => {
     const resolvedShopId = String(responseShopId?.[0] ?? shopId ?? "")
     const now = new Date()
 
-    // Salva na tabela shopee_integrations
+    // ✅ Salva na tabela integration_connections
     const { error: dbError } = await supabase
-      .from("shopee_integrations")
+      .from("integration_connections")
       .upsert({
         user_id: user.id,
-        seller_id: resolvedShopId,
-        seller_name: shope_name ?? "",
+        provider: "shopee",
+        status: "connected",
+        external_shop_id: resolvedShopId,
+        shop_name: shope_name ?? "",
         access_token,
         refresh_token,
-        access_token_expires_at: new Date(now.getTime() + expire_in * 1000).toISOString(),
+        token_expires_at: new Date(now.getTime() + expire_in * 1000).toISOString(),
         refresh_token_expires_at: new Date(now.getTime() + refresh_token_expire_in * 1000).toISOString(),
-        region: "BR",
         updated_at: now.toISOString(),
-      }, { onConflict: "user_id" })
+      }, { onConflict: "user_id,provider" })
 
     if (dbError) {
       console.error("DB error:", dbError)
