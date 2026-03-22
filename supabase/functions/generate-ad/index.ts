@@ -139,19 +139,18 @@ serve(async (req: Request) => {
       { global: { headers: { Authorization: authHeader } } }
     );
 
-    const token = authHeader.replace('Bearer ', '');
-    const { data: claimsData, error: claimsError } = await supabase.auth.getClaims(token);
-    
-    if (claimsError || !claimsData?.claims) {
-      console.error('JWT validation failed:', claimsError);
-      return new Response(
-        JSON.stringify({ error: 'Token inválido ou expirado. Faça login novamente.' }),
-        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
-    }
+    const { data: { user }, error: userError } = await supabase.auth.getUser()
 
-    const userId = claimsData.claims.sub;
-    console.log(`Request authenticated for user: ${userId}`);
+      if (userError || !user) {
+        console.error('JWT validation failed:', userError)
+        return new Response(
+          JSON.stringify({ error: 'Token inválido ou expirado. Faça login novamente.' }),
+          { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        )
+      }
+
+      const userId = user.id
+      console.log(`Request authenticated for user: ${userId}`)
 
     // ========== INPUT VALIDATION ==========
     const rawBody = await req.json();

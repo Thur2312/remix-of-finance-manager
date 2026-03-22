@@ -153,7 +153,7 @@ serve(async (req) => {
 
     let accessToken = connection.access_token
 
-    // ✅ Verifica se o token está próximo de expirar (menos de 1 hora)
+    // Verifica se o token está próximo de expirar (menos de 1 hora)
     const tokenExpiresAt = new Date(connection.token_expires_at).getTime()
     const oneHourFromNow = Date.now() + 60 * 60 * 1000
 
@@ -180,7 +180,6 @@ serve(async (req) => {
         accessToken = refreshed.access_token
         console.log("Token refreshed successfully")
       } else {
-        // ✅ Marca a conexão como expirada se não conseguir renovar
         await supabaseAdmin
           .from("integration_connections")
           .update({
@@ -190,6 +189,15 @@ serve(async (req) => {
             updated_at: new Date().toISOString(),
           })
           .eq("id", connection_id)
+
+        // ✅ Log de token expirado
+        await supabaseAdmin.from("integration_sync_logs").insert({
+          connection_id,
+          user_id: user.id,
+          type: "sync",
+          status: "error",
+          message: "Token expirado e não foi possível renovar. Reconecte a integração.",
+        })
 
         return new Response(
           JSON.stringify({ error: "Token expirado. Por favor reconecte a integração." }),
@@ -340,6 +348,20 @@ serve(async (req) => {
       })
       .eq("id", connection_id)
 
+    // ✅ Salva log de sincronização
+    await supabaseAdmin.from("integration_sync_logs").insert({
+      connection_id,
+      user_id: user.id,
+      type: "sync",
+      status: ordersCount > 0 || paymentsCount > 0 ? "success" : "empty",
+      message: `${ordersCount} pedidos e ${paymentsCount} pagamentos sincronizados`,
+      metadata: {
+        orders_synced: ordersCount,
+        payments_synced: paymentsCount,
+        provider: connection.provider,
+      },
+    })
+
     return new Response(
       JSON.stringify({
         message: `Sincronização concluída — ${ordersCount} pedidos e ${paymentsCount} pagamentos sincronizados`,
@@ -353,6 +375,27 @@ serve(async (req) => {
 
   } catch (error) {
     console.error("Error:", error)
+
+    // ✅ Tenta salvar log de erro
+    try {
+      const supabaseAdmin = createClient(
+        Deno.env.get("SUPABASE_URL")!,
+        Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
+      )
+      const body = await req.clone().json().catch(() => ({}))
+      if (body?.connection_id) {
+        await supabaseAdmin.from("integration_sync_logs").insert({
+          connection_id: body.connection_id,
+          user_id: "unknown",
+          type: "sync",
+          status: "error",
+          message: error instanceof Error ? error.message : "Erro interno",
+        })
+      }
+    } catch (logError) {
+      console.error("Error saving log:", logError)
+    }
+
     return new Response(
       JSON.stringify({ error: error instanceof Error ? error.message : "Erro interno" }),
       { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
