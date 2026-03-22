@@ -147,7 +147,7 @@ serve(async (req: Request) => {
       );
     }
 
-    const totalImages = 9;
+    const totalImages = 4;
     const compositionLabels = [
       'Frontal', 'Lateral', '45 graus', 'Close-up detalhe',
       'Em uso', 'Lifestyle', 'Studio', 'Minimalista', 'Cenário dinâmico'
@@ -179,7 +179,7 @@ serve(async (req: Request) => {
 
         if (response.status === 429) {
           console.error(`Rate limited at image ${i + 1}. Waiting 15s...`);
-          await new Promise(resolve => setTimeout(resolve, 15000));
+          await new Promise(resolve => setTimeout(resolve, 30000));
 
           const retryResp = await fetch(
             `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-image:generateContent?key=${GEMINI_API_KEY}`,
@@ -268,4 +268,4 @@ serve(async (req: Request) => {
       { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
   }
-});
+}); 
