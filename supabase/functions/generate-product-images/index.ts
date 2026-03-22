@@ -147,12 +147,9 @@ serve(async (req: Request) => {
       );
     }
 
-    const totalImages = 4;
-    const compositionLabels = [
-      'Frontal', 'Lateral', '45 graus', 'Close-up detalhe',
-      'Em uso', 'Lifestyle', 'Studio', 'Minimalista', 'Cenário dinâmico'
-    ];
-
+  const totalImages = 1;
+  const compositionLabels = ['Frontal'];
+  
     console.log(`Generating ${totalImages} images via gemini-2.5-flash-image for: ${nomeProduto} | Marketplace: ${marketplaceTarget}`);
 
     const generatedImages: Array<{ url: string; prompt: string; composition: string }> = [];
@@ -179,7 +176,7 @@ serve(async (req: Request) => {
 
         if (response.status === 429) {
           console.error(`Rate limited at image ${i + 1}. Waiting 15s...`);
-          await new Promise(resolve => setTimeout(resolve, 30000));
+          await new Promise(resolve => setTimeout(resolve, 10000));
 
           const retryResp = await fetch(
             `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-image:generateContent?key=${GEMINI_API_KEY}`,
@@ -235,7 +232,7 @@ serve(async (req: Request) => {
         }
 
         if (i < totalImages - 1) {
-          await new Promise(resolve => setTimeout(resolve, 2000));
+          await new Promise(resolve => setTimeout(resolve, 60000));
         }
       } catch (imgError) {
         console.error(`Error generating image ${i + 1}:`, imgError);
