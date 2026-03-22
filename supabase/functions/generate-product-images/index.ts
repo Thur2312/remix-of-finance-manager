@@ -7,7 +7,6 @@ const corsHeaders = {
   'Access-Control-Allow-Methods': 'POST, OPTIONS',
 };
 
-// ============= VALIDATION =============
 interface ValidateInputRequest {
   sourceImages?: unknown;
   nomeProduto?: string;
@@ -41,7 +40,6 @@ function validateInput(body: ValidateInputRequest) {
   };
 }
 
-// ============= PROMPT BUILDER =============
 function buildImagePrompt(
   index: number,
   totalImages: number,
@@ -95,14 +93,12 @@ ${categoryInstructions}
 Ultra-realistic photography, clean premium aesthetic, balanced lighting, realistic shadows. The product must be the visual focus.`;
 }
 
-// ============= MAIN =============
 serve(async (req: Request) => {
   if (req.method === 'OPTIONS') {
     return new Response('ok', { headers: corsHeaders });
   }
 
   try {
-    // ========== AUTH ==========
     const authHeader = req.headers.get('Authorization');
     if (!authHeader?.startsWith('Bearer ')) {
       return new Response(
@@ -130,7 +126,6 @@ serve(async (req: Request) => {
     const userId = claimsData.claims.sub;
     console.log(`Authenticated user: ${userId}`);
 
-    // ========== VALIDATION ==========
     const rawBody = await req.json();
     const validation = validateInput(rawBody);
 
@@ -143,7 +138,6 @@ serve(async (req: Request) => {
 
     const { sourceImages, nomeProduto, categoria, coresDisponiveis, materiais, marketplaceTarget } = validation.data!;
 
-    // ========== GEMINI API KEY ==========
     const GEMINI_API_KEY = Deno.env.get('GEMINI_API_KEY');
     if (!GEMINI_API_KEY) {
       console.error('GEMINI_API_KEY not configured');
@@ -159,7 +153,7 @@ serve(async (req: Request) => {
       'Em uso', 'Lifestyle', 'Studio', 'Minimalista', 'Cenário dinâmico'
     ];
 
-    console.log(`Generating ${totalImages} images via Gemini API for: ${nomeProduto} | Marketplace: ${marketplaceTarget} | Refs: ${sourceImages.length}`);
+    console.log(`Generating ${totalImages} images via gemini-2.5-flash-image for: ${nomeProduto} | Marketplace: ${marketplaceTarget}`);
 
     const generatedImages: Array<{ url: string; prompt: string; composition: string }> = [];
 
@@ -170,7 +164,7 @@ serve(async (req: Request) => {
 
       try {
         const response = await fetch(
-          `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-preview-image-generation:generateContent?key=${GEMINI_API_KEY}`,
+          `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-image:generateContent?key=${GEMINI_API_KEY}`,
           {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -186,8 +180,9 @@ serve(async (req: Request) => {
         if (response.status === 429) {
           console.error(`Rate limited at image ${i + 1}. Waiting 15s...`);
           await new Promise(resolve => setTimeout(resolve, 15000));
+
           const retryResp = await fetch(
-            `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-preview-image-generation:generateContent?key=${GEMINI_API_KEY}`,
+            `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-image:generateContent?key=${GEMINI_API_KEY}`,
             {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
@@ -203,7 +198,7 @@ serve(async (req: Request) => {
           if (retryResp.ok) {
             const retryData = await retryResp.json();
             const parts = retryData.candidates?.[0]?.content?.parts || [];
-            const imgPart = parts.find((p: string) => p.inlineData?.mimeType?.startsWith('image/'));
+            const imgPart = parts.find((p: { inlineData?: { mimeType: string } }) => p.inlineData?.mimeType?.startsWith('image/'));
             if (imgPart) {
               generatedImages.push({
                 url: `data:${imgPart.inlineData.mimeType};base64,${imgPart.inlineData.data}`,
@@ -226,7 +221,7 @@ serve(async (req: Request) => {
 
         const data = await response.json();
         const parts = data.candidates?.[0]?.content?.parts || [];
-        const imgPart = parts.find((p: string) => p.inlineData?.mimeType?.startsWith('image/'));
+        const imgPart = parts.find((p: { inlineData?: { mimeType: string } }) => p.inlineData?.mimeType?.startsWith('image/'));
 
         if (imgPart) {
           generatedImages.push({
@@ -239,7 +234,6 @@ serve(async (req: Request) => {
           console.error(`No image returned for image ${i + 1}`, JSON.stringify(data).slice(0, 300));
         }
 
-        // Delay between requests to avoid rate limiting
         if (i < totalImages - 1) {
           await new Promise(resolve => setTimeout(resolve, 2000));
         }
@@ -255,7 +249,7 @@ serve(async (req: Request) => {
       );
     }
 
-    console.log(`Successfully generated ${generatedImages.length} images via Gemini`);
+    console.log(`Successfully generated ${generatedImages.length} images`);
 
     return new Response(
       JSON.stringify({
