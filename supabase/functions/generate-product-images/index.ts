@@ -149,7 +149,7 @@ serve(async (req: Request) => {
 
   const totalImages = 1;
   const compositionLabels = ['Frontal'];
-  
+
     console.log(`Generating ${totalImages} images via gemini-2.5-flash-image for: ${nomeProduto} | Marketplace: ${marketplaceTarget}`);
 
     const generatedImages: Array<{ url: string; prompt: string; composition: string }> = [];
@@ -174,9 +174,10 @@ serve(async (req: Request) => {
           }
         );
 
-        if (response.status === 429) {
-          console.error(`Rate limited at image ${i + 1}. Waiting 15s...`);
-          await new Promise(resolve => setTimeout(resolve, 10000));
+       if (response.status === 429) {
+  const errBody = await response.text(); // ✅ adiciona isso
+  console.error(`Rate limited at image ${i + 1}. Body: ${errBody}`); // ✅ loga o body
+  await new Promise(resolve => setTimeout(resolve, 60000));
 
           const retryResp = await fetch(
             `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-image:generateContent?key=${GEMINI_API_KEY}`,
