@@ -4,36 +4,34 @@ import { AppLayout } from '@/components/layout/AppLayout';
 import { ProtectedRoute } from '@/components/layout/ProtectedRoute';
 import { IntegrationCard } from '@/components/integrations/IntegrationCard';
 import { ConnectDialog } from '@/components/integrations/ConnectDialog';
-import axios from 'axios'
 import { IntegrationHealthPanel } from '@/components/integrations/IntegrationHealthPanel';
 import { useIntegrations } from '@/hooks/useIntegrations';
 import { useToast } from '@/hooks/use-toast';
+import { useQueryClient } from '@tanstack/react-query';
 import { Plug } from 'lucide-react';
 
 export default function IntegrationsOverview() {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
   const { toast } = useToast();
+  const queryClient = useQueryClient();
   const { connections, logs, isLoading, getConnection, startAuth, manualAuth, syncNow } = useIntegrations();
   const [connectProvider, setConnectProvider] = useState<'shopee' | 'tiktok' | null>(null);
   const [isSyncing, setIsSyncing] = useState(false);
-   
 
-
-
-  // Handle callback success
   useEffect(() => {
     const connected = searchParams.get('connected');
     if (connected) {
       toast({ title: `${connected === 'shopee' ? 'Shopee' : 'TikTok Shop'} conectado com sucesso!` });
       window.history.replaceState({}, '', '/integrations');
+      queryClient.invalidateQueries({ queryKey: ['integrations'] });
     }
     const error = searchParams.get('error');
     if (error) {
       toast({ title: 'Erro na conexão', description: error, variant: 'destructive' });
       window.history.replaceState({}, '', '/integrations');
     }
-  }, [searchParams, toast]);
+  }, [searchParams, toast, queryClient]);
 
   const shopee = getConnection('shopee');
   const tiktok = getConnection('tiktok');
@@ -66,7 +64,7 @@ export default function IntegrationsOverview() {
               lastSyncAt={shopee?.last_sync_at}
               nextSyncAt={shopee?.next_sync_at}
               onConnect={() => setConnectProvider('shopee')}
-              onManage={() => navigate('/integrations/:marketplace/auth-url'.replace(':marketplace', 'shopee'))}
+              onManage={() => navigate('/integrations/shopee')}
               isConnecting={startAuth.isPending}
             />
             <IntegrationCard
@@ -77,7 +75,7 @@ export default function IntegrationsOverview() {
               lastSyncAt={tiktok?.last_sync_at}
               nextSyncAt={tiktok?.next_sync_at}
               onConnect={() => setConnectProvider('tiktok')}
-              onManage={() => navigate('/integrations/:marketplace/auth-url'.replace(':marketplace', 'tiktok'))}
+              onManage={() => navigate('/integrations/tiktok')}
               isConnecting={startAuth.isPending}
             />
           </div>
@@ -97,41 +95,44 @@ export default function IntegrationsOverview() {
           open={!!connectProvider}
           onOpenChange={(open) => !open && setConnectProvider(null)}
           onConfirm={async () => {
-  if (connectProvider === 'shopee') {
-    try {
-      const response = await fetch(
-        "https://opzsrqdvotozawuqpapo.functions.supabase.co/shopee-auth",
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ provider: "shopee" }),
-        }
-      );
-      const data = await response.json();
-      if (data.authorization_url) {
-        window.location.href = data.authorization_url; 
-      } else {
-        toast({ title: "Erro ao conectar Shopee", variant: "destructive" });
-      }
-    } catch (err) {
-      toast({ title: "Erro ao conectar Shopee", variant: "destructive" });
-    }
-  } else if (connectProvider === 'tiktok') {
-    startAuth.mutate(connectProvider);
-  }
-}}
+            if (connectProvider === 'shopee') {
+              try {
+                const response = await fetch(
+                  "https://opzsrqdvotozawuqpapo.functions.supabase.co/shopee-auth",
+                  {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ provider: "shopee" }),
+                  }
+                );
+                const data = await response.json();
+                if (data.authorization_url) {
+                  window.location.href = data.authorization_url;
+                } else {
+                  toast({ title: "Erro ao conectar Shopee", variant: "destructive" });
+                }
+              } catch {
+                toast({ title: "Erro ao conectar Shopee", variant: "destructive" });
+              }
+            } else if (connectProvider === 'tiktok') {
+              startAuth.mutate(connectProvider);
+            }
+          }}
           onManualAuth={({ shopId, accessToken, refreshToken }) => {
             if (connectProvider) {
               manualAuth.mutate({ provider: connectProvider, shopId, accessToken, refreshToken }, {
                 onSuccess: async () => {
                   setConnectProvider(null);
-                  // Auto-sync after connecting
-                  toast({ title: 'Conectado! Iniciando sincronização de pedidos...' });
+                  toast({ title: 'Conectado! Iniciando sincronização...' });
                   setIsSyncing(true);
-                  // Wait for integrations data to refresh, then sync
-                  setTimeout(async () => {
-                    const updated = await axios('integration-list');
-                    const conn = updated.data?.connections?.find((c: { provider: string; status: string }) => c.provider === connectProvider && c.status === 'connected');
+
+                  // ✅ Refresca os dados via queryClient em vez de axios
+                  await queryClient.invalidateQueries({ queryKey: ['integrations'] });
+                  
+                  setTimeout(() => {
+                    const conn = connections.find(
+                      c => c.provider === connectProvider && c.status === 'connected'
+                    );
                     if (conn) {
                       syncNow.mutate(conn.id, {
                         onSettled: () => setIsSyncing(false),
@@ -139,7 +140,7 @@ export default function IntegrationsOverview() {
                     } else {
                       setIsSyncing(false);
                     }
-                  }, 1000);
+                  }, 1500);
                 },
               });
             }
