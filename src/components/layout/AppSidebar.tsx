@@ -128,11 +128,13 @@ export function AppSidebar() {
                 <DropdownMenuSeparator />
               <DropdownMenuItem
               onClick={async () => {
+                
                 localStorage.removeItem('rememberedEmail');
                 await signOut();
               }}
               className="flex items-center cursor-pointer"
             >
+              <Link to="/" className="flex items-center"></Link>
               <LogOut className="mr-2 h-4 w-4" />
               Sair
             </DropdownMenuItem>
