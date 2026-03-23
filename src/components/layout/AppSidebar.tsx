@@ -7,6 +7,8 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSepara
 import { Avatar, AvatarFallback, AvatarImage} from '@/components/ui/avatar';
 import { User, ChevronUp, LogOut, TrendingUp, Calculator, Receipt, Sparkles, BarChart3, HandCoins,Wallet, Plug, House } from 'lucide-react';
 import logo from '@/assets/logo-new.svg';
+import {useNavigate} from 'react-router-dom';
+
 
 
 
@@ -36,6 +38,7 @@ export function AppSidebar() {
   const location = useLocation();
   const { user, signOut, profile } = useAuth();
   const collapsed = state === 'collapsed';
+  const navigate = useNavigate();
 
   const getInitials = (email: string) => {
     return email.slice(0, 2).toUpperCase();
@@ -128,13 +131,12 @@ export function AppSidebar() {
                 <DropdownMenuSeparator />
               <DropdownMenuItem
               onClick={async () => {
-                
                 localStorage.removeItem('rememberedEmail');
                 await signOut();
+                navigate('/user/auth', { replace: true });
               }}
               className="flex items-center cursor-pointer"
             >
-              <Link to="/" className="flex items-center"></Link>
               <LogOut className="mr-2 h-4 w-4" />
               Sair
             </DropdownMenuItem>
