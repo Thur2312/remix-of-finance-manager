@@ -12,6 +12,7 @@ import { useIntegrations } from '@/hooks/useIntegrations';
 import { RefreshCw, ArrowLeft, ShoppingBag, Store, AlertCircle, Clock } from 'lucide-react';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
+import { ExportDataSection } from '../../components/integrations/ExportDataSection';
 
 const providerNames: Record<string, string> = { shopee: 'Shopee', tiktok: 'TikTok Shop' };
 const providerIcons: Record<string, React.ComponentType<{ className?: string; strokeWidth?: string | number }>> = { shopee: ShoppingBag, tiktok: Store };
@@ -166,6 +167,12 @@ export default function IntegrationManage() {
               <IntegrationLogsTable logs={logs} />
             </CardContent>
           </Card>
+
+          {/* ✅ Exportar Dados — adiciona aqui */}
+          <ExportDataSection
+            connectionId={connection.id}
+            providerName={name}
+          />
 
           {/* Disconnect */}
           <Card>
