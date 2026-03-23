@@ -13,6 +13,7 @@ import { RefreshCw, ArrowLeft, ShoppingBag, Store, AlertCircle, Clock } from 'lu
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { ExportDataSection } from '../../components/integrations/ExportDataSection';
+import { IntegrationDashboard } from '../../components/integrations/IntegrationDashboard';
 
 const providerNames: Record<string, string> = { shopee: 'Shopee', tiktok: 'TikTok Shop' };
 const providerIcons: Record<string, React.ComponentType<{ className?: string; strokeWidth?: string | number }>> = { shopee: ShoppingBag, tiktok: Store };
@@ -58,7 +59,9 @@ export default function IntegrationManage() {
           </Button>
 
           {/* Status */}
+          
           <Card>
+            <IntegrationDashboard connectionId={connection.id} />
             <CardHeader>
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-3">
