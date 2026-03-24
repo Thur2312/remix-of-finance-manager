@@ -269,44 +269,63 @@ serve(async (req) => {
       console.error("Error syncing orders:", orderError)
     }
 
-    // ✅ SYNC PAYMENTS (já estava bom, só adicionou safeDate)
-    try {
-      const transactions = await shopeeGet<{ transactions:[], more: boolean }>(
-        BASE_URL, "/api/v2/payment/get_wallet_transaction_list", {
-          wallet_type: 1,
-          page_no: 1,
-          page_size: 50,
-          create_time_from: timeFrom,
-          create_time_to: timeTo,
-        },
-        PARTNER_ID, PARTNER_KEY, accessToken, shopId
-      )
+    // ✅ SYNC PAYMENTS (com tratamento KYC)
+try {
+  console.log("🔄 Tentando sync pagamentos...")
+  const transactions = await shopeeGet<{ transactions:[], more: boolean }>(
+    BASE_URL, "/api/v2/payment/get_wallet_transaction_list", {
+      wallet_type: 1,  // Saldo disponível
+      page_no: 1,
+      page_size: 50,
+      create_time_from: timeFrom,
+      create_time_to: timeTo,
+    },
+    PARTNER_ID, PARTNER_KEY, accessToken, shopId
+  )
 
-      if (transactions.transactions?.length) {
-        for (const tx of transactions.transactions) {
-          const marketplaceFee = (Number(tx.service_fee) || 0) + (Number(tx.paid_channel_fee) || 0)
-          const netAmount = Number(tx.amount) - marketplaceFee
-
-          await supabaseAdmin.from("payments").upsert({
-            integration_id: connection_id,
-            external_transaction_id: String(tx.transaction_id),
-            amount: Number(tx.amount),
-            currency: tx.currency || "BRL",
-            payment_method: tx.withdrawal_type || "shopee_wallet",
-            marketplace_fee: marketplaceFee,
-            net_amount: netAmount,
-            status: tx.status === "COMPLETED" ? "COMPLETED" : "PENDING",
-            // ✅ DATA SEGURA
-            transaction_date: safeShopeeDate(tx.transaction_date),
-            description: tx.description ?? tx.transaction_type,
-            synced_at: now.toISOString(),
-          }, { onConflict: "integration_id,external_transaction_id" })
-          paymentsCount++
-        }
-      }
-    } catch (paymentError) {
-      console.error("Error syncing payments:", paymentError)
+  console.log(`✅ ${transactions.transactions?.length || 0} pagamentos encontrados`)
+  
+  if (transactions.transactions?.length) {
+    for (const tx of transactions.transactions) {
+      const marketplaceFee = (Number(tx.service_fee) || 0) + (Number(tx.paid_channel_fee) || 0)
+      
+      await supabaseAdmin.from("payments").upsert({
+        integration_id: connection_id,
+        external_transaction_id: String(tx.transaction_id),
+        amount: Number(tx.amount),
+        currency: tx.currency || "BRL",
+        payment_method: tx.withdrawal_type || "shopee_wallet",
+        marketplace_fee: marketplaceFee,
+        net_amount: Number(tx.amount) - marketplaceFee,
+        status: tx.status === "COMPLETED" ? "completed" : "pending",
+        transaction_date: safeShopeeDate(tx.transaction_date),
+        description: tx.description ?? tx.transaction_type ?? "Pagamento Shopee",
+        synced_at: now.toISOString(),
+      }, { onConflict: "integration_id,external_transaction_id" })
+      paymentsCount++
     }
+  }
+} catch (paymentError) {
+  console.log("💡 Payments:", paymentError.message)
+  
+  // ✅ TRATAMENTO ESPECÍFICO KYC
+  if (paymentError.message?.includes("error_kyc_auth") || 
+      paymentError.message?.includes("No permission") ||
+      paymentError.message?.includes("KYC") ||
+      paymentError.message?.includes("complete the Seller Registration")) {
+    
+    console.log("✅ KYC pendente - PEDIDOS funcionam normal!")
+    await supabaseAdmin.from("integration_sync_logs").insert({
+      connection_id,
+      user_id: user.id,
+      type: "kyc_required",
+      status: "warning",
+      message: "Complete KYC no Seller Center para liberar PAGAMENTOS",
+    })
+  } else {
+    console.error("❌ Payments error real:", paymentError)
+  }
+}
 
     // Atualiza conexão
     const nextSync = new Date(now.getTime() + (connection.auto_sync_frequency_minutes || 60) * 60 * 1000)
