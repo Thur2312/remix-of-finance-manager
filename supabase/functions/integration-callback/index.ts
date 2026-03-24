@@ -40,7 +40,7 @@ serve(async (req) => {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           code,
-          shop_id: shopId ? Number(shopId) : undefined,
+          shop_id: shopId ? Number(shopId) : 0, // ✅ Fix: valor padrão
           partner_id: partnerIdNum,
           redirect_url: REDIRECT_URI,
         }),
@@ -75,7 +75,14 @@ serve(async (req) => {
     const resolvedShopId = String(responseShopId?.[0] ?? shopId ?? "")
     const now = new Date()
 
-    // ✅ Salva na tabela integration_connections
+    // ✅ FIX: Função segura para datas Shopee
+    const safeTokenExpiresAt = (expireSeconds: number | undefined | null): string | null => {
+      if (!expireSeconds || expireSeconds <= 0) return null
+      const futureDate = new Date(now.getTime() + expireSeconds * 1000)
+      return isNaN(futureDate.getTime()) ? null : futureDate.toISOString()
+    }
+
+    // ✅ Salva na tabela integration_connections (100% seguro)
     const { error: dbError } = await supabase
       .from("integration_connections")
       .upsert({
@@ -86,8 +93,8 @@ serve(async (req) => {
         shop_name: shope_name ?? "",
         access_token,
         refresh_token,
-        token_expires_at: new Date(now.getTime() + expire_in * 1000).toISOString(),
-        refresh_token_expires_at: new Date(now.getTime() + refresh_token_expire_in * 1000).toISOString(),
+        token_expires_at: safeTokenExpiresAt(expire_in),
+        refresh_token_expires_at: safeTokenExpiresAt(refresh_token_expire_in),
         updated_at: now.toISOString(),
       }, { onConflict: "user_id,provider" })
 
@@ -98,6 +105,8 @@ serve(async (req) => {
         302
       )
     }
+
+    console.log("✅ Shopee integrada com sucesso!", { resolvedShopId, expire_in, refresh_token_expire_in })
 
     return Response.redirect(`${FRONTEND_URL}/integrations?connected=shopee`, 302)
 
