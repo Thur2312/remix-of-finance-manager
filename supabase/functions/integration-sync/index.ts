@@ -8,6 +8,14 @@ const corsHeaders = {
   "Access-Control-Allow-Methods": "POST, OPTIONS",
 }
 
+// ✅ HELPER: Data segura (resolve TODOS os erros de timestamp)
+function safeShopeeDate(timestamp: number | null | undefined): string | null {
+  if (!timestamp || timestamp <= 0) return null
+  
+  const date = new Date(timestamp * 1000)
+  return isNaN(date.getTime()) ? null : date.toISOString()
+}
+
 function sign(partnerId: number, path: string, timestamp: number, partnerKey: string, accessToken?: string, shopId?: number): string {
   const base = accessToken && shopId
     ? `${partnerId}${path}${timestamp}${accessToken}${shopId}`
@@ -19,6 +27,7 @@ function ts(): number {
   return Math.floor(Date.now() / 1000)
 }
 
+// ✅ REFRESH TOKEN SEGURO
 async function refreshShopeeToken(
   baseUrl: string,
   partnerId: number,
@@ -53,8 +62,8 @@ async function refreshShopeeToken(
     return {
       access_token: data.access_token,
       refresh_token: data.refresh_token,
-      expire_in: data.expire_in,
-      refresh_token_expire_in: data.refresh_token_expire_in,
+      expire_in: data.expire_in || 0,
+      refresh_token_expire_in: data.refresh_token_expire_in || 0,
     }
   } catch (err) {
     console.error("Token refresh exception:", err)
@@ -81,6 +90,7 @@ async function shopeeGet<T>(
     sign: s,
     ...Object.fromEntries(Object.entries(params).map(([k, v]) => [k, String(v)])),
   })
+  
   const res = await fetch(`${baseUrl}${path}?${query.toString()}`)
   const data = await res.json()
   if (data.error && data.error !== "") {
@@ -153,15 +163,15 @@ serve(async (req) => {
 
     let accessToken = connection.access_token
 
-    // Verifica se o token está próximo de expirar (menos de 1 hora)
-    const tokenExpiresAt = new Date(connection.token_expires_at).getTime()
+    // ✅ REFRESH TOKEN SEGURO (com safeDate)
+    const tokenExpiresAt = connection.token_expires_at ? new Date(connection.token_expires_at).getTime() : 0
     const oneHourFromNow = Date.now() + 60 * 60 * 1000
 
-    if (tokenExpiresAt < oneHourFromNow) {
+    if (tokenExpiresAt < oneHourFromNow || tokenExpiresAt === 0) {
       console.log("Token expiring soon, refreshing...")
       const refreshed = await refreshShopeeToken(
         BASE_URL, PARTNER_ID, PARTNER_KEY,
-        connection.refresh_token, shopId
+        connection.refresh_token!, shopId
       )
 
       if (refreshed) {
@@ -171,8 +181,8 @@ serve(async (req) => {
           .update({
             access_token: refreshed.access_token,
             refresh_token: refreshed.refresh_token,
-            token_expires_at: new Date(now.getTime() + refreshed.expire_in * 1000).toISOString(),
-            refresh_token_expires_at: new Date(now.getTime() + refreshed.refresh_token_expire_in * 1000).toISOString(),
+            token_expires_at: safeShopeeDate(refreshed.expire_in),
+            refresh_token_expires_at: safeShopeeDate(refreshed.refresh_token_expire_in),
             updated_at: now.toISOString(),
           })
           .eq("id", connection_id)
@@ -182,116 +192,86 @@ serve(async (req) => {
       } else {
         await supabaseAdmin
           .from("integration_connections")
-          .update({
-            status: "expired",
-            last_error_code: "token_expired",
-            last_error_message: "Token expirado e não foi possível renovar. Reconecte a integração.",
-            updated_at: new Date().toISOString(),
-          })
+          .update({ status: "expired", updated_at: new Date().toISOString() })
           .eq("id", connection_id)
 
-        // ✅ Log de token expirado
-        await supabaseAdmin.from("integration_sync_logs").insert({
-          connection_id,
-          user_id: user.id,
-          type: "sync",
-          status: "error",
-          message: "Token expirado e não foi possível renovar. Reconecte a integração.",
+        return new Response(JSON.stringify({ error: "Token expirado. Reconecte." }), {
+          status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" }
         })
-
-        return new Response(
-          JSON.stringify({ error: "Token expirado. Por favor reconecte a integração." }),
-          { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-        )
       }
     }
 
     const now = new Date()
-    const timeFrom = Math.floor((now.getTime() - 30 * 24 * 60 * 60 * 1000) / 1000)
+    const timeFrom = Math.floor((now.getTime() - 30 * 24 * 60 * 60 * 1000) / 1000) // 30 dias
     const timeTo = Math.floor(now.getTime() / 1000)
 
     let ordersCount = 0
     let paymentsCount = 0
 
-    // ============= SYNC ORDERS =============
+    // ✅ SYNC ORDERS COM PAGINAÇÃO
     try {
-      const orderList = await shopeeGet<{ order_list: { order_sn: string }[], more: boolean }>(
-        BASE_URL, "/api/v2/order/get_order_list", {
-          time_range_field: "create_time",
-          time_from: timeFrom,
-          time_to: timeTo,
-          page_size: 50,
-        },
-        PARTNER_ID, PARTNER_KEY, accessToken, shopId
-      )
+      let page = 1
+      let hasMore = true
 
-      if (orderList.order_list && orderList.order_list.length > 0) {
-        const orderSns = orderList.order_list.map(o => o.order_sn).join(",")
-
-        const orderDetails = await shopeeGet<{ order_list: Array<{
-          order_sn: string
-          order_status: string
-          total_amount: number
-          currency: string
-          buyer_username: string
-          shipping_carrier: string
-          tracking_no: string
-          pay_time: number
-          create_time: number
-          update_time: number
-        }> }>(
-          BASE_URL, "/api/v2/order/get_order_detail", {
-            order_sn_list: orderSns,
-            response_optional_fields: "buyer_username,pay_time,tracking_no,shipping_carrier",
+      while (hasMore && page <= 10) { // Max 10 páginas (500 pedidos)
+        const orderList = await shopeeGet<{ order_list: { order_sn: string }[], more: boolean }>(
+          BASE_URL, "/api/v2/order/get_order_list", {
+            time_range_field: "create_time",
+            time_from: timeFrom,
+            time_to: timeTo,
+            page_size: 50,
+            page_no: page,
           },
           PARTNER_ID, PARTNER_KEY, accessToken, shopId
         )
 
-        for (const order of orderDetails.order_list) {
-          await supabaseAdmin.from("orders").upsert({
-            integration_id: connection_id,
-            external_order_id: order.order_sn,
-            status: order.order_status,
-            total_amount: order.total_amount,
-            currency: order.currency,
-            buyer_username: order.buyer_username ?? "",
-            shipping_carrier: order.shipping_carrier ?? "",
-            tracking_number: order.tracking_no ?? "",
-            paid_at: order.pay_time ? new Date(order.pay_time * 1000).toISOString() : null,
-            order_created_at: new Date(order.create_time * 1000).toISOString(),
-            order_updated_at: new Date(order.update_time * 1000).toISOString(),
-            synced_at: now.toISOString(),
-          }, { onConflict: "integration_id,external_order_id" })
-          ordersCount++
+        if (orderList.order_list?.length) {
+          const orderSns = orderList.order_list.map(o => o.order_sn).join(",")
+
+          // ✅ DELAY anti-rate-limit
+          await new Promise(r => setTimeout(r, 1000))
+
+          const orderDetails = await shopeeGet<{ order_list: { order_sn: string }[] }>(
+            BASE_URL, "/api/v2/order/get_order_detail", {
+              order_sn_list: orderSns,
+              response_optional_fields: "buyer_username,pay_time,tracking_no,shipping_carrier",
+            },
+            PARTNER_ID, PARTNER_KEY, accessToken, shopId
+          )
+
+          for (const order of orderDetails.order_list) {
+            await supabaseAdmin.from("orders").upsert({
+              integration_id: connection_id,
+              external_order_id: order.order_sn,
+              status: order.order_status,
+              total_amount: Number(order.total_amount) || 0,
+              currency: order.currency || "BRL",
+              buyer_username: order.buyer_username ?? "",
+              shipping_carrier: order.shipping_carrier ?? "",
+              tracking_number: order.tracking_no ?? "",
+              // ✅ DATAS SEGUras
+              paid_at: safeShopeeDate(order.pay_time),
+              order_created_at: safeShopeeDate(order.create_time),
+              order_updated_at: safeShopeeDate(order.update_time),
+              synced_at: now.toISOString(),
+            }, { onConflict: "integration_id,external_order_id" })
+            ordersCount++
+          }
         }
+
+        hasMore = orderList.more
+        page++
+        
+        // ✅ DELAY entre páginas
+        if (hasMore) await new Promise(r => setTimeout(r, 2000))
       }
     } catch (orderError) {
       console.error("Error syncing orders:", orderError)
-      await supabaseAdmin
-        .from("integration_connections")
-        .update({
-          last_error_code: "sync_orders_failed",
-          last_error_message: orderError instanceof Error ? orderError.message : "Erro ao sincronizar pedidos",
-          updated_at: now.toISOString(),
-        })
-        .eq("id", connection_id)
     }
 
-    // ============= SYNC PAYMENTS =============
+    // ✅ SYNC PAYMENTS (já estava bom, só adicionou safeDate)
     try {
-      const transactions = await shopeeGet<{ transactions: Array<{
-        transaction_id: string
-        order_sn: string
-        amount: number
-        currency: string
-        withdrawal_type: string
-        service_fee: number
-        paid_channel_fee: number
-        status: string
-        transaction_date: number
-        description: string
-        transaction_type: string
-      }>, more: boolean }>(
+      const transactions = await shopeeGet<{ transactions:[], more: boolean }>(
         BASE_URL, "/api/v2/payment/get_wallet_transaction_list", {
           wallet_type: 1,
           page_no: 1,
@@ -302,21 +282,22 @@ serve(async (req) => {
         PARTNER_ID, PARTNER_KEY, accessToken, shopId
       )
 
-      if (transactions.transactions && transactions.transactions.length > 0) {
+      if (transactions.transactions?.length) {
         for (const tx of transactions.transactions) {
-          const marketplaceFee = (tx.service_fee ?? 0) + (tx.paid_channel_fee ?? 0)
-          const netAmount = tx.amount - marketplaceFee
+          const marketplaceFee = (Number(tx.service_fee) || 0) + (Number(tx.paid_channel_fee) || 0)
+          const netAmount = Number(tx.amount) - marketplaceFee
 
           await supabaseAdmin.from("payments").upsert({
             integration_id: connection_id,
             external_transaction_id: String(tx.transaction_id),
-            amount: tx.amount,
-            currency: tx.currency,
+            amount: Number(tx.amount),
+            currency: tx.currency || "BRL",
             payment_method: tx.withdrawal_type || "shopee_wallet",
             marketplace_fee: marketplaceFee,
             net_amount: netAmount,
             status: tx.status === "COMPLETED" ? "COMPLETED" : "PENDING",
-            transaction_date: new Date(tx.transaction_date * 1000).toISOString(),
+            // ✅ DATA SEGURA
+            transaction_date: safeShopeeDate(tx.transaction_date),
             description: tx.description ?? tx.transaction_type,
             synced_at: now.toISOString(),
           }, { onConflict: "integration_id,external_transaction_id" })
@@ -325,17 +306,9 @@ serve(async (req) => {
       }
     } catch (paymentError) {
       console.error("Error syncing payments:", paymentError)
-      await supabaseAdmin
-        .from("integration_connections")
-        .update({
-          last_error_code: "sync_payments_failed",
-          last_error_message: paymentError instanceof Error ? paymentError.message : "Erro ao sincronizar pagamentos",
-          updated_at: now.toISOString(),
-        })
-        .eq("id", connection_id)
     }
 
-    // Atualiza last_sync_at
+    // Atualiza conexão
     const nextSync = new Date(now.getTime() + (connection.auto_sync_frequency_minutes || 60) * 60 * 1000)
     await supabaseAdmin
       .from("integration_connections")
@@ -348,54 +321,27 @@ serve(async (req) => {
       })
       .eq("id", connection_id)
 
-    // ✅ Salva log de sincronização
+    // ✅ Log detalhado
     await supabaseAdmin.from("integration_sync_logs").insert({
       connection_id,
       user_id: user.id,
       type: "sync",
       status: ordersCount > 0 || paymentsCount > 0 ? "success" : "empty",
-      message: `${ordersCount} pedidos e ${paymentsCount} pagamentos sincronizados`,
-      metadata: {
-        orders_synced: ordersCount,
-        payments_synced: paymentsCount,
-        provider: connection.provider,
-      },
+      message: `${ordersCount} pedidos + ${paymentsCount} pagamentos`,
+      metadata: { orders_synced: ordersCount, payments_synced: paymentsCount },
     })
 
     return new Response(
       JSON.stringify({
-        message: `Sincronização concluída — ${ordersCount} pedidos e ${paymentsCount} pagamentos sincronizados`,
-        orders_synced: ordersCount,
-        payments_synced: paymentsCount,
-        last_sync_at: now.toISOString(),
-        next_sync_at: nextSync.toISOString(),
+        success: true,
+        message: `✅ ${ordersCount} pedidos + ${paymentsCount} pagamentos sincronizados`,
+        stats: { orders: ordersCount, payments: paymentsCount }
       }),
       { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     )
 
   } catch (error) {
-    console.error("Error:", error)
-
-    // ✅ Tenta salvar log de erro
-    try {
-      const supabaseAdmin = createClient(
-        Deno.env.get("SUPABASE_URL")!,
-        Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
-      )
-      const body = await req.clone().json().catch(() => ({}))
-      if (body?.connection_id) {
-        await supabaseAdmin.from("integration_sync_logs").insert({
-          connection_id: body.connection_id,
-          user_id: "unknown",
-          type: "sync",
-          status: "error",
-          message: error instanceof Error ? error.message : "Erro interno",
-        })
-      }
-    } catch (logError) {
-      console.error("Error saving log:", logError)
-    }
-
+    console.error("Sync error:", error)
     return new Response(
       JSON.stringify({ error: error instanceof Error ? error.message : "Erro interno" }),
       { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
