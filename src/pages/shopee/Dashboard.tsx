@@ -52,25 +52,25 @@ export default function Dashboard() {
     title: 'Upload de Relatório',
     description: 'Importe seu relatório XLSX da Shopee',
     icon: Upload,
-    href: '/upload',
+    href: 'shopee/upload',
     color: 'bg-blue-500'
   }, {
     title: 'Configurações',
     description: 'Configure taxas, impostos e parâmetros',
     icon: Settings,
-    href: '/configuracoes',
+    href: 'shopee/configuracoes',
     color: 'bg-primary'
   }, {
     title: 'Resultados Simplificados',
     description: 'Visualize resultados por produto',
     icon: FileSpreadsheet,
-    href: '/resultados',
+    href: 'shopee/resultados',
     color: 'bg-green-500'
   }, {
     title: 'Resultados com Variações',
     description: 'Análise detalhada por variação',
     icon: Package,
-    href: '/resultados-variacoes',
+    href: 'shopee/resultados-variacoes',
     color: 'bg-purple-500'
   }];
   const stats = [{

@@ -40,6 +40,8 @@ function useScrollAnimation() {
   }, []);
 }
 
+
+
 // ─── Counter animation hook ───────────────────────────────────────────────────
 function useCountUp(target: number, duration = 1500, start = false) {
   const [count, setCount] = useState(0);
@@ -111,10 +113,10 @@ function Navbar() {
         {/* CTA */}
        <div className="hidden md:flex items-center gap-3">
           <button
-            onClick={() => navigate("/user/auth")}
+            onClick={() => user ? navigate("/fluxo-caixa") : navigate("/user/auth")}
             className="text-white !py-2.5 !px-5 !text-sm"
           >
-            LOGIN
+            {user ? "DASHBOARD" : "LOGIN"}
           </button>
 
             <button

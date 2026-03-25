@@ -11,6 +11,7 @@ import { ShoppingBag, TrendingUp, DollarSign, BarChart3, ArrowLeft } from 'lucid
 import { z } from 'zod';
 
 
+
 const emailSchema = z.string().email('Email inválido');
 const passwordSchema = z.string()
   .min(8, 'Mínimo 8 caracteres')
@@ -26,7 +27,7 @@ export default function Auth() {
   const [termsAccepted, setTermsAccepted] = useState(false);
   const [privacyPolicyAccepted, setPrivacyPolicyAccepted] = useState(false);
 
-  const { signIn, signUp, user } = useAuth();
+  const { signIn, signUp, user, loading } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
 
@@ -34,12 +35,11 @@ export default function Auth() {
   const searchParams = new URLSearchParams(location.search);
   const redirectPath = searchParams.get('redirect') || '/fluxo-caixa';
 
-  // Redirecionar se já estiver logado
-  useEffect(() => {
-    if (user) {
-      navigate(redirectPath);
-    }
-  }, [user, navigate, redirectPath]);
+useEffect(() => {
+  if (!loading && user) {
+    navigate(redirectPath);
+  }
+}, [user, loading, navigate, redirectPath]);
 
   // Lembrar email
   useEffect(() => {

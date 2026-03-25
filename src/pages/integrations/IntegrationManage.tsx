@@ -9,8 +9,11 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { IntegrationLogsTable } from '@/components/integrations/IntegrationLogsTable';
 import { DisconnectDialog } from '@/components/integrations/DisconnectDialog';
 import { useIntegrations } from '@/hooks/useIntegrations';
-import { RefreshCw, ArrowLeft, ShoppingBag, Store,Icon } from 'lucide-react';
-
+import { RefreshCw, ArrowLeft, ShoppingBag, Store, AlertCircle, Clock } from 'lucide-react';
+import { format } from 'date-fns';
+import { ptBR } from 'date-fns/locale';
+import { ExportDataSection } from '../../components/integrations/ExportDataSection';
+import { IntegrationDashboard } from '../../components/integrations/IntegrationDashboard';
 
 const providerNames: Record<string, string> = { shopee: 'Shopee', tiktok: 'TikTok Shop' };
 const providerIcons: Record<string, React.ComponentType<{ className?: string; strokeWidth?: string | number }>> = { shopee: ShoppingBag, tiktok: Store };
@@ -56,7 +59,9 @@ export default function IntegrationManage() {
           </Button>
 
           {/* Status */}
+          
           <Card>
+            <IntegrationDashboard connectionId={connection.id} />
             <CardHeader>
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-3">
@@ -72,11 +77,48 @@ export default function IntegrationManage() {
                 </div>
               </div>
             </CardHeader>
-            <CardContent>
+            <CardContent className="space-y-3">
               <div className="grid gap-2 text-sm">
-                {connection.shop_name && <div className="flex justify-between"><span className="text-muted-foreground">Loja</span><span className="font-medium">{connection.shop_name}</span></div>}
-                {connection.external_shop_id && <div className="flex justify-between"><span className="text-muted-foreground">Shop ID</span><span className="font-mono text-xs">{connection.external_shop_id}</span></div>}
+                {connection.shop_name && (
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">Loja</span>
+                    <span className="font-medium">{connection.shop_name}</span>
+                  </div>
+                )}
+                {connection.external_shop_id && (
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">Shop ID</span>
+                    <span className="font-mono text-xs">{connection.external_shop_id}</span>
+                  </div>
+                )}
+                {connection.last_sync_at && (
+                  <div className="flex justify-between items-center">
+                    <span className="text-muted-foreground flex items-center gap-1">
+                      <Clock className="h-3 w-3" /> Última sync
+                    </span>
+                    <span>{format(new Date(connection.last_sync_at), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}</span>
+                  </div>
+                )}
+                {connection.next_sync_at && (
+                  <div className="flex justify-between items-center">
+                    <span className="text-muted-foreground flex items-center gap-1">
+                      <Clock className="h-3 w-3" /> Próxima sync
+                    </span>
+                    <span>{format(new Date(connection.next_sync_at), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}</span>
+                  </div>
+                )}
               </div>
+
+              {/* ✅ Mensagem de erro */}
+              {connection.last_error_message && (
+                <div className="flex items-start gap-2 text-sm text-destructive bg-destructive/10 rounded-md p-3">
+                  <AlertCircle className="h-4 w-4 mt-0.5 shrink-0" />
+                  <div>
+                    <p className="font-medium">Erro na última sincronização</p>
+                    <p className="text-xs mt-0.5">{connection.last_error_message}</p>
+                  </div>
+                </div>
+              )}
             </CardContent>
           </Card>
 
@@ -87,7 +129,10 @@ export default function IntegrationManage() {
             </CardHeader>
             <CardContent className="space-y-4">
               <Button onClick={() => syncNow.mutate(connection.id)} disabled={syncNow.isPending}>
-                {syncNow.isPending ? <><RefreshCw className="mr-2 h-4 w-4 animate-spin" /> Sincronizando...</> : <><RefreshCw className="mr-2 h-4 w-4" /> Sincronizar agora</>}
+                {syncNow.isPending
+                  ? <><RefreshCw className="mr-2 h-4 w-4 animate-spin" /> Sincronizando...</>
+                  : <><RefreshCw className="mr-2 h-4 w-4" /> Sincronizar agora</>
+                }
               </Button>
               <div className="flex items-center justify-between">
                 <span className="text-sm">Sincronização automática</span>
@@ -125,6 +170,12 @@ export default function IntegrationManage() {
               <IntegrationLogsTable logs={logs} />
             </CardContent>
           </Card>
+
+          {/* ✅ Exportar Dados — adiciona aqui */}
+          <ExportDataSection
+            connectionId={connection.id}
+            providerName={name}
+          />
 
           {/* Disconnect */}
           <Card>

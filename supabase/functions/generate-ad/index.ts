@@ -1,5 +1,5 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-import { createClient } from '@supabase/supabase-js';
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 import { z } from 'https://deno.land/x/zod@v3.22.4/mod.ts';
 
 // ============= CORS HEADERS =============
@@ -139,19 +139,18 @@ serve(async (req: Request) => {
       { global: { headers: { Authorization: authHeader } } }
     );
 
-    const token = authHeader.replace('Bearer ', '');
-    const { data: claimsData, error: claimsError } = await supabase.auth.getClaims(token);
-    
-    if (claimsError || !claimsData?.claims) {
-      console.error('JWT validation failed:', claimsError);
-      return new Response(
-        JSON.stringify({ error: 'Token inválido ou expirado. Faça login novamente.' }),
-        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
-    }
+    const { data: { user }, error: userError } = await supabase.auth.getUser()
 
-    const userId = claimsData.claims.sub;
-    console.log(`Request authenticated for user: ${userId}`);
+      if (userError || !user) {
+        console.error('JWT validation failed:', userError)
+        return new Response(
+          JSON.stringify({ error: 'Token inválido ou expirado. Faça login novamente.' }),
+          { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        )
+      }
+
+      const userId = user.id
+      console.log(`Request authenticated for user: ${userId}`)
 
     // ========== INPUT VALIDATION ==========
     const rawBody = await req.json();
@@ -164,9 +163,9 @@ serve(async (req: Request) => {
     const { nomeProduto, categoria, marca, faixaPreco, publicoAlvo, materiais, coresDisponiveis, images, medidas } = validationResult.data;
 
     // ========== GOOGLE GEMINI API ==========
-    const GOOGLE_GEMINI_API_KEY = Deno.env.get('GOOGLE_GEMINI_API_KEY');
+const GOOGLE_GEMINI_API_KEY = Deno.env.get('GEMINI_API_KEY');
     if (!GOOGLE_GEMINI_API_KEY) {
-      console.error('GOOGLE_GEMINI_API_KEY não configurada');
+      console.error('GEMINI_API_KEY não configurada');
       return new Response(
         JSON.stringify({ error: 'API de IA não configurada. Entre em contato com o suporte.' }),
         { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }

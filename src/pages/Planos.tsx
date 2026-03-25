@@ -5,14 +5,11 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import {
-  BarChart3,
   CheckCircle2,
   ArrowRight,
   Sparkles,
-  ArrowLeft,
   Crown,
   Zap,
-  Star,
   Check,
   X,
   HelpCircle,
@@ -22,10 +19,8 @@ import {
 } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
-import logo from '@/assets/logo-new.svg';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { ProtectedRoute } from '@/components/layout/ProtectedRoute';
-
 
 const fadeInUp = {
   hidden: { opacity: 0, y: 40 },
@@ -76,12 +71,11 @@ const plans = [
       'Suporte prioritário',
       'Fluxo de caixa avançado',
       'Relatórios customizados',
-      'Consultoria dedicada'
+      'Consultoria dedicada',
     ],
     cta: 'Assinar Profissional',
     popular: true,
   },
-  
 ];
 
 const comparisonFeatures = [
@@ -95,7 +89,7 @@ const comparisonFeatures = [
   { feature: 'Suporte prioritário', basico: false, profissional: true },
   { feature: 'Fluxo de caixa avançado', basico: false, profissional: true },
   { feature: 'Relatórios customizados', basico: false, profissional: true },
-  { feature: 'Consultoria dedicada', basico: false, profissional: true }
+  { feature: 'Consultoria dedicada', basico: false, profissional: true },
 ];
 
 const faqs = [
@@ -121,15 +115,22 @@ export function PlanosContent() {
   const navigate = useNavigate();
   const { user } = useAuth();
 
-  const handleSelectPlan = () => {
+  const handleSelectPlan = (plan: typeof plans[0]) => {
+    // ✅ Starter não redireciona para pagamento
+    if (plan.name === 'Starter') {
+      navigate('/fluxo-caixa');
+      return;
+    }
+
+    // ✅ Profissional redireciona para pagamento
     if (user) {
-      navigate('https://payfast.greenn.com.br/m56nu2k');
+      window.location.href = 'https://payfast.greenn.com.br/m56nu2k';
     } else {
-      navigate('/auth?redirect=/planos');
+      navigate('/user/auth?redirect=/planos');
     }
   };
 
-  return (  
+  return (
     <div className="min-h-screen bg-gradient-to-b from-white via-blue-50 to-white">
       {/* Hero */}
       <motion.section
@@ -144,9 +145,7 @@ export function PlanosContent() {
             <Sparkles className="h-4 w-4" />
             Escolha o melhor para você
           </div>
-          <h1 className="text-4xl md:text-5xl font-bold text-gray-900">
-            Planos e Preços
-          </h1>
+          <h1 className="text-4xl md:text-5xl font-bold text-gray-900">Planos e Preços</h1>
           <p className="text-lg text-gray-600 max-w-2xl mx-auto">
             Comece com 7 dias grátis e descubra o poder de ter controle financeiro total do seu negócio
           </p>
@@ -154,12 +153,7 @@ export function PlanosContent() {
       </motion.section>
 
       {/* Plans Grid */}
-      <motion.section
-        className="py-12"
-        initial="hidden"
-        animate="visible"
-        variants={staggerContainer}
-      >
+      <motion.section className="py-12" initial="hidden" animate="visible" variants={staggerContainer}>
         <div className="container mx-auto px-4">
           <div className="grid md:grid-cols-2 gap-8 max-w-6xl mx-auto items-stretch">
             {plans.map((plan) => {
@@ -168,9 +162,7 @@ export function PlanosContent() {
                 <motion.div key={plan.name} variants={fadeInUp} className="h-full">
                   <Card
                     className={`relative overflow-hidden border-2 ${plan.borderColor} ${
-                      plan.popular
-                        ? 'shadow-2xl shadow-blue-500/10'
-                        : 'shadow-lg'
+                      plan.popular ? 'shadow-2xl shadow-blue-500/10' : 'shadow-lg'
                     } bg-white h-full flex flex-col`}
                   >
                     {plan.popular && (
@@ -181,27 +173,19 @@ export function PlanosContent() {
                         </div>
                       </>
                     )}
-
                     <CardHeader className="text-center pt-10 pb-6">
                       <div
                         className={`h-14 w-14 rounded-2xl bg-gradient-to-br ${plan.gradient} flex items-center justify-center mx-auto mb-4 shadow-lg`}
                       >
-                        <Icon
-                          className={`h-7 w-7 ${
-                            plan.popular ? 'text-white' : 'text-gray-900'
-                          }`}
-                        />
+                        <Icon className={`h-7 w-7 ${plan.popular ? 'text-white' : 'text-gray-900'}`} />
                       </div>
                       <CardTitle className="text-xl font-bold text-gray-900">{plan.name}</CardTitle>
                       <p className="text-sm text-gray-600">{plan.description}</p>
                       <div className="pt-4">
                         <span className="text-4xl font-bold text-gray-900">{plan.price}</span>
-                        {plan.period && (
-                          <span className="text-gray-600 text-base ml-1">{plan.period}</span>
-                        )}
+                        {plan.period && <span className="text-gray-600 text-base ml-1">{plan.period}</span>}
                       </div>
                     </CardHeader>
-
                     <CardContent className="space-y-6 pb-6 flex-1">
                       <ul className="space-y-3">
                         {plan.features.map((feat, i) => (
@@ -214,8 +198,6 @@ export function PlanosContent() {
                         ))}
                       </ul>
                     </CardContent>
-
-                    {/* Botão no final do card */}
                     <div className="p-6 pt-0">
                       <Button
                         size="lg"
@@ -225,7 +207,7 @@ export function PlanosContent() {
                             : 'border-blue-200 text-blue-700 hover:bg-blue-50'
                         }`}
                         variant={plan.popular ? 'default' : 'outline'}
-                        onClick={handleSelectPlan}
+                        onClick={() => handleSelectPlan(plan)}
                       >
                         {plan.cta}
                         <ArrowRight className="ml-2 h-4 w-4" />
@@ -240,12 +222,7 @@ export function PlanosContent() {
       </motion.section>
 
       {/* Comparison Table */}
-      <motion.section
-        className="py-12 bg-blue-50"
-        initial="hidden"
-        animate="visible"
-        variants={staggerContainer}
-      >
+      <motion.section className="py-12 bg-blue-50" initial="hidden" animate="visible" variants={staggerContainer}>
         <div className="container mx-auto px-4">
           <motion.div variants={fadeInUp} className="text-center mb-8">
             <h2 className="text-3xl font-bold text-gray-900 mb-4">Compare os Planos</h2>
@@ -262,7 +239,6 @@ export function PlanosContent() {
                       <TableHead className="font-semibold text-gray-900">Funcionalidades</TableHead>
                       <TableHead className="text-center font-semibold text-gray-900">Starter</TableHead>
                       <TableHead className="text-center font-semibold text-gray-900">Profissional</TableHead>
-  
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -283,7 +259,6 @@ export function PlanosContent() {
                             <Badge variant="outline" className="border-blue-200 text-blue-700">{item.profissional}</Badge>
                           )}
                         </TableCell>
-        
                       </TableRow>
                     ))}
                   </TableBody>
@@ -295,12 +270,7 @@ export function PlanosContent() {
       </motion.section>
 
       {/* Features Section */}
-      <motion.section
-        className="py-12"
-        initial="hidden"
-        animate="visible"
-        variants={staggerContainer}
-      >
+      <motion.section className="py-12" initial="hidden" animate="visible" variants={staggerContainer}>
         <div className="container mx-auto px-4">
           <motion.div variants={fadeInUp} className="text-center mb-12">
             <h2 className="text-3xl font-bold text-gray-900 mb-4">Por que escolher Seller Finance?</h2>
@@ -309,82 +279,47 @@ export function PlanosContent() {
             </p>
           </motion.div>
           <div className="grid md:grid-cols-3 gap-8 max-w-6xl mx-auto">
-            <motion.div variants={fadeInUp}>
-              <Card className="border border-blue-200 bg-white shadow-lg text-center">
-                <CardHeader>
-                  <div className="h-12 w-12 rounded-xl bg-blue-100 flex items-center justify-center mx-auto mb-4">
-                    <TrendingUp className="h-6 w-6 text-blue-600" />
-                  </div>
-                  <CardTitle className="text-gray-900">Aumente seus Lucros</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <p className="text-gray-600">
-                    Análises precisas ajudam você a identificar produtos mais rentáveis e otimizar precificação.
-                  </p>
-                </CardContent>
-              </Card>
-            </motion.div>
-            <motion.div variants={fadeInUp}>
-              <Card className="border border-blue-200 bg-white shadow-lg text-center">
-                <CardHeader>
-                  <div className="h-12 w-12 rounded-xl bg-blue-100 flex items-center justify-center mx-auto mb-4">
-                    <Shield className="h-6 w-6 text-blue-600" />
-                  </div>
-                  <CardTitle className="text-gray-900">Controle Total</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <p className="text-gray-600">
-                    Tenha visibilidade completa do seu fluxo de caixa e custos fixos em tempo real.
-                  </p>
-                </CardContent>
-              </Card>
-            </motion.div>
-            <motion.div variants={fadeInUp}>
-              <Card className="border border-blue-200 bg-white shadow-lg text-center">
-                <CardHeader>
-                  <div className="h-12 w-12 rounded-xl bg-blue-100 flex items-center justify-center mx-auto mb-4">
-                    <Users className="h-6 w-6 text-blue-600" />
-                  </div>
-                  <CardTitle className="text-gray-900">Suporte Especializado</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <p className="text-gray-600">
-                    Equipe dedicada para ajudar você a crescer seu negócio com estratégias personalizadas.
-                  </p>
-                </CardContent>
-              </Card>
-            </motion.div>
+            {[
+              { icon: TrendingUp, title: 'Aumente seus Lucros', desc: 'Análises precisas ajudam você a identificar produtos mais rentáveis e otimizar precificação.' },
+              { icon: Shield, title: 'Controle Total', desc: 'Tenha visibilidade completa do seu fluxo de caixa e custos fixos em tempo real.' },
+              { icon: Users, title: 'Suporte Especializado', desc: 'Equipe dedicada para ajudar você a crescer seu negócio com estratégias personalizadas.' },
+            ].map((item, i) => (
+              <motion.div key={i} variants={fadeInUp}>
+                <Card className="border border-blue-200 bg-white shadow-lg text-center">
+                  <CardHeader>
+                    <div className="h-12 w-12 rounded-xl bg-blue-100 flex items-center justify-center mx-auto mb-4">
+                      <item.icon className="h-6 w-6 text-blue-600" />
+                    </div>
+                    <CardTitle className="text-gray-900">{item.title}</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <p className="text-gray-600">{item.desc}</p>
+                  </CardContent>
+                </Card>
+              </motion.div>
+            ))}
           </div>
         </div>
       </motion.section>
 
       {/* FAQ Section */}
-      <motion.section
-        className="py-12 bg-blue-50"
-        initial="hidden"
-        animate="visible"
-        variants={staggerContainer}
-      >
+      <motion.section className="py-12 bg-blue-50" initial="hidden" animate="visible" variants={staggerContainer}>
         <div className="container mx-auto px-4">
           <motion.div variants={fadeInUp} className="text-center mb-12">
             <h2 className="text-3xl font-bold text-gray-900 mb-4">Perguntas Frequentes</h2>
-            <p className="text-gray-600 max-w-2xl mx-auto">
-              Tire suas dúvidas sobre nossos planos e funcionalidades.
-            </p>
+            <p className="text-gray-600 max-w-2xl mx-auto">Tire suas dúvidas sobre nossos planos e funcionalidades.</p>
           </motion.div>
           <motion.div variants={fadeInUp} className="max-w-3xl mx-auto">
             <Accordion type="single" collapsible className="space-y-4">
               {faqs.map((faq, index) => (
                 <AccordionItem key={index} value={`item-${index}`} className="border border-blue-200 bg-white rounded-lg px-6">
-                                    <AccordionTrigger className="text-left text-gray-900 hover:text-blue-700">
+                  <AccordionTrigger className="text-left text-gray-900 hover:text-blue-700">
                     <div className="flex items-center gap-3">
                       <HelpCircle className="h-5 w-5 text-blue-600" />
                       {faq.question}
                     </div>
                   </AccordionTrigger>
-                  <AccordionContent className="text-gray-600">
-                    {faq.answer}
-                  </AccordionContent>
+                  <AccordionContent className="text-gray-600">{faq.answer}</AccordionContent>
                 </AccordionItem>
               ))}
             </Accordion>
@@ -393,12 +328,7 @@ export function PlanosContent() {
       </motion.section>
 
       {/* Bottom CTA */}
-      <motion.section
-        className="py-12"
-        initial="hidden"
-        animate="visible"
-        variants={staggerContainer}
-      >
+      <motion.section className="py-12" initial="hidden" animate="visible" variants={staggerContainer}>
         <div className="container mx-auto px-4 text-center">
           <motion.div variants={fadeInUp}>
             <Card className="border border-blue-200 bg-gradient-to-r from-blue-50 to-white shadow-lg max-w-4xl mx-auto">
@@ -410,7 +340,7 @@ export function PlanosContent() {
                 <Button
                   size="lg"
                   className="bg-gradient-to-r from-blue-600 to-blue-500 hover:from-blue-700 hover:to-blue-600 text-white shadow-xl shadow-blue-500/25"
-                  onClick={handleSelectPlan}
+                  onClick={() => handleSelectPlan(plans[1])}
                 >
                   Começar Grátis <ArrowRight className="ml-2 h-4 w-4" />
                 </Button>
@@ -420,12 +350,10 @@ export function PlanosContent() {
         </div>
       </motion.section>
 
-      {/* Bottom note */}
       <p className="text-center text-sm text-gray-600 pb-8">
         Todos os planos incluem criptografia de dados e suporte técnico. Cancele a qualquer momento, sem multas.
       </p>
     </div>
-     
   );
 }
 
@@ -435,6 +363,6 @@ export default function Planos() {
       <AppLayout>
         <PlanosContent />
       </AppLayout>
-    </ProtectedRoute>);
-
-}
+    </ProtectedRoute>
+  );
+} 

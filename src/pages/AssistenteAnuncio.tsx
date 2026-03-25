@@ -11,9 +11,7 @@ import { useToast } from '@/hooks/use-toast';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { ProtectedRoute } from '@/components/layout/ProtectedRoute';
 import { supabase } from '@/integrations/supabase/client';
-import { ImageGenerationSection } from '@/components/assistente/ImageGenerationSection';
 import { MedidasProdutoSection } from '@/components/assistente/MedidasProdutoSection';
-import { Developer } from '@/components/Developer';
 
 interface MedidaLinha {
   id: string;
@@ -29,7 +27,6 @@ interface FormData {
   publicoAlvo: string;
   materiais: string;
   coresDisponiveis: string;
-  // Medidas do produto (novo sistema dinâmico)
   camposMedidaSelecionados: string[];
   linhasMedidas: MedidaLinha[];
   medidasPersonalizadas: { id: string; nome: string; unidade: string; }[];
@@ -41,44 +38,19 @@ interface GeneratedAd {
   description: string;
 }
 
-interface ImageData {
-  url: string;
-  prompt?: string;
-  composition?: string;
-}
-
-interface GeneratedImage {
-  url: string;
-  prompt?: string;
-  composition?: string;
-}
-
 const categorias = [
-  'Moda Feminina',
-  'Moda Masculina',
-  'Moda Infantil',
-  'Acessórios',
-  'Beleza & Cuidados',
-  'Casa & Decoração',
-  'Eletrônicos',
-  'Esportes',
-  'Brinquedos',
-  'Outros',
+  'Moda Feminina', 'Moda Masculina', 'Moda Infantil', 'Acessórios',
+  'Beleza & Cuidados', 'Casa & Decoração', 'Eletrônicos', 'Esportes',
+  'Brinquedos', 'Outros',
 ];
 
 const publicosAlvo = [
-  'Feminino',
-  'Masculino',
-  'Infantil',
-  'Plus Size',
-  'Unissex',
-  'Jovem',
-  'Adulto',
-  'Terceira Idade',
+  'Feminino', 'Masculino', 'Infantil', 'Plus Size',
+  'Unissex', 'Jovem', 'Adulto', 'Terceira Idade',
 ];
 
 const MAX_IMAGES = 5;
-const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB
+const MAX_FILE_SIZE = 5 * 1024 * 1024;
 
 const AssistenteAnuncio = () => {
   const { toast } = useToast();
@@ -88,12 +60,7 @@ const AssistenteAnuncio = () => {
   const [copiedDescription, setCopiedDescription] = useState(false);
   const [images, setImages] = useState<File[]>([]);
   const [imagePreviews, setImagePreviews] = useState<string[]>([]);
-  
-  // Image generation states
-  const [isGeneratingImages, setIsGeneratingImages] = useState(false);
-  const [imageProgress, setImageProgress] = useState(0);
-  const [generatedImages, setGeneratedImages] = useState<GeneratedImage[]>([]);
-  
+  const [generatedAd, setGeneratedAd] = useState<GeneratedAd | null>(null);
   const [formData, setFormData] = useState<FormData>({
     nomeProduto: '',
     categoria: '',
@@ -107,57 +74,39 @@ const AssistenteAnuncio = () => {
     medidasPersonalizadas: [],
   });
 
-  const [generatedAd, setGeneratedAd] = useState<GeneratedAd | null>(null);
-
   const handleInputChange = (field: keyof FormData, value: string) => {
     setFormData(prev => ({ ...prev, [field]: value }));
   };
 
-  // Funções para gerenciar medidas
   const toggleCampoMedida = (campoId: string) => {
     setFormData(prev => {
       const isSelected = prev.camposMedidaSelecionados.includes(campoId);
       const newCampos = isSelected
         ? prev.camposMedidaSelecionados.filter(c => c !== campoId)
         : [...prev.camposMedidaSelecionados, campoId];
-      
-      // Se é o primeiro campo selecionado, adiciona uma linha automaticamente
       const newLinhas = !isSelected && prev.camposMedidaSelecionados.length === 0 && prev.linhasMedidas.length === 0
         ? [{ id: crypto.randomUUID(), tamanho: '', valores: {} }]
         : prev.linhasMedidas;
-      
-      return {
-        ...prev,
-        camposMedidaSelecionados: newCampos,
-        linhasMedidas: newLinhas,
-      };
+      return { ...prev, camposMedidaSelecionados: newCampos, linhasMedidas: newLinhas };
     });
   };
 
   const addMedidaLinha = () => {
     setFormData(prev => ({
       ...prev,
-      linhasMedidas: [
-        ...prev.linhasMedidas,
-        { id: crypto.randomUUID(), tamanho: '', valores: {} }
-      ]
+      linhasMedidas: [...prev.linhasMedidas, { id: crypto.randomUUID(), tamanho: '', valores: {} }]
     }));
   };
 
   const removeMedidaLinha = (id: string) => {
-    setFormData(prev => ({
-      ...prev,
-      linhasMedidas: prev.linhasMedidas.filter(linha => linha.id !== id)
-    }));
+    setFormData(prev => ({ ...prev, linhasMedidas: prev.linhasMedidas.filter(l => l.id !== id) }));
   };
 
   const updateMedidaLinha = (id: string, campo: string, valor: string) => {
     setFormData(prev => ({
       ...prev,
-      linhasMedidas: prev.linhasMedidas.map(linha =>
-        linha.id === id
-          ? { ...linha, valores: { ...linha.valores, [campo]: valor } }
-          : linha
+      linhasMedidas: prev.linhasMedidas.map(l =>
+        l.id === id ? { ...l, valores: { ...l.valores, [campo]: valor } } : l
       )
     }));
   };
@@ -165,9 +114,7 @@ const AssistenteAnuncio = () => {
   const updateTamanhoLinha = (id: string, tamanho: string) => {
     setFormData(prev => ({
       ...prev,
-      linhasMedidas: prev.linhasMedidas.map(linha =>
-        linha.id === id ? { ...linha, tamanho } : linha
-      )
+      linhasMedidas: prev.linhasMedidas.map(l => l.id === id ? { ...l, tamanho } : l)
     }));
   };
 
@@ -181,48 +128,27 @@ const AssistenteAnuncio = () => {
   const handleImageSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
     if (!files) return;
-
     const newFiles: File[] = [];
     const newPreviews: string[] = [];
-    
     Array.from(files).forEach(file => {
       if (images.length + newFiles.length >= MAX_IMAGES) {
-        toast({
-          title: 'Limite atingido',
-          description: `Máximo de ${MAX_IMAGES} fotos permitidas.`,
-          variant: 'destructive',
-        });
+        toast({ title: 'Limite atingido', description: `Máximo de ${MAX_IMAGES} fotos.`, variant: 'destructive' });
         return;
       }
-
       if (file.size > MAX_FILE_SIZE) {
-        toast({
-          title: 'Arquivo muito grande',
-          description: `${file.name} excede o limite de 5MB.`,
-          variant: 'destructive',
-        });
+        toast({ title: 'Arquivo muito grande', description: `${file.name} excede 5MB.`, variant: 'destructive' });
         return;
       }
-
       if (!file.type.startsWith('image/')) {
-        toast({
-          title: 'Formato inválido',
-          description: `${file.name} não é uma imagem válida.`,
-          variant: 'destructive',
-        });
+        toast({ title: 'Formato inválido', description: `${file.name} não é uma imagem válida.`, variant: 'destructive' });
         return;
       }
-
       newFiles.push(file);
       newPreviews.push(URL.createObjectURL(file));
     });
-
     setImages(prev => [...prev, ...newFiles]);
     setImagePreviews(prev => [...prev, ...newPreviews]);
-    
-    if (fileInputRef.current) {
-      fileInputRef.current.value = '';
-    }
+    if (fileInputRef.current) fileInputRef.current.value = '';
   };
 
   const removeImage = (index: number) => {
@@ -240,85 +166,18 @@ const AssistenteAnuncio = () => {
     });
   };
 
-  // Polling for image generation status
-  const pollJobStatus = async (jobId: string) => {
-    const pollInterval = setInterval(async () => {
-      try {
-        const { data: status, error } = await supabase.functions.invoke('get-image-generation-status', {
-          body: { jobId }
-        });
-
-        if (error) {
-          console.error('Error polling status:', error);
-          return;
-        }
-
-        if (status) {
-          setImageProgress(status.progress || 0);
-          
-          if (status.images && status.images.length > 0) {
-            setGeneratedImages(status.images);
-          }
-
-          if (status.status === 'completed') {
-            clearInterval(pollInterval);
-            setIsGeneratingImages(false);
-            setImageProgress(100);
-            toast({
-              title: 'Imagens geradas!',
-              description: `${status.images?.length || 0} imagens criadas com sucesso.`,
-            });
-          } else if (status.status === 'failed') {
-            clearInterval(pollInterval);
-            setIsGeneratingImages(false);
-            setImageProgress(0);
-            toast({
-              title: 'Erro ao gerar imagens',
-              description: status.errorMessage || 'Ocorreu um erro durante a geração.',
-              variant: 'destructive',
-            });
-          }
-        }
-      } catch (pollError) {
-        console.error('Polling error:', pollError);
-      }
-    }, 3000); // Poll every 3 seconds
-
-    // Cleanup after 10 minutes max
-    setTimeout(() => {
-      clearInterval(pollInterval);
-      if (isGeneratingImages) {
-        setIsGeneratingImages(false);
-        toast({
-          title: 'Timeout',
-          description: 'A geração de imagens demorou muito. Verifique o progresso mais tarde.',
-          variant: 'destructive',
-        });
-      }
-    }, 10 * 60 * 1000);
-  };
-
   const handleGenerate = async () => {
     if (!formData.nomeProduto.trim()) {
-      toast({
-        title: 'Campo obrigatório',
-        description: 'Por favor, preencha o nome do produto.',
-        variant: 'destructive',
-      });
+      toast({ title: 'Campo obrigatório', description: 'Preencha o nome do produto.', variant: 'destructive' });
       return;
     }
 
     setIsLoading(true);
     setGeneratedAd(null);
-    setGeneratedImages([]);
 
     try {
-      // Convert images to base64
-      const imageBase64Array = await Promise.all(
-        images.map(img => convertToBase64(img))
-      );
+      const imageBase64Array = await Promise.all(images.map(img => convertToBase64(img)));
 
-      // Step 1: Generate title and description
       const { data, error } = await supabase.functions.invoke('generate-ad', {
         body: {
           nomeProduto: formData.nomeProduto,
@@ -331,21 +190,13 @@ const AssistenteAnuncio = () => {
           images: imageBase64Array,
           medidas: {
             campos: formData.camposMedidaSelecionados,
-            linhas: formData.linhasMedidas.map(linha => ({
-              tamanho: linha.tamanho,
-              ...linha.valores
-            }))
+            linhas: formData.linhasMedidas.map(l => ({ tamanho: l.tamanho, ...l.valores }))
           },
         },
       });
 
-      if (error) {
-        throw new Error(error.message || 'Erro ao gerar anúncio');
-      }
-
-      if (data?.error) {
-        throw new Error(data.error);
-      }
+      if (error) throw new Error(error.message || 'Erro ao gerar anúncio');
+      if (data?.error) throw new Error(data.error);
 
       setGeneratedAd({
         titles: data.titles,
@@ -353,70 +204,15 @@ const AssistenteAnuncio = () => {
         description: data.description,
       });
 
-      toast({
-        title: 'Título e descrição gerados!',
-        description: 'Agora gerando as imagens do produto...',
-      });
+      toast({ title: 'Anúncio gerado com sucesso!', description: 'Título e descrição prontos para usar.' });
 
-      setIsLoading(false);
-
-      // Step 2: Generate product images if there are source images
-      if (imageBase64Array.length > 0) {
-        setIsGeneratingImages(true);
-        setImageProgress(5);
-
-        try {
-          const { data: imageData, error: imageError } = await supabase.functions.invoke('generate-product-images', {
-            body: {
-              sourceImages: imageBase64Array,
-              categoria: formData.categoria,
-              coresDisponiveis: formData.coresDisponiveis,
-              materiais: formData.materiais,
-              nomeProduto: formData.nomeProduto,
-              medidas: {
-                campos: formData.camposMedidaSelecionados,
-                linhas: formData.linhasMedidas.map(linha => ({
-                  tamanho: linha.tamanho,
-                  ...linha.valores
-                }))
-              },
-            },
-          });
-
-          if (imageError) {
-            throw new Error(imageError.message || 'Erro ao iniciar geração de imagens');
-          }
-
-          if (imageData?.error) {
-            throw new Error(imageData.error);
-          }
-
-          // Start polling for status
-          if (imageData?.jobId) {
-            toast({
-              title: 'Geração iniciada',
-              description: 'As imagens estão sendo geradas em segundo plano. Acompanhe o progresso abaixo.',
-            });
-            pollJobStatus(imageData.jobId);
-          }
-        } catch (imageError) {
-          const errorMessage = imageError instanceof Error ? imageError.message : 'Erro desconhecido';
-          toast({
-            title: 'Erro ao gerar imagens',
-            description: errorMessage,
-            variant: 'destructive',
-          });
-          setIsGeneratingImages(false);
-          setImageProgress(0);
-        }
-      }
     } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : 'Erro desconhecido';
       toast({
         title: 'Erro ao gerar anúncio',
-        description: errorMessage,
+        description: error instanceof Error ? error.message : 'Erro desconhecido',
         variant: 'destructive',
       });
+    } finally {
       setIsLoading(false);
     }
   };
@@ -424,7 +220,6 @@ const AssistenteAnuncio = () => {
   const copyToClipboard = async (text: string, type: 'title' | 'description', index?: number) => {
     try {
       await navigator.clipboard.writeText(text);
-      
       if (type === 'title' && index !== undefined) {
         setCopiedTitle(index);
         setTimeout(() => setCopiedTitle(null), 2000);
@@ -432,24 +227,15 @@ const AssistenteAnuncio = () => {
         setCopiedDescription(true);
         setTimeout(() => setCopiedDescription(false), 2000);
       }
-      
-      toast({
-        title: 'Copiado!',
-        description: type === 'title' ? 'Título copiado para a área de transferência.' : 'Descrição copiada para a área de transferência.',
-      });
-    } catch (error) {
-      toast({
-        title: 'Erro ao copiar',
-        description: 'Não foi possível copiar o texto.',
-        variant: 'destructive',
-      });
+      toast({ title: 'Copiado!' });
+    } catch {
+      toast({ title: 'Erro ao copiar', variant: 'destructive' });
     }
   };
 
   return (
     <AppLayout>
       <div className="space-y-6">
-        {/* Header */}
         <div>
           <h1 className="text-2xl font-bold text-foreground flex items-center gap-2">
             <Sparkles className="h-6 w-6 text-primary" />
@@ -460,119 +246,51 @@ const AssistenteAnuncio = () => {
           </p>
         </div>
 
-        {/* Formulário */}
         <Card>
           <CardHeader>
             <CardTitle>Informações do Produto</CardTitle>
-            <CardDescription>
-              Preencha os dados do produto para gerar títulos e descrições personalizados
-            </CardDescription>
+            <CardDescription>Preencha os dados do produto para gerar títulos e descrições personalizados</CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {/* Nome do Produto */}
               <div className="space-y-2">
-                <Label htmlFor="nomeProduto">
-                  Nome do Produto <span className="text-destructive">*</span>
-                </Label>
-                <Input
-                  id="nomeProduto"
-                  placeholder="Ex: Vestido Longo Estampado"
-                  value={formData.nomeProduto}
-                  onChange={(e) => handleInputChange('nomeProduto', e.target.value)}
-                />
+                <Label htmlFor="nomeProduto">Nome do Produto <span className="text-destructive">*</span></Label>
+                <Input id="nomeProduto" placeholder="Ex: Vestido Longo Estampado" value={formData.nomeProduto} onChange={(e) => handleInputChange('nomeProduto', e.target.value)} />
               </div>
-
-              {/* Categoria */}
               <div className="space-y-2">
-                <Label htmlFor="categoria">Categoria</Label>
-                <Select
-                  value={formData.categoria}
-                  onValueChange={(value) => handleInputChange('categoria', value)}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Selecione uma categoria" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {categorias.map((cat) => (
-                      <SelectItem key={cat} value={cat}>
-                        {cat}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
+                <Label>Categoria</Label>
+                <Select value={formData.categoria} onValueChange={(v) => handleInputChange('categoria', v)}>
+                  <SelectTrigger><SelectValue placeholder="Selecione uma categoria" /></SelectTrigger>
+                  <SelectContent>{categorias.map(cat => <SelectItem key={cat} value={cat}>{cat}</SelectItem>)}</SelectContent>
                 </Select>
               </div>
-
-              {/* Marca */}
               <div className="space-y-2">
                 <Label htmlFor="marca">Marca</Label>
-                <Input
-                  id="marca"
-                  placeholder="Ex: Nike, Adidas, etc."
-                  value={formData.marca}
-                  onChange={(e) => handleInputChange('marca', e.target.value)}
-                />
+                <Input id="marca" placeholder="Ex: Nike, Adidas" value={formData.marca} onChange={(e) => handleInputChange('marca', e.target.value)} />
               </div>
-
-              {/* Faixa de Preço */}
               <div className="space-y-2">
                 <Label htmlFor="faixaPreco">Faixa de Preço</Label>
-                <Input
-                  id="faixaPreco"
-                  placeholder="Ex: 50-100"
-                  value={formData.faixaPreco}
-                  onChange={(e) => handleInputChange('faixaPreco', e.target.value)}
-                />
+                <Input id="faixaPreco" placeholder="Ex: 50-100" value={formData.faixaPreco} onChange={(e) => handleInputChange('faixaPreco', e.target.value)} />
               </div>
-
-              {/* Público-alvo */}
               <div className="space-y-2">
-                <Label htmlFor="publicoAlvo">Público-alvo</Label>
-                <Select
-                  value={formData.publicoAlvo}
-                  onValueChange={(value) => handleInputChange('publicoAlvo', value)}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Selecione o público" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {publicosAlvo.map((pub) => (
-                      <SelectItem key={pub} value={pub}>
-                        {pub}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
+                <Label>Público-alvo</Label>
+                <Select value={formData.publicoAlvo} onValueChange={(v) => handleInputChange('publicoAlvo', v)}>
+                  <SelectTrigger><SelectValue placeholder="Selecione o público" /></SelectTrigger>
+                  <SelectContent>{publicosAlvo.map(pub => <SelectItem key={pub} value={pub}>{pub}</SelectItem>)}</SelectContent>
                 </Select>
               </div>
-
-              {/* Cores Disponíveis */}
               <div className="space-y-2">
                 <Label htmlFor="coresDisponiveis">Cores Disponíveis</Label>
-                <Input
-                  id="coresDisponiveis"
-                  placeholder="Ex: Preto, Branco, Vermelho"
-                  value={formData.coresDisponiveis}
-                  onChange={(e) => handleInputChange('coresDisponiveis', e.target.value)}
-                />
+                <Input id="coresDisponiveis" placeholder="Ex: Preto, Branco, Vermelho" value={formData.coresDisponiveis} onChange={(e) => handleInputChange('coresDisponiveis', e.target.value)} />
               </div>
             </div>
 
-            {/* Materiais */}
             <div className="space-y-2">
               <Label htmlFor="materiais">Materiais/Tecidos</Label>
-              <Textarea
-                id="materiais"
-                placeholder="Ex: Algodão 100%, Poliéster, Viscose, Suplex..."
-                value={formData.materiais}
-                onChange={(e) => handleInputChange('materiais', e.target.value)}
-                rows={2}
-              />
-              <p className="text-xs text-muted-foreground">
-                O tecido será usado para gerar instruções de lavagem personalizadas
-              </p>
+              <Textarea id="materiais" placeholder="Ex: Algodão 100%, Poliéster..." value={formData.materiais} onChange={(e) => handleInputChange('materiais', e.target.value)} rows={2} />
+              <p className="text-xs text-muted-foreground">O tecido será usado para gerar instruções de lavagem personalizadas</p>
             </div>
 
-            {/* Seção de Medidas */}
             <MedidasProdutoSection
               camposSelecionados={formData.camposMedidaSelecionados}
               linhasMedidas={formData.linhasMedidas}
@@ -585,171 +303,76 @@ const AssistenteAnuncio = () => {
               onAddMedidaPersonalizada={addMedidaPersonalizada}
             />
 
-            {/* Upload de Fotos */}
+            {/* Upload de Fotos para análise visual */}
             <div className="space-y-2">
               <Label className="flex items-center gap-2">
                 <ImagePlus className="h-4 w-4" />
-                Fotos do Produto <span className="text-muted-foreground font-normal">(opcional - até {MAX_IMAGES} fotos)</span>
+                Fotos do Produto <span className="text-muted-foreground font-normal">(opcional - até {MAX_IMAGES} fotos para análise)</span>
               </Label>
-              
-              <input
-                ref={fileInputRef}
-                type="file"
-                accept="image/jpeg,image/png,image/webp"
-                multiple
-                onChange={handleImageSelect}
-                className="hidden"
-              />
-              
+              <input ref={fileInputRef} type="file" accept="image/jpeg,image/png,image/webp" multiple onChange={handleImageSelect} className="hidden" />
               <div
                 onClick={() => images.length < MAX_IMAGES && fileInputRef.current?.click()}
-                className={`border-2 border-dashed rounded-lg p-6 text-center transition-colors ${
-                  images.length < MAX_IMAGES 
-                    ? 'cursor-pointer hover:border-primary hover:bg-muted/50' 
-                    : 'cursor-not-allowed opacity-50'
-                }`}
+                className={`border-2 border-dashed rounded-lg p-6 text-center transition-colors ${images.length < MAX_IMAGES ? 'cursor-pointer hover:border-primary hover:bg-muted/50' : 'cursor-not-allowed opacity-50'}`}
               >
                 <ImagePlus className="h-8 w-8 mx-auto mb-2 text-muted-foreground" />
-                <p className="text-sm text-muted-foreground">
-                  {images.length < MAX_IMAGES 
-                    ? 'Clique para selecionar ou arraste imagens aqui'
-                    : 'Limite de fotos atingido'}
-                </p>
-                <p className="text-xs text-muted-foreground mt-1">
-                  JPG, PNG ou WEBP (máx. 5MB cada)
-                </p>
+                <p className="text-sm text-muted-foreground">{images.length < MAX_IMAGES ? 'Clique para selecionar ou arraste imagens aqui' : 'Limite de fotos atingido'}</p>
+                <p className="text-xs text-muted-foreground mt-1">JPG, PNG ou WEBP (máx. 5MB cada)</p>
               </div>
-
               {imagePreviews.length > 0 && (
                 <div className="flex flex-wrap gap-3 mt-3">
                   {imagePreviews.map((preview, index) => (
                     <div key={index} className="relative group">
-                      <img
-                        src={preview}
-                        alt={`Foto ${index + 1}`}
-                        className="w-20 h-20 object-cover rounded-lg border"
-                      />
-                      <button
-                        type="button"
-                        onClick={() => removeImage(index)}
-                        className="absolute -top-2 -right-2 bg-destructive text-destructive-foreground rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity"
-                      >
+                      <img src={preview} alt={`Foto ${index + 1}`} className="w-20 h-20 object-cover rounded-lg border" />
+                      <button type="button" onClick={() => removeImage(index)} className="absolute -top-2 -right-2 bg-destructive text-destructive-foreground rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity">
                         <X className="h-3 w-3" />
                       </button>
                     </div>
                   ))}
-                  <span className="self-center text-sm text-muted-foreground">
-                    {images.length} de {MAX_IMAGES} fotos
-                  </span>
+                  <span className="self-center text-sm text-muted-foreground">{images.length} de {MAX_IMAGES} fotos</span>
                 </div>
               )}
             </div>
 
-            {/* Botão Gerar */}
-            <Button
-              onClick={handleGenerate}
-              disabled={isLoading || isGeneratingImages}
-              className="w-full md:w-auto"
-              size="lg"
-            >
-              {isLoading ? (
-                <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Gerando título e descrição...
-                </>
-              ) : isGeneratingImages ? (
-                <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Gerando imagens...
-                </>
-              ) : (
-                <>
-                  <Sparkles className="mr-2 h-4 w-4" />
-                  {images.length > 0 ? 'Gerar Título, Descrição e Imagens' : 'Gerar título e descrição'}
-                </>
-              )}
+            <Button onClick={handleGenerate} disabled={isLoading} className="w-full md:w-auto" size="lg">
+              {isLoading
+                ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Gerando anúncio...</>
+                : <><Sparkles className="mr-2 h-4 w-4" />Gerar título e descrição</>
+              }
             </Button>
           </CardContent>
         </Card>
 
-        <ImageGenerationSection 
-          formData={formData}
-          imagePreviews={imagePreviews}
-          isGenerating={isGeneratingImages}
-          progress={imageProgress}
-          generatedImages={generatedImages.map(img => {
-            const url = typeof img === 'string' ? img : (img && typeof img === 'object' ? img.url || '' : '');
-            const prompt = typeof img === 'object' && img && 'prompt' in img ? img.prompt : undefined;
-            const composition = typeof img === 'object' && img && 'composition' in img ? img.composition : undefined;
-            return {
-              url,
-              prompt,
-              composition
-            };
-          })}
-        />
-
-        {/* Resultados */}
         {generatedAd && (
           <div className="space-y-6">
-            {/* Keywords Identificadas */}
             {generatedAd.keywords && generatedAd.keywords.length > 0 && (
               <Card>
                 <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <Tag className="h-5 w-5" />
-                    Palavras-chave Identificadas
-                  </CardTitle>
-                  <CardDescription>
-                    Termos mais buscados para este tipo de produto na Shopee
-                  </CardDescription>
+                  <CardTitle className="flex items-center gap-2"><Tag className="h-5 w-5" />Palavras-chave Identificadas</CardTitle>
+                  <CardDescription>Termos mais buscados para este tipo de produto na Shopee</CardDescription>
                 </CardHeader>
                 <CardContent>
                   <div className="flex flex-wrap gap-2">
                     {generatedAd.keywords.map((keyword, index) => (
-                      <Badge key={index} variant="secondary" className="text-sm">
-                        {keyword}
-                      </Badge>
+                      <Badge key={index} variant="secondary" className="text-sm">{keyword}</Badge>
                     ))}
                   </div>
                 </CardContent>
               </Card>
             )}
 
-            {/* Títulos Sugeridos */}
             <Card>
               <CardHeader>
                 <CardTitle>Títulos Sugeridos</CardTitle>
-                <CardDescription>
-                  Clique em "Copiar" para usar o título no seu anúncio (máx. 100 caracteres)
-                </CardDescription>
+                <CardDescription>Clique em "Copiar" para usar o título no seu anúncio (máx. 100 caracteres)</CardDescription>
               </CardHeader>
               <CardContent>
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
                   {generatedAd.titles.map((title, index) => (
-                    <div
-                      key={index}
-                      className="p-3 border rounded-lg bg-muted/30 hover:bg-muted/50 transition-colors"
-                    >
+                    <div key={index} className="p-3 border rounded-lg bg-muted/30 hover:bg-muted/50 transition-colors">
                       <p className="text-sm mb-1">{title}</p>
                       <p className="text-xs text-muted-foreground mb-2">{title.length} caracteres</p>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => copyToClipboard(title, 'title', index)}
-                        className="w-full"
-                      >
-                        {copiedTitle === index ? (
-                          <>
-                            <Check className="mr-1 h-3 w-3" />
-                            Copiado!
-                          </>
-                        ) : (
-                          <>
-                            <Copy className="mr-1 h-3 w-3" />
-                            Copiar título
-                          </>
-                        )}
+                      <Button variant="outline" size="sm" onClick={() => copyToClipboard(title, 'title', index)} className="w-full">
+                        {copiedTitle === index ? <><Check className="mr-1 h-3 w-3" />Copiado!</> : <><Copy className="mr-1 h-3 w-3" />Copiar título</>}
                       </Button>
                     </div>
                   ))}
@@ -757,37 +380,15 @@ const AssistenteAnuncio = () => {
               </CardContent>
             </Card>
 
-            {/* Descrição Gerada */}
             <Card>
               <CardHeader>
                 <CardTitle>Descrição Gerada</CardTitle>
-                <CardDescription>
-                  Descrição completa e otimizada para seu produto
-                </CardDescription>
+                <CardDescription>Descrição completa e otimizada para seu produto</CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
-                <Textarea
-                  value={generatedAd.description}
-                  readOnly
-                  rows={15}
-                  className="font-mono text-sm"
-                />
-                <Button
-                  variant="outline"
-                  onClick={() => copyToClipboard(generatedAd.description, 'description')}
-                  className="w-full md:w-auto"
-                >
-                  {copiedDescription ? (
-                    <>
-                      <Check className="mr-2 h-4 w-4" />
-                      Copiado!
-                    </>
-                  ) : (
-                    <>
-                      <Copy className="mr-2 h-4 w-4" />
-                      Copiar descrição
-                    </>
-                  )}
+                <Textarea value={generatedAd.description} readOnly rows={15} className="font-mono text-sm" />
+                <Button variant="outline" onClick={() => copyToClipboard(generatedAd.description, 'description')} className="w-full md:w-auto">
+                  {copiedDescription ? <><Check className="mr-2 h-4 w-4" />Copiado!</> : <><Copy className="mr-2 h-4 w-4" />Copiar descrição</>}
                 </Button>
               </CardContent>
             </Card>

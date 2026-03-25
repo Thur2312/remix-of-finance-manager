@@ -3,7 +3,7 @@ import { useEffect } from "react";
 import { motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Home, AlertCircle } from "lucide-react";
+import { Home, AlertCircle, ArrowLeft } from "lucide-react";
 
 const NotFound = () => {
   const location = useLocation();
@@ -19,7 +19,7 @@ const NotFound = () => {
         initial={{ opacity: 0, y: 40 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.6 }}
-        className="w-full max-w-md"
+        className="w-full max-w-md px-4"
       >
         <Card className="border border-blue-200 shadow-lg bg-white">
           <CardHeader className="text-center">
@@ -31,15 +31,25 @@ const NotFound = () => {
           <CardContent className="text-center space-y-4">
             <p className="text-xl text-gray-600">Oops! Página não encontrada</p>
             <p className="text-sm text-gray-500">
-              A página que você está procurando não existe ou foi movida.
+              A página <span className="font-mono text-xs bg-gray-100 px-1 rounded">{location.pathname}</span> não existe ou foi movida.
             </p>
-            <Button
-              onClick={() => navigate('/')}
-              className="w-full bg-gradient-to-r from-blue-600 to-blue-500 hover:from-blue-700 hover:to-blue-600 text-white"
-            >
-              <Home className="mr-2 h-4 w-4" />
-              Voltar ao Inicio
-            </Button>
+            <div className="flex flex-col gap-2">
+              <Button
+                onClick={() => navigate('/')}
+                className="w-full bg-gradient-to-r from-blue-600 to-blue-500 hover:from-blue-700 hover:to-blue-600 text-white"
+              >
+                <Home className="mr-2 h-4 w-4" />
+                Voltar ao Início
+              </Button>
+              <Button
+                variant="outline"
+                onClick={() => navigate(-1)}
+                className="w-full"
+              >
+                <ArrowLeft className="mr-2 h-4 w-4" />
+                Voltar à página anterior
+              </Button>
+            </div>
           </CardContent>
         </Card>
       </motion.div>

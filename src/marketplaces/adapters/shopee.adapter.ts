@@ -48,26 +48,27 @@ export class ShopeeAdapter implements MarketplaceAdapter {
     };
   }
 
-  async exchangeCode(code: string): Promise<MarketplaceTokenSet> {
-    const timestamp = this.timestamp();
-    const sign = this.sign(AUTH_PATH, timestamp);
+ async exchangeCode(code: string, shopId?: string): Promise<MarketplaceTokenSet> {
+  const timestamp = this.timestamp();
+  const sign = this.sign(AUTH_PATH, timestamp);
 
-    const response = await this.post<ShopeeTokenResponse>(AUTH_PATH, {
-      code,
-      partner_id: this.config.partnerId,
-      redirect_url: this.config.redirectUrl,
-    }, { partner_id: this.config.partnerId, timestamp, sign });
+  const response = await this.post<ShopeeTokenResponse>(AUTH_PATH, {
+    code,
+    partner_id: this.config.partnerId,
+    redirect_url: this.config.redirectUrl,
+    ...(shopId ? { shop_id: Number(shopId) } : {}), // ✅ adiciona shop_id
+  }, { partner_id: this.config.partnerId, timestamp, sign });
 
-    return {
-      accessToken: response.access_token,
-      refreshToken: response.refresh_token,
-      accessTokenExpiresIn: response.expire_in,
-      refreshTokenExpiresIn: response.refresh_token_expire_in,
-      shopId: String(response.shop_id?.[0] ?? ''),
-      shopName: response.shope_name,
-      openId: response.open_id,
-    };
-  }
+  return {
+    accessToken: response.access_token,
+    refreshToken: response.refresh_token,
+    accessTokenExpiresIn: response.expire_in,
+    refreshTokenExpiresIn: response.refresh_token_expire_in,
+    shopId: String(response.shop_id?.[0] ?? shopId ?? ''),
+    shopName: response.shope_name,
+    openId: response.open_id,
+  };
+}
 
   async refreshTokens(refreshToken: string, shopId: string): Promise<MarketplaceTokenSet> {
     const timestamp = this.timestamp();
@@ -281,7 +282,7 @@ export class ShopeeAdapter implements MarketplaceAdapter {
 export function createShopeeAdapter(): ShopeeAdapter {
   const partnerId = process.env.SHOPEE_PARTNER_ID;
   const partnerKey = process.env.SHOPEE_PARTNER_KEY;
-  const redirectUrl = process.env.SHOPEE_REDIRECT_URL;
+  const redirectUrl = process.env.SHOPEE_REDIRECT_URI;
   const baseUrl = process.env.SHOPEE_BASE_URL ?? 'https://partner.shopeemobile.com';
 
   if (!partnerId || !partnerKey || !redirectUrl) {

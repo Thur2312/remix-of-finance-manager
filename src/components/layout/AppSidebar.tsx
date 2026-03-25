@@ -4,9 +4,13 @@ import { NavLink } from '@/components/NavLink';
 import { useAuth } from '@/contexts/AuthContext';
 import { Sidebar, SidebarContent, SidebarFooter, SidebarGroup, SidebarGroupContent, SidebarHeader, SidebarMenu, SidebarMenuButton, SidebarMenuItem, useSidebar } from '@/components/ui/sidebar';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
-import { Avatar, AvatarFallback } from '@/components/ui/avatar';
+import { Avatar, AvatarFallback, AvatarImage} from '@/components/ui/avatar';
 import { User, ChevronUp, LogOut, TrendingUp, Calculator, Receipt, Sparkles, BarChart3, HandCoins,Wallet, Plug, House } from 'lucide-react';
 import logo from '@/assets/logo-new.svg';
+import {useNavigate} from 'react-router-dom';
+
+
+
 
 const sidebarItems = [  
 
@@ -32,8 +36,9 @@ const sectionRoutes: Record<string, string[]> = {
 export function AppSidebar() {
   const { state } = useSidebar();
   const location = useLocation();
-  const { user, signOut } = useAuth();
+  const { user, signOut, profile } = useAuth();
   const collapsed = state === 'collapsed';
+  const navigate = useNavigate();
 
   const getInitials = (email: string) => {
     return email.slice(0, 2).toUpperCase();
@@ -93,6 +98,7 @@ export function AppSidebar() {
               <DropdownMenuTrigger asChild>
                 <SidebarMenuButton size="lg" className="data-[state=open]:bg-sidebar-accent">
                   <Avatar className="h-8 w-8">
+                    <AvatarImage src={profile?.avatar_url || undefined} alt="Avatar" />
                     <AvatarFallback className="bg-primary text-primary-foreground text-sm">
                       {user?.email ? getInitials(user.email) : 'U'}
                     </AvatarFallback>
@@ -100,7 +106,8 @@ export function AppSidebar() {
                   {!collapsed && (
                     <div className="flex flex-1 flex-col text-left text-sm">
                       <span className="truncate font-medium">
-                        {user?.user_metadata?.full_name || 'Você'}
+                        {profile?.full_name || user?.user_metadata?.full_name || user?.email?.split('@')[0] || 'Usuário'}
+                    
                       </span>
                       <span className="truncate text-xs text-muted-foreground">
                         {user?.email}
@@ -122,12 +129,17 @@ export function AppSidebar() {
                   </Link>
                 </DropdownMenuItem>
                 <DropdownMenuSeparator />
-                <DropdownMenuItem asChild>
-                  <Link to="/" className="flex items-center">
-                    <LogOut className="mr-2 h-4 w-4" />
-                    Sair
-                  </Link>
-                </DropdownMenuItem>
+              <DropdownMenuItem
+              onClick={async () => {
+                localStorage.removeItem('rememberedEmail');
+                await signOut();
+                navigate('/user/auth', { replace: true });
+              }}
+              className="flex items-center cursor-pointer"
+            >
+              <LogOut className="mr-2 h-4 w-4" />
+              Sair
+            </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
           </SidebarMenuItem>
