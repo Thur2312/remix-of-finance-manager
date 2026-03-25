@@ -12,7 +12,7 @@ import Configuracoes from "./pages/shopee/Configuracoes";
 import Upload from "./pages/shopee/Upload";
 import Resultados from "./pages/shopee/Resultados";
 import ResultadosVariacoes from "./pages/shopee/ResultadosVariacoes";
-import CalculadoraPrecificacao from "./pages/CalculadoraPrecificacao";
+import CalculadoraPrecificacao from "./pages/precificacao/CalculadoraPrecificacao";
 import CadastroCustos from "./pages/precificacao/CadastroCustos";
 import FluxoCaixaDashboard from "./pages/fluxo-caixa/FluxoCaixaDashboard";
 import FluxoCaixaLancamentos from "./pages/fluxo-caixa/FluxoCaixaLancamentos";
