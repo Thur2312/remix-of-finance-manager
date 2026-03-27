@@ -117,7 +117,7 @@ function CalculadoraPrecificacaoContent() {
     const _comissaoAfiliados = parseInput(comissaoAfiliados);
 
     // Preço Promocional (após desconto)
-    const precoPromocional = _precoCheio * (1 - _desconto/100);
+    const precoPromocional = _precoCheio * (1 - _desconto / 100);
 
     // =========================================
     // CUSTOS VARIÁVEIS (por unidade) - SEM CUSTO FIXO
