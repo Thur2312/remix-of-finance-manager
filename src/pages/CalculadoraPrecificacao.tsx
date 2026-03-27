@@ -476,7 +476,7 @@ function CalculadoraPrecificacaoContent() {
               {/* Linha 3 */}
               <div className="space-y-1.5">
                 <Label htmlFor="precoCheio" className="text-sm font-medium">
-                  Preço <Promocional></Promocional> (R$)
+                  Preço Promocional  (R$)
                 </Label>
                 <Input
                   id="precoCheio"
