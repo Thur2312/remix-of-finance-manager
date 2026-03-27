@@ -277,107 +277,112 @@ serve(async (req) => {
     const timeTo = Math.floor(now.getTime() / 1000)
 
     let ordersCount = 0
+// ✅ SYNC ORDERS — substitua o bloco try/catch de orders inteiro por este
+try {
+  let cursor = ""
+  let hasMore = true
+  let safetyLimit = 0
 
-    // ✅ SYNC ORDERS
-    try {
-      let page = 1
-      let hasMore = true
+  while (hasMore && safetyLimit < 10) {
+    console.log(`📦 Sync orders cursor="${cursor}" page ${safetyLimit + 1}...`)
 
-      while (hasMore && page <= 10) {
-        console.log(`📦 Sync orders page ${page}...`)
-        console.log("🔑 accessToken:", accessToken)
-        console.log("🏪 shopId:", shopId)
+    const orderList = await shopeeGet<{
+      order_list: { order_sn: string }[]
+      more: boolean
+      next_cursor: string
+    }>(
+      BASE_URL,
+      "/api/v2/order/get_order_list",
+      {
+        time_range_field: "create_time",
+        time_from: timeFrom,
+        time_to: timeTo,
+        page_size: 50,
+        ...(cursor ? { cursor } : {}), // só envia cursor se não for vazio
+      },
+      PARTNER_ID, PARTNER_KEY, accessToken, shopId
+    )
 
-        
-        const orderList = await shopeeGet<{
-          order_list: { order_sn: string }[]
-          more: boolean
-        }>(
-          BASE_URL, 
-          "/api/v2/order/get_order_list", 
-          {
-            time_range_field: "create_time",
-            time_from: timeFrom,
-            time_to: timeTo,
-            page_size: 50,
-            page_no: page,
-          },
-          PARTNER_ID, PARTNER_KEY, accessToken, shopId
-        )
+    const orders = orderList?.order_list ?? []
+    console.log(`📋 ${orders.length} pedidos encontrados nessa página`)
 
-        if (orderList.order_list?.length > 0) {
-          const orderSns = orderList.order_list.map(o => o.order_sn).join(",")
+    if (orders.length > 0) {
+      const orderSns = orders.map(o => o.order_sn).join(",")
 
-          // Delay anti-rate-limit
-          await new Promise(r => setTimeout(r, 1000))
+      await new Promise(r => setTimeout(r, 500))
 
-          const orderDetails = await shopeeGet<{
-            order_list: []
-          }>(
-            BASE_URL, 
-            "/api/v2/order/get_order_detail", 
-            {
-              order_sn_list: orderSns,
-              response_optional_fields: "buyer_username,pay_time,tracking_no,shipping_carrier",
-            },
-            PARTNER_ID, PARTNER_KEY, accessToken, shopId
-          )
+      const orderDetails = await shopeeGet<{
+        order_list: {
+          order_sn: string
+          order_status: string
+          total_amount: string
+          currency: string
+          buyer_username?: string
+          shipping_carrier?: string
+          tracking_no?: string
+          pay_time?: number
+          create_time?: number
+          update_time?: number
+        }[]
+      }>(
+        BASE_URL,
+        "/api/v2/order/get_order_detail",
+        {
+          order_sn_list: orderSns,
+          response_optional_fields: "buyer_username,pay_time,tracking_no,shipping_carrier",
+        },
+        PARTNER_ID, PARTNER_KEY, accessToken, shopId
+      )
 
-          for (const order of orderDetails.order_list || []) {
-            const { error } = await supabaseAdmin.from("orders").upsert({
-              integration_id: connection_id,
-              external_order_id: order.order_sn,
-              status: order.order_status || "UNKNOWN",
-              total_amount: Number(order.total_amount) || 0,
-              currency: order.currency || "BRL",
-              buyer_username: order.buyer_username ?? "",
-              shipping_carrier: order.shipping_carrier ?? "",
-              tracking_number: order.tracking_no ?? "",
-              paid_at: safeShopeeDate(order.pay_time),
-              order_created_at: safeShopeeDate(order.create_time),
-              order_updated_at: safeShopeeDate(order.update_time),
-              synced_at: now.toISOString(),
-            }, { onConflict: "integration_id,external_order_id" })
-            
-            if (!error) ordersCount++
-          }
-        }
+      for (const order of orderDetails.order_list ?? []) {
+        const { error: upsertError } = await supabaseAdmin
+          .from("orders")
+          .upsert({
+            integration_id: connection_id,
+            external_order_id: order.order_sn,
+            status: order.order_status || "UNKNOWN",
+            total_amount: Number(order.total_amount) || 0,
+            currency: order.currency || "BRL",
+            buyer_username: order.buyer_username ?? "",
+            shipping_carrier: order.shipping_carrier ?? "",
+            tracking_number: order.tracking_no ?? "",
+            paid_at: safeShopeeDate(order.pay_time ?? null),
+            order_created_at: safeShopeeDate(order.create_time ?? null),
+            order_updated_at: safeShopeeDate(order.update_time ?? null),
+            synced_at: now.toISOString(),
+          }, { onConflict: "integration_id,external_order_id" })
 
-        hasMore = Boolean(orderList.more)
-        page++
-        
-        if (hasMore) {
-          await new Promise(r => setTimeout(r, 2000))
+        if (upsertError) {
+          console.error("❌ Erro ao salvar pedido:", order.order_sn, upsertError)
+        } else {
+          ordersCount++
         }
       }
-    } catch (orderError) {
-      console.error("❌ Orders sync error:", orderError)
     }
 
+    hasMore = Boolean(orderList?.more)
+    cursor = orderList?.next_cursor ?? ""
+    safetyLimit++
 
-    // ✅ Atualiza conexão
-    const nextSync = new Date(now.getTime() + (connection.auto_sync_frequency_minutes || 60) * 60 * 1000)
-    await supabaseAdmin
-      .from("integration_connections")
-      .update({
-        last_sync_at: now.toISOString(),
-        next_sync_at: nextSync.toISOString(),
-        last_error_code: null,
-        last_error_message: null,
-        updated_at: now.toISOString(),
-      })
-      .eq("id", connection_id)
+    if (hasMore) {
+      await new Promise(r => setTimeout(r, 2000))
+    }
+  }
 
-    // ✅ Log final
-    await supabaseAdmin.from("integration_sync_logs").insert({
-      connection_id,
-      user_id: user.id,
-      type: "sync",
-      status: ordersCount > 0 ? "success" : "empty",
-      message: `${ordersCount} pedidos sincronizados`,
-      metadata: { orders_synced: ordersCount },
+  console.log(`✅ Total de pedidos sincronizados: ${ordersCount}`)
+
+} catch (orderError) {
+  console.error("❌ Orders sync error:", orderError)
+
+  // Salva o erro na conexão para aparecer no dashboard
+  await supabaseAdmin
+    .from("integration_connections")
+    .update({
+      last_error_message: orderError instanceof Error ? orderError.message : String(orderError),
+      updated_at: new Date().toISOString(),
     })
-
+    .eq("id", connection_id)
+}
     return new Response(
       JSON.stringify({
         success: true,
