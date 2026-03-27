@@ -59,9 +59,8 @@ export default function IntegrationManage() {
           </Button>
 
           {/* Status */}
-          
+           <IntegrationDashboard connectionId={connection.id} />
           <Card>
-            <IntegrationDashboard connectionId={connection.id} />
             <CardHeader>
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-3">
