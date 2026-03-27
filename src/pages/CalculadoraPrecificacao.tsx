@@ -117,7 +117,7 @@ function CalculadoraPrecificacaoContent() {
     const _comissaoAfiliados = parseInput(comissaoAfiliados);
 
     // Preço Promocional (após desconto)
-    const precoPromocional = _precoCheio * (1 - _desconto / 100);
+    const precoPromocional = _precoCheio / (1 - _desconto);
 
     // =========================================
     // CUSTOS VARIÁVEIS (por unidade) - SEM CUSTO FIXO
@@ -476,7 +476,7 @@ function CalculadoraPrecificacaoContent() {
               {/* Linha 3 */}
               <div className="space-y-1.5">
                 <Label htmlFor="precoCheio" className="text-sm font-medium">
-                  Preço Promocional (R$)
+                  Preço <Promocional></Promocional> (R$)
                 </Label>
                 <Input
                   id="precoCheio"
