@@ -15,6 +15,7 @@ import { ptBR } from 'date-fns/locale';
 import { ExportDataSection } from '../../components/integrations/ExportDataSection';
 import { IntegrationDashboard } from '../../components/integrations/IntegrationDashboard';
 
+
 const providerNames: Record<string, string> = { shopee: 'Shopee', tiktok: 'TikTok Shop' };
 const providerIcons: Record<string, React.ComponentType<{ className?: string; strokeWidth?: string | number }>> = { shopee: ShoppingBag, tiktok: Store };
 const statusLabels: Record<string, string> = { disconnected: 'Desconectado', connecting: 'Conectando', connected: 'Conectado', error: 'Erro', expired: 'Expirado' };

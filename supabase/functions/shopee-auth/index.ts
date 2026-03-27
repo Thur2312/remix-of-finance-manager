@@ -32,6 +32,11 @@ serve(async (req) => {
     const path = "/api/v2/shop/auth_partner";
     const baseString = `${partnerIdNum}${path}${timestamp}`;
 
+    console.log("PARTNER_ID raw:", JSON.stringify(PARTNER_ID))
+    console.log("PARTNER_KEY raw:", JSON.stringify(PARTNER_KEY))
+    console.log("partnerIdNum:", partnerIdNum)
+    console.log("baseString:", baseString)
+
     const sign = createHmac("sha256", PARTNER_KEY)
       .update(baseString)
       .digest("hex");
