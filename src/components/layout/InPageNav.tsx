@@ -38,7 +38,7 @@ export function InPageNav({ tabs }: InPageNavProps) {
 
 // Nav configurations
 export const shopeeNavTabs: NavTab[] = [
-  {label : 'Dashboard', href: '/shopee'},
+  {label : 'Dashboard', href: '/shopee/dashboard' },
   { label: 'Resultados', href: '/shopee/resultados' },
   { label: 'Variações', href: '/shopee/variacoes' },
   { label: 'Upload', href: '/shopee/upload' },
@@ -46,7 +46,7 @@ export const shopeeNavTabs: NavTab[] = [
 ];
 
 export const tiktokNavTabs: NavTab[] = [
-  { label: 'Dashboard', href: '/tiktok' },
+  { label: 'Dashboard', href: '/tiktok/dashboard' },
   { label: 'Resultados', href: '/tiktok/resultados' },
   { label: 'Variações', href: '/tiktok/variacoes' },
   { label: 'Upload', href: '/tiktok/upload' },
