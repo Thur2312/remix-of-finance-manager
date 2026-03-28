@@ -12,7 +12,6 @@ import {
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
-import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import {
   Select,
@@ -54,14 +53,17 @@ interface CashFlowEntryDialogProps {
   entry?: CashFlowEntry | null;
 }
 
-export default function CashFlowEntryDialog({ 
-  open, 
-  onOpenChange, 
-  entry 
+export default function CashFlowEntryDialog({
+  open,
+  onOpenChange,
+  entry,
 }: CashFlowEntryDialogProps) {
   const { categories } = useCashFlowCategories();
   const { createEntry, updateEntry } = useCashFlowEntries();
   const [selectedType, setSelectedType] = useState<'income' | 'expense'>('expense');
+
+  // ✅ Estado local para o display do valor com vírgula
+  const [amountDisplay, setAmountDisplay] = useState('');
 
   const form = useForm<EntryFormData>({
     resolver: zodResolver(entrySchema),
@@ -98,6 +100,7 @@ export default function CashFlowEntryDialog({
         recurrence_end_date: entry.recurrence_end_date,
         notes: entry.notes,
       });
+      setAmountDisplay(String(Number(entry.amount)).replace('.', ','));
       setSelectedType(entry.type);
     } else {
       form.reset({
@@ -113,9 +116,10 @@ export default function CashFlowEntryDialog({
         recurrence_end_date: null,
         notes: null,
       });
+      setAmountDisplay('');
       setSelectedType('expense');
     }
-  }, [entry, form, open]);
+  }, [entry, open]);
 
   useEffect(() => {
     setSelectedType(type);
@@ -211,6 +215,7 @@ export default function CashFlowEntryDialog({
 
             {/* Amount and Category */}
             <div className="grid grid-cols-2 gap-4">
+              {/* ✅ Campo de valor com suporte a vírgula */}
               <FormField
                 control={form.control}
                 name="amount"
@@ -221,13 +226,24 @@ export default function CashFlowEntryDialog({
                       <Input
                         inputMode="decimal"
                         placeholder="0,00"
-                        value={field.value ? String(field.value).replace('.', ',') : ''}
+                        value={amountDisplay}
                         onChange={(e) => {
                           const raw = e.target.value
-                          // Permite dígitos, vírgula e ponto
+                          // Aceita apenas dígitos, vírgula ou ponto — e só um separador
                           if (!/^[0-9]*[,.]?[0-9]*$/.test(raw)) return
+                          setAmountDisplay(raw)
+                          // Atualiza o form só se for um número válido
                           const num = parseFloat(raw.replace(',', '.'))
-                          field.onChange(isNaN(num) ? 0 : num)
+                          if (!isNaN(num)) {
+                            field.onChange(num)
+                          }
+                        }}
+                        onBlur={() => {
+                          const num = parseFloat(amountDisplay.replace(',', '.'))
+                          if (!isNaN(num)) {
+                            field.onChange(num)
+                            setAmountDisplay(num.toFixed(2).replace('.', ','))
+                          }
                         }}
                       />
                     </FormControl>
@@ -235,7 +251,8 @@ export default function CashFlowEntryDialog({
                   </FormItem>
                 )}
               />
-                            <FormField
+
+              <FormField
                 control={form.control}
                 name="category_id"
                 render={({ field }) => (
@@ -254,8 +271,8 @@ export default function CashFlowEntryDialog({
                         {filteredCategories.map((cat) => (
                           <SelectItem key={cat.id} value={cat.id}>
                             <div className="flex items-center gap-2">
-                              <div 
-                                className="w-3 h-3 rounded-full" 
+                              <div
+                                className="w-3 h-3 rounded-full"
                                 style={{ backgroundColor: cat.color }}
                               />
                               {cat.name}
@@ -423,7 +440,7 @@ export default function CashFlowEntryDialog({
               <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
                 Cancelar
               </Button>
-              <Button 
+              <Button
                 type="submit"
                 disabled={createEntry.isPending || updateEntry.isPending}
               >
