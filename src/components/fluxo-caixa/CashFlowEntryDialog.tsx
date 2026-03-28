@@ -220,7 +220,7 @@ export default function CashFlowEntryDialog({
                     <FormControl>
                       <Input
                         type="text"
-                        inputMode="decimal"
+                      
                         placeholder="0,00"
                         {...field}
                         value={field.value || ''}

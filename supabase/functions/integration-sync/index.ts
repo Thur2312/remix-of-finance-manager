@@ -353,24 +353,25 @@ serve(async (req) => {
     }
 
     // ✅ SYNC PAYMENTS (escrow por pedido)
-    try {
-      const escrowList = await shopeeGet<{
-        order_list: { order_sn: string }[]
-        more: boolean
-        next_cursor: string
-      }>(
-        BASE_URL,
-        "/api/v2/payment/get_escrow_list",
-        {
-          release_time_from: timeFrom,
-          release_time_to: timeTo,
-          page_size: 50,
-        },
-        PARTNER_ID, PARTNER_KEY, accessToken, shopId
-      )
+   try {
+  const escrowList = await shopeeGet<{
+    escrow_list: { order_sn: string; escrow_release_time: number; payout_amount: number }[]  // ← corrigido
+    more: boolean
+  }>(
+    BASE_URL,
+    "/api/v2/payment/get_escrow_list",
+    {
+      release_time_from: timeFrom,
+      release_time_to: timeTo,
+      page_size: 50,
+    },
+    PARTNER_ID, PARTNER_KEY, accessToken, shopId
+  )
 
-      const escrowOrders = escrowList?.order_list ?? []
-      console.log(`💰 ${escrowOrders.length} escrows encontrados`)
+  console.log("💰 escrowList raw:", JSON.stringify(escrowList))
+
+  const escrowOrders = escrowList?.escrow_list ?? []  // ← corrigido
+  console.log(`💰 ${escrowOrders.length} escrows encontrados`)
 
       for (const escrowOrder of escrowOrders) {
         try {
@@ -395,6 +396,8 @@ serve(async (req) => {
             PARTNER_ID, PARTNER_KEY, accessToken, shopId
           )
 
+            console.log("💳 escrowDetail raw:", JSON.stringify(escrowDetail))
+            
           const income = escrowDetail?.order_income
           if (!income) continue
 
