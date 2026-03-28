@@ -15,6 +15,7 @@ import { Separator } from "@/components/ui/separator";
 import { Badge } from "@/components/ui/badge";
 import { useFixedCosts } from "@/hooks/useFixedCosts";
 import { parseNumericInputSafe, parsePercentageInput } from "@/lib/numeric-validation";
+import { Progress } from "../components/ui/progress";
 
 const formatCurrency = (value: number): string => {
   return value.toLocaleString("pt-BR", {
@@ -65,6 +66,8 @@ function CalculadoraPrecificacaoContent() {
   const [papelProduto, setPapelProduto] = useState<PapelProduto>('novo');
   const [absorpcaoManual, setAbsorpcaoManual] = useState<number>(10);
   const [volumeEsperadoProduto, setVolumeEsperadoProduto] = useState<number>(50);
+   
+  const [faturamentoTotal, setFaturamentoTotal] = useState<string>("");
 
   // Use fixed costs from hook
   const {
@@ -217,6 +220,21 @@ function CalculadoraPrecificacaoContent() {
     totalRecurringCosts, volumeMensal, volumeEsperadoProduto, percentualAbsorcao
   ]);
 
+  // Calculo do Break-even e Panaroma 
+  const panorama = useMemo(() => {
+    const fat = parseInput (faturamentoTotal);
+    const margemPct = results.margemContribuicaoPercent;
+
+    const breakEven = margemPct > 0 ? (totalRecurringCosts / margemPct) * 100 : 0;
+    const margemGerada = fat * (margemPct / 100);
+    const resultadoLiquido = margemGerada - totalRecurringCosts;
+    const margemLiquidaPct = fat > 0 ? (resultadoLiquido / fat) * 100 : 0;
+    const progressoBreakEven = breakEven > 0 ? Math.min((fat / breakEven) * 100, 100) : 0;
+    const lucrativo = resultadoLiquido > 0;
+
+    return { fat, breakEven, margemGerada, resultadoLiquido, margemLiquidaPct, progressoBreakEven, lucrativo, margemPct };
+  }, [faturamentoTotal, results.margemContribuicaoPercent, totalRecurringCosts]);
+
   // Alertas de proteção automáticos
   const alertas = useMemo(() => {
     const lista: { tipo: 'critico' | 'alerta' | 'aviso' | 'info'; mensagem: string }[] = [];
@@ -295,119 +313,158 @@ function CalculadoraPrecificacaoContent() {
             </CardContent>
           </Card>}
 
-        {/* Papel do Produto na Operação */}
-        <Card className="border-primary/20">
-          <CardHeader className="pb-4">
-            <div className="flex items-center gap-2">
-              <Layers className="h-5 w-5 text-primary" />
-              <CardTitle className="text-lg">Papel do Produto na Operação</CardTitle>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <HelpCircle className="h-4 w-4 text-muted-foreground cursor-help" />
-                </TooltipTrigger>
-                <TooltipContent className="max-w-xs">
-                  <p>Defina a importância deste produto no seu portfólio. Produtos novos não devem carregar toda a estrutura de custos da empresa.</p>
-                </TooltipContent>
-              </Tooltip>
-            </div>
-            <CardDescription>
-              Defina quanto dos custos fixos este produto deve absorver
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-6">
-            <RadioGroup value={papelProduto} onValueChange={value => setPapelProduto(value as PapelProduto)} className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              <div className="flex items-center space-x-3 p-3 rounded-lg border border-border hover:bg-muted/50 transition-colors">
-                <RadioGroupItem value="novo" id="novo" />
-                <Label htmlFor="novo" className="flex-1 cursor-pointer">
-                  <span className="font-medium">Produto Novo / Teste</span>
-                  <p className="text-xs text-muted-foreground">Absorve 10% do custo fixo</p>
-                </Label>
-                <Badge variant="secondary" className="text-xs">10%</Badge>
-              </div>
-              <div className="flex items-center space-x-3 p-3 rounded-lg border border-border hover:bg-muted/50 transition-colors">
-                <RadioGroupItem value="complementar" id="complementar" />
-                <Label htmlFor="complementar" className="flex-1 cursor-pointer">
-                  <span className="font-medium">Produto Complementar</span>
-                  <p className="text-xs text-muted-foreground">Absorve 30% do custo fixo</p>
-                </Label>
-                <Badge variant="secondary" className="text-xs">30%</Badge>
-              </div>
-              <div className="flex items-center space-x-3 p-3 rounded-lg border border-border hover:bg-muted/50 transition-colors">
-                <RadioGroupItem value="principal" id="principal" />
-                <Label htmlFor="principal" className="flex-1 cursor-pointer">
-                  <span className="font-medium">Produto Principal</span>
-                  <p className="text-xs text-muted-foreground">Absorve 60% do custo fixo</p>
-                </Label>
-                <Badge variant="secondary" className="text-xs">60%</Badge>
-              </div>
-              <div className="flex items-center space-x-3 p-3 rounded-lg border border-border hover:bg-muted/50 transition-colors">
-                <RadioGroupItem value="avancado" id="avancado" />
-                <Label htmlFor="avancado" className="flex-1 cursor-pointer">
-                  <span className="font-medium">Modo Avançado</span>
-                  <p className="text-xs text-muted-foreground">Defina manualmente a %</p>
-                </Label>
-                <Percent className="h-4 w-4 text-muted-foreground" />
-              </div>
-            </RadioGroup>
-
-            {/* Slider para Modo Avançado */}
-            {papelProduto === 'avancado' && <div className="p-4 bg-muted/30 rounded-lg space-y-3">
-                <div className="flex items-center justify-between">
-                  <Label className="text-sm font-medium">% de Absorção do Custo Fixo</Label>
-                  <div className="flex items-center gap-2">
-                    <Input
-                      type="text"
-                      value={absorpcaoManual}
-                      onChange={e => setAbsorpcaoManual(parseNumericInputSafe(e.target.value, { min: 0, max: 100 }))}
-                      className="w-20 h-9 text-center"
+                  {/* ── SUBSTITUIÇÃO: Break-even + Panorama Atual ── */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+ 
+            {/* Break-even */}
+            <Card className="border-primary/20">
+              <CardHeader className="pb-4">
+                <div className="flex items-center gap-2">
+                  <Target className="h-5 w-5 text-primary" />
+                  <CardTitle className="text-lg">Break-even (Ponto de Equilíbrio)</CardTitle>
+                </div>
+                <CardDescription>
+                  Faturamento mínimo para cobrir os custos fixos com a margem de contribuição atual
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                {/* Valor destaque */}
+                <div className="flex flex-col items-center justify-center py-4 bg-muted/30 rounded-lg">
+                  <span className="text-3xl font-bold tracking-tight">
+                    {formatCurrency(panorama.breakEven)}
+                  </span>
+                  <span className="text-sm text-muted-foreground mt-1">
+                    Margem de contribuição real:{" "}
+                    <span className="text-primary font-semibold">{formatPercent(panorama.margemPct)}</span>
+                  </span>
+                </div>
+ 
+                {/* Faturamento atual (input) */}
+                <div className="space-y-1.5">
+                  <Label htmlFor="faturamentoTotal" className="text-sm font-medium">
+                    Faturamento mensal atual (R$)
+                  </Label>
+                  <Input
+                    id="faturamentoTotal"
+                    type="text"
+                    inputMode="decimal"
+                    value={faturamentoTotal}
+                    onChange={e => handleDecimalInput(e.target.value, setFaturamentoTotal)}
+                    placeholder="0,00"
+                    className="h-11"
+                  />
+                </div>
+ 
+                {/* Aviso / confirmação */}
+                <div className={`flex items-start gap-2 p-3 rounded-lg text-sm ${
+                  panorama.fat >= panorama.breakEven && panorama.fat > 0
+                    ? "bg-green-500/10 border border-green-500/20 text-green-700 dark:text-green-300"
+                    : "bg-muted/50 border border-border text-muted-foreground"
+                }`}>
+                  {panorama.fat >= panorama.breakEven && panorama.fat > 0 ? (
+                    <CheckCircle2 className="h-4 w-4 mt-0.5 flex-shrink-0 text-green-600" />
+                  ) : (
+                    <Info className="h-4 w-4 mt-0.5 flex-shrink-0" />
+                  )}
+                  <span>
+                    {panorama.fat > 0
+                      ? panorama.fat >= panorama.breakEven
+                        ? `✅ Faturamento cobre o break-even.`
+                        : `O cliente precisa faturar ${formatCurrency(panorama.breakEven)} por mês para cobrir os custos fixos`
+                      : `Informe o faturamento para comparar com o break-even`
+                    }
+                  </span>
+                </div>
+ 
+                {/* Barra de progresso */}
+                {panorama.fat > 0 && (
+                  <div className="space-y-1.5">
+                    <div className="flex justify-between text-xs text-muted-foreground">
+                      <span>Progresso até break-even</span>
+                      <span>{panorama.progressoBreakEven.toFixed(0)}%</span>
+                    </div>
+                    <Progress
+                      value={panorama.progressoBreakEven}
+                      className="h-2"
                     />
-                    <span className="text-sm text-muted-foreground">%</span>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+ 
+            {/* Panorama Atual */}
+            <Card className="border-primary/20">
+              <CardHeader className="pb-4">
+                <div className="flex items-center gap-2">
+                  <BarChart3 className="h-5 w-5 text-primary" />
+                  <CardTitle className="text-lg">Panorama Atual</CardTitle>
+                </div>
+              </CardHeader>
+              <CardContent className="space-y-3">
+ 
+                <div className="flex items-center justify-between">
+                  <span className="text-sm text-muted-foreground">Faturamento total:</span>
+                  <span className="text-xl font-bold">{formatCurrency(panorama.fat)}</span>
+                </div>
+ 
+                <div className="flex items-center justify-between">
+                  <span className="text-sm text-muted-foreground">
+                    Margem gerada ({formatPercent(panorama.margemPct)}):
+                  </span>
+                  <span className="text-lg font-semibold text-green-600">
+                    {formatCurrency(panorama.margemGerada)}
+                  </span>
+                </div>
+ 
+                <div className="flex items-center justify-between">
+                  <span className="text-sm text-muted-foreground">Custos fixos:</span>
+                  <span className="text-lg font-semibold">{formatCurrency(totalRecurringCosts)}</span>
+                </div>
+ 
+                <Separator />
+ 
+                <div className="space-y-1">
+                  <span className="text-sm text-muted-foreground">Resultado líquido:</span>
+                  <div className="flex items-end gap-2">
+                    <span className={`text-2xl font-bold tracking-tight ${panorama.lucrativo ? "text-green-600" : "text-destructive"}`}>
+                      {formatCurrency(panorama.resultadoLiquido)}
+                    </span>
+                    <span className="text-sm text-muted-foreground pb-0.5">
+                      ({panorama.margemLiquidaPct.toFixed(2)}%)
+                    </span>
                   </div>
                 </div>
-                <Slider value={[absorpcaoManual]} onValueChange={([val]) => setAbsorpcaoManual(val)} min={0} max={100} step={1} className="w-full" />
-                <p className="text-xs text-muted-foreground text-center">
-                  Produtos novos: 5-15% | Complementares: 20-40% | Principais: 50-100%
-                </p>
-              </div>}
-
-            {/* Volume Esperado do Produto */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2">
-              <div className="space-y-2">
-                <div className="flex items-center gap-2">
-                  <Label htmlFor="volumeEsperado" className="text-sm font-medium">
-                    Volume Esperado deste Produto
-                  </Label>
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <HelpCircle className="h-4 w-4 text-muted-foreground cursor-help" />
-                    </TooltipTrigger>
-                    <TooltipContent className="max-w-xs">
-                      <p>Quantas unidades você espera vender deste produto específico por mês.</p>
-                    </TooltipContent>
-                  </Tooltip>
+ 
+                {/* Barra de progresso do panorama */}
+                <div className="space-y-1">
+                  <div className="flex justify-between text-xs text-muted-foreground">
+                    <span>
+                      Status:{" "}
+                      <span className={panorama.lucrativo ? "text-green-600 font-medium" : "text-destructive font-medium"}>
+                        {panorama.fat === 0 ? "—" : panorama.lucrativo ? "Operação lucrativa" : "Operação deficitária"}
+                      </span>
+                    </span>
+                    <span>{panorama.progressoBreakEven.toFixed(0)}%</span>
+                  </div>
+                  <Progress value={panorama.progressoBreakEven} className="h-2" />
                 </div>
-                <Input
-                  id="volumeEsperado"
-                  type="text"
-                  inputMode="numeric"
-                  value={volumeEsperadoProduto || ''}
-                  onChange={e => setVolumeEsperadoProduto(parseNumericInputSafe(e.target.value, { min: 0, max: 999999 }))}
-                  placeholder="50"
-                />
-                <p className="text-xs text-muted-foreground">unidades/mês</p>
-              </div>
-              <div className="flex items-center p-4 bg-primary/5 rounded-lg">
-                <div className="flex-1">
-                  <p className="text-sm font-medium">Custo Fixo Alocado por Item</p>
-                  <p className="text-xs text-muted-foreground">
-                    {formatCurrency(totalRecurringCosts)} × {percentualAbsorcao}% ÷ {volumeEsperadoProduto} un
-                  </p>
-                </div>
-                <span className="text-xl font-bold text-primary">{formatCurrency(results.custoFixoPorItem)}</span>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
+ 
+                {/* Mensagem de status */}
+                {panorama.fat > 0 && (
+                  <div className={`p-3 rounded-lg text-xs ${
+                    panorama.lucrativo
+                      ? "bg-green-500/10 border border-green-500/20 text-green-700 dark:text-green-300"
+                      : "bg-destructive/10 border border-destructive/20 text-destructive"
+                  }`}>
+                    {panorama.lucrativo
+                      ? "Sua operação já cobre os custos fixos e está gerando lucro. Ganhos adicionais tendem a ampliar sua margem líquida."
+                      : "A operação ainda não cobre os custos fixos. Aumente o faturamento ou reduza os custos."}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </div>
+          {/* ── FIM DA SUBSTITUIÇÃO ── */}
 
         {/* Main Container - Dados do Produto */}
         <Card>
