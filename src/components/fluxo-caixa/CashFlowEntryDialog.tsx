@@ -212,44 +212,30 @@ export default function CashFlowEntryDialog({
             {/* Amount and Category */}
             <div className="grid grid-cols-2 gap-4">
               <FormField
-                  control={form.control}
-                  name="amount"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Valor (R$)</FormLabel>
-                      <FormControl>
-                        <Input
-                          type="text"
-                          placeholder="0,00"
-                          value={
-                            field.value
-                              ? String(field.value).replace('.', ',')
-                              : ''
-                          }
-                          onChange={(e) => {
-                            // Permite apenas números e vírgula/ponto
-                            const raw = e.target.value.replace(/[^0-9.,]/g, '')
-                            // Converte para número
-                            const cleanValue = raw.replace(',', '.')
-                            const numValue = parseFloat(cleanValue)
-                            field.onChange(isNaN(numValue) ? 0 : numValue)
-                          }}
-                          onBlur={(e) => {
-                            // Formata para 2 casas decimais ao sair do campo
-                            const numValue = parseFloat(
-                              e.target.value.replace(',', '.')
-                            )
-                            if (!isNaN(numValue)) {
-                              field.onChange(parseFloat(numValue.toFixed(2)))
-                            }
-                          }}
-                        />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-              <FormField
+                control={form.control}
+                name="amount"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Valor (R$)</FormLabel>
+                    <FormControl>
+                      <Input
+                        inputMode="decimal"
+                        placeholder="0,00"
+                        value={field.value ? String(field.value).replace('.', ',') : ''}
+                        onChange={(e) => {
+                          const raw = e.target.value
+                          // Permite dígitos, vírgula e ponto
+                          if (!/^[0-9]*[,.]?[0-9]*$/.test(raw)) return
+                          const num = parseFloat(raw.replace(',', '.'))
+                          field.onChange(isNaN(num) ? 0 : num)
+                        }}
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+                            <FormField
                 control={form.control}
                 name="category_id"
                 render={({ field }) => (
