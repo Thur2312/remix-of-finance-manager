@@ -46,7 +46,7 @@ import {
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { InPageNav, shopeeNavTabs } from '@/components/layout/InPageNav';
-import { date } from 'zod';
+import { ExportSection } from '@/components/shopee/ExportSection';
 
 interface ParsedRow {
   order_id: string;
@@ -643,6 +643,7 @@ export default function Upload() {
       <AppLayout title="Gestão Shopee">
         <InPageNav tabs={shopeeNavTabs} />
         <UploadContent />
+         <ExportSection /> 
       </AppLayout>
     </ProtectedRoute>
   );
