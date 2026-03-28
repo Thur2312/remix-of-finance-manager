@@ -302,7 +302,7 @@ serve(async (req) => {
             "/api/v2/order/get_order_detail",
             {
               order_sn_list: orderSns,
-              response_optional_fields: "buyer_username,pay_time,tracking_no,shipping_carrier",
+              response_optional_fields: "buyer_username,pay_time,tracking_no,shipping_carrier,total_amount,currency,create_time,update_time",
             },
             PARTNER_ID, PARTNER_KEY, accessToken, shopId
           )
@@ -353,107 +353,116 @@ serve(async (req) => {
     }
 
     // ✅ SYNC PAYMENTS (escrow por pedido)
-   try {
-  const escrowList = await shopeeGet<{
-    escrow_list: { order_sn: string; escrow_release_time: number; payout_amount: number }[]  // ← corrigido
-    more: boolean
-  }>(
-    BASE_URL,
-    "/api/v2/payment/get_escrow_list",
-    {
-      release_time_from: timeFrom,
-      release_time_to: timeTo,
-      page_size: 50,
-    },
-    PARTNER_ID, PARTNER_KEY, accessToken, shopId
-  )
+    try {
+      const escrowList = await shopeeGet<{
+        escrow_list: { order_sn: string; escrow_release_time: number; payout_amount: number }[]
+        more: boolean
+      }>(
+        BASE_URL,
+        "/api/v2/payment/get_escrow_list",
+        {
+          release_time_from: timeFrom,
+          release_time_to: timeTo,
+          page_size: 50,
+        },
+        PARTNER_ID, PARTNER_KEY, accessToken, shopId
+      )
 
-  console.log("💰 escrowList raw:", JSON.stringify(escrowList))
-
-  const escrowOrders = escrowList?.escrow_list ?? []  // ← corrigido
-  console.log(`💰 ${escrowOrders.length} escrows encontrados`)
+      const escrowOrders = escrowList?.escrow_list ?? []
+      console.log(`💰 ${escrowOrders.length} escrows encontrados`)
 
       for (const escrowOrder of escrowOrders) {
         try {
           await new Promise(r => setTimeout(r, 300))
 
-         const escrowDetail = await shopeeGet<{
-  order_sn: string                    // ← na raiz
-  order_income: {
-    buyer_total_amount: number
-    commission_fee: number
-    net_service_fee: number           // ← é net_service_fee, não service_fee
-    estimated_shipping_fee: number
-    reverse_shipping_fee: number
-    seller_discount: number
-    shopee_discount: number
-    escrow_amount: number
-    voucher_from_shopee: number
-    voucher_from_seller: number
-    shopee_shipping_rebate: number
-  }
-}>(
-  BASE_URL,
-  "/api/v2/payment/get_escrow_detail",
-  { order_sn: escrowOrder.order_sn },
-  PARTNER_ID, PARTNER_KEY, accessToken, shopId
-)
+          const escrowDetail = await shopeeGet<{
+            order_sn: string
+            order_income: {
+              buyer_total_amount: number
+              commission_fee: number
+              net_service_fee: number
+              estimated_shipping_fee: number
+              reverse_shipping_fee: number
+              seller_discount: number
+              shopee_discount: number
+              escrow_amount: number
+              voucher_from_shopee: number
+              voucher_from_seller: number
+              shopee_shipping_rebate: number
+            }
+          }>(
+            BASE_URL,
+            "/api/v2/payment/get_escrow_detail",
+            { order_sn: escrowOrder.order_sn },
+            PARTNER_ID, PARTNER_KEY, accessToken, shopId
+          )
 
-const income = escrowDetail?.order_income
-const orderSn = escrowDetail?.order_sn  // ← pega da raiz
-if (!income || !orderSn) continue
+          const income = escrowDetail?.order_income
+          const orderSn = escrowDetail?.order_sn
+          if (!income || !orderSn) continue
 
-const { data: orderRow } = await supabaseAdmin
-  .from("orders")
-  .select("id")
-  .eq("integration_id", connection_id)
-  .eq("external_order_id", orderSn)   // ← usa orderSn
-  .single()
+          const { data: orderRow } = await supabaseAdmin
+            .from("orders")
+            .select("id")
+            .eq("integration_id", connection_id)
+            .eq("external_order_id", orderSn)
+            .single()
 
-const { error: paymentError } = await supabaseAdmin
-  .from("payments")
-  .upsert({
-    integration_id: connection_id,
-    external_transaction_id: orderSn,  // ← usa orderSn
-    order_id: orderRow?.id ?? null,
-    amount: Number(income.buyer_total_amount) || 0,
-    marketplace_fee: Number(income.commission_fee) + Number(income.net_service_fee) || 0,
-    net_amount: Number(income.escrow_amount) || 0,
-    currency: "BRL",
-    payment_method: "escrow",
-    status: "released",
-    description: `Escrow liberado - Pedido ${orderSn}`,  // ← usa orderSn
-    transaction_date: now.toISOString(),
-    synced_at: now.toISOString(),
-  }, { onConflict: "external_transaction_id" })
+          const { error: paymentError } = await supabaseAdmin
+            .from("payments")
+            .upsert({
+              integration_id: connection_id,
+              external_transaction_id: orderSn,
+              order_id: orderRow?.id ?? null,
+              amount: Number(income.buyer_total_amount) || 0,
+              marketplace_fee: Number(income.commission_fee) + Number(income.net_service_fee) || 0,
+              net_amount: Number(income.escrow_amount) || 0,
+              currency: "BRL",
+              payment_method: "escrow",
+              status: "released",
+              description: `Escrow liberado - Pedido ${orderSn}`,
+              transaction_date: now.toISOString(),
+              synced_at: now.toISOString(),
+            }, { onConflict: "external_transaction_id" })
 
-// taxas detalhadas
-const feesToInsert = [
-  { type: "commission_fee", amount: income.commission_fee, description: "Comissão Shopee" },
-  { type: "service_fee", amount: income.net_service_fee, description: "Taxa de serviço" },
-  { type: "shipping_fee", amount: income.estimated_shipping_fee, description: "Frete estimado" },
-  { type: "reverse_shipping_fee", amount: income.reverse_shipping_fee, description: "Frete reverso" },
-  { type: "seller_discount", amount: income.seller_discount, description: "Desconto do vendedor" },
-  { type: "shopee_discount", amount: income.shopee_discount, description: "Desconto Shopee" },
-  { type: "shopee_shipping_rebate", amount: income.shopee_shipping_rebate, description: "Rebate frete Shopee" },
-  { type: "voucher_shopee", amount: income.voucher_from_shopee, description: "Voucher Shopee" },
-].filter(f => f.amount && Number(f.amount) !== 0)
-
-          for (const fee of feesToInsert) {
-            await supabaseAdmin
-              .from("fees")
-              .upsert({
-                integration_id: connection_id,
-                external_fee_id: `${income.order_sn}_${fee.type}`,
-                order_id: orderRow?.id ?? null,
-                fee_type: fee.type,
-                amount: Number(fee.amount),
-                currency: "BRL",
-                description: fee.description,
-                fee_date: now.toISOString(),
-                synced_at: now.toISOString(),
-              }, { onConflict: "external_fee_id" })
+          if (paymentError) {
+            console.error("❌ Erro ao salvar payment:", orderSn, paymentError)
+            continue
           }
+
+          // ✅ Taxas detalhadas — loop corrigido com const feeError dentro do escopo
+         const feesToInsert = [
+          { type: "commission", key: "commission_fee", amount: income.commission_fee, description: "Comissão Shopee" },
+          { type: "service_fee", key: "service_fee", amount: income.net_service_fee, description: "Taxa de serviço" },
+          { type: "shipping_fee", key: "shipping_fee", amount: income.estimated_shipping_fee, description: "Frete estimado" },
+          { type: "adjustment", key: "reverse_shipping_fee", amount: income.reverse_shipping_fee, description: "Frete reverso" },
+          { type: "adjustment", key: "seller_discount", amount: income.seller_discount, description: "Desconto do vendedor" },
+          { type: "adjustment", key: "shopee_discount", amount: income.shopee_discount, description: "Desconto Shopee" },
+          { type: "adjustment", key: "shopee_shipping_rebate", amount: income.shopee_shipping_rebate, description: "Rebate frete Shopee" },
+          { type: "adjustment", key: "voucher_shopee", amount: income.voucher_from_shopee, description: "Voucher Shopee" },
+        ].filter(f => f.amount && Number(f.amount) !== 0)
+
+        for (const fee of feesToInsert) {
+          const { error: feeError } = await supabaseAdmin
+            .from("fees")
+            .upsert({
+              integration_id: connection_id,
+              external_fee_id: `${orderSn}_${fee.key}`, // ← usa key para ID único
+              order_id: orderRow?.id ?? null,
+              fee_type: fee.type,                        // ← usa type para o campo com constraint
+              amount: Number(fee.amount),
+              currency: "BRL",
+              description: fee.description,
+              fee_date: now.toISOString(),
+              synced_at: now.toISOString(),
+            }, { onConflict: "external_fee_id" })
+
+          if (feeError) {
+            console.error("❌ Erro ao salvar fee:", fee.key, JSON.stringify(feeError))
+          } else {
+            console.log("✅ Fee salva:", fee.key, orderSn)
+          }
+        }
 
           paymentsCount++
         } catch (detailError) {
@@ -474,16 +483,17 @@ const feesToInsert = [
     // ✅ SYNC WALLET TRANSACTIONS
     try {
       const walletRes = await shopeeGet<{
-        transactions: {
-          wallet_type: number
+        transaction_list: {
+          transaction_id: number
+          status: string
+          wallet_type: string
+          transaction_type: string
           amount: number
           current_balance: number
-          transaction_type: number
-          transaction_id: number
           create_time: number
           order_sn: string
-          withdrawal_type: number
-          reason: string
+          description: string
+          money_flow: string
         }[]
         more: boolean
       }>(
@@ -497,7 +507,7 @@ const feesToInsert = [
         PARTNER_ID, PARTNER_KEY, accessToken, shopId
       )
 
-      const transactions = walletRes?.transactions ?? []
+      const transactions = walletRes?.transaction_list ?? []
       console.log(`🏦 ${transactions.length} transações de carteira encontradas`)
 
       for (const tx of transactions) {
@@ -521,8 +531,8 @@ const feesToInsert = [
             net_amount: Number(tx.amount) || 0,
             currency: "BRL",
             payment_method: "wallet",
-            status: "completed",
-            description: tx.reason || `Transação carteira #${tx.transaction_id}`,
+            status: tx.status?.toLowerCase() || "completed",
+            description: tx.description || `Transação carteira #${tx.transaction_id}`,
             transaction_date: safeShopeeDate(tx.create_time) ?? now.toISOString(),
             synced_at: now.toISOString(),
           }, { onConflict: "external_transaction_id" })
@@ -560,7 +570,6 @@ const feesToInsert = [
       },
     })
 
-    // ✅ Retorno final
     return new Response(
       JSON.stringify({
         success: true,
