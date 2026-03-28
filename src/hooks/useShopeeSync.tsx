@@ -154,10 +154,6 @@ export function useShopeeSync(connectionId: string | null) {
           .eq('integration_id', connectionId!),
       ]);
 
-       console.log("connectionId usado:", connectionId)
-  console.log("fees encontradas:", feesRes.data?.length, feesRes.error)
-  console.log("fees data:", JSON.stringify(feesRes.data?.slice(0, 2)))
-  
       if (ordersRes.error) throw ordersRes.error;
       if (paymentsRes.error) throw paymentsRes.error;
       if (feesRes.error) throw feesRes.error;
