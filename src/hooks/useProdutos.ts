@@ -1,9 +1,10 @@
 import { useState, useEffect, useCallback } from 'react';
 import { SupabaseClient } from '@supabase/supabase-js';
 import { toast } from 'sonner';
+import { create } from 'domain';
 
 
-const supabase = new SupabaseClient(import.meta.env.VITE_SUPABASE_URL, import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY, {
+ const supabase = new SupabaseClient(import.meta.env.VITE_SUPABASE_URL, import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY, {
   auth: {
     storage: localStorage,
     persistSession: true,
@@ -13,9 +14,11 @@ const supabase = new SupabaseClient(import.meta.env.VITE_SUPABASE_URL, import.me
 
 /**
  * Interface que representa a estrutura de um Anúncio no banco de dados.
+ * Agora inclui o campo 'user_id' para vincular o anúncio ao seu criador.
  */
 export interface Anuncio {
   id: string;
+  user_id: string; // ID do usuário que criou o anúncio
   nome_anuncio: string;
   custo: number;
   valor_venda: number;
@@ -30,31 +33,43 @@ export interface Anuncio {
 
 /**
  * Tipo para entrada de dados ao criar um novo anúncio.
- * Omite campos gerados automaticamente pelo banco de dados.
+ * Omite campos gerados automaticamente e o user_id (que será injetado pelo hook).
  */
-export type AnuncioInput = Omit<Anuncio, 'id' | 'criado_em' | 'atualizado_em'>;
+export type AnuncioInput = Omit<Anuncio, 'id' | 'user_id' | 'criado_em' | 'atualizado_em'>;
 
 /**
  * Hook customizado para gerenciar operações CRUD na tabela 'anuncios' do Supabase.
+ * Implementa isolamento de dados por usuário (Multi-tenancy).
  */
 export function useAnuncios() {
   const [anuncios, setAnuncios] = useState<Anuncio[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
   /**
-   * Busca todos os anúncios ordenados pela data de criação (mais recentes primeiro).
+   * Busca apenas os anúncios pertencentes ao usuário autenticado.
+   * O Supabase aplicará as políticas de RLS, mas é boa prática filtrar explicitamente.
    */
   const fetchAnuncios = useCallback(async () => {
     try {
       setIsLoading(true);
+      
+      // Obtém o usuário atual da sessão
+      const { data: { user } } = await supabase.auth.getUser();
+      
+      if (!user) {
+        setAnuncios([]);
+        return;
+      }
+
       const { data, error } = await supabase
         .from('anuncios')
         .select('*')
+        .eq('user_id', user.id) // Filtro explícito por segurança
         .order('criado_em', { ascending: false });
 
       if (error) {
         console.error('Erro Supabase (fetch):', error);
-        toast.error(`Erro ao carregar anúncios: ${error.message}`);
+        toast.error(`Erro ao carregar seus anúncios: ${error.message}`);
         return;
       }
 
@@ -73,11 +88,24 @@ export function useAnuncios() {
   }, [fetchAnuncios]);
 
   /**
-   * Adiciona um novo anúncio à tabela.
+   * Adiciona um novo anúncio vinculado ao usuário autenticado.
    */
   const addAnuncio = async (data: AnuncioInput): Promise<boolean> => {
     try {
-      const { error } = await supabase.from('anuncios').insert([data]);
+      const { data: { user } } = await supabase.auth.getUser();
+      
+      if (!user) {
+        toast.error('Você precisa estar logado para cadastrar um produto.');
+        return false;
+      }
+
+      // Injeta o user_id do usuário logado no objeto de dados
+      const payload = {
+        ...data,
+        user_id: user.id
+      };
+
+      const { error } = await supabase.from('anuncios').insert([payload]);
       
       if (error) {
         console.error('Erro Supabase (insert):', error);
@@ -96,14 +124,19 @@ export function useAnuncios() {
   };
 
   /**
-   * Atualiza um anúncio existente pelo ID.
+   * Atualiza um anúncio existente, garantindo que pertença ao usuário.
    */
   const updateAnuncio = async (id: string, data: Partial<AnuncioInput>): Promise<boolean> => {
     try {
+      const { data: { user } } = await supabase.auth.getUser();
+      
+      if (!user) return false;
+
       const { error } = await supabase
         .from('anuncios')
         .update(data)
-        .eq('id', id);
+        .eq('id', id)
+        .eq('user_id', user.id); // Garante que o usuário só edite o que é dele
 
       if (error) {
         console.error('Erro Supabase (update):', error);
@@ -122,14 +155,19 @@ export function useAnuncios() {
   };
 
   /**
-   * Exclui um anúncio pelo ID.
+   * Exclui um anúncio, garantindo que pertença ao usuário.
    */
   const deleteAnuncio = async (id: string): Promise<boolean> => {
     try {
+      const { data: { user } } = await supabase.auth.getUser();
+      
+      if (!user) return false;
+
       const { error } = await supabase
         .from('anuncios')
         .delete()
-        .eq('id', id);
+        .eq('id', id)
+        .eq('user_id', user.id); // Garante que o usuário só exclua o que é dele
 
       if (error) {
         console.error('Erro Supabase (delete):', error);

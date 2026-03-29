@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import React, { useState, useMemo } from "react";
 import { Link } from "react-router-dom";
 import { ProtectedRoute } from "@/components/layout/ProtectedRoute";
 import { AppLayout } from "@/components/layout/AppLayout";
@@ -16,6 +16,13 @@ import { Badge } from "@/components/ui/badge";
 import { useFixedCosts } from "@/hooks/useFixedCosts";
 import { parseNumericInputSafe, parsePercentageInput } from "@/lib/numeric-validation";
 import { Progress } from "../components/ui/progress";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogOverlay, AlertDialogPortal, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
+import { useAnuncios, AnuncioInput } from "@/hooks/useProdutos";
+import { parseCurrencyInput } from "@/lib/numeric-validation";
+import { toast } from "sonner";
+import { Dialog, DialogContent, DialogTrigger, DialogFooter, DialogTitle, DialogHeader, DialogDescription } from "@/components/ui/dialog";
+import { Button } from "@/components/ui/button";
+import { Trash2, Pencil, } from "lucide-react";
 
 const formatCurrency = (value: number): string => {
   return value.toLocaleString("pt-BR", {
@@ -41,6 +48,24 @@ const ABSORCAO_PADRAO = {
   complementar: 30, // 30% do custo fixo
   principal: 60    // 60% do custo fixo
 } as const;
+
+const EMPTY_PRODUTO = {
+  nome_anuncio: '',
+  custo: '',
+  valor_venda: '',
+  comissao_taxa: '',
+  antecipado: '',
+  afiliados: '',
+  imposto_pct: '',
+  custo_var: '',
+};
+ 
+type ProdutoForm = typeof EMPTY_PRODUTO;
+ 
+function parseField(val: string): number {
+  const r = parseCurrencyInput(val);
+  return r.isValid ? r.value : 0;
+}
 
 type PapelProduto = 'novo' | 'complementar' | 'principal' | 'avancado';
 
@@ -187,6 +212,8 @@ function CalculadoraPrecificacaoContent() {
     const precoIdeal = denominador > 0 ? (custoTotal + _taxaFixa) / denominador : 0;
     const margemInviavel = denominador <= 0;
 
+    const equilibrio = 
+
     return {
       custosVariaveis,
       totalCustosVariaveis,
@@ -234,6 +261,54 @@ function CalculadoraPrecificacaoContent() {
 
     return { fat, breakEven, margemGerada, resultadoLiquido, margemLiquidaPct, progressoBreakEven, lucrativo, margemPct };
   }, [faturamentoTotal, results.margemContribuicaoPercent, totalRecurringCosts]);
+ 
+const { anuncios, isLoading: isLoadingAnuncios, addAnuncio, updateAnuncio, deleteAnuncio } = useAnuncios();
+ 
+  const [isProdutoOpen, setIsProdutoOpen] = useState(false);
+  const [editingProdutoId, setEditingProdutoId] = useState<string | null>(null);
+  const [produtoForm, setProdutoForm] = useState<ProdutoForm>(EMPTY_PRODUTO);
+  
+  // helper para atualizar um campo de form de produto
+  const setProdutoField = (field: keyof ProdutoForm) =>
+    (e: React.ChangeEvent<HTMLInputElement>) =>
+      setProdutoForm(prev => ({ ...prev, [field]: e.target.value }));
+ 
+  const resetProdutoForm = () => { setProdutoForm(EMPTY_PRODUTO); setEditingProdutoId(null); };
+  
+
+   // abre dialogo preenchido com os dados do produto
+  const openEditProduto = (a: typeof anuncios[0]) => {
+    setEditingProdutoId(a.id);
+    setProdutoForm({
+      nome_anuncio: a.nome_anuncio,
+      custo: String(a.custo),
+      valor_venda: String(a.valor_venda),
+      comissao_taxa: String(a.comissao_taxa),
+      antecipado: String(a.antecipado),
+      afiliados: String(a.afiliados),
+      imposto_pct: String(a.imposto_pct),
+      custo_var: String(a.custo_var),
+    });
+    setIsProdutoOpen(true);
+  };
+ 
+  const handleProdutoSubmit = async () => {
+    if (!produtoForm.nome_anuncio.trim()) { toast.error('Nome do anúncio é obrigatório'); return; }
+    const payload: AnuncioInput = {
+      nome_anuncio: produtoForm.nome_anuncio.trim(),
+      custo: parseField(produtoForm.custo),
+      valor_venda: parseField(produtoForm.valor_venda),
+      comissao_taxa: parseField(produtoForm.comissao_taxa),
+      antecipado: parseField(produtoForm.antecipado),
+      afiliados: parseField(produtoForm.afiliados),
+      imposto_pct: parseField(produtoForm.imposto_pct),
+      custo_var: parseField(produtoForm.custo_var),
+    };
+    const success = editingProdutoId
+      ? await updateAnuncio(editingProdutoId, payload)
+      : await addAnuncio(payload);
+    if (success) { setIsProdutoOpen(false); resetProdutoForm(); }
+  };
 
   // Alertas de proteção automáticos
   const alertas = useMemo(() => {
@@ -503,7 +578,7 @@ function CalculadoraPrecificacaoContent() {
               {/* Linha 2 */}
               <div className="space-y-1.5">
                 <Label htmlFor="embalagemEtiqueta" className="text-sm font-medium">
-                  Embalagem + Etiqueta (R$)
+                  Custo Variável (R$)
                 </Label>
                 <Input
                   id="embalagemEtiqueta"
@@ -642,6 +717,84 @@ function CalculadoraPrecificacaoContent() {
                   </div>
                 )}
               </div>
+                            <Dialog open={isProdutoOpen} onOpenChange={open => { setIsProdutoOpen(open); if (!open) resetProdutoForm(); }}>
+              <DialogTrigger asChild>
+                <Button variant="outline">
+                  <ShoppingBag className="h-4 w-4 mr-2" />
+                  Cadastrar Anúncio
+                </Button>
+              </DialogTrigger>
+              <DialogContent className="max-w-lg">
+                <DialogHeader>
+                  <DialogTitle>{editingProdutoId ? 'Editar Produto' : 'Cadastrar Produto'}</DialogTitle>
+                  <DialogDescription>
+                    {editingProdutoId ? 'Altere as informações do produto' : 'Preencha os dados do novo produto'}
+                  </DialogDescription>
+                </DialogHeader>
+                <div className="space-y-4 py-2">
+                  <div className="space-y-2">
+                    <Label htmlFor="nome_anuncio">Nome do Anúncio *</Label>
+                    <Input
+                      id="nome_anuncio"
+                      value={produtoForm.nome_anuncio}
+                      onChange={setProdutoField('nome_anuncio')}
+                      placeholder="Ex: Macaquinho Floral"
+                      maxLength={255}
+                    />
+                  </div>
+                  <Separator />
+                  <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Valores (R$)</p>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label>Custo</Label>
+                      <Input type="text" inputMode="decimal" value={produtoForm.custo} onChange={setProdutoField('custo')} placeholder="0,00" />
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Valor de Venda</Label>
+                      <Input type="text" inputMode="decimal" value={produtoForm.valor_venda} onChange={setProdutoField('valor_venda')} placeholder="0,00" />
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Comissão e Taxa</Label>
+                      <Input type="text" inputMode="decimal" value={produtoForm.comissao_taxa} onChange={setProdutoField('comissao_taxa')} placeholder="0,00" />
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Antecipado</Label>
+                      <Input type="text" inputMode="decimal" value={produtoForm.antecipado} onChange={setProdutoField('antecipado')} placeholder="0,00" />
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Afiliados</Label>
+                      <Input type="text" inputMode="decimal" value={produtoForm.afiliados} onChange={setProdutoField('afiliados')} placeholder="0,00" />
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Custo Variável</Label>
+                      <Input type="text" inputMode="decimal" value={produtoForm.custo_var} onChange={setProdutoField('custo_var')} placeholder="0,00" />
+                    </div>
+                  </div>
+                  <Separator />
+                  <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Percentual</p>
+                  <div className="space-y-2">
+                    <Label>Imposto (%)</Label>
+                    <div className="relative">
+                      <Input
+                        type="text"
+                        inputMode="decimal"
+                        value={produtoForm.imposto_pct}
+                        onChange={setProdutoField('imposto_pct')}
+                        placeholder="4,5"
+                        className="pr-8"
+                      />
+                      <span className="absolute right-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">%</span>
+                    </div>
+                  </div>
+                </div>
+                <DialogFooter>
+                  <Button variant="outline" onClick={() => { setIsProdutoOpen(false); resetProdutoForm(); }}>Cancelar</Button>
+                  <Button onClick={handleProdutoSubmit} disabled={!produtoForm.nome_anuncio.trim()}>
+                    {editingProdutoId ? 'Salvar Alterações' : 'Cadastrar'}
+                  </Button>
+                </DialogFooter>
+              </DialogContent>
+            </Dialog>
             </div>
           </CardContent>
         </Card>
@@ -826,6 +979,101 @@ function CalculadoraPrecificacaoContent() {
             </div>
           </div>
         </div>
+      </div>
+      <div>
+                        <Card>
+                  <CardHeader>
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <CardTitle className="text-lg">Anúncios Cadastrados</CardTitle>
+                        <CardDescription>
+                          {anuncios.length} anúncio{anuncios.length !== 1 ? 's' : ''} cadastrado{anuncios.length !== 1 ? 's' : ''}
+                        </CardDescription>
+                      </div>
+                      <ShoppingBag className="h-5 w-5 text-muted-foreground" />
+                    </div>
+                  </CardHeader>
+                  <CardContent>
+                    {isLoadingAnuncios ? ( // NOVO
+                      <div className="space-y-2">
+                        {[1, 2, 3].map(i => <Skeleton key={i} className="h-12 w-full" />)}
+                      </div>
+                    ) : anuncios.length === 0 ? (
+                      <div className="text-center py-8 text-muted-foreground">
+                        <ShoppingBag className="h-12 w-12 mx-auto mb-4 opacity-50" />
+                        <p>Nenhum anúncio cadastrado ainda.</p>
+                        <p className="text-sm">Clique em "Cadastrar Anúncio" para começar.</p>
+                      </div>
+                    ) : (
+                      <div className="overflow-x-auto"> {/* NOVO — tabela responsiva */}
+                        <table className="w-full text-sm">
+                          <thead>
+                            <tr className="border-b">
+                              <th className="text-left py-3 px-2 font-medium text-muted-foreground">Nome</th>
+                              <th className="text-right py-3 px-2 font-medium text-muted-foreground">Custo</th>
+                              <th className="text-right py-3 px-2 font-medium text-muted-foreground">Venda</th>
+                              <th className="text-right py-3 px-2 font-medium text-muted-foreground">Comissão/Taxa</th>
+                              <th className="text-right py-3 px-2 font-medium text-muted-foreground">Antecipado</th>
+                              <th className="text-right py-3 px-2 font-medium text-muted-foreground">Afiliados</th>
+                              <th className="text-right py-3 px-2 font-medium text-muted-foreground">Imposto</th>
+                              <th className="text-right py-3 px-2 font-medium text-muted-foreground">Custo Var.</th>
+                              <th className="text-right py-3 px-2 font-medium text-muted-foreground">Lucro</th> {/* NOVO — coluna calculada */}
+                              <th className="py-3 px-2" />
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {anuncios.map(a => {
+                              const lucro = a.valor_venda - a.custo - a.custo_var - a.comissao_taxa - a.antecipado - a.afiliados; // NOVO
+                              return (
+                                <tr key={a.id} className="border-b last:border-0 hover:bg-muted/30 transition-colors">
+                                  <td className="py-3 px-2 font-medium">{a.nome_anuncio}</td>
+                                  <td className="py-3 px-2 text-right">{formatCurrency(a.custo)}</td>
+                                  <td className="py-3 px-2 text-right">{formatCurrency(a.valor_venda)}</td>
+                                  <td className="py-3 px-2 text-right">{formatCurrency(a.comissao_taxa)}</td>
+                                  <td className="py-3 px-2 text-right">{formatCurrency(a.antecipado)}</td>
+                                  <td className="py-3 px-2 text-right">{formatCurrency(a.afiliados)}</td>
+                                  <td className="py-3 px-2 text-right">
+                                    <Badge variant="secondary">{a.imposto_pct}%</Badge>
+                                  </td>
+                                  <td className="py-3 px-2 text-right">{formatCurrency(a.custo_var)}</td>
+                                  <td className={`py-3 px-2 text-right font-semibold ${lucro >= 0 ? 'text-green-600' : 'text-destructive'}`}> {/* NOVO — cor dinâmica verde/vermelho */}
+                                    {formatCurrency(lucro)}
+                                  </td>
+                                  <td className="py-3 px-2">
+                                    <div className="flex items-center justify-end gap-1">
+                                      <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => openEditProduto(a)}> {/* NOVO */}
+                                        <Pencil className="h-4 w-4" />
+                                      </Button>
+                                      <AlertDialog>
+                                        <AlertDialogTrigger asChild>
+                                          <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive hover:text-destructive">
+                                            <Trash2 className="h-4 w-4" />
+                                          </Button>
+                                        </AlertDialogTrigger>
+                                        <AlertDialogContent>
+                                          <AlertDialogHeader>
+                                            <AlertDialogTitle>Excluir Anúncio?</AlertDialogTitle>
+                                            <AlertDialogDescription>
+                                              Tem certeza que deseja excluir "{a.nome_anuncio}"? Esta ação não pode ser desfeita.
+                                            </AlertDialogDescription>
+                                          </AlertDialogHeader>
+                                          <AlertDialogFooter>
+                                            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                                            <AlertDialogAction onClick={() => deleteAnuncio(a.id)}>Excluir</AlertDialogAction> {/* NOVO */}
+                                          </AlertDialogFooter>
+                                        </AlertDialogContent>
+                                      </AlertDialog>
+                                    </div>
+                                  </td>
+                                </tr>
+                              );
+                            })}
+                          </tbody>
+                        </table>
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
       </div>
     </TooltipProvider>
   </AppLayout>;
