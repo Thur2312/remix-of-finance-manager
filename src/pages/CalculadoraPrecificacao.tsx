@@ -23,6 +23,9 @@ import { toast } from "sonner";
 import { Dialog, DialogContent, DialogTrigger, DialogFooter, DialogTitle, DialogHeader, DialogDescription } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Trash2, Pencil, } from "lucide-react";
+import { parse } from "path";
+import { Select } from "@radix-ui/react-select";
+import { SelectContent, SelectValue, SelectItem, SelectTrigger } from "@/components/ui/select";
 
 const formatCurrency = (value: number): string => {
   return value.toLocaleString("pt-BR", {
@@ -58,6 +61,7 @@ const EMPTY_PRODUTO = {
   afiliados: '',
   imposto_pct: '',
   custo_var: '',
+  marketplace: '',
 };
  
 type ProdutoForm = typeof EMPTY_PRODUTO;
@@ -288,6 +292,7 @@ const { anuncios, isLoading: isLoadingAnuncios, addAnuncio, updateAnuncio, delet
       afiliados: String(a.afiliados),
       imposto_pct: String(a.imposto_pct),
       custo_var: String(a.custo_var),
+      marketplace: a.marketplace,
     });
     setIsProdutoOpen(true);
   };
@@ -303,6 +308,7 @@ const { anuncios, isLoading: isLoadingAnuncios, addAnuncio, updateAnuncio, delet
       afiliados: parseField(produtoForm.afiliados),
       imposto_pct: parseField(produtoForm.imposto_pct),
       custo_var: parseField(produtoForm.custo_var),
+      marketplace: produtoForm.marketplace.trim(),
     };
     const success = editingProdutoId
       ? await updateAnuncio(editingProdutoId, payload)
@@ -770,6 +776,19 @@ const { anuncios, isLoading: isLoadingAnuncios, addAnuncio, updateAnuncio, delet
                       <Input type="text" inputMode="decimal" value={produtoForm.custo_var} onChange={setProdutoField('custo_var')} placeholder="0,00" />
                     </div>
                   </div>
+                  <div className="space-y-2">
+                    <Label>Marketplace</Label>
+                    <Select onValueChange={value => setProdutoForm(prev => ({ ...prev, marketplace: value }))} defaultValue={produtoForm.marketplace}>
+                      <SelectTrigger className="w-full">
+                        <SelectValue placeholder="Selecione o marketplace" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="Shopee">Shopee</SelectItem>
+                        <SelectItem value="TiktokShop">TiktokShop</SelectItem>
+                        
+                      </SelectContent>
+                    </Select>
+                  </div>
                   <Separator />
                   <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Percentual</p>
                   <div className="space-y-2">
@@ -980,7 +999,9 @@ const { anuncios, isLoading: isLoadingAnuncios, addAnuncio, updateAnuncio, delet
           </div>
         </div>
       </div>
+
       <div>
+  
                         <Card>
                   <CardHeader>
                     <div className="flex items-center justify-between">
@@ -994,7 +1015,7 @@ const { anuncios, isLoading: isLoadingAnuncios, addAnuncio, updateAnuncio, delet
                     </div>
                   </CardHeader>
                   <CardContent>
-                    {isLoadingAnuncios ? ( // NOVO
+                    {isLoadingAnuncios ? (
                       <div className="space-y-2">
                         {[1, 2, 3].map(i => <Skeleton key={i} className="h-12 w-full" />)}
                       </div>
@@ -1005,64 +1026,97 @@ const { anuncios, isLoading: isLoadingAnuncios, addAnuncio, updateAnuncio, delet
                         <p className="text-sm">Clique em "Cadastrar Anúncio" para começar.</p>
                       </div>
                     ) : (
-                      <div className="overflow-x-auto"> {/* NOVO — tabela responsiva */}
+                      <div className="overflow-x-auto">
                         <table className="w-full text-sm">
+
+                          {/* Cabeçalho — sem fundo, só texto muted, igual ao padrão da page */}
                           <thead>
-                            <tr className="border-b">
-                              <th className="text-left py-3 px-2 font-medium text-muted-foreground">Nome</th>
-                              <th className="text-right py-3 px-2 font-medium text-muted-foreground">Custo</th>
-                              <th className="text-right py-3 px-2 font-medium text-muted-foreground">Venda</th>
-                              <th className="text-right py-3 px-2 font-medium text-muted-foreground">Comissão/Taxa</th>
-                              <th className="text-right py-3 px-2 font-medium text-muted-foreground">Antecipado</th>
-                              <th className="text-right py-3 px-2 font-medium text-muted-foreground">Afiliados</th>
-                              <th className="text-right py-3 px-2 font-medium text-muted-foreground">Imposto</th>
-                              <th className="text-right py-3 px-2 font-medium text-muted-foreground">Custo Var.</th>
-                              <th className="text-right py-3 px-2 font-medium text-muted-foreground">Lucro</th> {/* NOVO — coluna calculada */}
-                              <th className="py-3 px-2" />
+                            <tr className="border-b border-border">
+                              <th className="text-left  pb-2 px-2 font-medium text-muted-foreground whitespace-nowrap">Nome</th>
+                              <th className="text-left   pb-3 px-3 font-medium text-muted-foreground whitespace-nowrap">Marketplace</th>
+                              <th className="text-right  pb-3 px-3 font-medium text-muted-foreground whitespace-nowrap">Custo</th>
+                              <th className="text-right  pb-3 px-3 font-medium text-muted-foreground whitespace-nowrap">Venda</th>
+                              <th className="text-right  pb-3 px-3 font-medium text-muted-foreground whitespace-nowrap">Comissão/Taxa</th>
+                              <th className="text-right  pb-3 px-3 font-medium text-muted-foreground whitespace-nowrap">Antecipado</th>
+                              <th className="text-right  pb-3 px-3 font-medium text-muted-foreground whitespace-nowrap">Afiliados</th>
+                              <th className="text-right  pb-3 px-3 font-medium text-muted-foreground whitespace-nowrap">Imposto</th>
+                              <th className="text-right  pb-3 px-3 font-medium text-muted-foreground whitespace-nowrap">Custo Var.</th>
+                              <th className="text-right  pb-3 px-3 font-medium text-muted-foreground whitespace-nowrap">Lucro</th>
+                              <th className="pb-3 px-3" />
                             </tr>
                           </thead>
+
+                          
                           <tbody>
                             {anuncios.map(a => {
-                              const lucro = a.valor_venda - a.custo - a.custo_var - a.comissao_taxa - a.antecipado - a.afiliados; // NOVO
+                              const lucro = a.valor_venda - a.custo - a.custo_var - a.comissao_taxa - a.antecipado - a.afiliados;
                               return (
-                                <tr key={a.id} className="border-b last:border-0 hover:bg-muted/30 transition-colors">
-                                  <td className="py-3 px-2 font-medium">{a.nome_anuncio}</td>
-                                  <td className="py-3 px-2 text-right">{formatCurrency(a.custo)}</td>
-                                  <td className="py-3 px-2 text-right">{formatCurrency(a.valor_venda)}</td>
-                                  <td className="py-3 px-2 text-right">{formatCurrency(a.comissao_taxa)}</td>
-                                  <td className="py-3 px-2 text-right">{formatCurrency(a.antecipado)}</td>
-                                  <td className="py-3 px-2 text-right">{formatCurrency(a.afiliados)}</td>
-                                  <td className="py-3 px-2 text-right">
-                                    <Badge variant="secondary">{a.imposto_pct}%</Badge>
-                                  </td>
-                                  <td className="py-3 px-2 text-right">{formatCurrency(a.custo_var)}</td>
-                                  <td className={`py-3 px-2 text-right font-semibold ${lucro >= 0 ? 'text-green-600' : 'text-destructive'}`}> {/* NOVO — cor dinâmica verde/vermelho */}
-                                    {formatCurrency(lucro)}
-                                  </td>
-                                  <td className="py-3 px-2">
-                                    <div className="flex items-center justify-end gap-1">
-                                      <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => openEditProduto(a)}> {/* NOVO */}
-                                        <Pencil className="h-4 w-4" />
-                                      </Button>
-                                      <AlertDialog>
-                                        <AlertDialogTrigger asChild>
-                                          <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive hover:text-destructive">
-                                            <Trash2 className="h-4 w-4" />
-                                          </Button>
-                                        </AlertDialogTrigger>
-                                        <AlertDialogContent>
-                                          <AlertDialogHeader>
-                                            <AlertDialogTitle>Excluir Anúncio?</AlertDialogTitle>
-                                            <AlertDialogDescription>
-                                              Tem certeza que deseja excluir "{a.nome_anuncio}"? Esta ação não pode ser desfeita.
-                                            </AlertDialogDescription>
-                                          </AlertDialogHeader>
-                                          <AlertDialogFooter>
-                                            <AlertDialogCancel>Cancelar</AlertDialogCancel>
-                                            <AlertDialogAction onClick={() => deleteAnuncio(a.id)}>Excluir</AlertDialogAction> {/* NOVO */}
-                                          </AlertDialogFooter>
-                                        </AlertDialogContent>
-                                      </AlertDialog>
+                                <tr key={a.id}>
+                                  <td className="pt-2" colSpan={11}>
+                                    <div className="flex items-center bg-muted/50 rounded-md px-3 py-2.5 gap-0">
+                                      {/* Nome */}
+                                      <span className="flex-[2] font-medium whitespace-nowrap">{a.nome_anuncio}</span>
+
+                                      {/* Marketplace */}
+                                      <span className="flex-[1.5] whitespace-nowrap">
+                                        {a.marketplace
+                                           ? <Badge variant="outline" className="font-normal">{a.marketplace}</Badge>
+                                           : <span className="text-muted-foreground">—</span>}
+                                      </span>
+
+                                      {/* Custo */}
+                                      <span className="flex-1 text-right tabular-nums whitespace-nowrap">{formatCurrency(a.custo)}</span>
+
+                                      {/* Venda */}
+                                      <span className="flex-1 text-right tabular-nums whitespace-nowrap">{formatCurrency(a.valor_venda)}</span>
+
+                                      {/* Comissão/Taxa */}
+                                      <span className="flex-1 text-right tabular-nums whitespace-nowrap">{formatCurrency(a.comissao_taxa)}</span>
+
+                                      {/* Antecipado */}
+                                      <span className="flex-1 text-right tabular-nums whitespace-nowrap">{formatCurrency(a.antecipado)}</span>
+
+                                      {/* Afiliados */}
+                                      <span className="flex-1 text-right tabular-nums whitespace-nowrap">{formatCurrency(a.afiliados)}</span>
+
+                                      {/* Imposto */}
+                                      <span className="flex-1 text-right whitespace-nowrap">
+                                        <Badge variant="secondary" className="font-normal tabular-nums">{a.imposto_pct}%</Badge>
+                                      </span>
+
+                                      {/* Custo Var. */}
+                                      <span className="flex-1 text-right tabular-nums whitespace-nowrap">{formatCurrency(a.custo_var)}</span>
+
+                                      {/* Lucro */}
+                                      <span className={`flex-1 text-right font-semibold tabular-nums whitespace-nowrap ${lucro >= 0 ? 'text-green-600' : 'text-destructive'}`}>
+                                        {formatCurrency(lucro)}
+                                      </span>
+
+                                      {/* Ações */}
+                                      <span className="flex items-center justify-end gap-1 pl-2">
+                                        <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => openEditProduto(a)}>
+                                          <Pencil className="h-4 w-4" />
+                                        </Button>
+                                        <AlertDialog>
+                                          <AlertDialogTrigger asChild>
+                                            <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive hover:text-destructive">
+                                              <Trash2 className="h-4 w-4" />
+                                            </Button>
+                                          </AlertDialogTrigger>
+                                          <AlertDialogContent>
+                                            <AlertDialogHeader>
+                                              <AlertDialogTitle>Excluir anúncio?</AlertDialogTitle>
+                                              <AlertDialogDescription>
+                                                Tem certeza que deseja excluir "{a.nome_anuncio}"? Esta ação não pode ser desfeita.
+                                              </AlertDialogDescription>
+                                            </AlertDialogHeader>
+                                            <AlertDialogFooter>
+                                              <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                                              <AlertDialogAction onClick={() => deleteAnuncio(a.id)}>Excluir</AlertDialogAction>
+                                            </AlertDialogFooter>
+                                          </AlertDialogContent>
+                                        </AlertDialog>
+                                      </span>
                                     </div>
                                   </td>
                                 </tr>

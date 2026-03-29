@@ -18,7 +18,7 @@ import { create } from 'domain';
  */
 export interface Anuncio {
   id: string;
-  user_id: string; // ID do usuário que criou o anúncio
+  user_id: string;
   nome_anuncio: string;
   custo: number;
   valor_venda: number;
@@ -29,6 +29,7 @@ export interface Anuncio {
   custo_var: number;
   criado_em: string;
   atualizado_em: string;
+  marketplace: string
 }
 
 /**
