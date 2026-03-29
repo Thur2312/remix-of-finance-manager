@@ -592,7 +592,7 @@ function CalculadoraPrecificacaoContent() {
 
               {/* Linha 5 */}
               <div className="space-y-1.5">
-                <Label className="text-sm font-medium">Preço do Anúncio</Label>
+                <Label className="text-sm font-medium">Preço Cheio</Label>
                 <div className="h-11 flex items-center justify-center px-3 bg-primary/10 border border-primary/30 rounded-md">
                   <span className="text-lg font-semibold text-primary">
                     {formatCurrency(results.precoPromocional)}
