@@ -26,6 +26,7 @@ import { Trash2, Pencil, } from "lucide-react";
 import { parse } from "path";
 import { Select } from "@radix-ui/react-select";
 import { SelectContent, SelectValue, SelectItem, SelectTrigger } from "@/components/ui/select";
+import { ResultsCharts } from "@/components/charts/ResultsCharts";
 
 const formatCurrency = (value: number): string => {
   return value.toLocaleString("pt-BR", {
@@ -90,6 +91,7 @@ function CalculadoraPrecificacaoContent() {
 
   // Meta
   const [margemDesejada, setMargemDesejada] = useState<number>(30);
+  const [margemDeseja, setMargemDeseja] = useState<number>(30);
 
   // Papel do Produto na Operação
   const [papelProduto, setPapelProduto] = useState<PapelProduto>('novo');
@@ -210,11 +212,12 @@ function CalculadoraPrecificacaoContent() {
     const valorImpostos = precoCheio * (_aliquotaImposto / 100);
     const valorLiquidoRecebido = precoCheio - valorComissaoPlataforma - _taxaFixa - valorImpostos - valorComissaoAfiliados;
     const lucro = valorLiquidoRecebido - custoTotal;
-    const margemReal = precoCheio > 0 ? lucro / precoCheio * 100 : 0;
+    const margemReal = _precoPromocional > 0 ? lucro / _precoPromocional * 100 : 0;
     const viavel = lucro >= 0;
     const margemAtingida = margemReal >= margemDesejada;
     const precoIdeal = denominador > 0 ? (custoTotal + _taxaFixa) / denominador : 0;
     const margemInviavel = denominador <= 0;
+    const margemDeseja = (_precoPromocional / lucro) * 100;
 
     
 
@@ -243,12 +246,13 @@ function CalculadoraPrecificacaoContent() {
       viavel,
       margemAtingida,
       precoIdeal,
-      margemInviavel
+      margemInviavel,
+      margemDeseja,
     };
   }, [
     custoProduto, precoPromocional, desconto, comissaoPlataforma, taxaFixa,
     aliquotaImposto, comissaoAfiliados, embalagemEtiqueta, margemDesejada,
-    totalRecurringCosts, volumeMensal, volumeEsperadoProduto, percentualAbsorcao
+    totalRecurringCosts, volumeMensal, volumeEsperadoProduto, percentualAbsorcao, margemDeseja,
   ]);
 
   // Calculo do Break-even e Panaroma 
@@ -683,21 +687,9 @@ const { anuncios, isLoading: isLoadingAnuncios, addAnuncio, updateAnuncio, delet
               <div className="space-y-1.5">
                 <Label className="text-sm font-medium">Meta de Margem (%)</Label>
                 <div className="flex items-center gap-2">
-                  <Slider
-                    value={[margemDesejada]}
-                    onValueChange={([val]) => setMargemDesejada(val)}
-                    min={0}
-                    max={100}
-                    step={1}
-                    className="flex-1"
-                  />
-                  <Input
-                    type="text"
-                    inputMode="numeric"
-                    value={margemDesejada}
-                    onChange={e => setMargemDesejada(parseNumericInputSafe(e.target.value, { min: 0, max: 100 }))}
-                    className="w-16 h-11 text-center"
-                  />
+                  <span className='text-lg font-semibold text-primary'>
+                  {formatPercent(results.margemDeseja)}
+                  </span>
                 </div>
               </div>
 
