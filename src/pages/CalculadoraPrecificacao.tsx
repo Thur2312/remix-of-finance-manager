@@ -50,7 +50,7 @@ function CalculadoraPrecificacaoContent() {
   const [embalagemEtiqueta, setEmbalagemEtiqueta] = useState<string>("");
 
   // Preço do Anúncio
-  const [precoCheio, setPrecoCheio] = useState<string>("");
+  const [precoPromocional, setPrecoPromocional] = useState<string>("");
   const [desconto, setDesconto] = useState<string>("");
 
   // Taxas e Comissões
@@ -112,7 +112,7 @@ function CalculadoraPrecificacaoContent() {
     // Converte strings para número no momento do cálculo
     const _custoProduto = parseInput(custoProduto);
     const _embalagemEtiqueta = parseInput(embalagemEtiqueta);
-    const _precoCheio = parseInput(precoCheio);
+    const _precoPromocional = parseInput(precoPromocional);
     const _desconto = parseInput(desconto);
     const _comissaoPlataforma = parseInput(comissaoPlataforma);
     const _taxaFixa = parseInput(taxaFixa);
@@ -120,7 +120,7 @@ function CalculadoraPrecificacaoContent() {
     const _comissaoAfiliados = parseInput(comissaoAfiliados);
 
     // Preço Promocional (após desconto)
-    const precoPromocional = _precoCheio * (1 - _desconto / 100);
+    const precoCheio = _precoPromocional / (1 - _desconto /100  );
 
     // =========================================
     // CUSTOS VARIÁVEIS (por unidade) - SEM CUSTO FIXO
@@ -128,10 +128,10 @@ function CalculadoraPrecificacaoContent() {
     const custosVariaveis = {
       produto: _custoProduto,
       embalagem: _embalagemEtiqueta,
-      comissaoPlataforma: precoPromocional * (_comissaoPlataforma / 100),
+      comissaoPlataforma: precoCheio * (_comissaoPlataforma / 100),
       taxaFixaVenda: _taxaFixa,
-      impostos: precoPromocional * (_aliquotaImposto / 100),
-      comissaoAfiliados: precoPromocional * (_comissaoAfiliados / 100)
+      impostos: precoCheio * (_aliquotaImposto / 100),
+      comissaoAfiliados: precoCheio * (_comissaoAfiliados / 100)
     };
     const totalCustosVariaveis =
       custosVariaveis.produto +
@@ -144,8 +144,8 @@ function CalculadoraPrecificacaoContent() {
     // =========================================
     // MARGEM DE CONTRIBUIÇÃO (SEM custo fixo)
     // =========================================
-    const margemContribuicao = precoPromocional - totalCustosVariaveis;
-    const margemContribuicaoPercent = precoPromocional > 0 ? margemContribuicao / precoPromocional * 100 : 0;
+    const margemContribuicao = precoCheio - totalCustosVariaveis;
+    const margemContribuicaoPercent = precoCheio > 0 ? margemContribuicao / precoCheio * 100 : 0;
     const produtoViavel = margemContribuicao > 0;
 
     // =========================================
@@ -158,7 +158,7 @@ function CalculadoraPrecificacaoContent() {
     // LUCRO LÍQUIDO (com absorção parcial)
     // =========================================
     const lucroLiquido = margemContribuicao - custoFixoPorItem;
-    const margemRealAbsorcao = precoPromocional > 0 ? lucroLiquido / precoPromocional * 100 : 0;
+    const margemRealAbsorcao = precoCheio > 0 ? lucroLiquido / precoCheio * 100 : 0;
 
     // =========================================
     // CENÁRIO PORTFÓLIO MADURO (100% do fixo)
@@ -176,12 +176,12 @@ function CalculadoraPrecificacaoContent() {
     // =========================================
     const custoFixoDiluido = totalRecurringCosts > 0 ? totalRecurringCosts / volume : 0;
     const custoTotal = _custoProduto + _embalagemEtiqueta + custoFixoDiluido;
-    const valorComissaoPlataforma = precoPromocional * (_comissaoPlataforma / 100);
-    const valorComissaoAfiliados = precoPromocional * (_comissaoAfiliados / 100);
-    const valorImpostos = precoPromocional * (_aliquotaImposto / 100);
-    const valorLiquidoRecebido = precoPromocional - valorComissaoPlataforma - _taxaFixa - valorImpostos - valorComissaoAfiliados;
+    const valorComissaoPlataforma = precoCheio * (_comissaoPlataforma / 100);
+    const valorComissaoAfiliados = precoCheio * (_comissaoAfiliados / 100);
+    const valorImpostos = precoCheio * (_aliquotaImposto / 100);
+    const valorLiquidoRecebido = precoCheio - valorComissaoPlataforma - _taxaFixa - valorImpostos - valorComissaoAfiliados;
     const lucro = valorLiquidoRecebido - custoTotal;
-    const margemReal = precoPromocional > 0 ? lucro / precoPromocional * 100 : 0;
+    const margemReal = precoCheio > 0 ? lucro / precoCheio * 100 : 0;
     const viavel = lucro >= 0;
     const margemAtingida = margemReal >= margemDesejada;
     const precoIdeal = denominador > 0 ? (custoTotal + _taxaFixa) / denominador : 0;
@@ -199,7 +199,7 @@ function CalculadoraPrecificacaoContent() {
       margemRealAbsorcao,
       custoFixo100Percent,
       precoNecessario100Percent,
-      precoPromocional,
+      precoCheio,
       custoTotal,
       custoFixoDiluido,
       valorComissaoPlataforma,
@@ -215,7 +215,7 @@ function CalculadoraPrecificacaoContent() {
       margemInviavel
     };
   }, [
-    custoProduto, precoCheio, desconto, comissaoPlataforma, taxaFixa,
+    custoProduto, precoPromocional, desconto, comissaoPlataforma, taxaFixa,
     aliquotaImposto, comissaoAfiliados, embalagemEtiqueta, margemDesejada,
     totalRecurringCosts, volumeMensal, volumeEsperadoProduto, percentualAbsorcao
   ]);
@@ -239,7 +239,7 @@ function CalculadoraPrecificacaoContent() {
   const alertas = useMemo(() => {
     const lista: { tipo: 'critico' | 'alerta' | 'aviso' | 'info'; mensagem: string }[] = [];
 
-    if (results.margemContribuicao <= 0 && results.precoPromocional > 0) {
+    if (results.margemContribuicao <= 0 && results.precoCheio > 0) {
       lista.push({
         tipo: 'critico',
         mensagem: 'Produto INVIÁVEL: não cobre nem os custos variáveis! Revise o preço ou os custos.'
@@ -251,13 +251,13 @@ function CalculadoraPrecificacaoContent() {
         mensagem: 'Atenção: produto novo não deve absorver mais de 20% dos custos fixos. Considere reduzir.'
       });
     }
-    if (results.custoFixoPorItem > results.precoPromocional * 0.3 && results.precoPromocional > 0) {
+    if (results.custoFixoPorItem > results.precoCheio * 0.3 && results.precoCheio > 0) {
       lista.push({
         tipo: 'aviso',
         mensagem: 'O custo fixo alocado representa mais de 30% do preço de venda. Avalie o volume esperado.'
       });
     }
-    if (results.lucroLiquido < 0 && results.margemContribuicao > 0 && results.precoPromocional > 0) {
+    if (results.lucroLiquido < 0 && results.margemContribuicao > 0 && results.precoCheio > 0) {
       lista.push({
         tipo: 'info',
         mensagem: 'O produto contribui para os custos fixos, mas não gera lucro líquido no cenário atual.'
@@ -539,8 +539,8 @@ function CalculadoraPrecificacaoContent() {
                   id="precoCheio"
                   type="text"
                   inputMode="decimal"
-                  value={precoCheio}
-                  onChange={e => handleDecimalInput(e.target.value, setPrecoCheio)}
+                  value={precoPromocional}
+                  onChange={e => handleDecimalInput(e.target.value, setPrecoPromocional)}
                   placeholder="0,00"
                   className="h-11"
                 />
@@ -595,7 +595,7 @@ function CalculadoraPrecificacaoContent() {
                 <Label className="text-sm font-medium">Preço Cheio</Label>
                 <div className="h-11 flex items-center justify-center px-3 bg-primary/10 border border-primary/30 rounded-md">
                   <span className="text-lg font-semibold text-primary">
-                    {formatCurrency(results.precoPromocional)}
+                    {formatCurrency(results.precoCheio)}
                   </span>
                 </div>
               </div>
@@ -683,7 +683,7 @@ function CalculadoraPrecificacaoContent() {
                 </div>
                 <div className="flex justify-between">
                   <span className="text-muted-foreground">Preço de Venda:</span>
-                  <span className="font-medium">{formatCurrency(results.precoPromocional)}</span>
+                  <span className="font-medium">{formatCurrency(results.precoCheio)}</span>
                 </div>
               </div>
               <div className="border-t border-border pt-4">
