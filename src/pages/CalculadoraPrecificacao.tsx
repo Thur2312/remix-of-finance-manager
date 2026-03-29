@@ -212,7 +212,7 @@ function CalculadoraPrecificacaoContent() {
     const precoIdeal = denominador > 0 ? (custoTotal + _taxaFixa) / denominador : 0;
     const margemInviavel = denominador <= 0;
 
-    const equilibrio = 
+    
 
     return {
       custosVariaveis,
