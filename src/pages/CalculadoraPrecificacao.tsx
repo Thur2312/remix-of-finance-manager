@@ -137,123 +137,154 @@ function CalculadoraPrecificacaoContent() {
   }, [papelProduto, absorpcaoManual]);
 
   const results = useMemo(() => {
-    const volume = volumeMensal > 0 ? volumeMensal : 1;
-    const volumeProduto = volumeEsperadoProduto > 0 ? volumeEsperadoProduto : 1;
+  // =========================
+  // INPUTS
+  // =========================
+  const _custoProduto = parseInput(custoProduto);
+  const _custoVariavel = parseInput(embalagemEtiqueta);
+  const _precoPromocional = parseInput(precoPromocional);
+  const _desconto = parseInput(desconto);
+  const _comissaoPlataforma = parseInput(comissaoPlataforma);
+  const _taxaFixa = parseInput(taxaFixa);
+  const _aliquotaImposto = parseInput(aliquotaImposto);
+  const _comissaoAfiliados = parseInput(comissaoAfiliados);
 
-    // Converte strings para número no momento do cálculo
-    const _custoProduto = parseInput(custoProduto);
-    const _embalagemEtiqueta = parseInput(embalagemEtiqueta);
-    const _precoPromocional = parseInput(precoPromocional);
-    const _desconto = parseInput(desconto);
-    const _comissaoPlataforma = parseInput(comissaoPlataforma);
-    const _taxaFixa = parseInput(taxaFixa);
-    const _aliquotaImposto = parseInput(aliquotaImposto);
-    const _comissaoAfiliados = parseInput(comissaoAfiliados);
+  const volume = volumeMensal > 0 ? volumeMensal : 1;
+  const volumeProduto = volumeEsperadoProduto > 0 ? volumeEsperadoProduto : 1;
 
-    // Preço Promocional (após desconto)
-    const precoCheio = _precoPromocional / (1 - _desconto /100  );
+  // =========================
+  // PREÇO
+  // =========================
+  const precoCheio = _desconto > 0
+    ? _precoPromocional / (1 - _desconto / 100)
+    : _precoPromocional;
 
-    // =========================================
-    // CUSTOS VARIÁVEIS (por unidade) - SEM CUSTO FIXO
-    // =========================================
-    const custosVariaveis = {
+  // =========================
+  // CUSTOS VARIÁVEIS (BASE = PREÇO PROMOCIONAL)
+  // =========================
+  const comissao = _precoPromocional * (_comissaoPlataforma / 100);
+  const imposto = _precoPromocional * (_aliquotaImposto / 100);
+  const afiliados = _precoPromocional * (_comissaoAfiliados / 100);
+
+  const totalCustosVariaveis =
+    _custoProduto +
+    _custoVariavel +
+    comissao +
+    _taxaFixa +
+    imposto +
+    afiliados;
+
+  // =========================
+  // LUCRO (IGUAL PLANILHA)
+  // =========================
+  const lucro = _precoPromocional - totalCustosVariaveis;
+
+  const margemReal = _precoPromocional > 0
+    ? (lucro / _precoPromocional) * 100
+    : 0;
+
+  const produtoViavel = lucro > 0;
+
+  // =========================
+  // MARGEM DE CONTRIBUIÇÃO
+  // =========================
+  const margemContribuicao = lucro;
+  const margemContribuicaoPercent = margemReal;
+
+  // =========================
+  // CUSTO FIXO
+  // =========================
+  const custoFixoDiluido = totalRecurringCosts > 0
+    ? totalRecurringCosts / volume
+    : 0;
+
+  const custoFixoAlocado = totalRecurringCosts * (percentualAbsorcao / 100);
+  const custoFixoPorItem = custoFixoAlocado / volumeProduto;
+
+  // =========================
+  // LUCRO COM CUSTO FIXO
+  // =========================
+  const lucroLiquido = lucro - custoFixoPorItem;
+
+  const margemRealAbsorcao = _precoPromocional > 0
+    ? (lucroLiquido / _precoPromocional) * 100
+    : 0;
+
+  // =========================
+  // CENÁRIO 100%
+  // =========================
+  const custoFixo100Percent = totalRecurringCosts / volumeProduto;
+
+  const taxasPercentuais =
+    (_comissaoPlataforma +
+      _aliquotaImposto +
+      _comissaoAfiliados +
+      margemDesejada) / 100;
+
+  const denominador = 1 - taxasPercentuais;
+
+  const precoNecessario100Percent = denominador > 0
+    ? (_custoProduto + _custoVariavel + _taxaFixa + custoFixo100Percent) / denominador
+    : 0;
+
+  // =========================
+  // PREÇO IDEAL
+  // =========================
+  const precoIdeal = denominador > 0
+    ? (_custoProduto + _custoVariavel + _taxaFixa) / denominador
+    : 0;
+
+  const margemInviavel = denominador <= 0;
+
+  return {
+    precoCheio,
+
+    custosVariaveis: {
       produto: _custoProduto,
-      embalagem: _embalagemEtiqueta,
-      comissaoPlataforma: precoCheio * (_comissaoPlataforma / 100),
-      taxaFixaVenda: _taxaFixa,
-      impostos: precoCheio * (_aliquotaImposto / 100),
-      comissaoAfiliados: precoCheio * (_comissaoAfiliados / 100)
-    };
-    const totalCustosVariaveis =
-      custosVariaveis.produto +
-      custosVariaveis.embalagem +
-      custosVariaveis.comissaoPlataforma +
-      custosVariaveis.taxaFixaVenda +
-      custosVariaveis.impostos +
-      custosVariaveis.comissaoAfiliados;
+      variavel: _custoVariavel,
+      comissao,
+      imposto,
+      afiliados,
+      taxaFixa: _taxaFixa
+    },
 
-    // =========================================
-    // MARGEM DE CONTRIBUIÇÃO (SEM custo fixo)
-    // =========================================
-    const margemContribuicao = precoCheio - totalCustosVariaveis;
-    const margemContribuicaoPercent = precoCheio > 0 ? margemContribuicao / precoCheio * 100 : 0;
-    const produtoViavel = margemContribuicao > 0;
+    totalCustosVariaveis,
 
-    // =========================================
-    // ABSORÇÃO DO CUSTO FIXO (CENÁRIO PARCIAL)
-    // =========================================
-    const custoFixoAlocado = totalRecurringCosts * (percentualAbsorcao / 100);
-    const custoFixoPorItem = volumeProduto > 0 ? custoFixoAlocado / volumeProduto : 0;
+    lucro,
+    margemReal,
+    produtoViavel,
 
-    // =========================================
-    // LUCRO LÍQUIDO (com absorção parcial)
-    // =========================================
-    const lucroLiquido = margemContribuicao - custoFixoPorItem;
-    const margemRealAbsorcao = precoCheio > 0 ? lucroLiquido / precoCheio * 100 : 0;
+    margemContribuicao,
+    margemContribuicaoPercent,
 
-    // =========================================
-    // CENÁRIO PORTFÓLIO MADURO (100% do fixo)
-    // =========================================
-    const custoFixo100Percent = volumeProduto > 0 ? totalRecurringCosts / volumeProduto : 0;
+    custoFixoDiluido,
+    custoFixoAlocado,
+    custoFixoPorItem,
 
-    const taxasTotais = (_comissaoPlataforma + _aliquotaImposto + _comissaoAfiliados + margemDesejada) / 100;
-    const denominador = 1 - taxasTotais;
-    const precoNecessario100Percent = denominador > 0
-      ? (totalCustosVariaveis + custoFixo100Percent + _taxaFixa) / denominador
-      : 0;
+    lucroLiquido,
+    margemRealAbsorcao,
 
-    // =========================================
-    // CÁLCULOS LEGADOS (mantendo compatibilidade)
-    // =========================================
-    const custoFixoDiluido = totalRecurringCosts > 0 ? totalRecurringCosts / volume : 0;
-    const custoTotal = _custoProduto + _embalagemEtiqueta + custoFixoDiluido;
-    const valorComissaoPlataforma = precoCheio * (_comissaoPlataforma / 100);
-    const valorComissaoAfiliados = precoCheio * (_comissaoAfiliados / 100);
-    const valorImpostos = precoCheio * (_aliquotaImposto / 100);
-    const valorLiquidoRecebido = precoCheio - valorComissaoPlataforma - _taxaFixa - valorImpostos - valorComissaoAfiliados;
-    const lucro = valorLiquidoRecebido - custoTotal;
-    const margemReal = _precoPromocional > 0 ? lucro / _precoPromocional * 100 : 0;
-    const viavel = lucro >= 0;
-    const margemAtingida = margemReal >= margemDesejada;
-    const precoIdeal = denominador > 0 ? (custoTotal + _taxaFixa) / denominador : 0;
-    const margemInviavel = denominador <= 0;
-    const margemDeseja = (_precoPromocional / lucro) * 100;
+    custoFixo100Percent,
+    precoNecessario100Percent,
 
-    
-
-    return {
-      custosVariaveis,
-      totalCustosVariaveis,
-      margemContribuicao,
-      margemContribuicaoPercent,
-      produtoViavel,
-      custoFixoAlocado,
-      custoFixoPorItem,
-      lucroLiquido,
-      margemRealAbsorcao,
-      custoFixo100Percent,
-      precoNecessario100Percent,
-      precoCheio,
-      custoTotal,
-      custoFixoDiluido,
-      valorComissaoPlataforma,
-      valorComissaoAfiliados,
-      taxaFixa: _taxaFixa,
-      valorImpostos,
-      valorLiquidoRecebido,
-      lucro,
-      margemReal,
-      viavel,
-      margemAtingida,
-      precoIdeal,
-      margemInviavel,
-      margemDeseja,
-    };
-  }, [
-    custoProduto, precoPromocional, desconto, comissaoPlataforma, taxaFixa,
-    aliquotaImposto, comissaoAfiliados, embalagemEtiqueta, margemDesejada,
-    totalRecurringCosts, volumeMensal, volumeEsperadoProduto, percentualAbsorcao, margemDeseja,
-  ]);
+    precoIdeal,
+    margemInviavel
+  };
+}, [
+  custoProduto,
+  embalagemEtiqueta,
+  precoPromocional,
+  desconto,
+  comissaoPlataforma,
+  taxaFixa,
+  aliquotaImposto,
+  comissaoAfiliados,
+  margemDesejada,
+  totalRecurringCosts,
+  volumeMensal,
+  volumeEsperadoProduto,
+  percentualAbsorcao
+]);
 
   // Calculo do Break-even e Panaroma 
   const panorama = useMemo(() => {
@@ -688,7 +719,7 @@ const { anuncios, isLoading: isLoadingAnuncios, addAnuncio, updateAnuncio, delet
                 <Label className="text-sm font-medium">Meta de Margem (%)</Label>
                 <div className="flex items-center gap-2">
                   <span className='text-lg font-semibold text-primary'>
-                  {formatPercent(results.margemDeseja)}
+                  {formatPercent(results.margemReal)}
                   </span>
                 </div>
               </div>
@@ -965,24 +996,24 @@ const { anuncios, isLoading: isLoadingAnuncios, addAnuncio, updateAnuncio, delet
               <span className="text-lg font-semibold">{formatCurrency(results.custosVariaveis.produto)}</span>
             </div>
             <div className="flex items-center justify-between p-4 bg-muted/30 rounded-lg">
-              <span className="text-sm font-medium">Embalagem + Etiqueta</span>
-              <span className="text-lg font-semibold">{formatCurrency(results.custosVariaveis.embalagem)}</span>
+              <span className="text-sm font-medium">Custos Variáveis</span>
+              <span className="text-lg font-semibold">{formatCurrency(results.custosVariaveis.variavel)}</span>
             </div>
             <div className="flex items-center justify-between p-4 bg-muted/30 rounded-lg">
               <span className="text-sm font-medium">Comissão Plataforma ({parseInput(comissaoPlataforma)}%)</span>
-              <span className="text-lg font-semibold text-destructive">- {formatCurrency(results.custosVariaveis.comissaoPlataforma)}</span>
+              <span className="text-lg font-semibold text-destructive">- {formatCurrency(results.custosVariaveis.comissao)}</span>
             </div>
             <div className="flex items-center justify-between p-4 bg-muted/30 rounded-lg">
               <span className="text-sm font-medium">Taxa Fixa por Venda</span>
-              <span className="text-lg font-semibold text-destructive">- {formatCurrency(results.custosVariaveis.taxaFixaVenda)}</span>
+              <span className="text-lg font-semibold text-destructive">- {formatCurrency(results.custosVariaveis.taxaFixa)}</span>
             </div>
             <div className="flex items-center justify-between p-4 bg-muted/30 rounded-lg">
               <span className="text-sm font-medium">Impostos ({parseInput(aliquotaImposto)}%)</span>
-              <span className="text-lg font-semibold text-destructive">- {formatCurrency(results.custosVariaveis.impostos)}</span>
+              <span className="text-lg font-semibold text-destructive">- {formatCurrency(results.custosVariaveis.imposto)}</span>
             </div>
             {parseInput(comissaoAfiliados) > 0 && <div className="flex items-center justify-between p-4 bg-muted/30 rounded-lg">
                 <span className="text-sm font-medium">Comissão Afiliados ({parseInput(comissaoAfiliados)}%)</span>
-                <span className="text-lg font-semibold text-destructive">- {formatCurrency(results.custosVariaveis.comissaoAfiliados)}</span>
+                <span className="text-lg font-semibold text-destructive">- {formatCurrency(results.custosVariaveis.comissao)}</span>
               </div>}
             <div className="flex items-center justify-between p-4 bg-primary/10 rounded-lg md:col-span-2">
               <span className="text-sm font-bold">Total Custos Variáveis</span>
