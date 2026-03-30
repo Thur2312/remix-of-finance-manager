@@ -7,64 +7,76 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { Textarea } from '@/components/ui/textarea';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from '@/components/ui/dialog';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useFixedCosts, COST_CATEGORIES, FixedCost } from '@/hooks/useFixedCosts';
+import { useCustomCategories } from '@/hooks/useCustomCategories';
+import { CategorySelect } from '@/components/CategorySelect';
 import { parseCurrencyInput, parseNumericInputSafe } from '@/lib/numeric-validation';
 import { toast } from 'sonner';
-import { DollarSign, Package, ShoppingBag, Percent, Plus, Pencil, Trash2, RefreshCw, Lightbulb, Building2, Laptop, Megaphone, CreditCard, Receipt, Truck, FolderOpen } from 'lucide-react';
+import {
+  DollarSign, Plus, Pencil, Trash2, RefreshCw,
+  Building2, Laptop, Megaphone, CreditCard, Receipt,
+  Truck, FolderOpen, Package, ShoppingBag, Users, Wrench, Globe,
+} from 'lucide-react';
 
+const formatCurrency = (value: number) =>
+  new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value);
 
-const formatCurrency = (value: number) => {
-  return new Intl.NumberFormat('pt-BR', {
-    style: 'currency',
-    currency: 'BRL'
-  }).format(value);
-};
-const getCategoryIcon = (category: string) => {
-  const iconMap: Record<string, React.ReactNode> = {
-    "Estrutura Administrativa": <Building2 className="h-4 w-4" />,
-    "Infraestrutura & Operação": <Building2 className="h-4 w-4" />,
-    "Tecnologia & Ferramentas": <Laptop className="h-4 w-4" />,
-    "Marketing Fixo": <Megaphone className="h-4 w-4" />,
-    "Financeiro & Bancário": <CreditCard className="h-4 w-4" />,
-    "Tributação Fixa": <Receipt className="h-4 w-4" />,
-    "Logística Estrutural": <Truck className="h-4 w-4" />,
-    "Despesas Recorrentes Diversas": <FolderOpen className="h-4 w-4" />
-  };
-  return iconMap[category] || <FolderOpen className="h-4 w-4" />;
+// ── Ícones das categorias padrão + customizadas ──────────────────────────────
+const DEFAULT_ICON_MAP: Record<string, React.ReactNode> = {
+  'Estrutura Administrativa': <Building2 className="h-4 w-4" />,
+  'Infraestrutura & Operação': <Building2 className="h-4 w-4" />,
+  'Tecnologia & Ferramentas': <Laptop className="h-4 w-4" />,
+  'Marketing Fixo': <Megaphone className="h-4 w-4" />,
+  'Financeiro & Bancário': <CreditCard className="h-4 w-4" />,
+  'Tributação Fixa': <Receipt className="h-4 w-4" />,
+  'Logística Estrutural': <Truck className="h-4 w-4" />,
+  'Despesas Recorrentes Diversas': <FolderOpen className="h-4 w-4" />,
 };
 
+const CUSTOM_ICON_MAP: Record<string, React.ReactNode> = {
+  FolderOpen: <FolderOpen className="h-4 w-4" />,
+  Building2: <Building2 className="h-4 w-4" />,
+  Laptop: <Laptop className="h-4 w-4" />,
+  Megaphone: <Megaphone className="h-4 w-4" />,
+  CreditCard: <CreditCard className="h-4 w-4" />,
+  Receipt: <Receipt className="h-4 w-4" />,
+  Truck: <Truck className="h-4 w-4" />,
+  Package: <Package className="h-4 w-4" />,
+  ShoppingBag: <ShoppingBag className="h-4 w-4" />,
+  Users: <Users className="h-4 w-4" />,
+  Wrench: <Wrench className="h-4 w-4" />,
+  Globe: <Globe className="h-4 w-4" />,
+};
 
-
+// ── Conteúdo principal ───────────────────────────────────────────────────────
 function CadastroCustosContent() {
   const {
     costs,
-    settings,
     isLoading,
     addCost,
     updateCost,
     deleteCost,
-    updateSettings,
     totalRecurringCosts,
-    costPerOrder,
-    costPerProduct,
-    costPercentage,
-    costsByCategory
+    costsByCategory,
   } = useFixedCosts();
+
+  const { customCategories } = useCustomCategories();
+
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [editingCost, setEditingCost] = useState<FixedCost | null>(null);
 
-  // Form state
+  // Form
   const [formCategory, setFormCategory] = useState('');
   const [formName, setFormName] = useState('');
   const [formAmount, setFormAmount] = useState('');
   const [formIsRecurring, setFormIsRecurring] = useState(true);
   const [formNotes, setFormNotes] = useState('');
+
   const resetForm = () => {
     setFormCategory('');
     setFormName('');
@@ -73,6 +85,7 @@ function CadastroCustosContent() {
     setFormNotes('');
     setEditingCost(null);
   };
+
   const openEditDialog = (cost: FixedCost) => {
     setEditingCost(cost);
     setFormCategory(cost.category);
@@ -82,6 +95,7 @@ function CadastroCustosContent() {
     setFormNotes(cost.notes || '');
     setIsAddDialogOpen(true);
   };
+
   const handleSubmit = async () => {
     const parseResult = parseCurrencyInput(formAmount);
     if (!parseResult.isValid) {
@@ -89,138 +103,161 @@ function CadastroCustosContent() {
       return;
     }
     if (!formCategory || !formName) return;
-    const amount = parseResult.value;
+
     const costData = {
       category: formCategory,
       name: formName.trim(),
-      amount,
+      amount: parseResult.value,
       is_recurring: formIsRecurring,
-      notes: formNotes.trim() || null
+      notes: formNotes.trim() || null,
     };
-    let success: boolean;
-    if (editingCost) {
-      success = await updateCost(editingCost.id, costData);
-    } else {
-      success = await addCost(costData);
-    }
+
+    const success = editingCost
+      ? await updateCost(editingCost.id, costData)
+      : await addCost(costData);
+
     if (success) {
       setIsAddDialogOpen(false);
       resetForm();
     }
   };
-  const handleSettingsChange = (field: 'monthly_orders' | 'monthly_products_sold' | 'monthly_revenue', value: string) => {
-    const numValue = parseNumericInputSafe(value, { min: 0, max: 9999999 });
-    updateSettings({
-      [field]: numValue
-    });
+
+  // Resolve ícone de uma categoria (padrão ou customizada)
+  const getCategoryIcon = (categoryName: string) => {
+    if (DEFAULT_ICON_MAP[categoryName]) return DEFAULT_ICON_MAP[categoryName];
+    const custom = customCategories.find(c => c.name === categoryName);
+    if (custom) return CUSTOM_ICON_MAP[custom.icon] ?? <FolderOpen className="h-4 w-4" />;
+    return <FolderOpen className="h-4 w-4" />;
   };
 
- 
+  // Todas as categorias que têm custos (padrão + customizadas)
+  const defaultCategoryNames = COST_CATEGORIES.map(c => c.name);
+  const customCategoryNames = customCategories.map(c => c.name);
+  const allCategoryNames = [...defaultCategoryNames, ...customCategoryNames];
+  const activeCategoryNames = allCategoryNames.filter(
+    name => (costsByCategory[name]?.length ?? 0) > 0
+  );
+
+  // ── Loading ─────────────────────────────────────────────────────────────────
   if (isLoading) {
     return (
       <AppLayout>
         <div className="container mx-auto px-4 py-6 space-y-6">
           <Skeleton className="h-10 w-64" />
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-            {[1, 2, 3, 4].map(i => <Skeleton key={i} className="h-32" />)}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {[1, 2].map(i => <Skeleton key={i} className="h-32" />)}
           </div>
           <Skeleton className="h-64" />
         </div>
       </AppLayout>
     );
   }
- 
 
-  if (isLoading) {
-    return <AppLayout>
-        <div className="container mx-auto px-4 py-6 space-y-6">
-          <Skeleton className="h-10 w-64" />
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-            {[1, 2, 3, 4].map(i => <Skeleton key={i} className="h-32" />)}
-          </div>
-          <Skeleton className="h-64" />
-        </div>
-      </AppLayout>;
-  }
-  return <AppLayout>
+  return (
+    <AppLayout>
       <div className="container mx-auto px-4 py-6 space-y-6">
-        {/* Header */}
+
+        {/* ── Header ─────────────────────────────────────────────────────────── */}
         <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
           <div>
             <h1 className="text-2xl font-bold text-foreground">Cadastro de Custos Fixos</h1>
             <p className="text-muted-foreground">Gerencie os custos fixos mensais da sua operação</p>
           </div>
-          <div className="flex items-center gap-2"></div>
-          
-          <Dialog open={isAddDialogOpen} onOpenChange={open => {
-          setIsAddDialogOpen(open);
-          if (!open) resetForm();
-        }}>
-             
+
+          <Dialog
+            open={isAddDialogOpen}
+            onOpenChange={open => { setIsAddDialogOpen(open); if (!open) resetForm(); }}
+          >
             <DialogTrigger asChild>
               <Button>
                 <Plus className="h-4 w-4 mr-2" />
                 Adicionar Custo
               </Button>
             </DialogTrigger>
+
             <DialogContent className="max-w-md">
               <DialogHeader>
                 <DialogTitle>{editingCost ? 'Editar Custo' : 'Adicionar Custo Fixo'}</DialogTitle>
                 <DialogDescription>
-                  {editingCost ? 'Altere as informações do custo fixo' : 'Preencha as informações do novo custo fixo'}
+                  {editingCost
+                    ? 'Altere as informações do custo fixo'
+                    : 'Preencha as informações do novo custo fixo'}
                 </DialogDescription>
               </DialogHeader>
-              
+
               <div className="space-y-4 py-4">
+                {/* Categoria — usa o novo CategorySelect */}
                 <div className="space-y-2">
-                  <Label htmlFor="category">Categoria *</Label>
-                  <Select value={formCategory} onValueChange={setFormCategory}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Selecione uma categoria" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {COST_CATEGORIES.map(cat => <SelectItem key={cat.name} value={cat.name}>
-                          {cat.name}
-                        </SelectItem>)}
-                    </SelectContent>
-                  </Select>
-                  {formCategory && <p className="text-xs text-muted-foreground">
-                      Exemplos: {COST_CATEGORIES.find(c => c.name === formCategory)?.examples.slice(0, 3).join(', ')}
-                    </p>}
+                  <Label>Categoria *</Label>
+                  <CategorySelect value={formCategory} onChange={setFormCategory} />
+                  {formCategory && (() => {
+                    const def = COST_CATEGORIES.find(c => c.name === formCategory);
+                    return def ? (
+                      <p className="text-xs text-muted-foreground">
+                        Exemplos: {def.examples.slice(0, 3).join(', ')}
+                      </p>
+                    ) : null;
+                  })()}
                 </div>
 
                 <div className="space-y-2">
                   <Label htmlFor="name">Nome do Custo *</Label>
-                  <Input id="name" value={formName} onChange={e => setFormName(e.target.value)} placeholder="Ex: Pró-labore, ERP Bling..." maxLength={100} />
+                  <Input
+                    id="name"
+                    value={formName}
+                    onChange={e => setFormName(e.target.value)}
+                    placeholder="Ex: Pró-labore, ERP Bling..."
+                    maxLength={100}
+                  />
                 </div>
 
                 <div className="space-y-2">
                   <Label htmlFor="amount">Valor Mensal (R$) *</Label>
-                  <Input id="amount" type="text" inputMode="decimal" value={formAmount} onChange={e => setFormAmount(e.target.value)} placeholder="0,00" />
+                  <Input
+                    id="amount"
+                    type="text"
+                    inputMode="decimal"
+                    value={formAmount}
+                    onChange={e => setFormAmount(e.target.value)}
+                    placeholder="0,00"
+                  />
                 </div>
 
                 <div className="flex items-center justify-between">
                   <div className="space-y-0.5">
                     <Label htmlFor="recurring">Este custo ocorre todo mês?</Label>
-                    <p className="text-xs text-muted-foreground">Custos recorrentes são incluídos no cálculo automático</p>
+                    <p className="text-xs text-muted-foreground">
+                      Custos recorrentes são incluídos no cálculo automático
+                    </p>
                   </div>
-                  <Switch id="recurring" checked={formIsRecurring} onCheckedChange={setFormIsRecurring} />
+                  <Switch
+                    id="recurring"
+                    checked={formIsRecurring}
+                    onCheckedChange={setFormIsRecurring}
+                  />
                 </div>
 
                 <div className="space-y-2">
                   <Label htmlFor="notes">Observações (opcional)</Label>
-                  <Textarea id="notes" value={formNotes} onChange={e => setFormNotes(e.target.value)} placeholder="Notas adicionais sobre este custo..." rows={2} maxLength={500} />
+                  <Textarea
+                    id="notes"
+                    value={formNotes}
+                    onChange={e => setFormNotes(e.target.value)}
+                    placeholder="Notas adicionais sobre este custo..."
+                    rows={2}
+                    maxLength={500}
+                  />
                 </div>
               </div>
 
               <DialogFooter>
-                <Button variant="outline" onClick={() => {
-                setIsAddDialogOpen(false);
-                resetForm();
-              }}>
+                <Button variant="outline" onClick={() => { setIsAddDialogOpen(false); resetForm(); }}>
                   Cancelar
                 </Button>
-                <Button onClick={handleSubmit} disabled={!formCategory || !formName || !formAmount}>
+                <Button
+                  onClick={handleSubmit}
+                  disabled={!formCategory || !formName || !formAmount}
+                >
                   {editingCost ? 'Salvar Alterações' : 'Adicionar'}
                 </Button>
               </DialogFooter>
@@ -228,7 +265,7 @@ function CadastroCustosContent() {
           </Dialog>
         </div>
 
-        {/* Dashboard Cards */}
+        {/* ── Card de totais ──────────────────────────────────────────────────── */}
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
@@ -242,62 +279,94 @@ function CadastroCustosContent() {
               </p>
             </CardContent>
           </Card>
-
-          
         </div>
 
-        {/* Costs by Category */}
+        {/* ── Lista por categoria ─────────────────────────────────────────────── */}
         <Card>
           <CardHeader>
             <CardTitle className="text-lg">Custos Cadastrados</CardTitle>
             <CardDescription>
-              {costs.length} custo{costs.length !== 1 ? 's' : ''} cadastrado{costs.length !== 1 ? 's' : ''} em {Object.keys(costsByCategory).length} categoria{Object.keys(costsByCategory).length !== 1 ? 's' : ''}
+              {costs.length} custo{costs.length !== 1 ? 's' : ''} em{' '}
+              {activeCategoryNames.length} categoria{activeCategoryNames.length !== 1 ? 's' : ''}
             </CardDescription>
           </CardHeader>
           <CardContent>
-            {costs.length === 0 ? <div className="text-center py-8 text-muted-foreground">
+            {costs.length === 0 ? (
+              <div className="text-center py-8 text-muted-foreground">
                 <Receipt className="h-12 w-12 mx-auto mb-4 opacity-50" />
                 <p>Nenhum custo cadastrado ainda.</p>
                 <p className="text-sm">Clique em "Adicionar Custo" para começar.</p>
-              </div> : <Accordion type="multiple" className="w-full" defaultValue={Object.keys(costsByCategory)}>
-                {COST_CATEGORIES.filter(cat => costsByCategory[cat.name]?.length > 0).map(category => {
-              const categoryCosts = costsByCategory[category.name] || [];
-              const categoryTotal = categoryCosts.reduce((sum, c) => sum + Number(c.amount), 0);
-              return <AccordionItem key={category.name} value={category.name}>
+              </div>
+            ) : (
+              <Accordion type="multiple" className="w-full" defaultValue={activeCategoryNames}>
+                {activeCategoryNames.map(categoryName => {
+                  const categoryCosts = costsByCategory[categoryName] || [];
+                  const categoryTotal = categoryCosts.reduce((sum, c) => sum + Number(c.amount), 0);
+                  const isCustom = !defaultCategoryNames.includes(categoryName);
+
+                  return (
+                    <AccordionItem key={categoryName} value={categoryName}>
                       <AccordionTrigger className="hover:no-underline">
                         <div className="flex items-center justify-between w-full pr-4">
                           <div className="flex items-center gap-2">
-                            {getCategoryIcon(category.name)}
-                            <span>{category.name}</span>
-                            <Badge variant="secondary" className="ml-2">{categoryCosts.length}</Badge>
+                            <span className="text-muted-foreground">
+                              {getCategoryIcon(categoryName)}
+                            </span>
+                            <span>{categoryName}</span>
+                            {isCustom && (
+                              <Badge variant="outline" className="text-[10px] px-1.5 py-0 h-4 font-normal">
+                                Personalizada
+                              </Badge>
+                            )}
+                            <Badge variant="secondary" className="ml-1">
+                              {categoryCosts.length}
+                            </Badge>
                           </div>
-                          <span className="font-semibold text-primary">{formatCurrency(categoryTotal)}</span>
+                          <span className="font-semibold text-primary">
+                            {formatCurrency(categoryTotal)}
+                          </span>
                         </div>
                       </AccordionTrigger>
+
                       <AccordionContent>
                         <div className="space-y-2 pl-6">
-                          {categoryCosts.map(cost => <div key={cost.id} className="flex items-center justify-between py-2 px-3 bg-muted/50 rounded-md">
-                              <div className="flex items-center gap-3">
-                                <div>
-                                  <p className="font-medium text-sm">{cost.name}</p>
-                                  {cost.notes && <p className="text-xs text-muted-foreground">{cost.notes}</p>}
-                                </div>
+                          {categoryCosts.map(cost => (
+                            <div
+                              key={cost.id}
+                              className="flex items-center justify-between py-2 px-3 bg-muted/50 rounded-md"
+                            >
+                              <div>
+                                <p className="font-medium text-sm">{cost.name}</p>
+                                {cost.notes && (
+                                  <p className="text-xs text-muted-foreground">{cost.notes}</p>
+                                )}
                               </div>
                               <div className="flex items-center gap-3">
                                 <div className="text-right">
                                   <p className="font-semibold">{formatCurrency(cost.amount)}</p>
-                                  {cost.is_recurring && <Badge variant="outline" className="text-xs">
+                                  {cost.is_recurring && (
+                                    <Badge variant="outline" className="text-xs">
                                       <RefreshCw className="h-3 w-3 mr-1" />
                                       Recorrente
-                                    </Badge>}
+                                    </Badge>
+                                  )}
                                 </div>
                                 <div className="flex items-center gap-1">
-                                  <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => openEditDialog(cost)}>
+                                  <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    className="h-8 w-8"
+                                    onClick={() => openEditDialog(cost)}
+                                  >
                                     <Pencil className="h-4 w-4" />
                                   </Button>
                                   <AlertDialog>
                                     <AlertDialogTrigger asChild>
-                                      <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive hover:text-destructive">
+                                      <Button
+                                        variant="ghost"
+                                        size="icon"
+                                        className="h-8 w-8 text-destructive hover:text-destructive"
+                                      >
                                         <Trash2 className="h-4 w-4" />
                                       </Button>
                                     </AlertDialogTrigger>
@@ -318,16 +387,20 @@ function CadastroCustosContent() {
                                   </AlertDialog>
                                 </div>
                               </div>
-                            </div>)}
+                            </div>
+                          ))}
                         </div>
                       </AccordionContent>
-                    </AccordionItem>;
-            })}
-              </Accordion>}
+                    </AccordionItem>
+                  );
+                })}
+              </Accordion>
+            )}
           </CardContent>
         </Card>
       </div>
-    </AppLayout>;
+    </AppLayout>
+  );
 }
 
 export default function CadastroCustos() {

@@ -3,8 +3,13 @@ import { AppLayout } from '@/components/layout/AppLayout';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Link } from 'react-router-dom';
-import { Upload, Settings, FileSpreadsheet, Package, ArrowRight, TrendingUp, DollarSign, ShoppingCart, RefreshCw, Zap } from 'lucide-react';
+import {
+  Upload, Settings, FileSpreadsheet, Package, ArrowRight,
+  TrendingUp, DollarSign, ShoppingCart, RefreshCw, Zap,
+  Info, CheckCircle2, Clock, XCircle, HelpCircle,
+} from 'lucide-react';
 import { DashboardCharts } from '@/components/charts/DashboardCharts';
 import { InPageNav, shopeeNavTabs } from '@/components/layout/InPageNav';
 import { TopVariationsSection } from '@/components/charts/TopVariationsSection';
@@ -16,6 +21,99 @@ import { useShopeeSync } from '@/hooks/useShopeeSync';
 import { useIntegrations } from '@/hooks/useIntegrations';
 import { useNavigate } from 'react-router-dom';
 
+// ─── Tooltip de info reutilizável ───────────────────────────────────────────
+function InfoPopover({ title, children }: { title: string; children: React.ReactNode }) {
+  return (
+    <Popover>
+      <PopoverTrigger asChild>
+        <button
+          className="inline-flex items-center justify-center rounded-full w-4 h-4 text-muted-foreground hover:text-foreground hover:bg-muted transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          aria-label={`Saiba mais sobre ${title}`}
+        >
+          <HelpCircle className="w-3.5 h-3.5" />
+        </button>
+      </PopoverTrigger>
+      <PopoverContent side="top" className="max-w-xs text-sm space-y-1 leading-relaxed">
+        <p className="font-semibold text-foreground">{title}</p>
+        <div className="text-muted-foreground">{children}</div>
+      </PopoverContent>
+    </Popover>
+  );
+}
+
+// ─── Definições dos popovers por stat ───────────────────────────────────────
+const statInfo: Record<string, { title: string; description: React.ReactNode }> = {
+  'Total de Pedidos': {
+    title: 'Total de Pedidos',
+    description: (
+      <>
+        Quantidade de pedidos registrados no período.
+        <br /><br />
+        <span className="font-medium text-foreground">Com integração ativa:</span> considera apenas os pedidos dos últimos 15 dias sincronizados automaticamente da Shopee.
+        <br /><br />
+        <span className="font-medium text-foreground">Sem integração:</span> conta os pedidos importados manualmente via planilha XLSX.
+      </>
+    ),
+  },
+  'Faturamento': {
+    title: 'Faturamento Bruto',
+    description: (
+      <>
+        Soma do valor total cobrado dos compradores, antes de qualquer desconto ou taxa.
+        <br /><br />
+        <span className="font-medium text-foreground">Atenção:</span> este valor não representa o que você recebeu — inclui taxas da Shopee, fretes e possíveis cancelamentos.
+      </>
+    ),
+  },
+  'Valor Líquido': {
+    title: 'Valor Líquido (após taxas Shopee)',
+    description: (
+      <>
+        Valor que você efetivamente recebe após a Shopee deduzir comissões, taxas de serviço e frete subsidiado.
+        <br /><br />
+        <span className="font-medium text-foreground">Fórmula:</span> Faturamento − Total de Taxas Shopee
+        <br /><br />
+        Não inclui seus custos de produto e operação — para lucro real, configure os custos em <em>Configurações</em>.
+      </>
+    ),
+  },
+  'Lucro Estimado': {
+    title: 'Lucro Estimado',
+    description: (
+      <>
+        Estimativa de lucro calculada com base nas taxas e custos que você configurou manualmente.
+        <br /><br />
+        <span className="font-medium text-foreground">Fórmula:</span> Faturamento − Taxas Shopee − Impostos − Custo dos Produtos
+        <br /><br />
+        Para maior precisão, conecte sua loja via integração ou mantenha as configurações de taxa atualizadas.
+      </>
+    ),
+  },
+  'Taxas Shopee': {
+    title: 'Taxas Cobradas pela Shopee',
+    description: (
+      <>
+        Soma de todas as cobranças da Shopee no período: comissão de venda, taxa de serviço e subsídio de frete.
+        <br /><br />
+        O detalhamento abaixo mostra cada tipo separadamente. Esses valores são deduzidos diretamente do seu repasse.
+      </>
+    ),
+  },
+};
+
+const feeInfo: Record<string, string> = {
+  commission: 'Percentual cobrado sobre o valor de cada venda. Varia conforme a categoria do produto e seu nível de vendedor na Shopee.',
+  service: 'Taxa fixa ou percentual cobrada por cada transação processada na plataforma.',
+  shipping: 'Quando a Shopee subsidia o frete para o comprador, parte desse custo pode ser repassada ao vendedor dependendo do programa de frete.',
+};
+
+const feeLabels: Record<string, string> = {
+  commission: 'Comissão de Venda',
+  service: 'Taxa de Serviço',
+  shipping: 'Subsídio de Frete',
+};
+
+// ─── Componente principal ────────────────────────────────────────────────────
 export default function Dashboard() {
   const { user } = useAuth();
   const navigate = useNavigate();
@@ -23,7 +121,6 @@ export default function Dashboard() {
   const [orders, setOrders] = useState<RawOrder[]>([]);
   const [settings, setSettings] = useState<SettingsData | null>(null);
 
-  // ✅ Dados da integração
   const { getConnection, syncNow } = useIntegrations();
   const shopeeConnection = getConnection('shopee');
   const isConnected = shopeeConnection?.status === 'connected';
@@ -55,26 +152,18 @@ export default function Dashboard() {
     return calculateResults(orders, settings, 'produto');
   }, [orders, settings]);
 
-  // ✅ Decide qual fonte de dados usar para os stats
   const usingSyncData = isConnected && syncData && syncData.stats.totalOrders > 0;
 
-  const totalOrders = usingSyncData
-    ? syncData.stats.totalOrders
-    : orders.length;
-
-  const totalRevenue = usingSyncData
-    ? syncData.stats.totalRevenue
-    : (calculatedResults?.totals.total_faturado || 0);
-
+  const totalOrders = usingSyncData ? syncData.stats.totalOrders : orders.length;
+  const totalRevenue = usingSyncData ? syncData.stats.totalRevenue : (calculatedResults?.totals.total_faturado || 0);
   const totalProfit = usingSyncData
     ? syncData.stats.totalNetAmount - syncData.stats.totalFees
     : (calculatedResults?.totals.lucro_reais || 0);
-
-  const totalFees = usingSyncData
-    ? syncData.stats.totalFees
-    : (calculatedResults?.totals.taxa_shopee_reais || 0);
+  const totalFees = usingSyncData ? syncData.stats.totalFees : (calculatedResults?.totals.taxa_shopee_reais || 0);
 
   const loading = isLoading || (isConnected && syncLoading);
+
+  const profitTitle = usingSyncData ? 'Valor Líquido' : 'Lucro Estimado';
 
   const stats = [
     {
@@ -83,20 +172,23 @@ export default function Dashboard() {
       description: usingSyncData ? 'Últimos 15 dias (sync)' : 'Pedidos importados',
       icon: ShoppingCart,
       color: 'text-blue-500',
+      bgColor: 'bg-blue-500/10',
     },
     {
       title: 'Faturamento',
       value: loading ? '...' : formatCurrency(totalRevenue),
       description: usingSyncData ? 'Receita bruta sincronizada' : 'Total faturado',
       icon: DollarSign,
-      color: 'text-green-500',
+      color: 'text-emerald-500',
+      bgColor: 'bg-emerald-500/10',
     },
     {
-      title: usingSyncData ? 'Valor Líquido' : 'Lucro Estimado',
+      title: profitTitle,
       value: loading ? '...' : formatCurrency(totalProfit),
       description: usingSyncData ? 'Após taxas Shopee' : (settings ? 'Após taxas e custos' : 'Configure as taxas primeiro'),
       icon: TrendingUp,
       color: 'text-primary',
+      bgColor: 'bg-primary/10',
     },
     ...(usingSyncData ? [{
       title: 'Taxas Shopee',
@@ -104,6 +196,7 @@ export default function Dashboard() {
       description: 'Comissão + serviço + frete',
       icon: Package,
       color: 'text-orange-500',
+      bgColor: 'bg-orange-500/10',
     }] : []),
   ];
 
@@ -127,7 +220,7 @@ export default function Dashboard() {
       description: 'Visualize resultados por produto',
       icon: FileSpreadsheet,
       href: '/shopee/resultados',
-      color: 'bg-green-500',
+      color: 'bg-emerald-500',
     },
     {
       title: 'Resultados com Variações',
@@ -143,29 +236,29 @@ export default function Dashboard() {
       <InPageNav tabs={shopeeNavTabs} />
       <div className="space-y-8 animate-fade-in">
 
-        {/* ✅ Banner de integração conectada */}
+        {/* ── Banner de integração ───────────────────────────────── */}
         {isConnected && (
-          <Card className="border-green-500/30 bg-green-500/5">
+          <Card className="border-emerald-500/30 bg-emerald-500/5">
             <CardContent className="py-4">
               <div className="flex items-center justify-between flex-wrap gap-3">
                 <div className="flex items-center gap-3">
-                  <div className="h-8 w-8 rounded-full bg-green-500/10 flex items-center justify-center">
-                    <Zap className="h-4 w-4 text-green-500" />
+                  <div className="h-9 w-9 rounded-full bg-emerald-500/15 flex items-center justify-center shrink-0">
+                    <Zap className="h-4 w-4 text-emerald-500" />
                   </div>
                   <div>
-                    <p className="text-sm font-medium">
+                    <p className="text-sm font-medium leading-tight">
                       Shopee conectada
                       {shopeeConnection?.shop_name && (
                         <span className="text-muted-foreground font-normal"> — {shopeeConnection.shop_name}</span>
                       )}
                     </p>
-                    <p className="text-xs text-muted-foreground">
+                    <p className="text-xs text-muted-foreground mt-0.5">
                       {syncData?.stats.totalOrders
                         ? `${syncData.stats.totalOrders} pedidos sincronizados nos últimos 15 dias`
-                        : 'Nenhum pedido sincronizado ainda'}
+                        : 'Nenhum pedido sincronizado ainda — clique em Sincronizar'}
                     </p>
                   </div>
-                  <Badge variant="default" className="bg-green-500 text-white text-xs">
+                  <Badge className="bg-emerald-500 text-white text-xs shrink-0">
                     Sincronizado
                   </Badge>
                 </div>
@@ -177,15 +270,11 @@ export default function Dashboard() {
                     disabled={syncNow.isPending}
                   >
                     {syncNow.isPending
-                      ? <><RefreshCw className="h-3 w-3 mr-1 animate-spin" /> Sincronizando...</>
-                      : <><RefreshCw className="h-3 w-3 mr-1" /> Sincronizar</>
-                    }
+                      ? <><RefreshCw className="h-3 w-3 mr-1.5 animate-spin" />Sincronizando...</>
+                      : <><RefreshCw className="h-3 w-3 mr-1.5" />Sincronizar</>}
                   </Button>
-                  <Button
-                    size="sm"
-                    onClick={() => navigate('/integrations/shopee')}
-                  >
-                    Ver detalhes <ArrowRight className="h-3 w-3 ml-1" />
+                  <Button size="sm" onClick={() => navigate('/integrations/shopee')}>
+                    Ver detalhes <ArrowRight className="h-3 w-3 ml-1.5" />
                   </Button>
                 </div>
               </div>
@@ -193,107 +282,218 @@ export default function Dashboard() {
           </Card>
         )}
 
-        {/* Stats Cards */}
+        {/* ── Stats Cards ────────────────────────────────────────── */}
         <div className={`grid gap-4 ${usingSyncData ? 'md:grid-cols-4' : 'md:grid-cols-3'}`}>
-          {stats.map((stat) => (
-            <Card key={stat.title}>
-              <CardHeader className="flex flex-row items-center justify-between pb-2">
-                <CardTitle className="text-sm font-medium text-muted-foreground">
-                  {stat.title}
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="text-[28px] font-semibold">{stat.value}</div>
-                <p className="text-xs text-muted-foreground">{stat.description}</p>
-              </CardContent>
-            </Card>
-          ))}
+          {stats.map((stat) => {
+            const info = statInfo[stat.title];
+            return (
+              <Card key={stat.title} className="relative overflow-hidden transition-shadow hover:shadow-md">
+                <CardHeader className="flex flex-row items-start justify-between pb-3 space-y-0">
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-sm font-medium text-muted-foreground">{stat.title}</span>
+                    {info && <InfoPopover title={info.title}>{info.description}</InfoPopover>}
+                  </div>
+                  <div className={`h-8 w-8 rounded-lg ${stat.bgColor} flex items-center justify-center shrink-0`}>
+                    <stat.icon className={`h-4 w-4 ${stat.color}`} />
+                  </div>
+                </CardHeader>
+                <CardContent className="pt-0">
+                  <div className="text-2xl font-bold tracking-tight">{stat.value}</div>
+                  <p className="text-xs text-muted-foreground mt-1">{stat.description}</p>
+                </CardContent>
+              </Card>
+            );
+          })}
         </div>
 
-        {/* ✅ Breakdown de taxas (só aparece quando tem sync) */}
+        {/* ── Detalhamento de Taxas ──────────────────────────────── */}
         {usingSyncData && syncData.stats.feeBreakdown.length > 0 && (
           <Card>
-            <CardHeader>
-              <CardTitle className="text-base">Detalhamento de Taxas</CardTitle>
+            <CardHeader className="pb-3">
+              <div className="flex items-center gap-2">
+                <CardTitle className="text-base">Detalhamento de Taxas</CardTitle>
+                <InfoPopover title="De onde vêm essas taxas?">
+                  A Shopee cobra diferentes tipos de taxa sobre cada venda. Elas são deduzidas automaticamente antes do repasse ao vendedor. O detalhamento aqui ajuda a entender exatamente o que foi cobrado e por quê.
+                </InfoPopover>
+              </div>
               <CardDescription>Taxas cobradas pela Shopee nos últimos 15 dias</CardDescription>
             </CardHeader>
             <CardContent>
-              <div className="space-y-2">
-                {syncData.stats.feeBreakdown.map((fee) => (
-                  <div key={fee.type} className="flex items-center justify-between text-sm">
-                    <span className="text-muted-foreground">{fee.label}</span>
-                    <span className="font-medium text-destructive">
-                      -{formatCurrency(fee.amount)}
-                    </span>
-                  </div>
-                ))}
-                <div className="border-t pt-2 flex items-center justify-between text-sm font-semibold">
-                  <span>Total de taxas</span>
-                  <span className="text-destructive">-{formatCurrency(syncData.stats.totalFees)}</span>
+              <div className="space-y-3">
+                {syncData.stats.feeBreakdown.map((fee) => {
+                  const key = Object.keys(feeLabels).find(k => fee.label.toLowerCase().includes(k)) ?? '';
+                  const explanation = feeInfo[key];
+                  return (
+                    <div key={fee.type} className="flex items-center justify-between gap-4">
+                      <div className="flex items-center gap-1.5 min-w-0">
+                        <span className="text-sm text-muted-foreground truncate">{fee.label}</span>
+                        {explanation && (
+                          <InfoPopover title={feeLabels[key] ?? fee.label}>
+                            {explanation}
+                          </InfoPopover>
+                        )}
+                      </div>
+                      <span className="text-sm font-medium text-destructive tabular-nums shrink-0">
+                        −{formatCurrency(fee.amount)}
+                      </span>
+                    </div>
+                  );
+                })}
+
+                <div className="border-t pt-3 flex items-center justify-between">
+                  <span className="text-sm font-semibold">Total de taxas</span>
+                  <span className="text-sm font-semibold text-destructive tabular-nums">
+                    −{formatCurrency(syncData.stats.totalFees)}
+                  </span>
                 </div>
+
+                {/* Contexto visual */}
+                {syncData.stats.totalRevenue > 0 && (
+                  <div className="rounded-lg bg-muted/50 px-3 py-2 mt-1">
+                    <p className="text-xs text-muted-foreground">
+                      As taxas representam{' '}
+                      <span className="font-semibold text-foreground">
+                        {((syncData.stats.totalFees / syncData.stats.totalRevenue) * 100).toFixed(1)}%
+                      </span>{' '}
+                      do seu faturamento bruto no período.
+                    </p>
+                  </div>
+                )}
               </div>
             </CardContent>
           </Card>
         )}
 
-        {/* ✅ Status dos pedidos (só aparece quando tem sync) */}
+        {/* ── Status dos Pedidos ─────────────────────────────────── */}
         {usingSyncData && (
-          <div className="grid gap-4 md:grid-cols-3">
-            <Card>
-              <CardContent className="pt-6">
-                <div className="text-center">
-                  <div className="text-3xl font-bold text-green-500">{syncData.stats.paidOrders}</div>
-                  <p className="text-sm text-muted-foreground mt-1">Pedidos concluídos</p>
-                </div>
-              </CardContent>
-            </Card>
-            <Card>
-              <CardContent className="pt-6">
-                <div className="text-center">
-                  <div className="text-3xl font-bold text-yellow-500">{syncData.stats.pendingOrders}</div>
-                  <p className="text-sm text-muted-foreground mt-1">Pedidos em andamento</p>
-                </div>
-              </CardContent>
-            </Card>
-            <Card>
-              <CardContent className="pt-6">
-                <div className="text-center">
-                  <div className="text-3xl font-bold text-destructive">{syncData.stats.cancelledOrders}</div>
-                  <p className="text-sm text-muted-foreground mt-1">Pedidos cancelados</p>
-                </div>
-              </CardContent>
-            </Card>
+          <div>
+            <div className="flex items-center gap-2 mb-3">
+              <h3 className="text-base font-semibold">Status dos Pedidos</h3>
+              <InfoPopover title="O que significa cada status?">
+                Os pedidos são classificados pela Shopee em três grupos. Acompanhe a proporção para identificar problemas como alta taxa de cancelamento.
+              </InfoPopover>
+            </div>
+            <div className="grid gap-4 md:grid-cols-3">
+
+              {/* Concluídos */}
+              <Card className="border-emerald-500/20 bg-emerald-500/5 hover:shadow-md transition-shadow">
+                <CardContent className="pt-5 pb-5">
+                  <div className="flex items-start gap-3">
+                    <div className="h-9 w-9 rounded-lg bg-emerald-500/15 flex items-center justify-center shrink-0">
+                      <CheckCircle2 className="h-4 w-4 text-emerald-500" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-1.5">
+                        <span className="text-xs font-medium text-muted-foreground">Concluídos</span>
+                        <InfoPopover title="Pedidos Concluídos">
+                          Pedidos com pagamento confirmado e entrega realizada. São os pedidos que já geraram receita efetiva para você — o valor líquido destes já foi ou será repassado pela Shopee.
+                        </InfoPopover>
+                      </div>
+                      <div className="text-3xl font-bold text-emerald-600 mt-1">
+                        {syncData.stats.paidOrders}
+                      </div>
+                      {syncData.stats.totalOrders > 0 && (
+                        <p className="text-xs text-muted-foreground mt-1">
+                          {((syncData.stats.paidOrders / syncData.stats.totalOrders) * 100).toFixed(0)}% do total
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* Em andamento */}
+              <Card className="border-yellow-500/20 bg-yellow-500/5 hover:shadow-md transition-shadow">
+                <CardContent className="pt-5 pb-5">
+                  <div className="flex items-start gap-3">
+                    <div className="h-9 w-9 rounded-lg bg-yellow-500/15 flex items-center justify-center shrink-0">
+                      <Clock className="h-4 w-4 text-yellow-500" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-1.5">
+                        <span className="text-xs font-medium text-muted-foreground">Em andamento</span>
+                        <InfoPopover title="Pedidos em Andamento">
+                          Pedidos aprovados que ainda estão sendo preparados, em transporte ou aguardando confirmação de entrega pelo comprador.
+                          <br /><br />
+                          O valor destes pedidos ainda <span className="font-medium">não foi repassado</span> — só entra no seu saldo após a conclusão.
+                        </InfoPopover>
+                      </div>
+                      <div className="text-3xl font-bold text-yellow-600 mt-1">
+                        {syncData.stats.pendingOrders}
+                      </div>
+                      {syncData.stats.totalOrders > 0 && (
+                        <p className="text-xs text-muted-foreground mt-1">
+                          {((syncData.stats.pendingOrders / syncData.stats.totalOrders) * 100).toFixed(0)}% do total
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* Cancelados */}
+              <Card className="border-destructive/20 bg-destructive/5 hover:shadow-md transition-shadow">
+                <CardContent className="pt-5 pb-5">
+                  <div className="flex items-start gap-3">
+                    <div className="h-9 w-9 rounded-lg bg-destructive/15 flex items-center justify-center shrink-0">
+                      <XCircle className="h-4 w-4 text-destructive" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-1.5">
+                        <span className="text-xs font-medium text-muted-foreground">Cancelados</span>
+                        <InfoPopover title="Pedidos Cancelados">
+                          Pedidos que foram cancelados pelo comprador, pelo vendedor ou pela Shopee.
+                          <br /><br />
+                          Uma taxa de cancelamento acima de <span className="font-medium">5%</span> pode afetar negativamente sua pontuação na plataforma. Se estiver alta, verifique estoque e prazo de envio.
+                        </InfoPopover>
+                      </div>
+                      <div className="text-3xl font-bold text-destructive mt-1">
+                        {syncData.stats.cancelledOrders}
+                      </div>
+                      {syncData.stats.totalOrders > 0 && (
+                        <p className="text-xs text-muted-foreground mt-1">
+                          {((syncData.stats.cancelledOrders / syncData.stats.totalOrders) * 100).toFixed(0)}% do total
+                          {syncData.stats.cancelledOrders / syncData.stats.totalOrders > 0.05 && (
+                            <span className="text-destructive font-medium"> · atenção</span>
+                          )}
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+
+            </div>
           </div>
         )}
 
-        {/* Gráficos do upload manual (mantém se não tem sync) */}
+        {/* ── Gráficos (upload manual) ───────────────────────────── */}
         {!usingSyncData && calculatedResults && calculatedResults.groups.length > 0 && (
           <DashboardCharts data={calculatedResults.groups} />
         )}
 
-        {/* TOP Variations (mantém do upload manual) */}
         {!usingSyncData && orders.length > 0 && (
           <TopVariationsSection orders={orders} topProducts={5} topVariations={3} />
         )}
 
-        {/* Quick Actions */}
+        {/* ── Quick Actions ──────────────────────────────────────── */}
         <div>
-          <h3 className="text-lg font-semibold mb-4">Ações Rápidas</h3>
+          <h3 className="text-base font-semibold mb-4">Ações Rápidas</h3>
           <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
             {quickActions.map((action) => (
-              <Card key={action.title} className="group hover:border-primary transition-colors">
-                <CardHeader>
-                  <div className={`inline-flex h-12 w-12 items-center justify-center rounded-2xl ${action.color} text-primary-foreground mb-3`}>
-                    <action.icon className="h-6 w-6" strokeWidth={2.5} />
+              <Card key={action.title} className="group hover:border-primary hover:shadow-md transition-all">
+                <CardHeader className="pb-3">
+                  <div className={`inline-flex h-11 w-11 items-center justify-center rounded-xl ${action.color} text-primary-foreground mb-3`}>
+                    <action.icon className="h-5 w-5" strokeWidth={2.5} />
                   </div>
-                  <CardTitle className="text-base">{action.title}</CardTitle>
-                  <CardDescription>{action.description}</CardDescription>
+                  <CardTitle className="text-sm font-semibold">{action.title}</CardTitle>
+                  <CardDescription className="text-xs leading-relaxed">{action.description}</CardDescription>
                 </CardHeader>
-                <CardContent>
-                  <Button asChild variant="ghost" className="w-full justify-between group-hover:bg-accent">
+                <CardContent className="pt-0">
+                  <Button asChild variant="ghost" className="w-full justify-between group-hover:bg-accent h-8 text-xs">
                     <Link to={action.href}>
                       Acessar
-                      <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" />
+                      <ArrowRight className="h-3.5 w-3.5 transition-transform group-hover:translate-x-1" />
                     </Link>
                   </Button>
                 </CardContent>
@@ -302,17 +502,17 @@ export default function Dashboard() {
           </div>
         </div>
 
-        {/* Getting Started — só aparece se não tem sync nem dados */}
+        {/* ── Primeiros Passos ───────────────────────────────────── */}
         {!usingSyncData && orders.length === 0 && (
           <Card className="border-dashed">
             <CardHeader>
-              <CardTitle className="text-lg">🚀 Primeiros Passos</CardTitle>
+              <CardTitle className="text-base">🚀 Primeiros Passos</CardTitle>
               <CardDescription>
                 Para começar a usar o sistema, siga estes passos:
               </CardDescription>
             </CardHeader>
             <CardContent>
-              <ol className="list-decimal list-inside space-y-3 text-muted-foreground">
+              <ol className="list-decimal list-inside space-y-3 text-muted-foreground text-sm">
                 <li>
                   <span className="font-medium text-foreground">Conecte sua loja Shopee</span>
                   {' '}— Acesse{' '}
