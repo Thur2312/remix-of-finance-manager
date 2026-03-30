@@ -135,13 +135,7 @@ serve(async (req) => {
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
     )
 
-    const { data: { user }, error: userError } = await supabase.auth.getUser()
-    if (userError || !user) {
-      return new Response(JSON.stringify({ error: "Token inválido" }), {
-        status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" }
-      })
-    }
-
+    // ✅ Parse body PRIMEIRO — necessário para detectar cron_secret
     let requestBody
     try {
       requestBody = await req.json()
@@ -149,6 +143,24 @@ serve(async (req) => {
       return new Response(JSON.stringify({ error: "JSON inválido" }), {
         status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" }
       })
+    }
+
+    // ✅ Detecta se é chamada do cron pelo body
+    const isCronCall = requestBody?.cron_secret === "sellerfinance-cron-2026"
+    console.log("isCronCall:", isCronCall)
+
+    // ✅ Se for cron, pula verificação de usuário
+    let userId: string
+    if (isCronCall) {
+      userId = "cron"
+    } else {
+      const { data: { user }, error: userError } = await supabase.auth.getUser()
+      if (userError || !user) {
+        return new Response(JSON.stringify({ error: "Token inválido" }), {
+          status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" }
+        })
+      }
+      userId = user.id
     }
 
     const { connection_id } = requestBody
@@ -430,39 +442,38 @@ serve(async (req) => {
             continue
           }
 
-          // ✅ Taxas detalhadas — loop corrigido com const feeError dentro do escopo
-         const feesToInsert = [
-          { type: "commission", key: "commission_fee", amount: income.commission_fee, description: "Comissão Shopee" },
-          { type: "service_fee", key: "service_fee", amount: income.net_service_fee, description: "Taxa de serviço" },
-          { type: "shipping_fee", key: "shipping_fee", amount: income.estimated_shipping_fee, description: "Frete estimado" },
-          { type: "adjustment", key: "reverse_shipping_fee", amount: income.reverse_shipping_fee, description: "Frete reverso" },
-          { type: "adjustment", key: "seller_discount", amount: income.seller_discount, description: "Desconto do vendedor" },
-          { type: "adjustment", key: "shopee_discount", amount: income.shopee_discount, description: "Desconto Shopee" },
-          { type: "adjustment", key: "shopee_shipping_rebate", amount: income.shopee_shipping_rebate, description: "Rebate frete Shopee" },
-          { type: "adjustment", key: "voucher_shopee", amount: income.voucher_from_shopee, description: "Voucher Shopee" },
-        ].filter(f => f.amount && Number(f.amount) !== 0)
+          const feesToInsert = [
+            { type: "commission", key: "commission_fee", amount: income.commission_fee, description: "Comissão Shopee" },
+            { type: "service_fee", key: "service_fee", amount: income.net_service_fee, description: "Taxa de serviço" },
+            { type: "shipping_fee", key: "shipping_fee", amount: income.estimated_shipping_fee, description: "Frete estimado" },
+            { type: "adjustment", key: "reverse_shipping_fee", amount: income.reverse_shipping_fee, description: "Frete reverso" },
+            { type: "adjustment", key: "seller_discount", amount: income.seller_discount, description: "Desconto do vendedor" },
+            { type: "adjustment", key: "shopee_discount", amount: income.shopee_discount, description: "Desconto Shopee" },
+            { type: "adjustment", key: "shopee_shipping_rebate", amount: income.shopee_shipping_rebate, description: "Rebate frete Shopee" },
+            { type: "adjustment", key: "voucher_shopee", amount: income.voucher_from_shopee, description: "Voucher Shopee" },
+          ].filter(f => f.amount && Number(f.amount) !== 0)
 
-        for (const fee of feesToInsert) {
-          const { error: feeError } = await supabaseAdmin
-            .from("fees")
-            .upsert({
-              integration_id: connection_id,
-              external_fee_id: `${orderSn}_${fee.key}`, // ← usa key para ID único
-              order_id: orderRow?.id ?? null,
-              fee_type: fee.type,                        // ← usa type para o campo com constraint
-              amount: Number(fee.amount),
-              currency: "BRL",
-              description: fee.description,
-              fee_date: now.toISOString(),
-              synced_at: now.toISOString(),
-            }, { onConflict: "external_fee_id" })
+          for (const fee of feesToInsert) {
+            const { error: feeError } = await supabaseAdmin
+              .from("fees")
+              .upsert({
+                integration_id: connection_id,
+                external_fee_id: `${orderSn}_${fee.key}`,
+                order_id: orderRow?.id ?? null,
+                fee_type: fee.type,
+                amount: Number(fee.amount),
+                currency: "BRL",
+                description: fee.description,
+                fee_date: now.toISOString(),
+                synced_at: now.toISOString(),
+              }, { onConflict: "external_fee_id" })
 
-          if (feeError) {
-            console.error("❌ Erro ao salvar fee:", fee.key, JSON.stringify(feeError))
-          } else {
-            console.log("✅ Fee salva:", fee.key, orderSn)
+            if (feeError) {
+              console.error("❌ Erro ao salvar fee:", fee.key, JSON.stringify(feeError))
+            } else {
+              console.log("✅ Fee salva:", fee.key, orderSn)
+            }
           }
-        }
 
           paymentsCount++
         } catch (detailError) {
@@ -559,7 +570,7 @@ serve(async (req) => {
     // ✅ Log final
     await supabaseAdmin.from("integration_sync_logs").insert({
       connection_id,
-      user_id: user.id,
+      user_id: isCronCall ? connection.user_id : userId,
       type: "sync",
       status: ordersCount > 0 || paymentsCount > 0 ? "success" : "empty",
       message: `${ordersCount} pedidos, ${paymentsCount} pagamentos, ${walletCount} transações sincronizados`,
