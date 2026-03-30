@@ -1022,10 +1022,10 @@ const { anuncios, isLoading: isLoadingAnuncios, addAnuncio, updateAnuncio, delet
           </div>
         </div>
       </div>
-
+      <br />
       <div>
-              <br />
-                        <Card>
+              
+                <Card>
                   <CardHeader>
                     <div className="flex items-center justify-between">
                       <div>
