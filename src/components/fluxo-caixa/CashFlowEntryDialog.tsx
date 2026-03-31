@@ -204,6 +204,7 @@ export default function CashFlowEntryDialog({
               name="description"
               render={({ field }) => (
                 <FormItem>
+                  
                   <FormLabel>Descrição</FormLabel>
                   <FormControl>
                     <Input placeholder="Ex: Pagamento fornecedor X" {...field} />

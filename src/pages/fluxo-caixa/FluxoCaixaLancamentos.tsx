@@ -4,47 +4,189 @@ import { ProtectedRoute } from '@/components/layout/ProtectedRoute';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
+import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { useCashFlowCategories, useCashFlowEntries } from '@/hooks/useCashFlow';
+import type { CashFlowCategory, CashFlowEntry } from '@/hooks/useCashFlow';
 import CashFlowEntryDialog from '@/components/fluxo-caixa/CashFlowEntryDialog';
 import ImportBankStatementDialog from '@/components/fluxo-caixa/ImportBankStatementDialog';
-import { Plus, Search, Download, CheckCircle, Trash2, Edit, Upload } from 'lucide-react';
+import { Plus, Search, Download, CheckCircle, Trash2, Edit, Upload, Tag } from 'lucide-react';
 import { format, parseISO } from 'date-fns';
 import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
+  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
-import type { CashFlowEntry } from '@/hooks/useCashFlow';
+import {
+  Dialog, DialogContent, DialogHeader, DialogTitle,
+  DialogDescription, DialogFooter,
+} from '@/components/ui/dialog';
 import { InPageNav, fluxoCaixaNavTabs } from '@/components/layout/InPageNav';
 
+// ── Paleta de cores para categorias ─────────────────────────────────────────
+const COLOR_OPTIONS = [
+  { value: '#10B981', label: 'Verde'    },
+  { value: '#3B82F6', label: 'Azul'     },
+  { value: '#8B5CF6', label: 'Roxo'     },
+  { value: '#EF4444', label: 'Vermelho' },
+  { value: '#F59E0B', label: 'Amarelo'  },
+  { value: '#EC4899', label: 'Rosa'     },
+  { value: '#14B8A6', label: 'Teal'     },
+  { value: '#6366F1', label: 'Índigo'   },
+  { value: '#F97316', label: 'Laranja'  },
+  { value: '#6B7280', label: 'Cinza'    },
+];
+
+// ── Dialog de nova categoria ─────────────────────────────────────────────────
+interface NewCategoryDialogProps {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  onSuccess?: (categoryName: string) => void;
+}
+
+function NewCategoryDialog({ open, onOpenChange, onSuccess }: NewCategoryDialogProps) {
+  const { createCategory } = useCashFlowCategories();
+  const [name,  setName]  = useState('');
+  const [type,  setType]  = useState<'income' | 'expense'>('expense');
+  const [color, setColor] = useState('#6B7280');
+
+  const reset = () => { setName(''); setType('expense'); setColor('#6B7280'); };
+
+  const handleSubmit = async () => {
+    if (!name.trim()) return;
+    await createCategory.mutateAsync({
+      name: name.trim(),
+      type,
+      color,
+      icon: 'tag',
+      is_default: false,
+    });
+    onSuccess?.(name.trim());
+    onOpenChange(false);
+    reset();
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={v => { onOpenChange(v); if (!v) reset(); }}>
+      <DialogContent className="max-w-sm">
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2">
+            <Tag className="h-4 w-4 text-primary" />
+            Nova Categoria
+          </DialogTitle>
+          <DialogDescription>
+            A categoria será criada e ficará disponível em toda a seção de Fluxo de Caixa.
+          </DialogDescription>
+        </DialogHeader>
+
+        <div className="space-y-5 py-2">
+          {/* Nome */}
+          <div className="space-y-1.5">
+            <Label htmlFor="cat-name">
+              Nome <span className="text-destructive">*</span>
+            </Label>
+            <Input
+              id="cat-name"
+              autoFocus
+              value={name}
+              onChange={e => setName(e.target.value)}
+              placeholder="Ex: Marketplace, Embalagens..."
+              maxLength={60}
+              onKeyDown={e => e.key === 'Enter' && handleSubmit()}
+            />
+          </div>
+
+          {/* Tipo */}
+          <div className="space-y-2">
+            <Label>Tipo</Label>
+            <RadioGroup
+              value={type}
+              onValueChange={v => setType(v as 'income' | 'expense')}
+              className="flex gap-4"
+            >
+              <div className="flex items-center gap-2">
+                <RadioGroupItem value="income" id="type-income" />
+                <Label htmlFor="type-income" className="cursor-pointer font-normal text-green-600">
+                  Entrada
+                </Label>
+              </div>
+              <div className="flex items-center gap-2">
+                <RadioGroupItem value="expense" id="type-expense" />
+                <Label htmlFor="type-expense" className="cursor-pointer font-normal text-red-600">
+                  Saída
+                </Label>
+              </div>
+            </RadioGroup>
+          </div>
+
+          {/* Cor */}
+          <div className="space-y-2">
+            <Label>Cor</Label>
+            <div className="flex flex-wrap gap-2">
+              {COLOR_OPTIONS.map(opt => (
+                <button
+                  key={opt.value}
+                  type="button"
+                  title={opt.label}
+                  onClick={() => setColor(opt.value)}
+                  className="h-7 w-7 rounded-full border-2 transition-transform hover:scale-110 focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                  style={{
+                    backgroundColor: opt.value,
+                    borderColor: color === opt.value ? 'white' : 'transparent',
+                    boxShadow: color === opt.value ? `0 0 0 2px ${opt.value}` : undefined,
+                  }}
+                />
+              ))}
+            </div>
+
+            {/* Preview */}
+            <div className="flex items-center gap-2 mt-1">
+              <div className="w-3 h-3 rounded-full" style={{ backgroundColor: color }} />
+              <span className="text-sm text-muted-foreground">
+                {name.trim() || 'Nome da categoria'} —{' '}
+                <span className={type === 'income' ? 'text-green-600' : 'text-red-600'}>
+                  {type === 'income' ? 'Entrada' : 'Saída'}
+                </span>
+              </span>
+            </div>
+          </div>
+        </div>
+
+        <DialogFooter>
+          <Button variant="outline" onClick={() => { onOpenChange(false); reset(); }}>
+            Cancelar
+          </Button>
+          <Button
+            onClick={handleSubmit}
+            disabled={!name.trim() || createCategory.isPending}
+          >
+            {createCategory.isPending ? 'Criando...' : 'Criar Categoria'}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+// ── Página principal ─────────────────────────────────────────────────────────
 function FluxoCaixaLancamentosContent() {
-  const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [isDialogOpen,       setIsDialogOpen]       = useState(false);
   const [isImportDialogOpen, setIsImportDialogOpen] = useState(false);
-  const [editingEntry, setEditingEntry] = useState<CashFlowEntry | null>(null);
-  const [deleteEntry, setDeleteEntry] = useState<CashFlowEntry | null>(null);
-  const [searchTerm, setSearchTerm] = useState('');
-  const [typeFilter, setTypeFilter] = useState<string>('all');
-  const [statusFilter, setStatusFilter] = useState<string>('all');
-  const [categoryFilter, setCategoryFilter] = useState<string>('all');
+  const [isCategoryDialogOpen, setIsCategoryDialogOpen] = useState(false);
+  const [editingEntry,  setEditingEntry]  = useState<CashFlowEntry | null>(null);
+  const [deleteEntry,   setDeleteEntry]   = useState<CashFlowEntry | null>(null);
+  const [searchTerm,    setSearchTerm]    = useState('');
+  const [typeFilter,    setTypeFilter]    = useState<string>('all');
+  const [statusFilter,  setStatusFilter]  = useState<string>('all');
+  const [categoryFilter,setCategoryFilter]= useState<string>('all');
 
   const { categories } = useCashFlowCategories();
-  const { 
-    entries, 
-    isLoading, 
-    deleteEntry: deleteEntryMutation, 
-    updateEntryStatus 
-  } = useCashFlowEntries({
-    type: typeFilter !== 'all' ? typeFilter as 'income' | 'expense' : undefined,
-    status: statusFilter !== 'all' ? statusFilter as 'pending' | 'paid' | 'received' : undefined,
+  const { entries, isLoading, deleteEntry: deleteEntryMutation, updateEntryStatus } = useCashFlowEntries({
+    type:       typeFilter    !== 'all' ? typeFilter    as 'income' | 'expense'           : undefined,
+    status:     statusFilter  !== 'all' ? statusFilter  as 'pending' | 'paid' | 'received': undefined,
     categoryId: categoryFilter !== 'all' ? categoryFilter : undefined,
   });
 
@@ -52,36 +194,19 @@ function FluxoCaixaLancamentosContent() {
     entry.description.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
-  const formatCurrency = (value: number) => {
-    return new Intl.NumberFormat('pt-BR', {
-      style: 'currency',
-      currency: 'BRL',
-    }).format(value);
-  };
+  const formatCurrency = (value: number) =>
+    new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value);
 
-  const getStatusBadge = (status: string, type: string) => {
-    const labels = {
-      pending: 'Pendente',
-      paid: 'Pago',
-      received: 'Recebido',
-    };
-
+  const getStatusBadge = (status: string) => {
+    const labels: Record<string, string> = { pending: 'Pendente', paid: 'Pago', received: 'Recebido' };
     const variants: Record<string, 'default' | 'secondary' | 'outline'> = {
-      pending: 'outline',
-      paid: 'default',
-      received: 'default',
+      pending: 'outline', paid: 'default', received: 'default',
     };
-
-    return (
-      <Badge variant={variants[status] || 'outline'}>
-        {labels[status as keyof typeof labels] || status}
-      </Badge>
-    );
+    return <Badge variant={variants[status] || 'outline'}>{labels[status] || status}</Badge>;
   };
 
   const handleMarkAsDone = (entry: CashFlowEntry) => {
-    const newStatus = entry.type === 'income' ? 'received' : 'paid';
-    updateEntryStatus.mutate({ id: entry.id, status: newStatus });
+    updateEntryStatus.mutate({ id: entry.id, status: entry.type === 'income' ? 'received' : 'paid' });
   };
 
   const handleEdit = (entry: CashFlowEntry) => {
@@ -107,7 +232,6 @@ function FluxoCaixaLancamentosContent() {
       entry.status,
       entry.due_date ? format(parseISO(entry.due_date), 'dd/MM/yyyy') : '-',
     ]);
-
     const csv = [headers, ...rows].map(row => row.join(',')).join('\n');
     const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
     const link = document.createElement('a');
@@ -120,15 +244,25 @@ function FluxoCaixaLancamentosContent() {
     <AppLayout title="Fluxo de Caixa">
       <InPageNav tabs={fluxoCaixaNavTabs} />
       <div className="space-y-6">
-        {/* Header */}
-        <div className="flex items-center justify-between">
+
+        {/* ── Header ───────────────────────────────────────────────────── */}
+        <div className="flex items-center justify-between flex-wrap gap-3">
           <div>
             <h1 className="text-3xl font-bold text-foreground">Lançamentos</h1>
             <p className="text-muted-foreground">
               Gerencie todas as entradas e saídas do seu fluxo de caixa
             </p>
           </div>
-          <div className="flex gap-2">
+          <div className="flex flex-wrap gap-2">
+            {/* ✅ Novo botão de categoria */}
+            <Button
+              variant="outline"
+              onClick={() => setIsCategoryDialogOpen(true)}
+            >
+              <Tag className="h-4 w-4 mr-2" />
+              Nova Categoria
+            </Button>
+
             <Button variant="outline" onClick={() => setIsImportDialogOpen(true)}>
               <Upload className="h-4 w-4 mr-2" />
               Importar Extrato
@@ -144,7 +278,7 @@ function FluxoCaixaLancamentosContent() {
           </div>
         </div>
 
-        {/* Filters */}
+        {/* ── Filtros ───────────────────────────────────────────────────── */}
         <Card>
           <CardHeader>
             <CardTitle className="text-lg">Filtros</CardTitle>
@@ -156,15 +290,13 @@ function FluxoCaixaLancamentosContent() {
                 <Input
                   placeholder="Buscar por descrição..."
                   value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
+                  onChange={e => setSearchTerm(e.target.value)}
                   className="pl-9"
                 />
               </div>
 
               <Select value={typeFilter} onValueChange={setTypeFilter}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Tipo" />
-                </SelectTrigger>
+                <SelectTrigger><SelectValue placeholder="Tipo" /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">Todos os tipos</SelectItem>
                   <SelectItem value="income">Entradas</SelectItem>
@@ -173,9 +305,7 @@ function FluxoCaixaLancamentosContent() {
               </Select>
 
               <Select value={statusFilter} onValueChange={setStatusFilter}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Status" />
-                </SelectTrigger>
+                <SelectTrigger><SelectValue placeholder="Status" /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">Todos os status</SelectItem>
                   <SelectItem value="pending">Pendente</SelectItem>
@@ -185,14 +315,15 @@ function FluxoCaixaLancamentosContent() {
               </Select>
 
               <Select value={categoryFilter} onValueChange={setCategoryFilter}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Categoria" />
-                </SelectTrigger>
+                <SelectTrigger><SelectValue placeholder="Categoria" /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">Todas as categorias</SelectItem>
-                  {categories.map((cat) => (
+                  {categories.map(cat => (
                     <SelectItem key={cat.id} value={cat.id}>
-                      {cat.name}
+                      <div className="flex items-center gap-2">
+                        <div className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: cat.color }} />
+                        {cat.name}
+                      </div>
                     </SelectItem>
                   ))}
                 </SelectContent>
@@ -201,14 +332,12 @@ function FluxoCaixaLancamentosContent() {
           </CardContent>
         </Card>
 
-        {/* Table */}
+        {/* ── Tabela ───────────────────────────────────────────────────── */}
         <Card>
           <CardContent className="p-0">
             {isLoading ? (
               <div className="p-6 space-y-4">
-                {[1, 2, 3, 4, 5].map(i => (
-                  <Skeleton key={i} className="h-12 w-full" />
-                ))}
+                {[1, 2, 3, 4, 5].map(i => <Skeleton key={i} className="h-12 w-full" />)}
               </div>
             ) : filteredEntries.length === 0 ? (
               <div className="p-12 text-center">
@@ -233,17 +362,14 @@ function FluxoCaixaLancamentosContent() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {filteredEntries.map((entry) => (
+                  {filteredEntries.map(entry => (
                     <TableRow key={entry.id}>
                       <TableCell>{format(parseISO(entry.date), 'dd/MM/yyyy')}</TableCell>
                       <TableCell className="font-medium">{entry.description}</TableCell>
                       <TableCell>
                         {entry.category && (
                           <div className="flex items-center gap-2">
-                            <div 
-                              className="w-3 h-3 rounded-full" 
-                              style={{ backgroundColor: entry.category.color }}
-                            />
+                            <div className="w-3 h-3 rounded-full" style={{ backgroundColor: entry.category.color }} />
                             <span className="text-sm">{entry.category.name}</span>
                           </div>
                         )}
@@ -253,39 +379,26 @@ function FluxoCaixaLancamentosContent() {
                           {entry.type === 'income' ? 'Entrada' : 'Saída'}
                         </Badge>
                       </TableCell>
-                      <TableCell className={`text-right font-medium ${
-                        entry.type === 'income' ? 'text-green-600' : 'text-red-600'
-                      }`}>
+                      <TableCell className={`text-right font-medium ${entry.type === 'income' ? 'text-green-600' : 'text-red-600'}`}>
                         {entry.type === 'expense' ? '-' : '+'}{formatCurrency(Number(entry.amount))}
                       </TableCell>
-                      <TableCell>{getStatusBadge(entry.status, entry.type)}</TableCell>
+                      <TableCell>{getStatusBadge(entry.status)}</TableCell>
                       <TableCell>
                         {entry.due_date ? format(parseISO(entry.due_date), 'dd/MM/yyyy') : '-'}
                       </TableCell>
                       <TableCell className="text-right">
                         <div className="flex justify-end gap-1">
                           {entry.status === 'pending' && (
-                            <Button
-                              variant="ghost"
-                              size="icon"
+                            <Button variant="ghost" size="icon"
                               onClick={() => handleMarkAsDone(entry)}
-                              title={entry.type === 'income' ? 'Marcar como recebido' : 'Marcar como pago'}
-                            >
+                              title={entry.type === 'income' ? 'Marcar como recebido' : 'Marcar como pago'}>
                               <CheckCircle className="h-4 w-4 text-green-600" />
                             </Button>
                           )}
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            onClick={() => handleEdit(entry)}
-                          >
+                          <Button variant="ghost" size="icon" onClick={() => handleEdit(entry)}>
                             <Edit className="h-4 w-4" />
                           </Button>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            onClick={() => setDeleteEntry(entry)}
-                          >
+                          <Button variant="ghost" size="icon" onClick={() => setDeleteEntry(entry)}>
                             <Trash2 className="h-4 w-4 text-destructive" />
                           </Button>
                         </div>
@@ -299,6 +412,7 @@ function FluxoCaixaLancamentosContent() {
         </Card>
       </div>
 
+      {/* ── Dialogs ──────────────────────────────────────────────────────── */}
       <CashFlowEntryDialog
         open={isDialogOpen}
         onOpenChange={setIsDialogOpen}
@@ -308,6 +422,13 @@ function FluxoCaixaLancamentosContent() {
       <ImportBankStatementDialog
         open={isImportDialogOpen}
         onOpenChange={setIsImportDialogOpen}
+      />
+
+      {/* ✅ Dialog de nova categoria */}
+      <NewCategoryDialog
+        open={isCategoryDialogOpen}
+        onOpenChange={setIsCategoryDialogOpen}
+        onSuccess={name => setCategoryFilter('all')} // reseta filtro pra nova categoria aparecer
       />
 
       <AlertDialog open={!!deleteEntry} onOpenChange={() => setDeleteEntry(null)}>

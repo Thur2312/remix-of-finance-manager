@@ -156,8 +156,10 @@ export default function Dashboard() {
 
   const totalOrders = usingSyncData ? syncData.stats.totalOrders : orders.length;
   const totalRevenue = usingSyncData ? syncData.stats.totalRevenue : (calculatedResults?.totals.total_faturado || 0);
+  // totalNetAmount já é o valor líquido após dedução das taxas pela Shopee.
+  // Não subtrair totalFees novamente — isso causaria saldo negativo.
   const totalProfit = usingSyncData
-    ? syncData.stats.totalNetAmount - syncData.stats.totalFees
+    ? syncData.stats.totalNetAmount
     : (calculatedResults?.totals.lucro_reais || 0);
   const totalFees = usingSyncData ? syncData.stats.totalFees : (calculatedResults?.totals.taxa_shopee_reais || 0);
 

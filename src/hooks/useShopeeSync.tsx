@@ -47,9 +47,9 @@ export interface SyncedFee {
 
 export interface ShopeeSyncStats {
   totalOrders: number;
-  totalRevenue: number;
+  totalRevenue: number;      // apenas pedidos concluídos
   totalFees: number;
-  totalNetAmount: number;
+  totalNetAmount: number;    // net_amount do escrow (já líquido)
   paidOrders: number;
   pendingOrders: number;
   cancelledOrders: number;
@@ -57,28 +57,39 @@ export interface ShopeeSyncStats {
   feeBreakdown: { type: string; label: string; amount: number }[];
 }
 
+// Status considerados "concluídos" pela Shopee
+const COMPLETED_STATUSES = ['COMPLETED', 'SHIPPED', 'TO_CONFIRM_RECEIVE'];
+const CANCELLED_STATUSES  = ['CANCELLED', 'UNPAID'];
+
 function computeStats(
   orders: SyncedOrder[],
   payments: SyncedPayment[],
   fees: SyncedFee[]
 ): ShopeeSyncStats {
-  const totalRevenue = orders.reduce((sum, o) => sum + Number(o.total_amount), 0);
+
+  // ── Classificação de pedidos ─────────────────────────────────────────
+  const completedOrders  = orders.filter(o => COMPLETED_STATUSES.includes(o.status));
+  const cancelledOrders  = orders.filter(o => CANCELLED_STATUSES.includes(o.status));
+  const pendingOrders    = orders.filter(
+    o => !COMPLETED_STATUSES.includes(o.status) && !CANCELLED_STATUSES.includes(o.status)
+  );
+
+  // ── Faturamento: apenas pedidos concluídos ───────────────────────────
+  const totalRevenue = completedOrders.reduce((sum, o) => sum + Number(o.total_amount), 0);
+
+  // ── Taxas: soma das fees registradas ────────────────────────────────
   const totalFees = fees.reduce((sum, f) => sum + Number(f.amount), 0);
+
+  // ── Valor líquido: net_amount do escrow (já descontadas as taxas) ───
+  // NÃO subtrair totalFees aqui — net_amount já é o valor após dedução
   const totalNetAmount = payments
     .filter(p => p.payment_method === 'escrow')
     .reduce((sum, p) => sum + Number(p.net_amount), 0);
 
-  const paidOrders = orders.filter(o =>
-    ['COMPLETED', 'SHIPPED', 'TO_CONFIRM_RECEIVE'].includes(o.status)
-  ).length;
-  const cancelledOrders = orders.filter(o =>
-    ['CANCELLED', 'UNPAID'].includes(o.status)
-  ).length;
-  const pendingOrders = orders.length - paidOrders - cancelledOrders;
-
-  // Agrupa receita por dia (últimos 15 dias)
+  // ── Receita por dia (só pedidos concluídos) ──────────────────────────
   const revenueMap = new Map<string, { revenue: number; net: number }>();
-  orders.forEach(o => {
+
+  completedOrders.forEach(o => {
     const date = o.order_created_at?.substring(0, 10) || '';
     if (!date) return;
     const existing = revenueMap.get(date) || { revenue: 0, net: 0 };
@@ -87,6 +98,7 @@ function computeStats(
       net: existing.net,
     });
   });
+
   payments
     .filter(p => p.payment_method === 'escrow')
     .forEach(p => {
@@ -100,19 +112,21 @@ function computeStats(
     .map(([date, vals]) => ({ date, ...vals }))
     .sort((a, b) => a.date.localeCompare(b.date));
 
-  // Breakdown de taxas
+  // ── Breakdown de taxas ───────────────────────────────────────────────
   const feeLabels: Record<string, string> = {
-    commission_fee: 'Comissão Shopee',
-    service_fee: 'Taxa de serviço',
-    shipping_fee: 'Frete',
+    commission_fee:       'Comissão Shopee',
+    service_fee:          'Taxa de serviço',
+    shipping_fee:         'Frete',
     reverse_shipping_fee: 'Frete reverso',
-    seller_discount: 'Desconto vendedor',
-    shopee_discount: 'Desconto Shopee',
+    seller_discount:      'Desconto vendedor',
+    shopee_discount:      'Desconto Shopee',
   };
+
   const feeMap = new Map<string, number>();
   fees.forEach(f => {
     feeMap.set(f.fee_type, (feeMap.get(f.fee_type) || 0) + Number(f.amount));
   });
+
   const feeBreakdown = Array.from(feeMap.entries()).map(([type, amount]) => ({
     type,
     label: feeLabels[type] || type,
@@ -121,12 +135,12 @@ function computeStats(
 
   return {
     totalOrders: orders.length,
-    totalRevenue,
+    totalRevenue,       // ✅ apenas concluídos
     totalFees,
-    totalNetAmount,
-    paidOrders,
-    pendingOrders,
-    cancelledOrders,
+    totalNetAmount,     // ✅ já é líquido — não subtrair taxas novamente
+    paidOrders:      completedOrders.length,
+    pendingOrders:   pendingOrders.length,
+    cancelledOrders: cancelledOrders.length,
     revenueByDay,
     feeBreakdown,
   };
@@ -154,13 +168,13 @@ export function useShopeeSync(connectionId: string | null) {
           .eq('integration_id', connectionId!),
       ]);
 
-      if (ordersRes.error) throw ordersRes.error;
-      if (paymentsRes.error) throw paymentsRes.error;
-      if (feesRes.error) throw feesRes.error;
+      if (ordersRes.error)    throw ordersRes.error;
+      if (paymentsRes.error)  throw paymentsRes.error;
+      if (feesRes.error)      throw feesRes.error;
 
-      const orders = (ordersRes.data || []) as SyncedOrder[];
+      const orders   = (ordersRes.data   || []) as SyncedOrder[];
       const payments = (paymentsRes.data || []) as SyncedPayment[];
-      const fees = (feesRes.data || []) as SyncedFee[];
+      const fees     = (feesRes.data     || []) as SyncedFee[];
 
       return {
         orders,
