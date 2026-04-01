@@ -5,47 +5,41 @@ import { formatCurrency } from '@/lib/calculations';
 import { SyncedOrder, SyncedFee, SyncedPayment } from '@/hooks/useShopeeSync';
 import {
   Package,
-  TrendingDown,
-  Wallet,
   CalendarCheck,
   ChevronDown,
   ChevronUp,
   ArrowUpDown,
+  ShoppingBag,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
-interface OrderRow {
-  orderId: string;
-  externalId: string;
-  revenue: number;
-  fees: number;
-  netAmount: number;
-  completedAt: string | null;
+interface ProductRow {
+  productId: string;
+  productName: string;
+  totalOrders: number;
+  totalRevenue: number;
+  totalFees: number;
+  totalNet: number;
+  lastCompletedAt: string | null;
   status: string;
 }
 
-type SortKey = 'completedAt' | 'revenue' | 'fees' | 'netAmount';
+type SortKey = 'lastCompletedAt' | 'totalRevenue' | 'totalFees' | 'totalNet';
 type SortDir = 'asc' | 'desc';
 
 const COMPLETED_STATUSES = ['COMPLETED', 'SHIPPED', 'TO_CONFIRM_RECEIVE'];
-
-const statusConfig: Record<string, { label: string; className: string }> = {
-  COMPLETED:           { label: 'Concluído',    className: 'bg-emerald-500/10 text-emerald-600 border-emerald-500/20' },
-  SHIPPED:             { label: 'Enviado',       className: 'bg-blue-500/10 text-blue-600 border-blue-500/20' },
-  TO_CONFIRM_RECEIVE:  { label: 'Aguard. conf.', className: 'bg-yellow-500/10 text-yellow-600 border-yellow-500/20' },
-  CANCELLED:           { label: 'Cancelado',     className: 'bg-destructive/10 text-destructive border-destructive/20' },
-  UNPAID:              { label: 'Não pago',      className: 'bg-muted text-muted-foreground border-border' },
-};
-
-function getStatusConfig(status: string) {
-  return statusConfig[status] ?? { label: status, className: 'bg-muted text-muted-foreground border-border' };
-}
 
 function formatDate(dateStr: string | null) {
   if (!dateStr) return '—';
   const d = new Date(dateStr);
   if (isNaN(d.getTime())) return '—';
-  return d.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric' });
+  return d.toLocaleDateString('pt-BR', {
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+  });
 }
 
 interface Props {
@@ -55,11 +49,10 @@ interface Props {
 }
 
 export function ProductOrdersList({ orders, fees, payments }: Props) {
-  const [sortKey, setSortKey] = useState<SortKey>('completedAt');
+  const [sortKey, setSortKey] = useState<SortKey>('lastCompletedAt');
   const [sortDir, setSortDir] = useState<SortDir>('desc');
   const [showAll, setShowAll] = useState(false);
 
-  // Agrupa fees por order_id
   const feesByOrder = useMemo(() => {
     const map = new Map<string, number>();
     fees.forEach(f => {
@@ -69,8 +62,7 @@ export function ProductOrdersList({ orders, fees, payments }: Props) {
     return map;
   }, [fees]);
 
-  // Agrupa net_amount (escrow) por order_id via payments
-  const netByOrder = useMemo(() => {
+    const netByOrder = useMemo(() => {
     const map = new Map<string, number>();
     payments
       .filter(p => p.payment_method === 'escrow' && p.order_id)
@@ -80,44 +72,71 @@ export function ProductOrdersList({ orders, fees, payments }: Props) {
     return map;
   }, [payments]);
 
-  const rows: OrderRow[] = useMemo(() =>
+  const productRows: ProductRow[] = useMemo(() => {
+    const productMap = new Map<string, ProductRow>();
+
     orders
       .filter(o => COMPLETED_STATUSES.includes(o.status))
-      .map(o => {
-        const fees = feesByOrder.get(o.id) || 0;
-        const net  = netByOrder.get(o.id) || (Number(o.total_amount) - fees);
-        return {
-          orderId:     o.id,
-          externalId:  o.external_order_id,
-          revenue:     Number(o.total_amount),
-          fees,
-          netAmount:   net,
-          completedAt: o.paid_at || o.order_updated_at,
-          status:      o.status,
-        };
-      }),
-    [orders, feesByOrder, netByOrder]
-  );
+      .forEach(o => {
+        // Usa o primeiro item de order_items para identificar o produto
+        const item = o.order_items?.[0];
+        const productId = item?.external_item_id || item?.sku || o.external_order_id;
+        const productName = item?.item_name || 'Produto sem nome';
+
+        if (!productMap.has(productId)) {
+          productMap.set(productId, {
+            productId,
+            productName,
+            totalOrders: 0,
+            totalRevenue: 0,
+            totalFees: 0,
+            totalNet: 0,
+            lastCompletedAt: null,
+            status: o.status,
+          });
+        }
+
+        const product = productMap.get(productId)!;
+        const orderFees = feesByOrder.get(o.id) || 0;
+        const orderNet = netByOrder.get(o.id) || (Number(o.total_amount) - orderFees);
+
+        product.totalRevenue += Number(o.total_amount);
+        product.totalFees += orderFees;
+        product.totalNet += orderNet;
+        product.totalOrders += 1;
+
+        const completionDate = o.paid_at || o.order_updated_at;
+        if (completionDate && (!product.lastCompletedAt || completionDate > product.lastCompletedAt)) {
+          product.lastCompletedAt = completionDate;
+        }
+      });
+
+    return Array.from(productMap.values());
+  }, [orders, feesByOrder, netByOrder]);
 
   const sorted = useMemo(() => {
-    return [...rows].sort((a, b) => {
+    return [...productRows].sort((a, b) => {
       let va: number, vb: number;
-      if (sortKey === 'completedAt') {
-        va = a.completedAt ? new Date(a.completedAt).getTime() : 0;
-        vb = b.completedAt ? new Date(b.completedAt).getTime() : 0;
-      } else {
-        va = a[sortKey];
-        vb = b[sortKey];
+
+      switch (sortKey) {
+        case 'lastCompletedAt':
+          va = a.lastCompletedAt ? new Date(a.lastCompletedAt).getTime() : 0;
+          vb = b.lastCompletedAt ? new Date(b.lastCompletedAt).getTime() : 0;
+          break;
+        default:
+          va = a[sortKey];
+          vb = b[sortKey];
       }
+
       return sortDir === 'desc' ? vb - va : va - vb;
     });
-  }, [rows, sortKey, sortDir]);
+  }, [productRows, sortKey, sortDir]);
 
   const displayed = showAll ? sorted : sorted.slice(0, 10);
 
   function toggleSort(key: SortKey) {
     if (sortKey === key) {
-      setSortDir(d => d === 'desc' ? 'asc' : 'desc');
+      setSortDir(d => (d === 'desc' ? 'asc' : 'desc'));
     } else {
       setSortKey(key);
       setSortDir('desc');
@@ -130,26 +149,26 @@ export function ProductOrdersList({ orders, fees, payments }: Props) {
       <button
         onClick={() => toggleSort(col)}
         className={`inline-flex items-center gap-1 text-xs font-medium transition-colors select-none ${
-          active ? 'text-foreground' : 'text-muted-foreground hover:text-foreground'
+          active ? 'text-foreground font-semibold' : 'text-muted-foreground hover:text-foreground'
         }`}
+        title={`Ordenar por ${label}`}
       >
         {label}
-        {active
-          ? sortDir === 'desc'
-            ? <ChevronDown className="h-3 w-3" />
-            : <ChevronUp className="h-3 w-3" />
-          : <ArrowUpDown className="h-3 w-3 opacity-50" />
-        }
+        {active ? (
+          sortDir === 'desc' ? <ChevronDown className="h-3 w-3" /> : <ChevronUp className="h-3 w-3" />
+        ) : (
+          <ArrowUpDown className="h-3 w-3 opacity-50" />
+        )}
       </button>
     );
   }
 
-  if (rows.length === 0) {
+  if (productRows.length === 0) {
     return (
       <Card>
         <CardContent className="py-12 flex flex-col items-center gap-3 text-muted-foreground">
           <Package className="h-8 w-8 opacity-40" />
-          <p className="text-sm">Nenhum pedido concluído encontrado nos últimos 15 dias.</p>
+          <p className="text-sm">Nenhum produto com pedidos concluídos.</p>
         </CardContent>
       </Card>
     );
@@ -160,114 +179,122 @@ export function ProductOrdersList({ orders, fees, payments }: Props) {
       <CardHeader className="pb-3">
         <div className="flex items-center justify-between gap-2">
           <div>
-            <CardTitle className="text-base">Pedidos Concluídos</CardTitle>
+            <CardTitle className="text-base leading-tight flex items-center gap-2">
+              <ShoppingBag className="h-5 w-5" />
+              Top Produtos Concluídos
+            </CardTitle>
             <CardDescription className="mt-0.5">
-              {rows.length} pedido{rows.length !== 1 ? 's' : ''} nos últimos 15 dias
+              {productRows.length} produto{productRows.length !== 1 ? 's' : ''} com{' '}
+              {productRows.reduce((sum, p) => sum + p.totalOrders, 0)} pedidos
             </CardDescription>
           </div>
           <Badge variant="outline" className="text-xs font-normal shrink-0">
-            Últimos 15 dias
+            {displayed.length} de {productRows.length}
           </Badge>
         </div>
       </CardHeader>
 
       <CardContent className="px-0 pb-0">
-        {/* ── Cabeçalho da tabela ── */}
-        <div className="grid grid-cols-[1fr_repeat(3,_minmax(0,_120px))_100px_80px] gap-x-4 px-6 pb-2 border-b">
-          <span className="text-xs font-medium text-muted-foreground">Pedido</span>
-          <SortBtn col="revenue"     label="Faturamento"  />
-          <SortBtn col="fees"        label="Taxas"        />
-          <SortBtn col="netAmount"   label="Líquido"      />
-          <SortBtn col="completedAt" label="Concluído em" />
-          <span className="text-xs font-medium text-muted-foreground text-right">Status</span>
+        {/* Cabeçalho */}
+        <div className="grid grid-cols-[minmax(200px,_1fr)_repeat(3,_minmax(0,_120px))_140px] gap-x-4 px-6 pb-3 border-b border-border">
+          <span className="text-xs font-medium text-muted-foreground">Produto</span>
+          <SortBtn col="totalRevenue" label="Faturamento" />
+          <SortBtn col="totalFees"    label="Taxas" />
+          <SortBtn col="totalNet"     label="Líquido" />
+          <SortBtn col="lastCompletedAt" label="Últ. venda" />
         </div>
 
-        {/* ── Linhas ── */}
-        <div className="divide-y">
+        {/* Linhas */}
+        <div className="divide-y divide-border">
           {displayed.map((row, i) => {
-            const st = getStatusConfig(row.status);
-            const feePercent = row.revenue > 0
-              ? ((row.fees / row.revenue) * 100).toFixed(1)
+            const feePercent = row.totalRevenue > 0
+              ? ((row.totalFees / row.totalRevenue) * 100).toFixed(1)
               : '0.0';
 
             return (
               <div
-                key={row.orderId}
-                className="grid grid-cols-[1fr_repeat(3,_minmax(0,_120px))_100px_80px] gap-x-4 px-6 py-3.5 items-center hover:bg-muted/40 transition-colors"
+                key={row.productId}
+                className="grid grid-cols-[minmax(200px,_1fr)_repeat(3,_minmax(0,_120px))_140px] gap-x-4 px-6 py-4 items-start hover:bg-muted/40 transition-colors group"
               >
-                {/* Pedido */}
-                <div className="flex items-center gap-2.5 min-w-0">
-                  <div className="h-8 w-8 rounded-lg bg-muted flex items-center justify-center shrink-0 text-xs font-semibold text-muted-foreground">
-                    {i + 1}
+                {/* Produto */}
+                <div className="flex items-start gap-3 min-w-0 pr-4">
+                  <div className={`h-9 w-9 rounded-lg flex items-center justify-center shrink-0 text-xs font-bold ${
+                    i < 3
+                      ? 'bg-gradient-to-br from-emerald-500/20 to-emerald-500/30 text-emerald-600 border-2 border-emerald-500/30'
+                      : 'bg-muted/50 text-muted-foreground'
+                  }`}>
+                    #{i + 1}
                   </div>
-                  <div className="min-w-0">
-                    <p className="text-sm font-medium truncate">{row.externalId}</p>
-                    <p className="text-xs text-muted-foreground">ID do pedido</p>
+                  <div className="min-w-0 flex-1">
+                    <p className="text-sm font-semibold truncate">
+                      {row.productName}
+                    </p>
+                    <p className="text-xs text-muted-foreground mt-0.5 font-mono truncate">
+                      ID: {row.productId}
+                    </p>
                   </div>
                 </div>
 
                 {/* Faturamento */}
-                <div className="flex items-center gap-1.5">
-                  <DollarSign className="h-3.5 w-3.5 text-emerald-500 shrink-0" />
-                  <span className="text-sm font-medium tabular-nums">{formatCurrency(row.revenue)}</span>
+                <div className="flex items-center gap-1.5 pt-0.5">
+                  <span className="text-sm font-semibold tabular-nums text-emerald-600">
+                    {formatCurrency(row.totalRevenue)}
+                  </span>
                 </div>
 
                 {/* Taxas */}
-                <div className="flex flex-col">
-                  <div className="flex items-center gap-1.5">
-                    <TrendingDown className="h-3.5 w-3.5 text-destructive shrink-0" />
-                    <span className="text-sm font-medium tabular-nums text-destructive">
-                      −{formatCurrency(row.fees)}
-                    </span>
-                  </div>
-                  {row.fees > 0 && (
-                    <span className="text-xs text-muted-foreground ml-5">{feePercent}% do bruto</span>
-                  )}
+                <div className="flex items-center gap-1 pt-0.5">
+                  <span className="text-sm font-semibold tabular-nums text-destructive">
+                    −{formatCurrency(row.totalFees)}
+                  </span>
+                  <span className="text-xs text-muted-foreground">({feePercent}%)</span>
                 </div>
 
                 {/* Líquido */}
-                <div className="flex items-center gap-1.5">
-                  <Wallet className="h-3.5 w-3.5 text-primary shrink-0" />
-                  <span className={`text-sm font-semibold tabular-nums ${row.netAmount >= 0 ? 'text-primary' : 'text-destructive'}`}>
-                    {formatCurrency(row.netAmount)}
+                <div className="flex items-center pt-0.5">
+                  <span className={`text-sm font-bold tabular-nums text-lg leading-tight ${
+                    row.totalNet >= 0 ? 'text-primary' : 'text-destructive'
+                  }`}>
+                    {formatCurrency(row.totalNet)}
                   </span>
                 </div>
 
-                {/* Data */}
-                <div className="flex items-center gap-1.5">
-                  <CalendarCheck className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
-                  <span className="text-sm text-muted-foreground tabular-nums">
-                    {formatDate(row.completedAt)}
-                  </span>
-                </div>
-
-                {/* Status */}
-                <div className="flex justify-end">
-                  <Badge variant="outline" className={`text-xs ${st.className}`}>
-                    {st.label}
-                  </Badge>
+                {/* Última venda + pedidos */}
+                <div className="flex flex-col gap-1 pt-0.5">
+                  <div className="flex items-center gap-1">
+                    <CalendarCheck className="h-3.5 w-3.5 text-muted-foreground flex-shrink-0" />
+                    <span className="text-sm text-muted-foreground tabular-nums">
+                      {formatDate(row.lastCompletedAt)}
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-1">
+                    <Badge variant="outline" className="text-xs px-2 py-0.5 h-auto">
+                      {row.totalOrders}
+                    </Badge>
+                    <span className="text-xs text-muted-foreground font-medium">pedidos</span>
+                  </div>
                 </div>
               </div>
             );
           })}
         </div>
 
-        {/* ── Ver mais / recolher ── */}
-        {rows.length > 10 && (
-          <div className="border-t px-6 py-3 flex items-center justify-between">
+        {/* Ver mais / recolher */}
+        {productRows.length > 10 && (
+          <div className="border-t bg-muted/30 px-6 py-3 flex items-center justify-between">
             <span className="text-xs text-muted-foreground">
-              Exibindo {displayed.length} de {rows.length} pedidos
+              Exibindo {displayed.length} de {productRows.length} produtos
             </span>
             <Button
               variant="ghost"
               size="sm"
-              className="text-xs h-7"
+              className="text-xs h-8 px-3"
               onClick={() => setShowAll(v => !v)}
             >
               {showAll ? (
-                <><ChevronUp className="h-3.5 w-3.5 mr-1" /> Recolher</>
+                <>Recolher <ChevronUp className="h-3.5 w-3.5 ml-1" /></>
               ) : (
-                <><ChevronDown className="h-3.5 w-3.5 mr-1" /> Ver todos ({rows.length})</>
+                <>Ver todos ({productRows.length}) <ChevronDown className="h-3.5 w-3.5 ml-1" /></>
               )}
             </Button>
           </div>
@@ -275,9 +302,4 @@ export function ProductOrdersList({ orders, fees, payments }: Props) {
       </CardContent>
     </Card>
   );
-}
-
-// Mini ícone inline (evita import extra)
-function DollarSign({ className }: { className?: string }) {
-  return <Wallet className={className} />;
 }

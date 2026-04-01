@@ -1,6 +1,17 @@
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 
+export interface SyncedOrderItem {
+  id: string;
+  order_id: string;
+  external_item_id: string;
+  item_name: string;
+  sku: string;
+  quantity: number;
+  unit_price: number;
+  total_price: number;
+}
+
 export interface SyncedOrder {
   id: string;
   integration_id: string;
@@ -15,6 +26,7 @@ export interface SyncedOrder {
   order_created_at: string;
   order_updated_at: string;
   synced_at: string;
+  order_items: SyncedOrderItem[];
 }
 
 export interface SyncedPayment {
@@ -47,9 +59,9 @@ export interface SyncedFee {
 
 export interface ShopeeSyncStats {
   totalOrders: number;
-  totalRevenue: number;      // apenas pedidos concluídos
+  totalRevenue: number;
   totalFees: number;
-  totalNetAmount: number;    // net_amount do escrow (já líquido)
+  totalNetAmount: number;
   paidOrders: number;
   pendingOrders: number;
   cancelledOrders: number;
@@ -57,7 +69,6 @@ export interface ShopeeSyncStats {
   feeBreakdown: { type: string; label: string; amount: number }[];
 }
 
-// Status considerados "concluídos" pela Shopee
 const COMPLETED_STATUSES = ['COMPLETED', 'SHIPPED', 'TO_CONFIRM_RECEIVE'];
 const CANCELLED_STATUSES  = ['CANCELLED', 'UNPAID'];
 
@@ -67,26 +78,18 @@ function computeStats(
   fees: SyncedFee[]
 ): ShopeeSyncStats {
 
-  // ── Classificação de pedidos ─────────────────────────────────────────
   const completedOrders  = orders.filter(o => COMPLETED_STATUSES.includes(o.status));
   const cancelledOrders  = orders.filter(o => CANCELLED_STATUSES.includes(o.status));
   const pendingOrders    = orders.filter(
     o => !COMPLETED_STATUSES.includes(o.status) && !CANCELLED_STATUSES.includes(o.status)
   );
 
-  // ── Faturamento: apenas pedidos concluídos ───────────────────────────
   const totalRevenue = completedOrders.reduce((sum, o) => sum + Number(o.total_amount), 0);
-
-  // ── Taxas: soma das fees registradas ────────────────────────────────
   const totalFees = fees.reduce((sum, f) => sum + Number(f.amount), 0);
-
-  // ── Valor líquido: net_amount do escrow (já descontadas as taxas) ───
-  // NÃO subtrair totalFees aqui — net_amount já é o valor após dedução
   const totalNetAmount = payments
     .filter(p => p.payment_method === 'escrow')
     .reduce((sum, p) => sum + Number(p.net_amount), 0);
 
-  // ── Receita por dia (só pedidos concluídos) ──────────────────────────
   const revenueMap = new Map<string, { revenue: number; net: number }>();
 
   completedOrders.forEach(o => {
@@ -112,7 +115,6 @@ function computeStats(
     .map(([date, vals]) => ({ date, ...vals }))
     .sort((a, b) => a.date.localeCompare(b.date));
 
-  // ── Breakdown de taxas ───────────────────────────────────────────────
   const feeLabels: Record<string, string> = {
     commission_fee:       'Comissão Shopee',
     service_fee:          'Taxa de serviço',
@@ -135,9 +137,9 @@ function computeStats(
 
   return {
     totalOrders: orders.length,
-    totalRevenue,       // ✅ apenas concluídos
+    totalRevenue,
     totalFees,
-    totalNetAmount,     // ✅ já é líquido — não subtrair taxas novamente
+    totalNetAmount,
     paidOrders:      completedOrders.length,
     pendingOrders:   pendingOrders.length,
     cancelledOrders: cancelledOrders.length,
@@ -154,7 +156,7 @@ export function useShopeeSync(connectionId: string | null) {
       const [ordersRes, paymentsRes, feesRes] = await Promise.all([
         supabase
           .from('orders')
-          .select('*')
+          .select('*, order_items(*)')  // 👈 join com order_items
           .eq('integration_id', connectionId!)
           .order('order_created_at', { ascending: false }),
         supabase
@@ -172,9 +174,9 @@ export function useShopeeSync(connectionId: string | null) {
       if (paymentsRes.error)  throw paymentsRes.error;
       if (feesRes.error)      throw feesRes.error;
 
-      const orders   = (ordersRes.data   || []) as SyncedOrder[];
-      const payments = (paymentsRes.data || []) as SyncedPayment[];
-      const fees     = (feesRes.data     || []) as SyncedFee[];
+      const orders   = (ordersRes.data   || []) as unknown as SyncedOrder[];
+      const payments = (paymentsRes.data || []) as unknown as SyncedPayment[];
+      const fees     = (feesRes.data     || []) as unknown as SyncedFee[];
 
       return {
         orders,
