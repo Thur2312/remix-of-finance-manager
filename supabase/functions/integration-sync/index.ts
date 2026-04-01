@@ -135,7 +135,6 @@ serve(async (req) => {
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
     )
 
-    // ✅ Parse body PRIMEIRO — necessário para detectar cron_secret
     let requestBody
     try {
       requestBody = await req.json()
@@ -145,11 +144,9 @@ serve(async (req) => {
       })
     }
 
-    // ✅ Detecta se é chamada do cron pelo body
     const isCronCall = requestBody?.cron_secret === "sellerfinance-cron-2026"
     console.log("isCronCall:", isCronCall)
 
-    // ✅ Se for cron, pula verificação de usuário
     let userId: string
     if (isCronCall) {
       userId = "cron"
@@ -308,19 +305,32 @@ serve(async (req) => {
               pay_time?: number
               create_time?: number
               update_time?: number
+              // 👇 item_list agora incluído
+              item_list?: {
+                item_id: number
+                item_name: string
+                item_sku: string
+                model_id: number
+                model_name: string
+                model_sku: string
+                model_quantity_purchased: number
+                model_original_price: number
+                model_discounted_price: number
+              }[]
             }[]
           }>(
             BASE_URL,
             "/api/v2/order/get_order_detail",
             {
               order_sn_list: orderSns,
-              response_optional_fields: "buyer_username,pay_time,tracking_no,shipping_carrier,total_amount,currency,create_time,update_time",
+              // 👇 adicionado item_list aqui
+              response_optional_fields: "buyer_username,pay_time,tracking_no,shipping_carrier,total_amount,currency,create_time,update_time,item_list",
             },
             PARTNER_ID, PARTNER_KEY, accessToken, shopId
           )
 
           for (const order of orderDetails.order_list ?? []) {
-            const { error: upsertError } = await supabaseAdmin
+            const { data: upsertedOrder, error: upsertError } = await supabaseAdmin
               .from("orders")
               .upsert({
                 integration_id: connection_id,
@@ -336,11 +346,38 @@ serve(async (req) => {
                 order_updated_at: safeShopeeDate(order.update_time ?? null),
                 synced_at: now.toISOString(),
               }, { onConflict: "integration_id,external_order_id" })
+              .select("id")
+              .single()
 
             if (upsertError) {
               console.error("❌ Erro ao salvar pedido:", order.order_sn, upsertError)
-            } else {
-              ordersCount++
+              continue
+            }
+
+            ordersCount++
+
+            // 👇 Salva os itens do pedido em order_items
+            const items = order.item_list ?? []
+            if (upsertedOrder?.id && items.length > 0) {
+              for (const item of items) {
+                const { error: itemError } = await supabaseAdmin
+                  .from("order_items")
+                  .upsert({
+                    order_id: upsertedOrder.id,
+                    external_item_id: String(item.item_id),
+                    item_name: item.item_name || item.model_name || "Produto sem nome",
+                    sku: item.model_sku || item.item_sku || "",
+                    quantity: item.model_quantity_purchased || 1,
+                    unit_price: Number(item.model_discounted_price) || Number(item.model_original_price) || 0,
+                    total_price: (Number(item.model_discounted_price) || Number(item.model_original_price) || 0) * (item.model_quantity_purchased || 1),
+                  }, { onConflict: "order_id,external_item_id" })
+
+                if (itemError) {
+                  console.error("❌ Erro ao salvar item:", item.item_id, itemError)
+                } else {
+                  console.log("✅ Item salvo:", item.item_name, "- Pedido:", order.order_sn)
+                }
+              }
             }
           }
         }

@@ -8,6 +8,8 @@ import {
   CalendarCheck,
   ChevronDown,
   ChevronUp,
+  ChevronLeft,
+  ChevronRight,
   ArrowUpDown,
   ShoppingBag,
 } from 'lucide-react';
@@ -28,6 +30,7 @@ type SortKey = 'lastCompletedAt' | 'totalRevenue' | 'totalFees' | 'totalNet';
 type SortDir = 'asc' | 'desc';
 
 const COMPLETED_STATUSES = ['COMPLETED', 'SHIPPED', 'TO_CONFIRM_RECEIVE'];
+const PAGE_SIZE = 10;
 
 function formatDate(dateStr: string | null) {
   if (!dateStr) return '—';
@@ -51,7 +54,7 @@ interface Props {
 export function ProductOrdersList({ orders, fees, payments }: Props) {
   const [sortKey, setSortKey] = useState<SortKey>('lastCompletedAt');
   const [sortDir, setSortDir] = useState<SortDir>('desc');
-  const [showAll, setShowAll] = useState(false);
+  const [page, setPage] = useState(0);
 
   const feesByOrder = useMemo(() => {
     const map = new Map<string, number>();
@@ -62,7 +65,7 @@ export function ProductOrdersList({ orders, fees, payments }: Props) {
     return map;
   }, [fees]);
 
-    const netByOrder = useMemo(() => {
+  const netByOrder = useMemo(() => {
     const map = new Map<string, number>();
     payments
       .filter(p => p.payment_method === 'escrow' && p.order_id)
@@ -78,7 +81,6 @@ export function ProductOrdersList({ orders, fees, payments }: Props) {
     orders
       .filter(o => COMPLETED_STATUSES.includes(o.status))
       .forEach(o => {
-        // Usa o primeiro item de order_items para identificar o produto
         const item = o.order_items?.[0];
         const productId = item?.external_item_id || item?.sku || o.external_order_id;
         const productName = item?.item_name || 'Produto sem nome';
@@ -117,7 +119,6 @@ export function ProductOrdersList({ orders, fees, payments }: Props) {
   const sorted = useMemo(() => {
     return [...productRows].sort((a, b) => {
       let va: number, vb: number;
-
       switch (sortKey) {
         case 'lastCompletedAt':
           va = a.lastCompletedAt ? new Date(a.lastCompletedAt).getTime() : 0;
@@ -127,12 +128,12 @@ export function ProductOrdersList({ orders, fees, payments }: Props) {
           va = a[sortKey];
           vb = b[sortKey];
       }
-
       return sortDir === 'desc' ? vb - va : va - vb;
     });
   }, [productRows, sortKey, sortDir]);
 
-  const displayed = showAll ? sorted : sorted.slice(0, 10);
+  const totalPages = Math.ceil(sorted.length / PAGE_SIZE);
+  const displayed = sorted.slice(page * PAGE_SIZE, (page + 1) * PAGE_SIZE);
 
   function toggleSort(key: SortKey) {
     if (sortKey === key) {
@@ -141,6 +142,7 @@ export function ProductOrdersList({ orders, fees, payments }: Props) {
       setSortKey(key);
       setSortDir('desc');
     }
+    setPage(0); // volta para primeira página ao mudar ordenação
   }
 
   function SortBtn({ col, label }: { col: SortKey; label: string }) {
@@ -189,7 +191,7 @@ export function ProductOrdersList({ orders, fees, payments }: Props) {
             </CardDescription>
           </div>
           <Badge variant="outline" className="text-xs font-normal shrink-0">
-            {displayed.length} de {productRows.length}
+            {page * PAGE_SIZE + 1}–{Math.min((page + 1) * PAGE_SIZE, sorted.length)} de {sorted.length}
           </Badge>
         </div>
       </CardHeader>
@@ -207,6 +209,7 @@ export function ProductOrdersList({ orders, fees, payments }: Props) {
         {/* Linhas */}
         <div className="divide-y divide-border">
           {displayed.map((row, i) => {
+            const globalIndex = page * PAGE_SIZE + i;
             const feePercent = row.totalRevenue > 0
               ? ((row.totalFees / row.totalRevenue) * 100).toFixed(1)
               : '0.0';
@@ -219,11 +222,11 @@ export function ProductOrdersList({ orders, fees, payments }: Props) {
                 {/* Produto */}
                 <div className="flex items-start gap-3 min-w-0 pr-4">
                   <div className={`h-9 w-9 rounded-lg flex items-center justify-center shrink-0 text-xs font-bold ${
-                    i < 3
+                    globalIndex < 3
                       ? 'bg-gradient-to-br from-emerald-500/20 to-emerald-500/30 text-emerald-600 border-2 border-emerald-500/30'
                       : 'bg-muted/50 text-muted-foreground'
                   }`}>
-                    #{i + 1}
+                    #{globalIndex + 1}
                   </div>
                   <div className="min-w-0 flex-1">
                     <p className="text-sm font-semibold truncate">
@@ -279,24 +282,43 @@ export function ProductOrdersList({ orders, fees, payments }: Props) {
           })}
         </div>
 
-        {/* Ver mais / recolher */}
-        {productRows.length > 10 && (
+        {/* Paginação */}
+        {totalPages > 1 && (
           <div className="border-t bg-muted/30 px-6 py-3 flex items-center justify-between">
             <span className="text-xs text-muted-foreground">
-              Exibindo {displayed.length} de {productRows.length} produtos
+              Página {page + 1} de {totalPages}
             </span>
-            <Button
-              variant="ghost"
-              size="sm"
-              className="text-xs h-8 px-3"
-              onClick={() => setShowAll(v => !v)}
-            >
-              {showAll ? (
-                <>Recolher <ChevronUp className="h-3.5 w-3.5 ml-1" /></>
-              ) : (
-                <>Ver todos ({productRows.length}) <ChevronDown className="h-3.5 w-3.5 ml-1" /></>
-              )}
-            </Button>
+            <div className="flex items-center gap-1">
+              <Button
+                variant="outline"
+                size="sm"
+                className="h-8 w-8 p-0"
+                onClick={() => setPage(p => Math.max(0, p - 1))}
+                disabled={page === 0}
+              >
+                <ChevronLeft className="h-4 w-4" />
+              </Button>
+              {Array.from({ length: totalPages }, (_, i) => (
+                <Button
+                  key={i}
+                  variant={page === i ? 'default' : 'outline'}
+                  size="sm"
+                  className="h-8 w-8 p-0 text-xs"
+                  onClick={() => setPage(i)}
+                >
+                  {i + 1}
+                </Button>
+              ))}
+              <Button
+                variant="outline"
+                size="sm"
+                className="h-8 w-8 p-0"
+                onClick={() => setPage(p => Math.min(totalPages - 1, p + 1))}
+                disabled={page === totalPages - 1}
+              >
+                <ChevronRight className="h-4 w-4" />
+              </Button>
+            </div>
           </div>
         )}
       </CardContent>
