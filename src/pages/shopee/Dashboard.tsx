@@ -172,12 +172,12 @@ export default function Dashboard() {
 
   const stats = [
     {
-      title: 'Total de Pedidos',
-      value: loading ? '...' : totalOrders.toString(),
-      description: usingSyncData ? 'Últimos 15 dias (sync)' : 'Pedidos importados',
-      icon: ShoppingCart,
-      color: 'text-blue-500',
-      bgColor: 'bg-blue-500/10',
+          title: 'Total de Pedidos',
+    value: loading ? '...' : totalOrders.toString(),
+    description: usingSyncData ? `Últimos ${syncPeriod} dias (sync)` : 'Pedidos importados',
+    icon: ShoppingCart,
+    color: 'text-blue-500',
+    bgColor: 'bg-blue-500/10',
     },
     {
       title: 'Faturamento',
