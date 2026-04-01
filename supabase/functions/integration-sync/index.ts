@@ -255,7 +255,7 @@ const { connection_id, time_from: customTimeFrom, time_to: customTimeTo, days } 
 
     const now = new Date()
 
-    const daysToSync = days || 15
+ const daysToSync = days || 15
 const timeFrom = customTimeFrom
   ? Math.floor(new Date(customTimeFrom).getTime() / 1000)
   : Math.floor((now.getTime() - daysToSync * 24 * 60 * 60 * 1000) / 1000)
