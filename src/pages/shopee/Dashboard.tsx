@@ -6,9 +6,9 @@ import { Badge } from '@/components/ui/badge';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Link } from 'react-router-dom';
 import {
-  Upload, Settings, FileSpreadsheet, Package, ArrowRight,
+  Settings, Package, ArrowRight,
   TrendingUp, DollarSign, ShoppingCart, RefreshCw, Zap,
-  Info, CheckCircle2, Clock, XCircle, HelpCircle,
+  CheckCircle2, Clock, XCircle, HelpCircle,
 } from 'lucide-react';
 import { DashboardCharts } from '@/components/charts/DashboardCharts';
 import { InPageNav, shopeeNavTabs } from '@/components/layout/InPageNav';
@@ -20,6 +20,7 @@ import { fetchAllOrders } from '@/lib/supabase-helpers';
 import { useShopeeSync } from '@/hooks/useShopeeSync';
 import { useIntegrations } from '@/hooks/useIntegrations';
 import { useNavigate } from 'react-router-dom';
+import { ProductOrdersList } from '@/components/dashboard/ProductOrdersList';
 
 // ─── Tooltip de info reutilizável ───────────────────────────────────────────
 function InfoPopover({ title, children }: { title: string; children: React.ReactNode }) {
@@ -156,8 +157,6 @@ export default function Dashboard() {
 
   const totalOrders = usingSyncData ? syncData.stats.totalOrders : orders.length;
   const totalRevenue = usingSyncData ? syncData.stats.totalRevenue : (calculatedResults?.totals.total_faturado || 0);
-  // totalNetAmount já é o valor líquido após dedução das taxas pela Shopee.
-  // Não subtrair totalFees novamente — isso causaria saldo negativo.
   const totalProfit = usingSyncData
     ? syncData.stats.totalNetAmount
     : (calculatedResults?.totals.lucro_reais || 0);
@@ -200,37 +199,6 @@ export default function Dashboard() {
       color: 'text-orange-500',
       bgColor: 'bg-orange-500/10',
     }] : []),
-  ];
-
-  const quickActions = [
-    {
-      title: 'Upload de Relatório',
-      description: 'Importe seu relatório XLSX da Shopee',
-      icon: Upload,
-      href: '/shopee/upload',
-      color: 'bg-blue-500',
-    },
-    {
-      title: 'Configurações',
-      description: 'Configure taxas, impostos e parâmetros',
-      icon: Settings,
-      href: '/shopee/configuracoes',
-      color: 'bg-primary',
-    },
-    {
-      title: 'Resultados Simplificados',
-      description: 'Visualize resultados por produto',
-      icon: FileSpreadsheet,
-      href: '/shopee/resultados',
-      color: 'bg-emerald-500',
-    },
-    {
-      title: 'Resultados com Variações',
-      description: 'Análise detalhada por variação',
-      icon: Package,
-      href: '/shopee/resultados-variacoes',
-      color: 'bg-purple-500',
-    },
   ];
 
   return (
@@ -349,7 +317,6 @@ export default function Dashboard() {
                   </span>
                 </div>
 
-                {/* Contexto visual */}
                 {syncData.stats.totalRevenue > 0 && (
                   <div className="rounded-lg bg-muted/50 px-3 py-2 mt-1">
                     <p className="text-xs text-muted-foreground">
@@ -469,6 +436,25 @@ export default function Dashboard() {
           </div>
         )}
 
+        {/* ── Lista de Pedidos (integração ativa) ───────────────── */}
+        {usingSyncData && (
+          <div>
+            <div className="flex items-center gap-2 mb-3">
+              <h3 className="text-base font-semibold">Lista de Pedidos</h3>
+              <InfoPopover title="Lista de Pedidos Concluídos">
+                Detalhamento individual de cada pedido concluído nos últimos 15 dias. Mostra o faturamento bruto, as taxas cobradas pela Shopee, o valor líquido que você recebe e a data de conclusão.
+                <br /><br />
+                Clique nos cabeçalhos das colunas para ordenar a lista.
+              </InfoPopover>
+            </div>
+            <ProductOrdersList
+              orders={syncData.orders}
+              fees={syncData.fees}
+              payments={syncData.payments}
+            />
+          </div>
+        )}
+
         {/* ── Gráficos (upload manual) ───────────────────────────── */}
         {!usingSyncData && calculatedResults && calculatedResults.groups.length > 0 && (
           <DashboardCharts data={calculatedResults.groups} />
@@ -477,32 +463,6 @@ export default function Dashboard() {
         {!usingSyncData && orders.length > 0 && (
           <TopVariationsSection orders={orders} topProducts={5} topVariations={3} />
         )}
-
-        {/* ── Quick Actions ──────────────────────────────────────── */}
-        <div>
-          <h3 className="text-base font-semibold mb-4">Ações Rápidas</h3>
-          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-            {quickActions.map((action) => (
-              <Card key={action.title} className="group hover:border-primary hover:shadow-md transition-all">
-                <CardHeader className="pb-3">
-                  <div className={`inline-flex h-11 w-11 items-center justify-center rounded-xl ${action.color} text-primary-foreground mb-3`}>
-                    <action.icon className="h-5 w-5" strokeWidth={2.5} />
-                  </div>
-                  <CardTitle className="text-sm font-semibold">{action.title}</CardTitle>
-                  <CardDescription className="text-xs leading-relaxed">{action.description}</CardDescription>
-                </CardHeader>
-                <CardContent className="pt-0">
-                  <Button asChild variant="ghost" className="w-full justify-between group-hover:bg-accent h-8 text-xs">
-                    <Link to={action.href}>
-                      Acessar
-                      <ArrowRight className="h-3.5 w-3.5 transition-transform group-hover:translate-x-1" />
-                    </Link>
-                  </Button>
-                </CardContent>
-              </Card>
-            ))}
-          </div>
-        </div>
 
         {/* ── Primeiros Passos ───────────────────────────────────── */}
         {!usingSyncData && orders.length === 0 && (
@@ -523,7 +483,8 @@ export default function Dashboard() {
                 </li>
                 <li>
                   <span className="font-medium text-foreground">Configure seus parâmetros</span>
-                  {' '}— Defina taxas, impostos e custos na tela de Configurações
+                  {' '}— Defina taxas, impostos e custos na tela de{' '}
+                  <Link to="/shopee/configuracoes" className="text-primary underline underline-offset-2">Configurações</Link>
                 </li>
                 <li>
                   <span className="font-medium text-foreground">Faça o upload do relatório</span>
