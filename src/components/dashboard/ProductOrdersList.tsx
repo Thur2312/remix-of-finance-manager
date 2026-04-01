@@ -40,7 +40,6 @@ function formatDate(dateStr: string | null) {
   return d.toLocaleDateString('pt-BR', {
     day: '2-digit',
     month: '2-digit',
-    year: 'numeric',
     hour: '2-digit',
     minute: '2-digit',
   });
@@ -77,13 +76,11 @@ export function ProductOrdersList({ orders, fees, payments }: Props) {
   }, [payments]);
 
   const productRows: ProductRow[] = useMemo(() => {
+    const filtered = orders.filter(o => COMPLETED_STATUSES.includes(o.status));
+        console.log('filtrados:', filtered.length, 'de', orders.length);
+        console.log('status únicos:', [...new Set(orders.map(o => o.status))]);
     const productMap = new Map<string, ProductRow>();
- console.log(JSON.stringify(orders.slice(0, 5).map(o => ({
-  orderId: o.external_order_id,
-  status: o.status,
-  itemsLength: o.order_items?.length,
-  firstItem: o.order_items?.[0],
-})), null, 2));
+ 
     orders
       .filter(o => COMPLETED_STATUSES.includes(o.status))
       .forEach(o => {
