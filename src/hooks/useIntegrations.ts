@@ -72,10 +72,10 @@ export function useIntegrations() {
   });
 
   const syncNow = useMutation({
-    mutationFn: async (connectionId: string) => {
-      const { data, error } = await supabase.functions.invoke('integration-sync', {
-        body: { connection_id: connectionId },
-      });
+    mutationFn: async ({ connectionId, days }: { connectionId: string; days?: number }) => {
+    const { data, error } = await supabase.functions.invoke('integration-sync', {
+    body: { connection_id: connectionId, days: days || 15 },
+  });
       if (error) throw error;
       return data;
     },

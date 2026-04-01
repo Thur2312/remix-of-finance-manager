@@ -21,6 +21,7 @@ import { useShopeeSync } from '@/hooks/useShopeeSync';
 import { useIntegrations } from '@/hooks/useIntegrations';
 import { useNavigate } from 'react-router-dom';
 import { ProductOrdersList } from '@/components/dashboard/ProductOrdersList';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
 // ─── Tooltip de info reutilizável ───────────────────────────────────────────
 function InfoPopover({ title, children }: { title: string; children: React.ReactNode }) {
@@ -122,6 +123,8 @@ export default function Dashboard() {
   const [orders, setOrders] = useState<RawOrder[]>([]);
   const [settings, setSettings] = useState<SettingsData | null>(null);
 
+  const [syncPeriod, setSyncPeriod] = useState<'7' | '15' | '30' | '60'>('15');
+
   const { getConnection, syncNow } = useIntegrations();
   const shopeeConnection = getConnection('shopee');
   const isConnected = shopeeConnection?.status === 'connected';
@@ -207,50 +210,72 @@ export default function Dashboard() {
       <div className="space-y-8 animate-fade-in">
 
         {/* ── Banner de integração ───────────────────────────────── */}
-        {isConnected && (
-          <Card className="border-emerald-500/30 bg-emerald-500/5">
-            <CardContent className="py-4">
-              <div className="flex items-center justify-between flex-wrap gap-3">
-                <div className="flex items-center gap-3">
-                  <div className="h-9 w-9 rounded-full bg-emerald-500/15 flex items-center justify-center shrink-0">
-                    <Zap className="h-4 w-4 text-emerald-500" />
-                  </div>
-                  <div>
-                    <p className="text-sm font-medium leading-tight">
-                      Shopee conectada
-                      {shopeeConnection?.shop_name && (
-                        <span className="text-muted-foreground font-normal"> — {shopeeConnection.shop_name}</span>
-                      )}
-                    </p>
-                    <p className="text-xs text-muted-foreground mt-0.5">
-                      {syncData?.stats.totalOrders
-                        ? `${syncData.stats.totalOrders} pedidos sincronizados nos últimos 15 dias`
-                        : 'Nenhum pedido sincronizado ainda — clique em Sincronizar'}
-                    </p>
-                  </div>
-                  <Badge className="bg-emerald-500 text-white text-xs shrink-0">
-                    Sincronizado
-                  </Badge>
-                </div>
-                <div className="flex gap-2">
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    onClick={() => syncNow.mutate(shopeeConnection!.id)}
-                    disabled={syncNow.isPending}
-                  >
-                    {syncNow.isPending
-                      ? <><RefreshCw className="h-3 w-3 mr-1.5 animate-spin" />Sincronizando...</>
-                      : <><RefreshCw className="h-3 w-3 mr-1.5" />Sincronizar</>}
-                  </Button>
-                  <Button size="sm" onClick={() => navigate('/integrations/shopee')}>
-                    Ver detalhes <ArrowRight className="h-3 w-3 ml-1.5" />
-                  </Button>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        )}
+       {isConnected && (
+  <Card className="border-emerald-500/30 bg-emerald-500/5">
+    <CardContent className="py-4">
+      <div className="flex items-center justify-between flex-wrap gap-3">
+        <div className="flex items-center gap-3">
+          <div className="h-9 w-9 rounded-full bg-emerald-500/15 flex items-center justify-center shrink-0">
+            <Zap className="h-4 w-4 text-emerald-500" />
+          </div>
+          <div>
+            <p className="text-sm font-medium leading-tight">
+              Shopee conectada
+              {shopeeConnection?.shop_name && (
+                <span className="text-muted-foreground font-normal"> — {shopeeConnection.shop_name}</span>
+              )}
+            </p>
+            <p className="text-xs text-muted-foreground mt-0.5">
+              {syncData?.stats.totalOrders
+                ? `${syncData.stats.totalOrders} pedidos sincronizados nos últimos ${syncPeriod} dias`
+                : 'Nenhum pedido sincronizado ainda — clique em Sincronizar'}
+            </p>
+          </div>
+          <Badge className="bg-emerald-500 text-white text-xs shrink-0">
+            Sincronizado
+          </Badge>
+        </div>
+
+        <div className="flex items-center gap-2 flex-wrap">
+          {/* ── Seletor de período ── */}
+          <div className="flex items-center gap-1.5">
+            <span className="text-xs text-muted-foreground whitespace-nowrap">Período:</span>
+            <Select
+              value={syncPeriod}
+              onValueChange={(v) => setSyncPeriod(v as typeof syncPeriod)}
+              disabled={syncNow.isPending}
+            >
+              <SelectTrigger className="h-8 w-[90px] text-xs">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="7">7 dias</SelectItem>
+                <SelectItem value="15">15 dias</SelectItem>
+                <SelectItem value="30">30 dias</SelectItem>
+                <SelectItem value="60">60 dias</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={() => syncNow.mutate({ connectionId: shopeeConnection!.id, days: Number(syncPeriod) })}
+            disabled={syncNow.isPending}
+          >
+            {syncNow.isPending
+              ? <><RefreshCw className="h-3 w-3 mr-1.5 animate-spin" />Sincronizando...</>
+              : <><RefreshCw className="h-3 w-3 mr-1.5" />Sincronizar</>}
+          </Button>
+
+          <Button size="sm" onClick={() => navigate('/integrations/shopee')}>
+            Ver detalhes <ArrowRight className="h-3 w-3 ml-1.5" />
+          </Button>
+        </div>
+      </div>
+    </CardContent>
+  </Card>
+)}
 
         {/* ── Stats Cards ────────────────────────────────────────── */}
         <div className={`grid gap-4 ${usingSyncData ? 'md:grid-cols-4' : 'md:grid-cols-3'}`}>

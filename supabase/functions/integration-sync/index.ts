@@ -160,7 +160,8 @@ serve(async (req) => {
       userId = user.id
     }
 
-    const { connection_id } = requestBody
+    const { connection_id, time_from: customTimeFrom, time_to: customTimeTo } = requestBody
+
     if (!connection_id) {
       return new Response(JSON.stringify({ error: "connection_id é obrigatório" }), {
         status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" }
@@ -253,8 +254,25 @@ serve(async (req) => {
     }
 
     const now = new Date()
-    const timeFrom = Math.floor((now.getTime() - 15 * 24 * 60 * 60 * 1000) / 1000)
-    const timeTo = Math.floor(now.getTime() / 1000)
+
+    // 👇 Usa time_from e time_to do body se fornecidos, senão usa padrão de 15 dias
+    const timeFrom = customTimeFrom
+      ? Math.floor(new Date(customTimeFrom).getTime() / 1000)
+      : Math.floor((now.getTime() - 15 * 24 * 60 * 60 * 1000) / 1000)
+
+    const timeTo = customTimeTo
+      ? Math.floor(new Date(customTimeTo).getTime() / 1000)
+      : Math.floor(now.getTime() / 1000)
+
+    // Validação: máximo 15 dias entre time_from e time_to
+    const diffDays = (timeTo - timeFrom) / (60 * 60 * 24)
+    if (diffDays > 15) {
+      return new Response(JSON.stringify({ error: "O período máximo permitido pela Shopee é 15 dias." }), {
+        status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" }
+      })
+    }
+
+    console.log(`📅 Período de sync: ${new Date(timeFrom * 1000).toISOString()} até ${new Date(timeTo * 1000).toISOString()}`)
 
     let ordersCount = 0
     let paymentsCount = 0
@@ -305,7 +323,6 @@ serve(async (req) => {
               pay_time?: number
               create_time?: number
               update_time?: number
-              // 👇 item_list agora incluído
               item_list?: {
                 item_id: number
                 item_name: string
@@ -323,7 +340,6 @@ serve(async (req) => {
             "/api/v2/order/get_order_detail",
             {
               order_sn_list: orderSns,
-              // 👇 adicionado item_list aqui
               response_optional_fields: "buyer_username,pay_time,tracking_no,shipping_carrier,total_amount,currency,create_time,update_time,item_list",
             },
             PARTNER_ID, PARTNER_KEY, accessToken, shopId
@@ -591,18 +607,20 @@ serve(async (req) => {
       console.error("❌ Wallet sync error:", walletError)
     }
 
-    // ✅ Atualiza conexão
-    const nextSync = new Date(now.getTime() + (connection.auto_sync_frequency_minutes || 60) * 60 * 1000)
-    await supabaseAdmin
-      .from("integration_connections")
-      .update({
-        last_sync_at: now.toISOString(),
-        next_sync_at: nextSync.toISOString(),
-        last_error_code: null,
-        last_error_message: null,
-        updated_at: now.toISOString(),
-      })
-      .eq("id", connection_id)
+    // ✅ Atualiza conexão (só atualiza last_sync_at se for sync padrão sem datas customizadas)
+    if (!customTimeFrom && !customTimeTo) {
+      const nextSync = new Date(now.getTime() + (connection.auto_sync_frequency_minutes || 60) * 60 * 1000)
+      await supabaseAdmin
+        .from("integration_connections")
+        .update({
+          last_sync_at: now.toISOString(),
+          next_sync_at: nextSync.toISOString(),
+          last_error_code: null,
+          last_error_message: null,
+          updated_at: now.toISOString(),
+        })
+        .eq("id", connection_id)
+    }
 
     // ✅ Log final
     await supabaseAdmin.from("integration_sync_logs").insert({
@@ -615,6 +633,8 @@ serve(async (req) => {
         orders_synced: ordersCount,
         payments_synced: paymentsCount,
         wallet_transactions_synced: walletCount,
+        time_from: new Date(timeFrom * 1000).toISOString(),
+        time_to: new Date(timeTo * 1000).toISOString(),
       },
     })
 
@@ -622,6 +642,10 @@ serve(async (req) => {
       JSON.stringify({
         success: true,
         message: `✅ Sync concluído`,
+        period: {
+          from: new Date(timeFrom * 1000).toISOString(),
+          to: new Date(timeTo * 1000).toISOString(),
+        },
         stats: {
           orders: ordersCount,
           payments: paymentsCount,
