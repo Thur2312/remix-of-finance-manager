@@ -29,14 +29,7 @@ interface ProductRow {
 type SortKey = 'lastCompletedAt' | 'totalRevenue' | 'totalFees' | 'totalNet';
 type SortDir = 'asc' | 'desc';
 
-const COMPLETED_STATUSES = [
-  'COMPLETED',
-  'SHIPPED',
-  'TO_CONFIRM_RECEIVE',
-  'READY_TO_SHIP',
-  'PROCESSED',
-  'IN_CANCEL', 
-];
+const COMPLETED_STATUSES = ['COMPLETED', 'SHIPPED', 'TO_CONFIRM_RECEIVE', 'READY_TO_SHIP'];
 
 const PAGE_SIZE = 10;
 
