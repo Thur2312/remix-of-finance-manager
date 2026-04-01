@@ -158,26 +158,32 @@ fees
   };
 }
 
-export function useShopeeSync(connectionId: string | null) {
+export function useShopeeSync(connectionId: string | null, days: number = 15) {
   return useQuery({
-    queryKey: ['shopee-sync', connectionId],
+    queryKey: ['shopee-sync', connectionId, days], // ← adiciona days na key
     enabled: !!connectionId,
     queryFn: async () => {
+      const since = new Date()
+      since.setDate(since.getDate() - days)
+
       const [ordersRes, paymentsRes, feesRes] = await Promise.all([
         supabase
           .from('orders')
-          .select('*, order_items(*)')  // 👈 join com order_items
+          .select('*, order_items(*)')
           .eq('integration_id', connectionId!)
+          .gte('order_created_at', since.toISOString()) // ← filtra por período
           .order('order_created_at', { ascending: false }),
         supabase
           .from('payments')
           .select('*')
           .eq('integration_id', connectionId!)
+          .gte('transaction_date', since.toISOString()) // ← filtra por período
           .order('transaction_date', { ascending: false }),
         supabase
           .from('fees')
           .select('*')
-          .eq('integration_id', connectionId!),
+          .eq('integration_id', connectionId!)
+          .gte('fee_date', since.toISOString()), // ← filtra por período
       ]);
 
       if (ordersRes.error)    throw ordersRes.error;

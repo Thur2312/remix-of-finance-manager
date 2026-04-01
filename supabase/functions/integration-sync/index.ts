@@ -271,144 +271,157 @@ const timeTo = customTimeTo
     let walletCount = 0
 
     // ✅ SYNC ORDERS
-    try {
-      let cursor = ""
-      let hasMore = true
-      let safetyLimit = 0
+    // ✅ SYNC ORDERS - múltiplas janelas de 15 dias
+try {
+  const WINDOW_DAYS = 15
+  const windowMs = WINDOW_DAYS * 24 * 60 * 60 * 1000
+  
+  // Divide o período em janelas de 15 dias
+  const windows: { from: number; to: number }[] = []
+  let windowStart = timeFrom
+  while (windowStart < timeTo) {
+    const windowEnd = Math.min(windowStart + WINDOW_DAYS * 24 * 60 * 60, timeTo)
+    windows.push({ from: windowStart, to: windowEnd })
+    windowStart = windowEnd
+  }
 
-      while (hasMore && safetyLimit < 10) {
-        console.log(`📦 Sync orders cursor="${cursor}" page ${safetyLimit + 1}...`)
+  console.log(`📅 Total de janelas: ${windows.length}`)
 
-        const orderList = await shopeeGet<{
-          order_list: { order_sn: string }[]
-          more: boolean
-          next_cursor: string
+  for (const window of windows) {
+    console.log(`📅 Janela: ${new Date(window.from * 1000).toISOString()} → ${new Date(window.to * 1000).toISOString()}`)
+    
+    let cursor = ""
+    let hasMore = true
+    let safetyLimit = 0
+
+    while (hasMore && safetyLimit < 20) {
+      console.log(`📦 Sync orders cursor="${cursor}" page ${safetyLimit + 1}...`)
+
+      const orderList = await shopeeGet<{
+        order_list: { order_sn: string }[]
+        more: boolean
+        next_cursor: string
+      }>(
+        BASE_URL,
+        "/api/v2/order/get_order_list",
+        {
+          time_range_field: "create_time",
+          time_from: window.from,
+          time_to: window.to,
+          page_size: 50,
+          ...(cursor ? { cursor } : {}),
+        },
+        PARTNER_ID, PARTNER_KEY, accessToken, shopId
+      )
+
+      const orders = orderList?.order_list ?? []
+      console.log(`📋 ${orders.length} pedidos encontrados nessa página`)
+
+      if (orders.length > 0) {
+        const orderSns = orders.map(o => o.order_sn).join(",")
+        await new Promise(r => setTimeout(r, 500))
+
+        const orderDetails = await shopeeGet<{
+          order_list: {
+            order_sn: string
+            order_status: string
+            total_amount: string
+            currency: string
+            buyer_username?: string
+            shipping_carrier?: string
+            tracking_no?: string
+            pay_time?: number
+            create_time?: number
+            update_time?: number
+            item_list?: {
+              item_id: number
+              item_name: string
+              item_sku: string
+              model_id: number
+              model_name: string
+              model_sku: string
+              model_quantity_purchased: number
+              model_original_price: number
+              model_discounted_price: number
+            }[]
+          }[]
         }>(
           BASE_URL,
-          "/api/v2/order/get_order_list",
+          "/api/v2/order/get_order_detail",
           {
-            time_range_field: "update_time",
-            time_from: timeFrom,
-            time_to: timeTo,
-            page_size: 50,
-            ...(cursor ? { cursor } : {}),
+            order_sn_list: orderSns,
+            response_optional_fields: "buyer_username,pay_time,tracking_no,shipping_carrier,total_amount,currency,create_time,update_time,item_list",
           },
           PARTNER_ID, PARTNER_KEY, accessToken, shopId
         )
 
-        const orders = orderList?.order_list ?? []
-        console.log(`📋 ${orders.length} pedidos encontrados nessa página`)
+        for (const order of orderDetails.order_list ?? []) {
+          const { data: upsertedOrder, error: upsertError } = await supabaseAdmin
+            .from("orders")
+            .upsert({
+              integration_id: connection_id,
+              external_order_id: order.order_sn,
+              status: order.order_status || "UNKNOWN",
+              total_amount: Number(order.total_amount) || 0,
+              currency: order.currency || "BRL",
+              buyer_username: order.buyer_username ?? "",
+              shipping_carrier: order.shipping_carrier ?? "",
+              tracking_number: order.tracking_no ?? "",
+              paid_at: safeShopeeDate(order.pay_time ?? null),
+              order_created_at: safeShopeeDate(order.create_time ?? null),
+              order_updated_at: safeShopeeDate(order.update_time ?? null),
+              synced_at: now.toISOString(),
+            }, { onConflict: "integration_id,external_order_id" })
+            .select("id")
+            .single()
 
-        if (orders.length > 0) {
-          const orderSns = orders.map(o => o.order_sn).join(",")
-          await new Promise(r => setTimeout(r, 500))
+          if (upsertError) {
+            console.error("❌ Erro ao salvar pedido:", order.order_sn, upsertError)
+            continue
+          }
 
-          const orderDetails = await shopeeGet<{
-            order_list: {
-              order_sn: string
-              order_status: string
-              total_amount: string
-              currency: string
-              buyer_username?: string
-              shipping_carrier?: string
-              tracking_no?: string
-              pay_time?: number
-              create_time?: number
-              update_time?: number
-              item_list?: {
-                item_id: number
-                item_name: string
-                item_sku: string
-                model_id: number
-                model_name: string
-                model_sku: string
-                model_quantity_purchased: number
-                model_original_price: number
-                model_discounted_price: number
-              }[]
-            }[]
-          }>(
-            BASE_URL,
-            "/api/v2/order/get_order_detail",
-            {
-              order_sn_list: orderSns,
-              response_optional_fields: "buyer_username,pay_time,tracking_no,shipping_carrier,total_amount,currency,create_time,update_time,item_list",
-            },
-            PARTNER_ID, PARTNER_KEY, accessToken, shopId
-          )
+          ordersCount++
 
-          for (const order of orderDetails.order_list ?? []) {
-            const { data: upsertedOrder, error: upsertError } = await supabaseAdmin
-              .from("orders")
-              .upsert({
-                integration_id: connection_id,
-                external_order_id: order.order_sn,
-                status: order.order_status || "UNKNOWN",
-                total_amount: Number(order.total_amount) || 0,
-                currency: order.currency || "BRL",
-                buyer_username: order.buyer_username ?? "",
-                shipping_carrier: order.shipping_carrier ?? "",
-                tracking_number: order.tracking_no ?? "",
-                paid_at: safeShopeeDate(order.pay_time ?? null),
-                order_created_at: safeShopeeDate(order.create_time ?? null),
-                order_updated_at: safeShopeeDate(order.update_time ?? null),
-                synced_at: now.toISOString(),
-              }, { onConflict: "integration_id,external_order_id" })
-              .select("id")
-              .single()
+          const items = order.item_list ?? []
+          if (upsertedOrder?.id && items.length > 0) {
+            for (const item of items) {
+              const { error: itemError } = await supabaseAdmin
+                .from("order_items")
+                .upsert({
+                  order_id: upsertedOrder.id,
+                  external_item_id: String(item.item_id),
+                  item_name: item.item_name || item.model_name || "Produto sem nome",
+                  sku: item.model_sku || item.item_sku || "",
+                  quantity: item.model_quantity_purchased || 1,
+                  unit_price: Number(item.model_discounted_price) || Number(item.model_original_price) || 0,
+                  total_price: (Number(item.model_discounted_price) || Number(item.model_original_price) || 0) * (item.model_quantity_purchased || 1),
+                }, { onConflict: "order_id,external_item_id" })
 
-            if (upsertError) {
-              console.error("❌ Erro ao salvar pedido:", order.order_sn, upsertError)
-              continue
-            }
-
-            ordersCount++
-
-            // 👇 Salva os itens do pedido em order_items
-            const items = order.item_list ?? []
-            if (upsertedOrder?.id && items.length > 0) {
-              for (const item of items) {
-                const { error: itemError } = await supabaseAdmin
-                  .from("order_items")
-                  .upsert({
-                    order_id: upsertedOrder.id,
-                    external_item_id: String(item.item_id),
-                    item_name: item.item_name || item.model_name || "Produto sem nome",
-                    sku: item.model_sku || item.item_sku || "",
-                    quantity: item.model_quantity_purchased || 1,
-                    unit_price: Number(item.model_discounted_price) || Number(item.model_original_price) || 0,
-                    total_price: (Number(item.model_discounted_price) || Number(item.model_original_price) || 0) * (item.model_quantity_purchased || 1),
-                  }, { onConflict: "order_id,external_item_id" })
-
-                if (itemError) {
-                  console.error("❌ Erro ao salvar item:", item.item_id, itemError)
-                } else {
-                  console.log("✅ Item salvo:", item.item_name, "- Pedido:", order.order_sn)
-                }
+              if (itemError) {
+                console.error("❌ Erro ao salvar item:", item.item_id, itemError)
+              } else {
+                console.log("✅ Item salvo:", item.item_name, "- Pedido:", order.order_sn)
               }
             }
           }
         }
-
-        hasMore = Boolean(orderList?.more)
-        cursor = orderList?.next_cursor ?? ""
-        safetyLimit++
-
-        if (hasMore) await new Promise(r => setTimeout(r, 2000))
       }
 
-      console.log(`✅ Total de pedidos sincronizados: ${ordersCount}`)
-    } catch (orderError) {
-      console.error("❌ Orders sync error:", orderError)
-      await supabaseAdmin
-        .from("integration_connections")
-        .update({
-          last_error_message: orderError instanceof Error ? orderError.message : String(orderError),
-          updated_at: new Date().toISOString(),
-        })
-        .eq("id", connection_id)
+      hasMore = Boolean(orderList?.more)
+      cursor = orderList?.next_cursor ?? ""
+      safetyLimit++
+
+      if (hasMore) await new Promise(r => setTimeout(r, 1000))
     }
 
+    // Pausa entre janelas para não sobrecarregar a API
+    await new Promise(r => setTimeout(r, 2000))
+  }
+
+  console.log(`✅ Total de pedidos sincronizados: ${ordersCount}`)
+} catch (orderError) {
+  console.error("❌ Orders sync error:", orderError)
+}
     // ✅ SYNC PAYMENTS (escrow por pedido)
     try {
       const escrowList = await shopeeGet<{

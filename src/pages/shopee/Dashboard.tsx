@@ -129,8 +129,9 @@ export default function Dashboard() {
   const shopeeConnection = getConnection('shopee');
   const isConnected = shopeeConnection?.status === 'connected';
   const { data: syncData, isLoading: syncLoading } = useShopeeSync(
-    isConnected ? shopeeConnection!.id : null
-  );
+  isConnected ? shopeeConnection!.id : null,
+  Number(syncPeriod)
+);
 
   useEffect(() => {
     if (user) fetchData();
