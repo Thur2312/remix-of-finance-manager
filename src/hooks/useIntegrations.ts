@@ -71,22 +71,23 @@ export function useIntegrations() {
     },
   });
 
-  const syncNow = useMutation({
-    mutationFn: async ({ connectionId, days }: { connectionId: string; days?: number }) => {
+const syncNow = useMutation({
+  mutationFn: async ({ connectionId, days }: { connectionId: string; days?: number }) => {
     const { data, error } = await supabase.functions.invoke('integration-sync', {
-    body: { connection_id: connectionId, days: days || 15 },
-  });
-      if (error) throw error;
-      return data;
-    },
-    onSuccess: (data) => {
-      toast({ title: 'Sincronização concluída', description: data.message });
-      queryClient.invalidateQueries({ queryKey: ['integrations'] });
-    },
-    onError: (err: { message: string }) => {
-      toast({ title: 'Erro na sincronização', description: err.message, variant: 'destructive' });
-    },
-  });
+      body: { connection_id: connectionId, days: days || 15 },
+    });
+    if (error) throw error;
+    return data;
+  },
+  onSuccess: (data) => {
+    toast({ title: 'Sincronização concluída', description: data.message });
+    queryClient.invalidateQueries({ queryKey: ['integrations'] });
+    queryClient.invalidateQueries({ queryKey: ['shopee-sync'] }); // ← adicione esta linha
+  },
+  onError: (err: { message: string }) => {
+    toast({ title: 'Erro na sincronização', description: err.message, variant: 'destructive' });
+  },
+});
 
   const disconnect = useMutation({
     mutationFn: async (connectionId: string) => {
