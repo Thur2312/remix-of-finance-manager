@@ -85,8 +85,8 @@ function computeStats(
   );
 
   const totalRevenue = completedOrders.reduce((sum, o) => sum + Number(o.total_amount), 0);
-  const totalFees = fees
-  .filter(f => ['commission_fee', 'service_fee', 'shipping_fee', 'reverse_shipping_fee'].includes(f.fee_type))
+const totalFees = fees
+  .filter(f => ['commission', 'service_fee', 'shipping_fee'].includes(f.fee_type))
   .reduce((sum, f) => sum + Number(f.amount), 0);
   const totalNetAmount = payments
     .filter(p => p.payment_method === 'escrow')
@@ -131,14 +131,13 @@ function computeStats(
     feeMap.set(f.fee_type, (feeMap.get(f.fee_type) || 0) + Number(f.amount));
   });
 
- const FEE_TYPES_REAIS = ['commission_fee', 'service_fee', 'shipping_fee', 'reverse_shipping_fee'];
+ const FEE_TYPES_REAIS = ['commission', 'service_fee', 'shipping_fee'];
 
 fees
   .filter(f => FEE_TYPES_REAIS.includes(f.fee_type))
   .forEach(f => {
     feeMap.set(f.fee_type, (feeMap.get(f.fee_type) || 0) + Number(f.amount));
   });
-
   const feeBreakdown = Array.from(feeMap.entries()).map(([type, amount]) => ({
     type,
     label: feeLabels[type] || type,

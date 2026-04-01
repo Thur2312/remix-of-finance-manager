@@ -500,17 +500,16 @@ try {
             continue
           }
 
-          const feesToInsert = [
-  // ✅ Custos reais cobrados da Shopee
-  { type: "commission_fee", key: "commission_fee", amount: income.commission_fee, description: "Comissão Shopee" },
-  { type: "service_fee", key: "service_fee", amount: income.net_service_fee, description: "Taxa de serviço" },
-  { type: "shipping_fee", key: "shipping_fee", amount: income.estimated_shipping_fee, description: "Frete estimado" },
-  { type: "reverse_shipping_fee", key: "reverse_shipping_fee", amount: income.reverse_shipping_fee, description: "Frete reverso" },
-  { type: "seller_discount", key: "seller_discount", amount: income.seller_discount, description: "Desconto do vendedor" },
-  { type: "shopee_discount", key: "shopee_discount", amount: income.shopee_discount, description: "Desconto Shopee" },
-  { type: "shopee_rebate", key: "shopee_shipping_rebate", amount: income.shopee_shipping_rebate, description: "Rebate frete Shopee" },
-  { type: "voucher_shopee", key: "voucher_shopee", amount: income.voucher_from_shopee, description: "Voucher Shopee" },
-].filter(f => f.amount && Number(f.amount) !== 0)
+      const feesToInsert = [
+        { type: "commission", key: "commission_fee", amount: income.commission_fee, description: "Comissão Shopee" },
+        { type: "service_fee", key: "service_fee", amount: income.net_service_fee, description: "Taxa de serviço" },
+        { type: "shipping_fee", key: "shipping_fee", amount: income.estimated_shipping_fee, description: "Frete estimado" },
+        { type: "shipping_fee", key: "reverse_shipping_fee", amount: income.reverse_shipping_fee, description: "Frete reverso" },
+        { type: "adjustment", key: "seller_discount", amount: income.seller_discount, description: "Desconto do vendedor" },
+        { type: "adjustment", key: "shopee_discount", amount: income.shopee_discount, description: "Desconto Shopee" },
+        { type: "adjustment", key: "shopee_shipping_rebate", amount: income.shopee_shipping_rebate, description: "Rebate frete Shopee" },
+        { type: "adjustment", key: "voucher_shopee", amount: income.voucher_from_shopee, description: "Voucher Shopee" },
+      ].filter(f => f.amount && Number(f.amount) !== 0)
 
           for (const fee of feesToInsert) {
             const { error: feeError } = await supabaseAdmin
