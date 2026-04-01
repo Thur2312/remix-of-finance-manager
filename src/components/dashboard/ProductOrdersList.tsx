@@ -29,7 +29,15 @@ interface ProductRow {
 type SortKey = 'lastCompletedAt' | 'totalRevenue' | 'totalFees' | 'totalNet';
 type SortDir = 'asc' | 'desc';
 
-const COMPLETED_STATUSES = ['COMPLETED', 'SHIPPED', 'TO_CONFIRM_RECEIVE'];
+const COMPLETED_STATUSES = [
+  'COMPLETED',
+  'SHIPPED',
+  'TO_CONFIRM_RECEIVE',
+  'READY_TO_SHIP',
+  'PROCESSED',
+  'IN_CANCEL', 
+];
+
 const PAGE_SIZE = 10;
 
 function formatDate(dateStr: string | null) {
@@ -77,7 +85,7 @@ export function ProductOrdersList({ orders, fees, payments }: Props) {
 
   const productRows: ProductRow[] = useMemo(() => {
     const productMap = new Map<string, ProductRow>();
-    console.log('orders sample:', JSON.stringify(orders.slice(0, 2), null, 2));
+
 
     orders
       .filter(o => COMPLETED_STATUSES.includes(o.status))
