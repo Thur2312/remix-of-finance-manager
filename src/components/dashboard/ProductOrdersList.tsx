@@ -76,9 +76,6 @@ export function ProductOrdersList({ orders, fees, payments }: Props) {
   }, [payments]);
 
   const productRows: ProductRow[] = useMemo(() => {
-    const filtered = orders.filter(o => COMPLETED_STATUSES.includes(o.status));
-        console.log('filtrados:', filtered.length, 'de', orders.length);
-        console.log('status únicos:', [...new Set(orders.map(o => o.status))]);
     const productMap = new Map<string, ProductRow>();
  
     orders
@@ -87,6 +84,7 @@ export function ProductOrdersList({ orders, fees, payments }: Props) {
         const item = o.order_items?.[0];
         const productId = item?.external_item_id || item?.sku || o.external_order_id;
         const productName = item?.item_name || 'Produto sem nome';
+
 
         if (!productMap.has(productId)) {
           productMap.set(productId, {
@@ -258,7 +256,7 @@ export function ProductOrdersList({ orders, fees, payments }: Props) {
 
                 {/* Líquido */}
                 <div className="flex items-center pt-0.5">
-                  <span className={`text-sm font-bold tabular-nums text-lg leading-tight ${
+                  <span className={`text-sm font-bold tabular-nums text leading-tight ${
                     row.totalNet >= 0 ? 'text-primary' : 'text-destructive'
                   }`}>
                     {formatCurrency(row.totalNet)}

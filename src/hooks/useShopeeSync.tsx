@@ -69,8 +69,8 @@ export interface ShopeeSyncStats {
   feeBreakdown: { type: string; label: string; amount: number }[];
 }
 
-const COMPLETED_STATUSES = ['COMPLETED', 'SHIPPED', 'TO_CONFIRM_RECEIVE'];
-const CANCELLED_STATUSES  = ['CANCELLED', 'UNPAID'];
+const COMPLETED_STATUSES = ['COMPLETED', 'SHIPPED', 'TO_CONFIRM_RECEIVE', 'READY_TO_SHIP'];
+const CANCELLED_STATUSES = ['CANCELLED', 'UNPAID', 'TO_RETURN'];
 
 function computeStats(
   orders: SyncedOrder[],
