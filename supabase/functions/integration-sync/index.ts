@@ -160,7 +160,7 @@ serve(async (req) => {
       userId = user.id
     }
 
-    const { connection_id, time_from: customTimeFrom, time_to: customTimeTo } = requestBody
+const { connection_id, time_from: customTimeFrom, time_to: customTimeTo, days } = requestBody
 
     if (!connection_id) {
       return new Response(JSON.stringify({ error: "connection_id é obrigatório" }), {
@@ -255,22 +255,14 @@ serve(async (req) => {
 
     const now = new Date()
 
-    // 👇 Usa time_from e time_to do body se fornecidos, senão usa padrão de 15 dias
-    const timeFrom = customTimeFrom
-      ? Math.floor(new Date(customTimeFrom).getTime() / 1000)
-      : Math.floor((now.getTime() - 15 * 24 * 60 * 60 * 1000) / 1000)
+    const daysToSync = days || 15
+const timeFrom = customTimeFrom
+  ? Math.floor(new Date(customTimeFrom).getTime() / 1000)
+  : Math.floor((now.getTime() - daysToSync * 24 * 60 * 60 * 1000) / 1000)
 
-    const timeTo = customTimeTo
-      ? Math.floor(new Date(customTimeTo).getTime() / 1000)
-      : Math.floor(now.getTime() / 1000)
-
-    // Validação: máximo 15 dias entre time_from e time_to
-    const diffDays = (timeTo - timeFrom) / (60 * 60 * 24)
-    if (diffDays > 15) {
-      return new Response(JSON.stringify({ error: "O período máximo permitido pela Shopee é 15 dias." }), {
-        status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" }
-      })
-    }
+const timeTo = customTimeTo
+  ? Math.floor(new Date(customTimeTo).getTime() / 1000)
+  : Math.floor(now.getTime() / 1000)
 
     console.log(`📅 Período de sync: ${new Date(timeFrom * 1000).toISOString()} até ${new Date(timeTo * 1000).toISOString()}`)
 
@@ -295,7 +287,7 @@ serve(async (req) => {
           BASE_URL,
           "/api/v2/order/get_order_list",
           {
-            time_range_field: "create_time",
+            time_range_field: "update_time",
             time_from: timeFrom,
             time_to: timeTo,
             page_size: 50,
@@ -496,15 +488,16 @@ serve(async (req) => {
           }
 
           const feesToInsert = [
-            { type: "commission", key: "commission_fee", amount: income.commission_fee, description: "Comissão Shopee" },
-            { type: "service_fee", key: "service_fee", amount: income.net_service_fee, description: "Taxa de serviço" },
-            { type: "shipping_fee", key: "shipping_fee", amount: income.estimated_shipping_fee, description: "Frete estimado" },
-            { type: "adjustment", key: "reverse_shipping_fee", amount: income.reverse_shipping_fee, description: "Frete reverso" },
-            { type: "adjustment", key: "seller_discount", amount: income.seller_discount, description: "Desconto do vendedor" },
-            { type: "adjustment", key: "shopee_discount", amount: income.shopee_discount, description: "Desconto Shopee" },
-            { type: "adjustment", key: "shopee_shipping_rebate", amount: income.shopee_shipping_rebate, description: "Rebate frete Shopee" },
-            { type: "adjustment", key: "voucher_shopee", amount: income.voucher_from_shopee, description: "Voucher Shopee" },
-          ].filter(f => f.amount && Number(f.amount) !== 0)
+  // ✅ Custos reais cobrados da Shopee
+  { type: "commission_fee", key: "commission_fee", amount: income.commission_fee, description: "Comissão Shopee" },
+  { type: "service_fee", key: "service_fee", amount: income.net_service_fee, description: "Taxa de serviço" },
+  { type: "shipping_fee", key: "shipping_fee", amount: income.estimated_shipping_fee, description: "Frete estimado" },
+  { type: "reverse_shipping_fee", key: "reverse_shipping_fee", amount: income.reverse_shipping_fee, description: "Frete reverso" },
+  { type: "seller_discount", key: "seller_discount", amount: income.seller_discount, description: "Desconto do vendedor" },
+  { type: "shopee_discount", key: "shopee_discount", amount: income.shopee_discount, description: "Desconto Shopee" },
+  { type: "shopee_rebate", key: "shopee_shipping_rebate", amount: income.shopee_shipping_rebate, description: "Rebate frete Shopee" },
+  { type: "voucher_shopee", key: "voucher_shopee", amount: income.voucher_from_shopee, description: "Voucher Shopee" },
+].filter(f => f.amount && Number(f.amount) !== 0)
 
           for (const fee of feesToInsert) {
             const { error: feeError } = await supabaseAdmin
