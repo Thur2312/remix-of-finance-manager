@@ -77,6 +77,7 @@ export function ProductOrdersList({ orders, fees, payments }: Props) {
 
   const productRows: ProductRow[] = useMemo(() => {
     const productMap = new Map<string, ProductRow>();
+    console.log('orders sample:', JSON.stringify(orders.slice(0, 2), null, 2));
 
     orders
       .filter(o => COMPLETED_STATUSES.includes(o.status))
