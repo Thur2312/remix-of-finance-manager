@@ -14,14 +14,7 @@ function safeShopeeDate(timestamp: number | null): string | null {
   return isNaN(date.getTime()) ? null : date.toISOString()
 }
 
-function sign(
-  partnerId: number,
-  path: string,
-  timestamp: number,
-  partnerKey: string,
-  accessToken?: string,
-  shopId?: number
-): string {
+function sign(partnerId: number, path: string, timestamp: number, partnerKey: string, accessToken?: string, shopId?: number): string {
   const base = accessToken && shopId
     ? `${partnerId}${path}${timestamp}${accessToken}${shopId}`
     : `${partnerId}${path}${timestamp}`
@@ -32,32 +25,19 @@ function ts(): number {
   return Math.floor(Date.now() / 1000)
 }
 
-async function refreshShopeeToken(
-  baseUrl: string,
-  partnerId: number,
-  partnerKey: string,
-  refreshToken: string,
-  shopId: number,
-): Promise<{ access_token: string; refresh_token: string; expire_in: number; refresh_token_expire_in: number } | null> {
+async function refreshShopeeToken(baseUrl: string, partnerId: number, partnerKey: string, refreshToken: string, shopId: number): Promise<{ access_token: string; refresh_token: string; expire_in: number; refresh_token_expire_in: number } | null> {
   try {
     const timestamp = ts()
     const path = "/api/v2/auth/access_token/get"
     const s = sign(partnerId, path, timestamp, partnerKey)
-
-    const res = await fetch(
-      `${baseUrl}${path}?partner_id=${partnerId}&timestamp=${timestamp}&sign=${s}`,
-      {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ refresh_token: refreshToken, partner_id: partnerId, shop_id: shopId }),
-      }
-    )
-
+    const res = await fetch(`${baseUrl}${path}?partner_id=${partnerId}&timestamp=${timestamp}&sign=${s}`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ refresh_token: refreshToken, partner_id: partnerId, shop_id: shopId }),
+    })
     if (!res.ok) { console.error("Refresh token HTTP error:", res.status); return null }
-
     const data = await res.json()
     if (data.error && data.error !== "") { console.error("Token refresh error:", data.message); return null }
-
     return {
       access_token: data.access_token || "",
       refresh_token: data.refresh_token || "",
@@ -70,18 +50,9 @@ async function refreshShopeeToken(
   }
 }
 
-async function shopeeGet<T>(
-  baseUrl: string,
-  path: string,
-  params: Record<string, string | number | boolean>,
-  partnerId: number,
-  partnerKey: string,
-  accessToken: string,
-  shopId: number,
-): Promise<T> {
+async function shopeeGet<T>(baseUrl: string, path: string, params: Record<string, string | number | boolean>, partnerId: number, partnerKey: string, accessToken: string, shopId: number): Promise<T> {
   const timestamp = ts()
   const s = sign(partnerId, path, timestamp, partnerKey, accessToken, shopId)
-
   const queryParams = {
     partner_id: String(partnerId),
     shop_id: String(shopId),
@@ -90,24 +61,19 @@ async function shopeeGet<T>(
     sign: s,
     ...Object.fromEntries(Object.entries(params).map(([k, v]) => [k, String(v)])),
   }
-
   const query = new URLSearchParams(queryParams)
   const url = `${baseUrl}${path}?${query.toString()}`
   console.log("🔗 Shopee API call:", url.substring(0, 200) + "...")
-
   const res = await fetch(url)
-
   if (!res.ok) {
     const body = await res.text()
     console.error("❌ Shopee error body:", body)
     throw new Error(`HTTP ${res.status}: ${res.statusText}`)
   }
-
   const data = await res.json()
   if (data.error && data.error !== "") {
     throw new Error(`Shopee API error: ${data.message || data.error} (code: ${data.error})`)
   }
-
   return data.response as T
 }
 
@@ -160,7 +126,7 @@ serve(async (req) => {
       userId = user.id
     }
 
-const { connection_id, time_from: customTimeFrom, time_to: customTimeTo, days } = requestBody
+    const { connection_id, time_from: customTimeFrom, time_to: customTimeTo, days, step } = requestBody
 
     if (!connection_id) {
       return new Response(JSON.stringify({ error: "connection_id é obrigatório" }), {
@@ -204,49 +170,29 @@ const { connection_id, time_from: customTimeFrom, time_to: customTimeTo, days } 
     }
 
     let accessToken = connection.access_token || ""
-
-    const tokenExpiresAt = connection.token_expires_at
-      ? new Date(connection.token_expires_at).getTime()
-      : 0
+    const tokenExpiresAt = connection.token_expires_at ? new Date(connection.token_expires_at).getTime() : 0
     const oneHourFromNow = Date.now() + 60 * 60 * 1000
 
     if (tokenExpiresAt < oneHourFromNow || tokenExpiresAt === 0) {
       console.log("🔄 Token expiring soon, refreshing...")
-      const refreshed = await refreshShopeeToken(
-        BASE_URL, PARTNER_ID, PARTNER_KEY,
-        connection.refresh_token || "", shopId
-      )
-
+      const refreshed = await refreshShopeeToken(BASE_URL, PARTNER_ID, PARTNER_KEY, connection.refresh_token || "", shopId)
       if (refreshed && refreshed.access_token) {
-        const now = new Date()
-        const expireAt = refreshed.expire_in > 0
-          ? new Date(now.getTime() + refreshed.expire_in * 1000).toISOString()
-          : null
-        const refreshExpireAt = refreshed.refresh_token_expire_in > 0
-          ? new Date(now.getTime() + refreshed.refresh_token_expire_in * 1000).toISOString()
-          : null
-
-        const { error: updateError } = await supabaseAdmin
-          .from("integration_connections")
-          .update({
-            access_token: refreshed.access_token,
-            refresh_token: refreshed.refresh_token,
-            token_expires_at: expireAt,
-            refresh_token_expires_at: refreshExpireAt,
-            updated_at: now.toISOString(),
-          })
-          .eq("id", connection_id)
-
+        const now2 = new Date()
+        const expireAt = refreshed.expire_in > 0 ? new Date(now2.getTime() + refreshed.expire_in * 1000).toISOString() : null
+        const refreshExpireAt = refreshed.refresh_token_expire_in > 0 ? new Date(now2.getTime() + refreshed.refresh_token_expire_in * 1000).toISOString() : null
+        const { error: updateError } = await supabaseAdmin.from("integration_connections").update({
+          access_token: refreshed.access_token,
+          refresh_token: refreshed.refresh_token,
+          token_expires_at: expireAt,
+          refresh_token_expires_at: refreshExpireAt,
+          updated_at: now2.toISOString(),
+        }).eq("id", connection_id)
         if (updateError) console.error("Erro ao atualizar tokens:", updateError)
         accessToken = refreshed.access_token
         console.log("✅ Token refreshed successfully")
       } else {
         console.error("❌ Failed to refresh token")
-        await supabaseAdmin
-          .from("integration_connections")
-          .update({ status: "expired", updated_at: new Date().toISOString() })
-          .eq("id", connection_id)
-
+        await supabaseAdmin.from("integration_connections").update({ status: "expired", updated_at: new Date().toISOString() }).eq("id", connection_id)
         return new Response(JSON.stringify({ error: "Token expirado. Reconecte." }), {
           status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" }
         })
@@ -254,211 +200,173 @@ const { connection_id, time_from: customTimeFrom, time_to: customTimeTo, days } 
     }
 
     const now = new Date()
+    const daysToSync = days || 15
+    const timeFrom = customTimeFrom
+      ? Math.floor(new Date(customTimeFrom).getTime() / 1000)
+      : Math.floor((now.getTime() - daysToSync * 24 * 60 * 60 * 1000) / 1000)
+    const timeTo = customTimeTo
+      ? Math.floor(new Date(customTimeTo).getTime() / 1000)
+      : Math.floor(now.getTime() / 1000)
 
- const daysToSync = days || 15
-const timeFrom = customTimeFrom
-  ? Math.floor(new Date(customTimeFrom).getTime() / 1000)
-  : Math.floor((now.getTime() - daysToSync * 24 * 60 * 60 * 1000) / 1000)
-
-const timeTo = customTimeTo
-  ? Math.floor(new Date(customTimeTo).getTime() / 1000)
-  : Math.floor(now.getTime() / 1000)
-
-    console.log(`📅 Período de sync: ${new Date(timeFrom * 1000).toISOString()} até ${new Date(timeTo * 1000).toISOString()}`)
+    console.log(`📅 Período de sync: ${new Date(timeFrom * 1000).toISOString()} até ${new Date(timeTo * 1000).toISOString()} | step: ${step || 'all'}`)
 
     let ordersCount = 0
     let paymentsCount = 0
     let walletCount = 0
 
- // ✅ SYNC ORDERS - uma janela só
-try {
-  let cursor = ""
-  let hasMore = true
-  let safetyLimit = 0
+    // ✅ SYNC ORDERS
+    if (!step || step === 'orders') {
+      try {
+        let cursor = ""
+        let hasMore = true
+        let safetyLimit = 0
 
-  while (hasMore && safetyLimit < 10) {
-    console.log(`📦 Sync orders cursor="${cursor}" page ${safetyLimit + 1}...`)
+        while (hasMore && safetyLimit < 10) {
+          console.log(`📦 Sync orders cursor="${cursor}" page ${safetyLimit + 1}...`)
+          const orderList = await shopeeGet<{
+            order_list: { order_sn: string }[]
+            more: boolean
+            next_cursor: string
+          }>(BASE_URL, "/api/v2/order/get_order_list", {
+            time_range_field: "create_time",
+            time_from: timeFrom,
+            time_to: timeTo,
+            page_size: 50,
+            ...(cursor ? { cursor } : {}),
+          }, PARTNER_ID, PARTNER_KEY, accessToken, shopId)
 
-    const orderList = await shopeeGet<{
-      order_list: { order_sn: string }[]
-      more: boolean
-      next_cursor: string
-    }>(
-      BASE_URL,
-      "/api/v2/order/get_order_list",
-      {
-        time_range_field: "create_time",
-        time_from: timeFrom,
-        time_to: timeTo,
-        page_size: 50,
-        ...(cursor ? { cursor } : {}),
-      },
-      PARTNER_ID, PARTNER_KEY, accessToken, shopId
-    )
+          const orders = orderList?.order_list ?? []
+          console.log(`📋 ${orders.length} pedidos encontrados nessa página`)
 
-    const orders = orderList?.order_list ?? []
-    console.log(`📋 ${orders.length} pedidos encontrados nessa página`)
+          if (orders.length > 0) {
+            const orderSns = orders.map(o => o.order_sn).join(",")
+            await new Promise(r => setTimeout(r, 200))
 
-    if (orders.length > 0) {
-      const orderSns = orders.map(o => o.order_sn).join(",")
-      await new Promise(r => setTimeout(r, 300))
+            const orderDetails = await shopeeGet<{
+              order_list: {
+                order_sn: string
+                order_status: string
+                total_amount: string
+                currency: string
+                buyer_username?: string
+                shipping_carrier?: string
+                tracking_no?: string
+                pay_time?: number
+                create_time?: number
+                update_time?: number
+                item_list?: {
+                  item_id: number
+                  item_name: string
+                  item_sku: string
+                  model_id: number
+                  model_name: string
+                  model_sku: string
+                  model_quantity_purchased: number
+                  model_original_price: number
+                  model_discounted_price: number
+                }[]
+              }[]
+            }>(BASE_URL, "/api/v2/order/get_order_detail", {
+              order_sn_list: orderSns,
+              response_optional_fields: "buyer_username,pay_time,tracking_no,shipping_carrier,total_amount,currency,create_time,update_time,item_list",
+            }, PARTNER_ID, PARTNER_KEY, accessToken, shopId)
 
-      const orderDetails = await shopeeGet<{
-        order_list: {
-          order_sn: string
-          order_status: string
-          total_amount: string
-          currency: string
-          buyer_username?: string
-          shipping_carrier?: string
-          tracking_no?: string
-          pay_time?: number
-          create_time?: number
-          update_time?: number
-          item_list?: {
-            item_id: number
-            item_name: string
-            item_sku: string
-            model_id: number
-            model_name: string
-            model_sku: string
-            model_quantity_purchased: number
-            model_original_price: number
-            model_discounted_price: number
-          }[]
-        }[]
-      }>(
-        BASE_URL,
-        "/api/v2/order/get_order_detail",
-        {
-          order_sn_list: orderSns,
-          response_optional_fields: "buyer_username,pay_time,tracking_no,shipping_carrier,total_amount,currency,create_time,update_time,item_list",
-        },
-        PARTNER_ID, PARTNER_KEY, accessToken, shopId
-      )
+            for (const order of orderDetails.order_list ?? []) {
+              const { data: upsertedOrder, error: upsertError } = await supabaseAdmin
+                .from("orders")
+                .upsert({
+                  integration_id: connection_id,
+                  external_order_id: order.order_sn,
+                  status: order.order_status || "UNKNOWN",
+                  total_amount: Number(order.total_amount) || 0,
+                  currency: order.currency || "BRL",
+                  buyer_username: order.buyer_username ?? "",
+                  shipping_carrier: order.shipping_carrier ?? "",
+                  tracking_number: order.tracking_no ?? "",
+                  paid_at: safeShopeeDate(order.pay_time ?? null),
+                  order_created_at: safeShopeeDate(order.create_time ?? null),
+                  order_updated_at: safeShopeeDate(order.update_time ?? null),
+                  synced_at: now.toISOString(),
+                }, { onConflict: "integration_id,external_order_id" })
+                .select("id")
+                .single()
 
-      for (const order of orderDetails.order_list ?? []) {
-        const { data: upsertedOrder, error: upsertError } = await supabaseAdmin
-          .from("orders")
-          .upsert({
-            integration_id: connection_id,
-            external_order_id: order.order_sn,
-            status: order.order_status || "UNKNOWN",
-            total_amount: Number(order.total_amount) || 0,
-            currency: order.currency || "BRL",
-            buyer_username: order.buyer_username ?? "",
-            shipping_carrier: order.shipping_carrier ?? "",
-            tracking_number: order.tracking_no ?? "",
-            paid_at: safeShopeeDate(order.pay_time ?? null),
-            order_created_at: safeShopeeDate(order.create_time ?? null),
-            order_updated_at: safeShopeeDate(order.update_time ?? null),
-            synced_at: now.toISOString(),
-          }, { onConflict: "integration_id,external_order_id" })
-          .select("id")
-          .single()
+              if (upsertError) { console.error("❌ Erro ao salvar pedido:", order.order_sn, upsertError); continue }
+              ordersCount++
 
-        if (upsertError) {
-          console.error("❌ Erro ao salvar pedido:", order.order_sn, upsertError)
-          continue
-        }
-
-        ordersCount++
-
-        const items = order.item_list ?? []
-        if (upsertedOrder?.id && items.length > 0) {
-          for (const item of items) {
-            const { error: itemError } = await supabaseAdmin
-              .from("order_items")
-              .upsert({
-                order_id: upsertedOrder.id,
-                external_item_id: String(item.item_id),
-                item_name: item.item_name || item.model_name || "Produto sem nome",
-                sku: item.model_sku || item.item_sku || "",
-                quantity: item.model_quantity_purchased || 1,
-                unit_price: Number(item.model_discounted_price) || Number(item.model_original_price) || 0,
-                total_price: (Number(item.model_discounted_price) || Number(item.model_original_price) || 0) * (item.model_quantity_purchased || 1),
-              }, { onConflict: "order_id,external_item_id" })
-
-            if (itemError) {
-              console.error("❌ Erro ao salvar item:", item.item_id, itemError)
-            } else {
-              console.log("✅ Item salvo:", item.item_name, "- Pedido:", order.order_sn)
+              const items = order.item_list ?? []
+              if (upsertedOrder?.id && items.length > 0) {
+                for (const item of items) {
+                  const { error: itemError } = await supabaseAdmin.from("order_items").upsert({
+                    order_id: upsertedOrder.id,
+                    external_item_id: String(item.item_id),
+                    item_name: item.item_name || item.model_name || "Produto sem nome",
+                    sku: item.model_sku || item.item_sku || "",
+                    quantity: item.model_quantity_purchased || 1,
+                    unit_price: Number(item.model_discounted_price) || Number(item.model_original_price) || 0,
+                    total_price: (Number(item.model_discounted_price) || Number(item.model_original_price) || 0) * (item.model_quantity_purchased || 1),
+                  }, { onConflict: "order_id,external_item_id" })
+                  if (itemError) console.error("❌ Erro ao salvar item:", item.item_id, itemError)
+                  else console.log("✅ Item salvo:", item.item_name, "- Pedido:", order.order_sn)
+                }
+              }
             }
           }
+
+          hasMore = Boolean(orderList?.more)
+          cursor = orderList?.next_cursor ?? ""
+          safetyLimit++
+          if (hasMore) await new Promise(r => setTimeout(r, 200))
         }
+
+        console.log(`✅ Total de pedidos sincronizados: ${ordersCount}`)
+      } catch (orderError) {
+        console.error("❌ Orders sync error:", orderError)
       }
     }
 
-    hasMore = Boolean(orderList?.more)
-    cursor = orderList?.next_cursor ?? ""
-    safetyLimit++
-
-    if (hasMore) await new Promise(r => setTimeout(r, 500))
-  }
-
-  console.log(`✅ Total de pedidos sincronizados: ${ordersCount}`)
-} catch (orderError) {
-  console.error("❌ Orders sync error:", orderError)
-}
-    // ✅ SYNC PAYMENTS (escrow por pedido)
-    try {
-      const escrowList = await shopeeGet<{
-        escrow_list: { order_sn: string; escrow_release_time: number; payout_amount: number }[]
-        more: boolean
-      }>(
-        BASE_URL,
-        "/api/v2/payment/get_escrow_list",
-        {
+    // ✅ SYNC PAYMENTS
+    if (!step || step === 'payments') {
+      try {
+        const escrowList = await shopeeGet<{
+          escrow_list: { order_sn: string; escrow_release_time: number; payout_amount: number }[]
+          more: boolean
+        }>(BASE_URL, "/api/v2/payment/get_escrow_list", {
           release_time_from: timeFrom,
           release_time_to: timeTo,
           page_size: 50,
-        },
-        PARTNER_ID, PARTNER_KEY, accessToken, shopId
-      )
+        }, PARTNER_ID, PARTNER_KEY, accessToken, shopId)
 
-      const escrowOrders = escrowList?.escrow_list ?? []
-      console.log(`💰 ${escrowOrders.length} escrows encontrados`)
+        const escrowOrders = escrowList?.escrow_list ?? []
+        console.log(`💰 ${escrowOrders.length} escrows encontrados`)
 
-      for (const escrowOrder of escrowOrders) {
-        try {
-          await new Promise(r => setTimeout(r, 300))
+        for (const escrowOrder of escrowOrders) {
+          try {
+            await new Promise(r => setTimeout(r, 100))
+            const escrowDetail = await shopeeGet<{
+              order_sn: string
+              order_income: {
+                buyer_total_amount: number
+                commission_fee: number
+                net_service_fee: number
+                estimated_shipping_fee: number
+                reverse_shipping_fee: number
+                seller_discount: number
+                shopee_discount: number
+                escrow_amount: number
+                voucher_from_shopee: number
+                voucher_from_seller: number
+                shopee_shipping_rebate: number
+              }
+            }>(BASE_URL, "/api/v2/payment/get_escrow_detail", { order_sn: escrowOrder.order_sn }, PARTNER_ID, PARTNER_KEY, accessToken, shopId)
 
-          const escrowDetail = await shopeeGet<{
-            order_sn: string
-            order_income: {
-              buyer_total_amount: number
-              commission_fee: number
-              net_service_fee: number
-              estimated_shipping_fee: number
-              reverse_shipping_fee: number
-              seller_discount: number
-              shopee_discount: number
-              escrow_amount: number
-              voucher_from_shopee: number
-              voucher_from_seller: number
-              shopee_shipping_rebate: number
-            }
-          }>(
-            BASE_URL,
-            "/api/v2/payment/get_escrow_detail",
-            { order_sn: escrowOrder.order_sn },
-            PARTNER_ID, PARTNER_KEY, accessToken, shopId
-          )
+            const income = escrowDetail?.order_income
+            const orderSn = escrowDetail?.order_sn
+            if (!income || !orderSn) continue
 
-          const income = escrowDetail?.order_income
-          const orderSn = escrowDetail?.order_sn
-          if (!income || !orderSn) continue
+            const { data: orderRow } = await supabaseAdmin.from("orders").select("id").eq("integration_id", connection_id).eq("external_order_id", orderSn).single()
 
-          const { data: orderRow } = await supabaseAdmin
-            .from("orders")
-            .select("id")
-            .eq("integration_id", connection_id)
-            .eq("external_order_id", orderSn)
-            .single()
-
-          const { error: paymentError } = await supabaseAdmin
-            .from("payments")
-            .upsert({
+            const { error: paymentError } = await supabaseAdmin.from("payments").upsert({
               integration_id: connection_id,
               external_transaction_id: orderSn,
               order_id: orderRow?.id ?? null,
@@ -473,26 +381,21 @@ try {
               synced_at: now.toISOString(),
             }, { onConflict: "external_transaction_id" })
 
-          if (paymentError) {
-            console.error("❌ Erro ao salvar payment:", orderSn, paymentError)
-            continue
-          }
+            if (paymentError) { console.error("❌ Erro ao salvar payment:", orderSn, paymentError); continue }
 
-      const feesToInsert = [
-        { type: "commission", key: "commission_fee", amount: income.commission_fee, description: "Comissão Shopee" },
-        { type: "service_fee", key: "service_fee", amount: income.net_service_fee, description: "Taxa de serviço" },
-        { type: "shipping_fee", key: "shipping_fee", amount: income.estimated_shipping_fee, description: "Frete estimado" },
-        { type: "shipping_fee", key: "reverse_shipping_fee", amount: income.reverse_shipping_fee, description: "Frete reverso" },
-        { type: "adjustment", key: "seller_discount", amount: income.seller_discount, description: "Desconto do vendedor" },
-        { type: "adjustment", key: "shopee_discount", amount: income.shopee_discount, description: "Desconto Shopee" },
-        { type: "adjustment", key: "shopee_shipping_rebate", amount: income.shopee_shipping_rebate, description: "Rebate frete Shopee" },
-        { type: "adjustment", key: "voucher_shopee", amount: income.voucher_from_shopee, description: "Voucher Shopee" },
-      ].filter(f => f.amount && Number(f.amount) !== 0)
+            const feesToInsert = [
+              { type: "commission", key: "commission_fee", amount: income.commission_fee, description: "Comissão Shopee" },
+              { type: "service_fee", key: "service_fee", amount: income.net_service_fee, description: "Taxa de serviço" },
+              { type: "shipping_fee", key: "shipping_fee", amount: income.estimated_shipping_fee, description: "Frete estimado" },
+              { type: "shipping_fee", key: "reverse_shipping_fee", amount: income.reverse_shipping_fee, description: "Frete reverso" },
+              { type: "adjustment", key: "seller_discount", amount: income.seller_discount, description: "Desconto do vendedor" },
+              { type: "adjustment", key: "shopee_discount", amount: income.shopee_discount, description: "Desconto Shopee" },
+              { type: "adjustment", key: "shopee_shipping_rebate", amount: income.shopee_shipping_rebate, description: "Rebate frete Shopee" },
+              { type: "adjustment", key: "voucher_shopee", amount: income.voucher_from_shopee, description: "Voucher Shopee" },
+            ].filter(f => f.amount && Number(f.amount) !== 0)
 
-          for (const fee of feesToInsert) {
-            const { error: feeError } = await supabaseAdmin
-              .from("fees")
-              .upsert({
+            for (const fee of feesToInsert) {
+              const { error: feeError } = await supabaseAdmin.from("fees").upsert({
                 integration_id: connection_id,
                 external_fee_id: `${orderSn}_${fee.key}`,
                 order_id: orderRow?.id ?? null,
@@ -503,73 +406,56 @@ try {
                 fee_date: now.toISOString(),
                 synced_at: now.toISOString(),
               }, { onConflict: "external_fee_id" })
-
-            if (feeError) {
-              console.error("❌ Erro ao salvar fee:", fee.key, JSON.stringify(feeError))
-            } else {
-              console.log("✅ Fee salva:", fee.key, orderSn)
+              if (feeError) console.error("❌ Erro ao salvar fee:", fee.key, JSON.stringify(feeError))
+              else console.log("✅ Fee salva:", fee.key, orderSn)
             }
-          }
 
-          paymentsCount++
-        } catch (detailError) {
-          console.error("❌ Erro no escrow detail:", escrowOrder.order_sn, detailError)
+            paymentsCount++
+          } catch (detailError) {
+            console.error("❌ Erro no escrow detail:", escrowOrder.order_sn, detailError)
+          }
         }
-      }
-    } catch (paymentError) {
-      console.error("❌ Payments sync error:", paymentError)
-      await supabaseAdmin
-        .from("integration_connections")
-        .update({
+      } catch (paymentError) {
+        console.error("❌ Payments sync error:", paymentError)
+        await supabaseAdmin.from("integration_connections").update({
           last_error_message: paymentError instanceof Error ? paymentError.message : String(paymentError),
           updated_at: new Date().toISOString(),
-        })
-        .eq("id", connection_id)
+        }).eq("id", connection_id)
+      }
     }
 
-    // ✅ SYNC WALLET TRANSACTIONS
-    try {
-      const walletRes = await shopeeGet<{
-        transaction_list: {
-          transaction_id: number
-          status: string
-          wallet_type: string
-          transaction_type: string
-          amount: number
-          current_balance: number
-          create_time: number
-          order_sn: string
-          description: string
-          money_flow: string
-        }[]
-        more: boolean
-      }>(
-        BASE_URL,
-        "/api/v2/payment/get_wallet_transaction_list",
-        {
+    // ✅ SYNC WALLET
+    if (!step || step === 'wallet') {
+      try {
+        const walletRes = await shopeeGet<{
+          transaction_list: {
+            transaction_id: number
+            status: string
+            wallet_type: string
+            transaction_type: string
+            amount: number
+            current_balance: number
+            create_time: number
+            order_sn: string
+            description: string
+            money_flow: string
+          }[]
+          more: boolean
+        }>(BASE_URL, "/api/v2/payment/get_wallet_transaction_list", {
           transaction_type: 3,
           page_no: 1,
           page_size: 50,
-        },
-        PARTNER_ID, PARTNER_KEY, accessToken, shopId
-      )
+        }, PARTNER_ID, PARTNER_KEY, accessToken, shopId)
 
-      const transactions = walletRes?.transaction_list ?? []
-      console.log(`🏦 ${transactions.length} transações de carteira encontradas`)
+        const transactions = walletRes?.transaction_list ?? []
+        console.log(`🏦 ${transactions.length} transações de carteira encontradas`)
 
-      for (const tx of transactions) {
-        const { data: orderRow } = tx.order_sn
-          ? await supabaseAdmin
-              .from("orders")
-              .select("id")
-              .eq("integration_id", connection_id)
-              .eq("external_order_id", tx.order_sn)
-              .single()
-          : { data: null }
+        for (const tx of transactions) {
+          const { data: orderRow } = tx.order_sn
+            ? await supabaseAdmin.from("orders").select("id").eq("integration_id", connection_id).eq("external_order_id", tx.order_sn).single()
+            : { data: null }
 
-        await supabaseAdmin
-          .from("payments")
-          .upsert({
+          await supabaseAdmin.from("payments").upsert({
             integration_id: connection_id,
             external_transaction_id: String(tx.transaction_id),
             order_id: orderRow?.id ?? null,
@@ -584,56 +470,51 @@ try {
             synced_at: now.toISOString(),
           }, { onConflict: "external_transaction_id" })
 
-        walletCount++
+          walletCount++
+        }
+      } catch (walletError) {
+        console.error("❌ Wallet sync error:", walletError)
       }
-    } catch (walletError) {
-      console.error("❌ Wallet sync error:", walletError)
     }
 
-    // ✅ Atualiza conexão (só atualiza last_sync_at se for sync padrão sem datas customizadas)
-    if (!customTimeFrom && !customTimeTo) {
-      const nextSync = new Date(now.getTime() + (connection.auto_sync_frequency_minutes || 60) * 60 * 1000)
-      await supabaseAdmin
-        .from("integration_connections")
-        .update({
+    // ✅ Atualiza conexão apenas na etapa final ou quando não há step
+    if (!step || step === 'wallet') {
+      if (!customTimeFrom && !customTimeTo) {
+        const nextSync = new Date(now.getTime() + (connection.auto_sync_frequency_minutes || 60) * 60 * 1000)
+        await supabaseAdmin.from("integration_connections").update({
           last_sync_at: now.toISOString(),
           next_sync_at: nextSync.toISOString(),
           last_error_code: null,
           last_error_message: null,
           updated_at: now.toISOString(),
-        })
-        .eq("id", connection_id)
-    }
+        }).eq("id", connection_id)
+      }
 
-    // ✅ Log final
-    await supabaseAdmin.from("integration_sync_logs").insert({
-      connection_id,
-      user_id: isCronCall ? connection.user_id : userId,
-      type: "sync",
-      status: ordersCount > 0 || paymentsCount > 0 ? "success" : "empty",
-      message: `${ordersCount} pedidos, ${paymentsCount} pagamentos, ${walletCount} transações sincronizados`,
-      metadata: {
-        orders_synced: ordersCount,
-        payments_synced: paymentsCount,
-        wallet_transactions_synced: walletCount,
-        time_from: new Date(timeFrom * 1000).toISOString(),
-        time_to: new Date(timeTo * 1000).toISOString(),
-      },
-    })
+      await supabaseAdmin.from("integration_sync_logs").insert({
+        connection_id,
+        user_id: isCronCall ? connection.user_id : userId,
+        type: "sync",
+        status: ordersCount > 0 || paymentsCount > 0 || walletCount > 0 ? "success" : "empty",
+        message: `${ordersCount} pedidos, ${paymentsCount} pagamentos, ${walletCount} transações sincronizados`,
+        metadata: {
+          orders_synced: String(ordersCount),
+          payments_synced: String(paymentsCount),
+          wallet_transactions_synced: String(walletCount),
+          time_from: new Date(timeFrom * 1000).toISOString(),
+          time_to: new Date(timeTo * 1000).toISOString(),
+        },
+      })
+    }
 
     return new Response(
       JSON.stringify({
         success: true,
-        message: `✅ Sync concluído`,
+        message: `✅ Sync concluído (step: ${step || 'all'})`,
         period: {
           from: new Date(timeFrom * 1000).toISOString(),
           to: new Date(timeTo * 1000).toISOString(),
         },
-        stats: {
-          orders: ordersCount,
-          payments: paymentsCount,
-          wallet_transactions: walletCount,
-        }
+        stats: { orders: ordersCount, payments: paymentsCount, wallet_transactions: walletCount },
       }),
       { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     )
@@ -642,7 +523,7 @@ try {
     console.error("❌ Sync error completo:", error)
     return new Response(
       JSON.stringify({ error: error instanceof Error ? error.message : "Erro interno do servidor" }),
-      { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     )
   }
 })

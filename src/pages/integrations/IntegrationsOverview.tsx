@@ -136,9 +136,10 @@ export default function IntegrationsOverview() {
                       c => c.provider === connectProvider && c.status === 'connected'
                     );
                     if (conn) {
-                      syncNow.mutate(conn.id, {
-                        onSettled: () => setIsSyncing(false),
-                      });
+                      syncNow.mutate(
+                        { connectionId: conn.id, days: 15 },
+                        { onSettled: () => setIsSyncing(false) }
+                      );
                     } else {
                       setIsSyncing(false);
                     }
