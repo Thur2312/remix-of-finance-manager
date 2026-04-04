@@ -221,7 +221,7 @@ serve(async (req) => {
         let hasMore = true
         let safetyLimit = 0
 
-        while (hasMore && safetyLimit < 10) {
+        while (hasMore && safetyLimit < 50) {
           console.log(`📦 Sync orders cursor="${cursor}" page ${safetyLimit + 1}...`)
           const orderList = await shopeeGet<{
             order_list: { order_sn: string }[]
@@ -240,7 +240,7 @@ serve(async (req) => {
 
           if (orders.length > 0) {
             const orderSns = orders.map(o => o.order_sn).join(",")
-            await new Promise(r => setTimeout(r, 200))
+            await new Promise(r => setTimeout(r, 100))
 
             const orderDetails = await shopeeGet<{
               order_list: {
@@ -316,7 +316,7 @@ serve(async (req) => {
           hasMore = Boolean(orderList?.more)
           cursor = orderList?.next_cursor ?? ""
           safetyLimit++
-          if (hasMore) await new Promise(r => setTimeout(r, 200))
+          if (hasMore) await new Promise(r => setTimeout(r, 100))
         }
 
         console.log(`✅ Total de pedidos sincronizados: ${ordersCount}`)
