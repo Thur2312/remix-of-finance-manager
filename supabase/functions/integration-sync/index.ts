@@ -89,27 +89,23 @@ serve(async (req) => {
         status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" }
       })
     }
+      const supabase = createClient(
+        Deno.env.get("SUPABASE_URL")!,
+        Deno.env.get("SUPABASE_ANON_KEY")!,
+        { global: { headers: { Authorization: authHeader } } }
+      )
 
-    const supabase = createClient(
-      Deno.env.get("SUPABASE_URL")!,
-      Deno.env.get("ADMIN_KEY")!,
-      { global: { headers: { Authorization: authHeader } } }
-    )
-
-    const supabaseAdmin = createClient(
-      Deno.env.get("SUPABASE_URL")!,
-      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
-    )
-
+      const supabaseAdmin = createClient(
+        Deno.env.get("SUPABASE_URL")!,
+        Deno.env.get("ADMIN_KEY")!,
+)
     const serviceKey = Deno.env.get("ADMIN_KEY") || ""
     console.log("🔑 Service key primeiros chars:", serviceKey.substring(0, 20))
     console.log("🔑 Service key últimos chars:", serviceKey.substring(serviceKey.length - 10))
 
-// ← adicione este log
       console.log("🔑 SUPABASE_URL:", Deno.env.get("SUPABASE_URL"))
       console.log("🔑 SERVICE_KEY existe:", !!Deno.env.get("ADMIN_KEY"))
 
-      // Teste de escrita
       const { error: testError } = await supabaseAdmin.from("orders").select("id").limit(1)
       console.log("🔑 Teste de leitura admin:", testError ? JSON.stringify(testError) : "OK")
 
@@ -227,7 +223,6 @@ serve(async (req) => {
     let walletCount = 0
 
     // ✅ SYNC ORDERS
-    // ✅ SYNC ORDERS
 if (!step || step === 'orders') {
   // Teste de inserção
   const { data: testInsert, error: testError } = await supabaseAdmin
@@ -273,80 +268,122 @@ if (!step || step === 'orders') {
       console.log(`📋 ${orders.length} pedidos encontrados nessa página`)
 
       if (orders.length > 0) {
-        const orderSns = orders.map(o => o.order_sn).join(",")
-        await new Promise(r => setTimeout(r, 100))
+  const orderSns = orders.map(o => o.order_sn).join(",")
+  await new Promise(r => setTimeout(r, 100))
 
-        const orderDetails = await shopeeGet<{
-          order_list: {
-            order_sn: string
-            order_status: string
-            total_amount: string
-            currency: string
-            buyer_username?: string
-            shipping_carrier?: string
-            tracking_no?: string
-            pay_time?: number
-            create_time?: number
-            update_time?: number
-            item_list?: {
-              item_id: number
-              item_name: string
-              item_sku: string
-              model_id: number
-              model_name: string
-              model_sku: string
-              model_quantity_purchased: number
-              model_original_price: number
-              model_discounted_price: number
-            }[]
-          }[]
-        }>(BASE_URL, "/api/v2/order/get_order_detail", {
-          order_sn_list: orderSns,
-          response_optional_fields: "buyer_username,pay_time,tracking_no,shipping_carrier,total_amount,currency,create_time,update_time,item_list",
-        }, PARTNER_ID, PARTNER_KEY, accessToken, shopId)
+  const orderDetails = await shopeeGet<{
+    order_list: {
+      order_sn: string
+      order_status: string
+      total_amount: string
+      currency: string
+      buyer_username?: string
+      shipping_carrier?: string
+      tracking_no?: string
+      pay_time?: number
+      create_time?: number
+      update_time?: number
+      item_list?: {
+        item_id: number
+        item_name: string
+        item_sku: string
+        model_id: number
+        model_name: string
+        model_sku: string
+        model_quantity_purchased: number
+        model_original_price: number
+        model_discounted_price: number
+      }[]
+    }[]
+  }>(BASE_URL, "/api/v2/order/get_order_detail", {
+    order_sn_list: orderSns,
+    response_optional_fields: "buyer_username,pay_time,tracking_no,shipping_carrier,total_amount,currency,create_time,update_time,item_list",
+  }, PARTNER_ID, PARTNER_KEY, accessToken, shopId)
 
-        for (const order of orderDetails.order_list ?? []) {
-          const { data: upsertedOrder, error: upsertError } = await supabaseAdmin
-            .from("orders")
-            .upsert({
-              integration_id: connection_id,
-              external_order_id: order.order_sn,
-              status: order.order_status || "UNKNOWN",
-              total_amount: Number(order.total_amount) || 0,
-              currency: order.currency || "BRL",
-              buyer_username: order.buyer_username ?? "",
-              shipping_carrier: order.shipping_carrier ?? "",
-              tracking_number: order.tracking_no ?? "",
-              paid_at: safeShopeeDate(order.pay_time ?? null),
-              order_created_at: safeShopeeDate(order.create_time ?? null),
-              order_updated_at: safeShopeeDate(order.update_time ?? null),
-              synced_at: now.toISOString(),
-            }, { onConflict: "integration_id,external_order_id" })
-            .select("id")
-            .single()
+  // ← substitua o loop individual por este batch
+  const ordersToUpsert = (orderDetails.order_list ?? []).map(order => ({
+    integration_id: connection_id,
+    external_order_id: order.order_sn,
+    status: order.order_status || "UNKNOWN",
+    total_amount: Number(order.total_amount) || 0,
+    currency: order.currency || "BRL",
+    buyer_username: order.buyer_username ?? "",
+    shipping_carrier: order.shipping_carrier ?? "",
+    tracking_number: order.tracking_no ?? "",
+    paid_at: safeShopeeDate(order.pay_time ?? null),
+    order_created_at: safeShopeeDate(order.create_time ?? null),
+    order_updated_at: safeShopeeDate(order.update_time ?? null),
+    synced_at: now.toISOString(),
+  }))
 
-          if (upsertError) { console.error("❌ Erro ao salvar pedido:", order.order_sn, JSON.stringify(upsertError)); continue }
-          ordersCount++
-          console.log(`✅ Pedido salvo: ${order.order_sn} | id: ${upsertedOrder?.id}`)
+ // Primeiro tenta inserir ignorando duplicatas
+const { data: insertedOrders, error: insertError } = await supabaseAdmin
+  .from("orders")
+  .insert(ordersToUpsert)
+  .select("id, external_order_id")
 
-          const items = order.item_list ?? []
-          if (upsertedOrder?.id && items.length > 0) {
-            for (const item of items) {
-              const { error: itemError } = await supabaseAdmin.from("order_items").upsert({
-                order_id: upsertedOrder.id,
-                external_item_id: String(item.item_id),
-                item_name: item.item_name || item.model_name || "Produto sem nome",
-                sku: item.model_sku || item.item_sku || "",
-                quantity: item.model_quantity_purchased || 1,
-                unit_price: Number(item.model_discounted_price) || Number(item.model_original_price) || 0,
-                total_price: (Number(item.model_discounted_price) || Number(item.model_original_price) || 0) * (item.model_quantity_purchased || 1),
-              }, { onConflict: "order_id,external_item_id" })
-              if (itemError) console.error("❌ Erro ao salvar item:", item.item_id, JSON.stringify(itemError))
-            }
-          }
-        }
-      }
+let upsertedOrders = insertedOrders
+let upsertError = insertError
 
+if (insertError?.code === '23505') {
+  // Tem duplicatas, faz upsert um por um
+  upsertedOrders = []
+  upsertError = null
+  for (const order of ordersToUpsert) {
+    const { data, error } = await supabaseAdmin
+      .from("orders")
+      .upsert(order, { onConflict: "integration_id,external_order_id" })
+      .select("id, external_order_id")
+      .single()
+    if (!error && data) upsertedOrders.push(data)
+  }
+}
+
+console.log("🔍 insertError:", insertError ? JSON.stringify(insertError) : "null")
+console.log("🔍 upsertedOrders length:", upsertedOrders?.length)
+console.log("🔍 primeiro ordersToUpsert:", JSON.stringify(ordersToUpsert[0]))
+
+if (upsertError) {
+  console.error("❌ Erro ao salvar pedidos em batch:", JSON.stringify(upsertError))
+} else {
+  ordersCount += upsertedOrders?.length || 0
+  console.log(`✅ ${upsertedOrders?.length} pedidos salvos em batch`)
+
+  const itemsToUpsert: {
+    order_id: string
+    external_item_id: string
+    item_name: string
+    sku: string
+    quantity: number
+    unit_price: number
+    total_price: number
+  }[] = []
+
+  for (const order of orderDetails.order_list ?? []) {
+    const savedOrder = upsertedOrders?.find(o => o.external_order_id === order.order_sn)
+    if (!savedOrder?.id) continue
+    const items = order.item_list ?? []
+    if (items.length === 0) continue
+    itemsToUpsert.push(...items.map(item => ({
+      order_id: savedOrder.id,
+      external_item_id: String(item.item_id),
+      item_name: item.item_name || item.model_name || "Produto sem nome",
+      sku: item.model_sku || item.item_sku || "",
+      quantity: item.model_quantity_purchased || 1,
+      unit_price: Number(item.model_discounted_price) || Number(item.model_original_price) || 0,
+      total_price: (Number(item.model_discounted_price) || Number(item.model_original_price) || 0) * (item.model_quantity_purchased || 1),
+    })))
+  }
+
+  if (itemsToUpsert.length > 0) {
+    const { error: itemsError } = await supabaseAdmin
+      .from("order_items")
+      .upsert(itemsToUpsert, { onConflict: "order_id,external_item_id" })
+    if (itemsError) console.error("❌ Erro ao salvar items em batch:", JSON.stringify(itemsError))
+    else console.log(`✅ ${itemsToUpsert.length} items salvos em batch`)
+  }
+}
+}
       hasMore = Boolean(orderList?.more)
       cursor = orderList?.next_cursor ?? ""
       safetyLimit++
