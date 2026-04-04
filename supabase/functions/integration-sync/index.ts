@@ -228,7 +228,7 @@ serve(async (req) => {
             more: boolean
             next_cursor: string
           }>(BASE_URL, "/api/v2/order/get_order_list", {
-            time_range_field: "create_time",
+            time_range_field: "update_time",
             time_from: timeFrom,
             time_to: timeTo,
             page_size: 50,
@@ -316,6 +316,9 @@ serve(async (req) => {
           hasMore = Boolean(orderList?.more)
           cursor = orderList?.next_cursor ?? ""
           safetyLimit++
+
+        console.log(`📄 hasMore: ${orderList?.more} | cursor: ${orderList?.next_cursor} | safetyLimit: ${safetyLimit}`)
+
           if (hasMore) await new Promise(r => setTimeout(r, 100))
         }
 

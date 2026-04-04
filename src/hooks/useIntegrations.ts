@@ -87,19 +87,27 @@ export function useIntegrations() {
     })
 
     const chunkSize = 3
-    for (let i = 0; i < orderWindows.length; i += chunkSize) {
-      const chunk = orderWindows.slice(i, i + chunkSize)
-      await Promise.all(chunk.map(({ timeTo, timeFrom }) =>
-        supabase.functions.invoke('integration-sync', {
-          body: {
-            connection_id: connectionId,
-            time_from: timeFrom.toISOString(),
-            time_to: timeTo.toISOString(),
-            step: 'orders',
-          },
-        })
-      ))
-    }
+    for (let i = 0; i < windows; i++) {
+  const timeTo = new Date()
+  timeTo.setDate(timeTo.getDate() - i * windowSize)
+  const timeFrom = new Date()
+  timeFrom.setDate(timeFrom.getDate() - (i + 1) * windowSize)
+
+  console.log(`🔄 Chamando janela ${i + 1}/${windows}: ${timeFrom.toISOString()} → ${timeTo.toISOString()}`)
+
+  const { data, error } = await supabase.functions.invoke('integration-sync', {
+    body: {
+      connection_id: connectionId,
+      time_from: timeFrom.toISOString(),
+      time_to: timeTo.toISOString(),
+      step: 'orders',
+    },
+  })
+
+  console.log(`✅ Janela ${i + 1} resultado:`, data, 'erro:', error)
+
+  if (error) throw error
+}
 
     // Etapa 2: Payments — período completo
     const { error: paymentsError } = await supabase.functions.invoke('integration-sync', {
