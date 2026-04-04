@@ -96,9 +96,23 @@ serve(async (req) => {
       )
 
       const supabaseAdmin = createClient(
-        Deno.env.get("SUPABASE_URL")!,
-        Deno.env.get("ADMIN_KEY")!,
-)
+      Deno.env.get("SUPABASE_URL")!,
+      Deno.env.get("ADMIN_KEY")!,
+      {
+        auth: {
+          autoRefreshToken: false,
+          persistSession: false,
+        },
+        db: {
+          schema: 'public',
+        },
+        global: {
+          headers: {
+            Authorization: `Bearer ${Deno.env.get("ADMIN_KEY")!}`,
+          },
+        },
+      }
+    )
     const serviceKey = Deno.env.get("ADMIN_KEY") || ""
     console.log("🔑 Service key primeiros chars:", serviceKey.substring(0, 20))
     console.log("🔑 Service key últimos chars:", serviceKey.substring(serviceKey.length - 10))
@@ -339,7 +353,8 @@ if (insertError?.code === '23505') {
   }
 }
 
-console.log("🔍 insertError:", insertError ? JSON.stringify(insertError) : "null")
+console.log("🔍 insertError code:", insertError?.code)
+console.log("🔍 insertError message:", insertError?.message)
 console.log("🔍 upsertedOrders length:", upsertedOrders?.length)
 console.log("🔍 primeiro ordersToUpsert:", JSON.stringify(ordersToUpsert[0]))
 

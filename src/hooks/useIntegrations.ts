@@ -45,9 +45,11 @@ export function useIntegrations() {
     },
   });
 
-  const getConnection = useCallback((provider: string) => {
-    return data?.connections?.find(c => c.provider === provider) || null;
-  }, [data]);
+ const getConnection = useCallback((provider: string) => {
+  return data?.connections?.find(c => c.provider === provider && c.status === 'connected') 
+    || data?.connections?.find(c => c.provider === provider) 
+    || null;
+}, [data]);
 
   const getLogsForConnection = useCallback((connectionId: string) => {
     return data?.logs?.filter(l => l.connection_id === connectionId) || [];
