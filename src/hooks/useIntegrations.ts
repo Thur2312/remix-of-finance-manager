@@ -73,17 +73,24 @@ export function useIntegrations() {
 
   const syncNow = useMutation({
     mutationFn: async ({ connectionId, days }: { connectionId: string; days?: number }) => {
-      const daysToSync = days || 15
-      const windowSize = 7
-      const windows = Math.ceil(daysToSync / windowSize)
-      
-      for (let i = 0; i < windows; i++) {
-        const timeTo = new Date()
-        timeTo.setDate(timeTo.getDate() - i * windowSize)
-        const timeFrom = new Date()
-        timeFrom.setDate(timeFrom.getDate() - (i + 1) * windowSize)
+    const daysToSync = days || 15
+    const windowSize = 7
+    const windows = Math.ceil(daysToSync / windowSize)
 
-        const { error } = await supabase.functions.invoke('integration-sync', {
+    // Etapa 1: Orders — janelas em paralelo (grupos de 3 para não sobrecarregar)
+    const orderWindows = Array.from({ length: windows }, (_, i) => {
+      const timeTo = new Date()
+      timeTo.setDate(timeTo.getDate() - i * windowSize)
+      const timeFrom = new Date()
+      timeFrom.setDate(timeFrom.getDate() - (i + 1) * windowSize)
+      return { timeTo, timeFrom }
+    })
+
+    const chunkSize = 3
+    for (let i = 0; i < orderWindows.length; i += chunkSize) {
+      const chunk = orderWindows.slice(i, i + chunkSize)
+      await Promise.all(chunk.map(({ timeTo, timeFrom }) =>
+        supabase.functions.invoke('integration-sync', {
           body: {
             connection_id: connectionId,
             time_from: timeFrom.toISOString(),
@@ -91,29 +98,31 @@ export function useIntegrations() {
             step: 'orders',
           },
         })
-        if (error) throw error
-      }
+      ))
+    }
 
-      const { error: paymentsError } = await supabase.functions.invoke('integration-sync', {
-        body: {
-          connection_id: connectionId,
-          days: daysToSync,
-          step: 'payments',
-        },
-      })
-      if (paymentsError) throw paymentsError
+    // Etapa 2: Payments — período completo
+    const { error: paymentsError } = await supabase.functions.invoke('integration-sync', {
+      body: {
+        connection_id: connectionId,
+        days: daysToSync,
+        step: 'payments',
+      },
+    })
+    if (paymentsError) throw paymentsError
 
-      const { data: walletData, error: walletError } = await supabase.functions.invoke('integration-sync', {
-        body: {
-          connection_id: connectionId,
-          days: daysToSync,
-          step: 'wallet',
-        },
-      })
-      if (walletError) throw walletError
+    // Etapa 3: Wallet — período completo
+    const { data: walletData, error: walletError } = await supabase.functions.invoke('integration-sync', {
+      body: {
+        connection_id: connectionId,
+        days: daysToSync,
+        step: 'wallet',
+      },
+    })
+    if (walletError) throw walletError
 
-      return walletData
-    },
+    return walletData
+  },
     onSuccess: (data) => {
       toast({ title: 'Sincronização concluída', description: data?.message });
       queryClient.invalidateQueries({ queryKey: ['integrations'] });
