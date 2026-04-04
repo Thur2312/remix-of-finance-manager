@@ -221,7 +221,7 @@ serve(async (req) => {
         let hasMore = true
         let safetyLimit = 0
 
-        while (hasMore && safetyLimit < 10) {
+        while (hasMore && safetyLimit < 20) {
           console.log(`📦 Sync orders cursor="${cursor}" page ${safetyLimit + 1}...`)
           const orderList = await shopeeGet<{
             order_list: { order_sn: string }[]

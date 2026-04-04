@@ -74,7 +74,7 @@ export function useIntegrations() {
   const syncNow = useMutation({
     mutationFn: async ({ connectionId, days }: { connectionId: string; days?: number }) => {
     const daysToSync = days || 15
-    const windowSize = 7
+    const windowSize = 2
     const windows = Math.ceil(daysToSync / windowSize)
 
     // Etapa 1: Orders — janelas em paralelo (grupos de 3 para não sobrecarregar)
