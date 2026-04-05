@@ -158,6 +158,7 @@ fees
 }
 
 export function useShopeeSync(connectionId: string | null, days: number = 15) {
+  console.log('useShopeeSync connectionId:', connectionId)
   return useQuery({
     queryKey: ['shopee-sync', connectionId, days], // ← adiciona days na key
     enabled: !!connectionId,
