@@ -22,6 +22,7 @@ import { useIntegrations } from '@/hooks/useIntegrations';
 import { useNavigate } from 'react-router-dom';
 import { ProductOrdersList } from '@/components/dashboard/ProductOrdersList';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { PeriodComparison } from '@/components/dashboard/PeriodComparison';
 
 // ─── Tooltip de info reutilizável ───────────────────────────────────────────
 function InfoPopover({ title, children }: { title: string; children: React.ReactNode }) {
@@ -301,6 +302,14 @@ export default function Dashboard() {
             );
           })}
         </div>
+
+        {usingSyncData && syncData.prevStats && (
+          <PeriodComparison
+            current={syncData.stats}
+            previous={syncData.prevStats}
+            days={Number(syncPeriod)}
+          />
+        )}
 
         {/* ── Detalhamento de Taxas ──────────────────────────────── */}
         {usingSyncData && syncData.stats.feeBreakdown.length > 0 && (

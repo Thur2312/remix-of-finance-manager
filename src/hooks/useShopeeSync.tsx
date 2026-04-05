@@ -158,16 +158,20 @@ fees
 }
 
 export function useShopeeSync(connectionId: string | null, days: number = 15) {
-  console.log('useShopeeSync days:', days)
   return useQuery({
-    queryKey: ['shopee-sync', connectionId, days], 
+    queryKey: ['shopee-sync', connectionId, days],
     enabled: !!connectionId,
     queryFn: async () => {
+      const now = new Date()
+      
       const since = new Date()
       since.setDate(since.getDate() - days)
 
-      // Busca orders em páginas de 1000
-      let allOrders: SyncedOrder[] = []
+      const prevEnd = new Date(since)
+      const prevStart = new Date(since)
+      prevStart.setDate(prevStart.getDate() - days)
+
+      const allOrders: SyncedOrder[] = []
       let page = 0
       const pageSize = 1000
       while (true) {
@@ -178,15 +182,30 @@ export function useShopeeSync(connectionId: string | null, days: number = 15) {
           .gte('order_created_at', since.toISOString())
           .order('order_created_at', { ascending: false })
           .range(page * pageSize, (page + 1) * pageSize - 1)
-
         if (error) throw error
         if (!data || data.length === 0) break
-        allOrders = [...allOrders, ...data]
+        allOrders.push(...(data as unknown as SyncedOrder[]))
         if (data.length < pageSize) break
         page++
       }
 
-      // Busca payments e fees normalmente
+      const prevOrders: SyncedOrder[] = []
+      let prevPage = 0
+      while (true) {
+        const { data, error } = await supabase
+          .from('orders')
+          .select('id, status, total_amount, order_created_at')
+          .eq('integration_id', connectionId!)
+          .gte('order_created_at', prevStart.toISOString())
+          .lt('order_created_at', prevEnd.toISOString())
+          .range(prevPage * pageSize, (prevPage + 1) * pageSize - 1)
+        if (error) throw error
+        if (!data || data.length === 0) break
+        prevOrders.push(...(data as unknown as SyncedOrder[]))
+        if (data.length < pageSize) break
+        prevPage++
+      }
+      
       const [paymentsRes, feesRes] = await Promise.all([
         supabase
           .from('payments')
@@ -206,7 +225,7 @@ export function useShopeeSync(connectionId: string | null, days: number = 15) {
       if (paymentsRes.error) throw paymentsRes.error
       if (feesRes.error) throw feesRes.error
 
-      const orders   = allOrders as unknown as SyncedOrder[]
+      const orders   = allOrders
       const payments = (paymentsRes.data || []) as unknown as SyncedPayment[]
       const fees     = (feesRes.data     || []) as unknown as SyncedFee[]
 
@@ -214,8 +233,10 @@ export function useShopeeSync(connectionId: string | null, days: number = 15) {
         orders,
         payments,
         fees,
+        prevOrders,
         stats: computeStats(orders, payments, fees),
+        prevStats: computeStats(prevOrders, [], []),
       }
     },
-  });
+  })
 }
