@@ -78,30 +78,54 @@ function computeStats(
   fees: SyncedFee[]
 ): ShopeeSyncStats {
 
-  const completedOrders  = orders.filter(o => COMPLETED_STATUSES.includes(o.status));
-  const cancelledOrders  = orders.filter(o => CANCELLED_STATUSES.includes(o.status));
-  const pendingOrders    = orders.filter(
+  const completedOrders = orders.filter(o => COMPLETED_STATUSES.includes(o.status));
+  const cancelledOrders = orders.filter(o => CANCELLED_STATUSES.includes(o.status));
+  const pendingOrders   = orders.filter(
     o => !COMPLETED_STATUSES.includes(o.status) && !CANCELLED_STATUSES.includes(o.status)
   );
 
   const totalRevenue = completedOrders.reduce((sum, o) => sum + Number(o.total_amount), 0);
-  const totalFees = fees
-  .filter(f => ['commission', 'service_fee', 'shipping_fee'].includes(f.fee_type))
-  .reduce((sum, f) => sum + Number(f.amount), 0);
+
   const totalNetAmount = payments
     .filter(p => p.payment_method === 'escrow')
     .reduce((sum, p) => sum + Number(p.net_amount), 0);
 
+  // ─── Fee breakdown: agrupa UMA vez, sem filtro — mostra tudo que veio ───
+  const feeLabels: Record<string, string> = {
+    commission:           'Comissão Shopee',
+    service_fee:          'Taxa de serviço',
+    shipping_fee:         'Frete',
+    reverse_shipping_fee: 'Frete reverso',
+    seller_discount:      'Desconto vendedor',
+    shopee_discount:      'Desconto Shopee',
+    adjustment:           'Ajuste',
+  };
+
+  const feeMap = new Map<string, number>();
+  fees.forEach(f => {
+    feeMap.set(f.fee_type, (feeMap.get(f.fee_type) || 0) + Number(f.amount));
+  });
+
+  const feeBreakdown = Array.from(feeMap.entries()).map(([type, amount]) => ({
+    type,
+    label: feeLabels[type] || type,
+    amount,
+  }));
+
+  // ─── Total de taxas = faturamento - líquido (fonte da verdade) ───────────
+  // Isso evita qualquer problema de quais fee_types incluir ou não
+  const totalFees = totalRevenue > 0 && totalNetAmount > 0
+    ? totalRevenue - totalNetAmount
+    : feeBreakdown.reduce((sum, f) => sum + f.amount, 0);
+
+  // ─── Revenue by day ───────────────────────────────────────────────────────
   const revenueMap = new Map<string, { revenue: number; net: number }>();
 
   completedOrders.forEach(o => {
     const date = o.order_created_at?.substring(0, 10) || '';
     if (!date) return;
     const existing = revenueMap.get(date) || { revenue: 0, net: 0 };
-    revenueMap.set(date, {
-      revenue: existing.revenue + Number(o.total_amount),
-      net: existing.net,
-    });
+    revenueMap.set(date, { revenue: existing.revenue + Number(o.total_amount), net: existing.net });
   });
 
   payments
@@ -116,33 +140,6 @@ function computeStats(
   const revenueByDay = Array.from(revenueMap.entries())
     .map(([date, vals]) => ({ date, ...vals }))
     .sort((a, b) => a.date.localeCompare(b.date));
-
-  const feeLabels: Record<string, string> = {
-    commission_fee:       'Comissão Shopee',
-    service_fee:          'Taxa de serviço',
-    shipping_fee:         'Frete',
-    reverse_shipping_fee: 'Frete reverso',
-    seller_discount:      'Desconto vendedor',
-    shopee_discount:      'Desconto Shopee',
-  };
-
-  const feeMap = new Map<string, number>();
-  fees.forEach(f => {
-    feeMap.set(f.fee_type, (feeMap.get(f.fee_type) || 0) + Number(f.amount));
-  });
-
- const FEE_TYPES_REAIS = ['commission', 'service_fee', 'shipping_fee'];
-
-fees
-  .filter(f => FEE_TYPES_REAIS.includes(f.fee_type))
-  .forEach(f => {
-    feeMap.set(f.fee_type, (feeMap.get(f.fee_type) || 0) + Number(f.amount));
-  });
-  const feeBreakdown = Array.from(feeMap.entries()).map(([type, amount]) => ({
-    type,
-    label: feeLabels[type] || type,
-    amount,
-  }));
 
   return {
     totalOrders: orders.length,
