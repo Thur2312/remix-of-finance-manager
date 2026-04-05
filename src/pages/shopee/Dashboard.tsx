@@ -321,7 +321,7 @@ export default function Dashboard() {
                   A Shopee cobra diferentes tipos de taxa sobre cada venda. Elas são deduzidas automaticamente antes do repasse ao vendedor. O detalhamento aqui ajuda a entender exatamente o que foi cobrado e por quê.
                 </InfoPopover>
               </div>
-              <CardDescription>Taxas cobradas pela Shopee nos últimos 15 dias</CardDescription>
+              <CardDescription>Taxas cobradas pela Shopee nos últimos {syncPeriod} dias</CardDescription>
             </CardHeader>
             <CardContent>
               <div className="space-y-3">
@@ -477,7 +477,7 @@ export default function Dashboard() {
             <div className="flex items-center gap-2 mb-3">
               <h3 className="text-base font-semibold">Lista de Pedidos</h3>
               <InfoPopover title="Lista de Pedidos Concluídos">
-                Detalhamento individual de cada pedido concluído nos últimos 15 dias. Mostra o faturamento bruto, as taxas cobradas pela Shopee, o valor líquido que você recebe e a data de conclusão.
+                Detalhamento individual de cada pedido concluído nos últimos {syncPeriod} dias. Mostra o faturamento bruto, as taxas cobradas pela Shopee, o valor líquido que você recebe e a data de conclusão.
                 <br /><br />
                 Clique nos cabeçalhos das colunas para ordenar a lista.
               </InfoPopover>
