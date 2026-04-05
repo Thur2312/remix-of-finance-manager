@@ -358,9 +358,9 @@ export default function Dashboard() {
 
                 <div className="border-t pt-3 flex items-center justify-between">
                   <span className="text-sm font-semibold">Total de taxas</span>
-                  <span className="text-sm font-semibold text-destructive tabular-nums">
-                    −{formatCurrency(syncData.stats.totalFees)}
-                  </span>
+                 <span className="text-sm font-semibold text-destructive tabular-nums">
+                  −{formatCurrency(totalFees)}
+                </span>
                 </div>
 
                 {syncData.stats.totalRevenue > 0 && (
@@ -368,7 +368,7 @@ export default function Dashboard() {
                     <p className="text-xs text-muted-foreground">
                       As taxas representam{' '}
                       <span className="font-semibold text-foreground">
-                        {((syncData.stats.totalFees / syncData.stats.totalRevenue) * 100).toFixed(1)}%
+                        {((totalFees / syncData.stats.totalRevenue) * 100).toFixed(1)}%
                       </span>{' '}
                       do seu faturamento bruto no período.
                     </p>
