@@ -76,6 +76,8 @@ const statInfo: Record<string, { title: string; description: React.ReactNode }> 
         <br /><br />
         <span className="font-medium text-foreground">Fórmula:</span> Faturamento − Total de Taxas Shopee
         <br /><br />
+        <span className="font-medium text-foreground">⚠️ Atenção ao período:</span> a Shopee repassa o valor 7 a 15 dias após a confirmação de entrega. Por isso, períodos curtos como 7 dias podem mostrar um líquido menor que o esperado — as vendas recentes ainda não foram repassadas.
+        <br /><br />
         Não inclui seus custos de produto e operação — para lucro real, configure os custos em <em>Configurações</em>.
       </>
     ),
@@ -191,7 +193,9 @@ export default function Dashboard() {
     {
       title: profitTitle,
       value: loading ? '...' : formatCurrency(totalProfit),
-      description: usingSyncData ? 'Após taxas Shopee' : (settings ? 'Após taxas e custos' : 'Configure as taxas primeiro'),
+      description: usingSyncData
+        ? 'Repasses podem levar 7–15 dias após a entrega'
+        : (settings ? 'Após taxas e custos' : 'Configure as taxas primeiro'),
       icon: TrendingUp,
       color: 'text-primary',
       bgColor: 'bg-primary/10',
@@ -325,7 +329,7 @@ export default function Dashboard() {
             </CardHeader>
             <CardContent>
               <div className="space-y-3">
-                {syncData.stats.feeBreakdown.map((fee) => {
+                {syncData.stats.feeBreakdown.filter(f => f.type !== 'adjustment').map((fee) => {
                   const key = Object.keys(feeLabels).find(k => fee.label.toLowerCase().includes(k)) ?? '';
                   const explanation = feeInfo[key];
                   return (
@@ -484,7 +488,7 @@ export default function Dashboard() {
             </div>
             <ProductOrdersList
               orders={syncData.orders}
-              fees={syncData.fees}
+              fees={syncData.fees.filter(f => ['commission', 'service_fee', 'shipping_fee', 'reverse_shipping_fee'].includes(f.fee_type))}
               payments={syncData.payments}
             />
           </div>
