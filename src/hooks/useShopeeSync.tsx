@@ -85,7 +85,7 @@ function computeStats(
   );
 
   const totalRevenue = completedOrders.reduce((sum, o) => sum + Number(o.total_amount), 0);
-const totalFees = fees
+  const totalFees = fees
   .filter(f => ['commission', 'service_fee', 'shipping_fee'].includes(f.fee_type))
   .reduce((sum, f) => sum + Number(f.amount), 0);
   const totalNetAmount = payments
@@ -166,44 +166,56 @@ export function useShopeeSync(connectionId: string | null, days: number = 15) {
       const since = new Date()
       since.setDate(since.getDate() - days)
 
-     const [ordersRes, paymentsRes, feesRes] = await Promise.all([
-  supabase
-    .from('orders')
-    .select('*, order_items(*)')
-    .eq('integration_id', connectionId!)
-    .gte('order_created_at', since.toISOString())
-    .order('order_created_at', { ascending: false })
-    .limit(5000),
+      // Busca orders em páginas de 1000
+      let allOrders: SyncedOrder[] = []
+      let page = 0
+      const pageSize = 1000
+      while (true) {
+        const { data, error } = await supabase
+          .from('orders')
+          .select('*, order_items(*)')
+          .eq('integration_id', connectionId!)
+          .gte('order_created_at', since.toISOString())
+          .order('order_created_at', { ascending: false })
+          .range(page * pageSize, (page + 1) * pageSize - 1)
 
-  supabase
-    .from('payments')
-    .select('*')
-    .eq('integration_id', connectionId!)
-    .gte('transaction_date', since.toISOString())
-    .order('transaction_date', { ascending: false })
-    .limit(5000), 
+        if (error) throw error
+        if (!data || data.length === 0) break
+        allOrders = [...allOrders, ...data]
+        if (data.length < pageSize) break
+        page++
+      }
 
-  supabase
-    .from('fees')
-    .select('*')
-    .eq('integration_id', connectionId!)
-    .gte('fee_date', since.toISOString())
-    .limit(5000),
-]);
-      if (ordersRes.error)    throw ordersRes.error;
-      if (paymentsRes.error)  throw paymentsRes.error;
-      if (feesRes.error)      throw feesRes.error;
+      // Busca payments e fees normalmente
+      const [paymentsRes, feesRes] = await Promise.all([
+        supabase
+          .from('payments')
+          .select('*')
+          .eq('integration_id', connectionId!)
+          .gte('transaction_date', since.toISOString())
+          .order('transaction_date', { ascending: false })
+          .limit(5000),
+        supabase
+          .from('fees')
+          .select('*')
+          .eq('integration_id', connectionId!)
+          .gte('fee_date', since.toISOString())
+          .limit(5000),
+      ])
 
-      const orders   = (ordersRes.data   || []) as unknown as SyncedOrder[];
-      const payments = (paymentsRes.data || []) as unknown as SyncedPayment[];
-      const fees     = (feesRes.data     || []) as unknown as SyncedFee[];
+      if (paymentsRes.error) throw paymentsRes.error
+      if (feesRes.error) throw feesRes.error
+
+      const orders   = allOrders as unknown as SyncedOrder[]
+      const payments = (paymentsRes.data || []) as unknown as SyncedPayment[]
+      const fees     = (feesRes.data     || []) as unknown as SyncedFee[]
 
       return {
         orders,
         payments,
         fees,
         stats: computeStats(orders, payments, fees),
-      };
+      }
     },
   });
 }
