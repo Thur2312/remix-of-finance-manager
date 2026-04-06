@@ -207,7 +207,7 @@ const totalProfit = usingSyncData
     ...(usingSyncData ? [{
       title: 'Taxas Shopee',
       value: loading ? '...' : formatCurrency(totalFees),
-      description: 'Comissão + serviço + frete (inclui taxas de pedidos cancelados e em andamento)',
+      description: 'Comissão + serviço + frete (inclui taxas de pedidos concluídos, em andamento e cancelados)',
       icon: Package,
       color: 'text-orange-500',
       bgColor: 'bg-orange-500/10',

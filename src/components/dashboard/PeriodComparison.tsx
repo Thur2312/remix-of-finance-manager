@@ -29,8 +29,27 @@ function Delta({ current, previous }: { current: number; previous: number }) {
 }
 
 export function PeriodComparison({ current, previous, days }: Props) {
-  const COMPLETED_STATUSES = ['COMPLETED', 'SHIPPED', 'TO_CONFIRM_RECEIVE', 'READY_TO_SHIP']
-  
+  const hasPreviousData = previous.totalOrders > 0
+
+  if (!hasPreviousData) {
+    return (
+      <Card>
+        <CardHeader className="pb-3">
+          <CardTitle className="text-base">Comparativo com Período Anterior</CardTitle>
+          <CardDescription>
+            Últimos {days} dias vs {days} dias anteriores
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <p className="text-sm text-muted-foreground text-center py-6">
+            📊 Não há dados suficientes para o período anterior.
+            Sincronize um período maior para habilitar o comparativo.
+          </p>
+        </CardContent>
+      </Card>
+    )
+  }
+
   const items = [
     {
       label: 'Pedidos',
@@ -58,14 +77,15 @@ export function PeriodComparison({ current, previous, days }: Props) {
       icon: Package,
       color: 'text-orange-500',
       bg: 'bg-orange-500/10',
-      invertDelta: true, // taxa maior = ruim
+      invertDelta: true,
     },
     {
       label: 'Valor Líquido',
-      current: current.totalNetAmount,
-      previous: previous.totalNetAmount,
+
+      current: current.totalRevenue - current.totalFees,
+      previous: previous.totalRevenue - previous.totalFees,
       format: formatCurrency,
-      icon: LucideTP,
+      icon: TrendingUp,
       color: 'text-primary',
       bg: 'bg-primary/10',
     },

@@ -158,8 +158,8 @@ export function useShopeeSync(connectionId: string | null, days: number = 15) {
   return useQuery({
     queryKey: ['shopee-sync', connectionId, days],
     enabled: !!connectionId,
-    staleTime: 0,
-    gcTime: 0,
+    staleTime: 5 * 60 * 1000, 
+    gcTime: 10 * 60 * 1000,
     queryFn: async () => {
       const since = new Date()
       since.setDate(since.getDate() - days)
