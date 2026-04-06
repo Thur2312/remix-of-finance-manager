@@ -207,7 +207,7 @@ const totalProfit = usingSyncData
     ...(usingSyncData ? [{
       title: 'Taxas Shopee',
       value: loading ? '...' : formatCurrency(totalFees),
-      description: 'Comissão + serviço + frete',
+      description: 'Comissão + serviço + frete (inclui taxas de pedidos cancelados e em andamento)',
       icon: Package,
       color: 'text-orange-500',
       bgColor: 'bg-orange-500/10',
@@ -361,13 +361,12 @@ const totalProfit = usingSyncData
                 </div>
 
                 {syncData.stats.totalRevenue > 0 && (
-                  <div className="rounded-lg bg-muted/50 px-3 py-2 mt-1">
+                  <div className="rounded-lg bg-muted/50 px-3 py-2">
                     <p className="text-xs text-muted-foreground">
-                      As taxas representam{' '}
-                      <span className="font-semibold text-foreground">
-                        {((totalFees / syncData.stats.totalRevenue) * 100).toFixed(1)}%
-                      </span>{' '}
-                      do seu faturamento bruto no período.
+                      💡 Inclui taxas de pedidos <span className="font-medium text-foreground">concluídos</span>,{' '}
+                      <span className="font-medium text-foreground">em andamento</span> e{' '}
+                      <span className="font-medium text-foreground">cancelados</span> — 
+                      representa o total cobrado pela Shopee no período.
                     </p>
                   </div>
                 )}
@@ -492,7 +491,7 @@ const totalProfit = usingSyncData
             </div>
             <ProductOrdersList
               orders={syncData.orders}
-              fees={syncData.fees.filter(f => ['commission', 'service_fee', 'shipping_fee', 'reverse_shipping_fee'].includes(f.fee_type))}
+              fees={syncData.fees}
               payments={syncData.payments}
             />
           </div>
