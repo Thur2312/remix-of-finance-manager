@@ -208,7 +208,8 @@ export function useShopeeSync(connectionId: string | null, days: number = 15) {
         prevPage++
       }
       
-      const [paymentsRes, feesRes] = await Promise.all([
+// Busca payments e fees do período anterior também
+      const [paymentsRes, feesRes, prevPaymentsRes, prevFeesRes] = await Promise.all([
         supabase
           .from('payments')
           .select('*')
@@ -222,22 +223,40 @@ export function useShopeeSync(connectionId: string | null, days: number = 15) {
           .eq('integration_id', connectionId!)
           .gte('fee_date', since.toISOString())
           .limit(5000),
+        supabase
+          .from('payments')
+          .select('*')
+          .eq('integration_id', connectionId!)
+          .gte('transaction_date', prevStart.toISOString())
+          .lt('transaction_date', prevEnd.toISOString())
+          .limit(5000),
+        supabase
+          .from('fees')
+          .select('*')
+          .eq('integration_id', connectionId!)
+          .gte('fee_date', prevStart.toISOString())
+          .lt('fee_date', prevEnd.toISOString())
+          .limit(5000),
       ])
 
       if (paymentsRes.error) throw paymentsRes.error
       if (feesRes.error) throw feesRes.error
+      if (prevPaymentsRes.error) throw prevPaymentsRes.error
+      if (prevFeesRes.error) throw prevFeesRes.error
 
-      const orders   = allOrders
-      const payments = (paymentsRes.data || []) as unknown as SyncedPayment[]
-      const fees     = (feesRes.data     || []) as unknown as SyncedFee[]
+      const orders      = allOrders
+      const payments    = (paymentsRes.data     || []) as unknown as SyncedPayment[]
+      const fees        = (feesRes.data         || []) as unknown as SyncedFee[]
+      const prevPayments = (prevPaymentsRes.data || []) as unknown as SyncedPayment[]
+      const prevFees     = (prevFeesRes.data     || []) as unknown as SyncedFee[]
 
       return {
         orders,
         payments,
         fees,
         prevOrders,
-        stats: computeStats(orders, payments, fees),
-        prevStats: computeStats(prevOrders, [], []),
+        stats:     computeStats(orders,     payments,     fees),
+        prevStats: computeStats(prevOrders, prevPayments, prevFees),
       }
     },
   })

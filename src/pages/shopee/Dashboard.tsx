@@ -164,17 +164,14 @@ export default function Dashboard() {
 
   const totalOrders = usingSyncData ? syncData.stats.totalOrders : orders.length;
   const totalRevenue = usingSyncData ? syncData.stats.totalRevenue : (calculatedResults?.totals.total_faturado || 0);
-  const FEE_TYPES_TAXAS = ['commission', 'service_fee', 'shipping_fee', 'reverse_shipping_fee'];
+ const totalFees = usingSyncData
+  ? syncData.stats.totalFees
+  : (calculatedResults?.totals.taxa_shopee_reais || 0);
 
-  const totalFees = usingSyncData
-    ? syncData.fees
-        .filter(f => FEE_TYPES_TAXAS.includes(f.fee_type))
-        .reduce((sum, f) => sum + Number(f.amount), 0)
-    : (calculatedResults?.totals.taxa_shopee_reais || 0);
-
-  const totalProfit = usingSyncData
-  ? syncData.stats.totalRevenue - totalFees
+const totalProfit = usingSyncData
+  ? syncData.stats.totalRevenue - syncData.stats.totalFees
   : (calculatedResults?.totals.lucro_reais || 0);
+
 
   const loading = isLoading || (isConnected && syncLoading);
 
