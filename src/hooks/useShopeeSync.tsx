@@ -144,6 +144,13 @@ function computeStats(
     .map(([date, vals]) => ({ date, ...vals }))
     .sort((a, b) => a.date.localeCompare(b.date));
 
+     console.log('Total fees no banco:', fees.length)
+      console.log('Fees por tipo:', fees.reduce((acc, f) => {
+        acc[f.fee_type] = (acc[f.fee_type] || 0) + Number(f.amount)
+        return acc
+      }, {} as Record<string, number>))
+      console.log('totalFees calculado:', totalFees)
+
   return {
     totalOrders: orders.length,
     totalRevenue,
@@ -249,7 +256,8 @@ export function useShopeeSync(connectionId: string | null, days: number = 15) {
       const fees        = (feesRes.data         || []) as unknown as SyncedFee[]
       const prevPayments = (prevPaymentsRes.data || []) as unknown as SyncedPayment[]
       const prevFees     = (prevFeesRes.data     || []) as unknown as SyncedFee[]
-
+      
+     
       return {
         orders,
         payments,
