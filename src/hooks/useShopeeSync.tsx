@@ -102,7 +102,6 @@ function computeStats(
 
   const FEE_TYPES_TAXAS = ['commission', 'service_fee', 'shipping_fee', 'reverse_shipping_fee'];
 
-  // Agrupa TODOS os tipos para o breakdown visual
   const feeMap = new Map<string, number>();
   fees.forEach(f => {
     feeMap.set(f.fee_type, (feeMap.get(f.fee_type) || 0) + Number(f.amount));
@@ -116,12 +115,10 @@ function computeStats(
     }))
     .sort((a, b) => b.amount - a.amount);
 
-  // Total de taxas = APENAS cobranças reais (sem ajustes e créditos)
   const totalFees = fees
     .filter(f => FEE_TYPES_TAXAS.includes(f.fee_type))
     .reduce((sum, f) => sum + Number(f.amount), 0);
 
-  // Revenue by day
   const revenueMap = new Map<string, { revenue: number; net: number }>();
 
   completedOrders.forEach(o => {
@@ -144,13 +141,6 @@ function computeStats(
     .map(([date, vals]) => ({ date, ...vals }))
     .sort((a, b) => a.date.localeCompare(b.date));
 
-     console.log('Total fees no banco:', fees.length)
-      console.log('Fees por tipo:', fees.reduce((acc, f) => {
-        acc[f.fee_type] = (acc[f.fee_type] || 0) + Number(f.amount)
-        return acc
-      }, {} as Record<string, number>))
-      console.log('totalFees calculado:', totalFees)
-
   return {
     totalOrders: orders.length,
     totalRevenue,
@@ -168,11 +158,9 @@ export function useShopeeSync(connectionId: string | null, days: number = 15) {
   return useQuery({
     queryKey: ['shopee-sync', connectionId, days],
     enabled: !!connectionId,
-        staleTime: 0,      
-    gcTime: 0,           
+    staleTime: 0,
+    gcTime: 0,
     queryFn: async () => {
-      const now = new Date()
-      
       const since = new Date()
       since.setDate(since.getDate() - days)
 
@@ -214,9 +202,41 @@ export function useShopeeSync(connectionId: string | null, days: number = 15) {
         if (data.length < pageSize) break
         prevPage++
       }
-      
-// Busca payments e fees do período anterior também
-      const [paymentsRes, feesRes, prevPaymentsRes, prevFeesRes] = await Promise.all([
+
+      const allFees: SyncedFee[] = []
+      let feePage = 0
+      while (true) {
+        const { data, error } = await supabase
+          .from('fees')
+          .select('*')
+          .eq('integration_id', connectionId!)
+          .gte('fee_date', since.toISOString())
+          .range(feePage * pageSize, (feePage + 1) * pageSize - 1)
+        if (error) throw error
+        if (!data || data.length === 0) break
+        allFees.push(...(data as unknown as SyncedFee[]))
+        if (data.length < pageSize) break
+        feePage++
+      }
+
+      const allPrevFees: SyncedFee[] = []
+      let prevFeePage = 0
+      while (true) {
+        const { data, error } = await supabase
+          .from('fees')
+          .select('*')
+          .eq('integration_id', connectionId!)
+          .gte('fee_date', prevStart.toISOString())
+          .lt('fee_date', prevEnd.toISOString())
+          .range(prevFeePage * pageSize, (prevFeePage + 1) * pageSize - 1)
+        if (error) throw error
+        if (!data || data.length === 0) break
+        allPrevFees.push(...(data as unknown as SyncedFee[]))
+        if (data.length < pageSize) break
+        prevFeePage++
+      }
+
+      const [paymentsRes, prevPaymentsRes] = await Promise.all([
         supabase
           .from('payments')
           .select('*')
@@ -225,39 +245,23 @@ export function useShopeeSync(connectionId: string | null, days: number = 15) {
           .order('transaction_date', { ascending: false })
           .limit(5000),
         supabase
-          .from('fees')
-          .select('*')
-          .eq('integration_id', connectionId!)
-          .gte('fee_date', since.toISOString())
-          .limit(5000),
-        supabase
           .from('payments')
           .select('*')
           .eq('integration_id', connectionId!)
           .gte('transaction_date', prevStart.toISOString())
           .lt('transaction_date', prevEnd.toISOString())
           .limit(5000),
-        supabase
-          .from('fees')
-          .select('*')
-          .eq('integration_id', connectionId!)
-          .gte('fee_date', prevStart.toISOString())
-          .lt('fee_date', prevEnd.toISOString())
-          .limit(5000),
       ])
 
       if (paymentsRes.error) throw paymentsRes.error
-      if (feesRes.error) throw feesRes.error
       if (prevPaymentsRes.error) throw prevPaymentsRes.error
-      if (prevFeesRes.error) throw prevFeesRes.error
 
-      const orders      = allOrders
-      const payments    = (paymentsRes.data     || []) as unknown as SyncedPayment[]
-      const fees        = (feesRes.data         || []) as unknown as SyncedFee[]
+      const orders       = allOrders
+      const payments     = (paymentsRes.data     || []) as unknown as SyncedPayment[]
+      const fees         = allFees
       const prevPayments = (prevPaymentsRes.data || []) as unknown as SyncedPayment[]
-      const prevFees     = (prevFeesRes.data     || []) as unknown as SyncedFee[]
-      
-     
+      const prevFees     = allPrevFees
+
       return {
         orders,
         payments,
