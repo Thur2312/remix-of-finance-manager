@@ -107,10 +107,12 @@ export function ProductOrdersList({ orders, fees, payments }: Props) {
 
   const feesByOrder = useMemo(() => {
     const map = new Map<string, number>();
-    fees.forEach(f => {
-      if (!f.order_id) return;
-      map.set(f.order_id, (map.get(f.order_id) || 0) + Number(f.amount));
-    });
+    fees
+      .filter(f => ['commission','service_fee','shipping_fee'].includes(f.fee_type))
+      .forEach(f => {
+        if (!f.order_id) return;
+        map.set(f.order_id, (map.get(f.order_id) || 0) + Number(f.amount));
+      });
     return map;
   }, [fees]);
 
