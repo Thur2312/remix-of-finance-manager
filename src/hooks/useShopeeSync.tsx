@@ -142,7 +142,7 @@ function computeStats(
     .sort((a, b) => a.date.localeCompare(b.date));
 
   return {
-    totalOrders: orders.filter( o => o.status === 'COMPLETED' || o.status === 'SHIPPED' || o.status === 'TO_CONFIRM_RECEIVE' || o.status === 'READY_TO_SHIP').length,
+    totalOrders: orders.filter( o => o.status === 'COMPLETED' || o.status === 'SHIPPED' || o.status === 'TO_CONFIRM_RECEIVE').length,
     totalRevenue,
     totalFees,
     totalNetAmount,
