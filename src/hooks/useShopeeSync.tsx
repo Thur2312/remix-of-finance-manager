@@ -69,7 +69,7 @@ export interface ShopeeSyncStats {
   feeBreakdown: { type: string; label: string; amount: number }[];
 }
 
-const COMPLETED_STATUSES = ['COMPLETED', 'SHIPPED', 'TO_CONFIRM_RECEIVE', 'READY_TO_SHIP', ];
+const COMPLETED_STATUSES = ['COMPLETED', 'SHIPPED', 'TO_CONFIRM_RECEIVE', 'READY_TO_SHIP','PROCESSED' ];
 const CANCELLED_STATUSES = ['CANCELLED', 'UNPAID', 'TO_RETURN'];
 const IGNORED_STATUSES   = ['TEST'];
 
