@@ -225,7 +225,7 @@ serve(async (req) => {
     const daysToSync = days || 15
     const timeFrom = customTimeFrom
       ? Math.floor(new Date(customTimeFrom).getTime() / 1000)
-      : Math.floor((now.getTime() - daysToSync * 24 * 60 * 60 * 1000) / 1000)
+      : Math.floor((now.getTime() - daysToSync * 24 * 60 * 60 * 1000 - 10800000) / 1000)
     const timeTo = customTimeTo
       ? Math.floor(new Date(customTimeTo).getTime() / 1000)
       : Math.floor(now.getTime() / 1000)
@@ -238,27 +238,6 @@ serve(async (req) => {
 
     // ✅ SYNC ORDERS
 if (!step || step === 'orders') {
-  // Teste de inserção
-  const { data: testInsert, error: testError } = await supabaseAdmin
-    .from("orders")
-    .insert({
-      integration_id: connection_id,
-      external_order_id: `TEST_${Date.now()}`,
-      status: "TEST",
-      total_amount: 0,
-      currency: "BRL",
-      buyer_username: "test",
-      shipping_carrier: "",
-      tracking_number: "",
-      synced_at: new Date().toISOString(),
-      order_created_at: new Date().toISOString(),
-      order_updated_at: new Date().toISOString(),
-    })
-    .select("id")
-    .single()
-
-  console.log("🧪 Teste inserção orders:", testInsert?.id ? "OK - " + testInsert.id : "FALHOU", testError ? JSON.stringify(testError) : "")
-
   try {
     let cursor = ""
     let hasMore = true

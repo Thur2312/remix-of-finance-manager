@@ -162,8 +162,7 @@ export function useShopeeSync(connectionId: string | null, days: number = 15) {
     staleTime: 5 * 60 * 1000, 
     gcTime: 10 * 60 * 1000,
     queryFn: async () => {
-      const since = new Date()
-      since.setDate(since.getDate() - days)
+      const since = new Date(new Date().getTime() - days * 24 * 60 * 60 * 1000 - 10800000)
 
       const prevEnd = new Date(since)
       const prevStart = new Date(since)
