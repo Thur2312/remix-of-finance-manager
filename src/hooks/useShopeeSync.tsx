@@ -69,8 +69,9 @@ export interface ShopeeSyncStats {
   feeBreakdown: { type: string; label: string; amount: number }[];
 }
 
-const COMPLETED_STATUSES = ['COMPLETED', 'SHIPPED', 'TO_CONFIRM_RECEIVE', 'READY_TO_SHIP'];
+const COMPLETED_STATUSES = ['COMPLETED', 'SHIPPED', 'TO_CONFIRM_RECEIVE', 'READY_TO_SHIP', ];
 const CANCELLED_STATUSES = ['CANCELLED', 'UNPAID', 'TO_RETURN'];
+const IGNORED_STATUSES   = ['TEST'];
 
 function computeStats(
   orders: SyncedOrder[],
@@ -81,7 +82,7 @@ function computeStats(
   const completedOrders = orders.filter(o => COMPLETED_STATUSES.includes(o.status));
   const cancelledOrders = orders.filter(o => CANCELLED_STATUSES.includes(o.status));
   const pendingOrders   = orders.filter(
-    o => !COMPLETED_STATUSES.includes(o.status) && !CANCELLED_STATUSES.includes(o.status)
+    o => !COMPLETED_STATUSES.includes(o.status) && !CANCELLED_STATUSES.includes(o.status) && !IGNORED_STATUSES.includes(o.status)
   );
 
   const totalRevenue = completedOrders.reduce((sum, o) => sum + Number(o.total_amount), 0);
