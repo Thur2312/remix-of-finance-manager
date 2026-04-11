@@ -387,6 +387,12 @@ if (!step || step === 'orders') {
     // ✅ SYNC PAYMENTS
     if (!step || step === 'payments') {
       try {
+    const escrowOrders: { order_sn: string; escrow_release_time: number; payout_amount: number }[] = []
+      let escrowHasMore = true
+      let escrowSafetyLimit = 0
+      let escrowPage = 1
+
+      while (escrowHasMore && escrowSafetyLimit < 20) {
         const escrowList = await shopeeGet<{
           escrow_list: { order_sn: string; escrow_release_time: number; payout_amount: number }[]
           more: boolean
@@ -394,10 +400,19 @@ if (!step || step === 'orders') {
           release_time_from: timeFrom,
           release_time_to: timeTo,
           page_size: 50,
+          page_no: escrowPage,
         }, PARTNER_ID, PARTNER_KEY, accessToken, shopId)
 
-        const escrowOrders = escrowList?.escrow_list ?? []
-        console.log(`💰 ${escrowOrders.length} escrows encontrados`)
+        const page = escrowList?.escrow_list ?? []
+        escrowOrders.push(...page)
+        escrowHasMore = Boolean(escrowList?.more)
+        escrowPage++
+        escrowSafetyLimit++
+        console.log(`💰 Página ${escrowPage - 1}: ${page.length} escrows | hasMore: ${escrowHasMore}`)
+        if (escrowHasMore) await new Promise(r => setTimeout(r, 100))
+      }
+
+      console.log(`💰 Total de escrows encontrados: ${escrowOrders.length}`)
 
         for (const escrowOrder of escrowOrders) {
           try {

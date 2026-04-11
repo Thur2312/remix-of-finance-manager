@@ -115,7 +115,7 @@ export function useIntegrations() {
     const { error: paymentsError } = await supabase.functions.invoke('integration-sync', {
       body: {
         connection_id: connectionId,
-        days: daysToSync,
+        days: 15,
         step: 'payments',
       },
     })
