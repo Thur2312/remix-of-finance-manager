@@ -223,12 +223,12 @@ serve(async (req) => {
 
     const now = new Date()
     const daysToSync = days || 15
+
+    const sinceDate = new Date(now.getTime() - daysToSync * 24 * 60 * 60 * 1000)
+    sinceDate.setUTCHours(0, 0, 0, 0)
     const timeFrom = customTimeFrom
-      ? Math.floor(new Date(customTimeFrom).getTime() / 1000)
-      : Math.floor((now.getTime() - daysToSync * 24 * 60 * 60 * 1000 - 10800000) / 1000)
-    const timeTo = customTimeTo
-      ? Math.floor(new Date(customTimeTo).getTime() / 1000)
-      : Math.floor(now.getTime() / 1000)
+  ? Math.floor(new Date(customTimeFrom).getTime() / 1000)
+  : Math.floor(sinceDate.getTime() / 1000)
 
     console.log(`📅 Período de sync: ${new Date(timeFrom * 1000).toISOString()} até ${new Date(timeTo * 1000).toISOString()} | step: ${step || 'all'}`)
 
