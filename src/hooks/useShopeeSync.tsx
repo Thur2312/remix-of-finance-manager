@@ -88,7 +88,7 @@ function computeStats(
 
   const shippedOrders = orders.filter(o => SHIPPED_STATUSES.includes(o.status));
 
-  const totalRevenue = completedOrders.reduce((sum, o) => sum + Number(o.total_amount), 0);
+  const totalRevenue = completedOrders.reduce((sum, o) => sum + Number(o.total_amount), 0) + shippedOrders.reduce((sum, o) => sum + Number(o.total_amount), 0);
 
   const totalNetAmount = payments
     .filter(p => p.payment_method === 'escrow')
