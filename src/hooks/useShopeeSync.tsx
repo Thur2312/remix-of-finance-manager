@@ -69,9 +69,10 @@ export interface ShopeeSyncStats {
   feeBreakdown: { type: string; label: string; amount: number }[];
 }
 
-const COMPLETED_STATUSES = ['COMPLETED', 'SHIPPED', 'TO_CONFIRM_RECEIVE', 'READY_TO_SHIP','PROCESSED' ];
+const COMPLETED_STATUSES = ['COMPLETED' , 'READY_TO_SHIP' ];
 const CANCELLED_STATUSES = ['CANCELLED', 'UNPAID', 'TO_RETURN'];
 const IGNORED_STATUSES   = ['TEST'];
+const SHIPPED_STATUSES = ['SHIPPED', 'TO_CONFIRM_RECEIVE', 'PROCESSED'];
 
 function computeStats(
   orders: SyncedOrder[],
@@ -82,8 +83,10 @@ function computeStats(
   const completedOrders = orders.filter(o => COMPLETED_STATUSES.includes(o.status));
   const cancelledOrders = orders.filter(o => CANCELLED_STATUSES.includes(o.status));
   const pendingOrders   = orders.filter(
-    o => !COMPLETED_STATUSES.includes(o.status) && !CANCELLED_STATUSES.includes(o.status) && !IGNORED_STATUSES.includes(o.status)
+    o => !COMPLETED_STATUSES.includes(o.status) && !CANCELLED_STATUSES.includes(o.status) && !IGNORED_STATUSES.includes(o.status) && !SHIPPED_STATUSES.includes(o.status)
   );
+
+  const shippedOrders = orders.filter(o => SHIPPED_STATUSES.includes(o.status));
 
   const totalRevenue = completedOrders.reduce((sum, o) => sum + Number(o.total_amount), 0);
 
@@ -143,12 +146,12 @@ function computeStats(
     .sort((a, b) => a.date.localeCompare(b.date));
 
   return {    
-    totalOrders: orders.filter( o => COMPLETED_STATUSES.includes(o.status)).length,
+    totalOrders: completedOrders.length + shippedOrders.length,
     totalRevenue,
     totalFees,
     totalNetAmount,
     paidOrders:      completedOrders.length,
-    pendingOrders:   pendingOrders.length,
+    pendingOrders:   shippedOrders.length,
     cancelledOrders: cancelledOrders.length,
     revenueByDay,
     feeBreakdown,
