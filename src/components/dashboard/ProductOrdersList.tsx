@@ -37,7 +37,7 @@ interface ProductRow {
 type SortKey = 'lastCompletedAt' | 'totalRevenue' | 'totalFees' | 'totalNet' | 'totalProfit' | 'marginPercent';
 type SortDir = 'asc' | 'desc';
 
-const COMPLETED_STATUSES = ['COMPLETED', 'SHIPPED', 'TO_CONFIRM_RECEIVE', 'READY_TO_SHIP'];
+const COMPLETED_STATUSES = ['COMPLETED', 'SHIPPED', 'TO_CONFIRM_RECEIVE', 'READY_TO_SHIP', 'PROCESSED'];
 const PAGE_SIZE = 10;
 
 function formatDate(dateStr: string | null) {

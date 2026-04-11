@@ -114,15 +114,7 @@ serve(async (req) => {
       }
     )
     const serviceKey = Deno.env.get("ADMIN_KEY") || ""
-    console.log("🔑 Service key primeiros chars:", serviceKey.substring(0, 20))
-    console.log("🔑 Service key últimos chars:", serviceKey.substring(serviceKey.length - 10))
-
-      console.log("🔑 SUPABASE_URL:", Deno.env.get("SUPABASE_URL"))
-      console.log("🔑 SERVICE_KEY existe:", !!Deno.env.get("ADMIN_KEY"))
-
-      const { error: testError } = await supabaseAdmin.from("orders").select("id").limit(1)
-      console.log("🔑 Teste de leitura admin:", testError ? JSON.stringify(testError) : "OK")
-
+    
     let requestBody
     try {
       requestBody = await req.json()
@@ -133,9 +125,8 @@ serve(async (req) => {
     }
 
     const isCronCall = requestBody?.cron_secret === "sellerfinance-cron-2026"
-    console.log("isCronCall:", isCronCall)
-
     let userId: string
+
     if (isCronCall) {
       userId = "cron"
     } else {
@@ -226,17 +217,21 @@ serve(async (req) => {
 
     const sinceDate = new Date(now.getTime() - daysToSync * 24 * 60 * 60 * 1000)
     sinceDate.setUTCHours(0, 0, 0, 0)
+
     const timeFrom = customTimeFrom
   ? Math.floor(new Date(customTimeFrom).getTime() / 1000)
   : Math.floor(sinceDate.getTime() / 1000)
 
-    console.log(`📅 Período de sync: ${new Date(timeFrom * 1000).toISOString()} até ${new Date(timeTo * 1000).toISOString()} | step: ${step || 'all'}`)
+  const timeTo = customTimeTo
+  ? Math.floor(new Date(customTimeTo).getTime() / 1000)
+  : Math.floor(now.getTime() / 1000)
 
     let ordersCount = 0
     let paymentsCount = 0
     let walletCount = 0
 
     // ✅ SYNC ORDERS
+// ✅ SYNC ORDERS
 if (!step || step === 'orders') {
   try {
     let cursor = ""
@@ -258,126 +253,125 @@ if (!step || step === 'orders') {
       }, PARTNER_ID, PARTNER_KEY, accessToken, shopId)
 
       const orders = orderList?.order_list ?? []
-      console.log(`📋 ${orders.length} pedidos encontrados nessa página`)
 
       if (orders.length > 0) {
-  const orderSns = orders.map(o => o.order_sn).join(",")
-  await new Promise(r => setTimeout(r, 100))
+        const orderSns = orders.map(o => o.order_sn).join(",")
+        await new Promise(r => setTimeout(r, 100))
 
-  const orderDetails = await shopeeGet<{
-    order_list: {
-      order_sn: string
-      order_status: string
-      total_amount: string
-      currency: string
-      buyer_username?: string
-      shipping_carrier?: string
-      tracking_no?: string
-      pay_time?: number
-      create_time?: number
-      update_time?: number
-      item_list?: {
-        item_id: number
-        item_name: string
-        item_sku: string
-        model_id: number
-        model_name: string
-        model_sku: string
-        model_quantity_purchased: number
-        model_original_price: number
-        model_discounted_price: number
-      }[]
-    }[]
-  }>(BASE_URL, "/api/v2/order/get_order_detail", {
-    order_sn_list: orderSns,
-    response_optional_fields: "buyer_username,pay_time,tracking_no,shipping_carrier,total_amount,currency,create_time,update_time,item_list",
-  }, PARTNER_ID, PARTNER_KEY, accessToken, shopId)
+        const orderDetails = await shopeeGet<{
+          order_list: {
+            order_sn: string
+            order_status: string
+            total_amount: string
+            currency: string
+            buyer_username?: string
+            shipping_carrier?: string
+            tracking_no?: string
+            pay_time?: number
+            create_time?: number
+            update_time?: number
+            item_list?: {
+              item_id: number
+              item_name: string
+              item_sku: string
+              model_id: number
+              model_name: string
+              model_sku: string
+              model_quantity_purchased: number
+              model_original_price: number
+              model_discounted_price: number
+            }[]
+          }[]
+        }>(BASE_URL, "/api/v2/order/get_order_detail", {
+          order_sn_list: orderSns,
+          response_optional_fields: "buyer_username,pay_time,tracking_no,shipping_carrier,total_amount,currency,create_time,update_time,item_list",
+        }, PARTNER_ID, PARTNER_KEY, accessToken, shopId)
 
-  // ← substitua o loop individual por este batch
-  const ordersToUpsert = (orderDetails.order_list ?? []).map(order => ({
-    integration_id: connection_id,
-    external_order_id: order.order_sn,
-    status: order.order_status || "UNKNOWN",
-    total_amount: Number(order.total_amount) || 0,
-    currency: order.currency || "BRL",
-    buyer_username: order.buyer_username ?? "",
-    shipping_carrier: order.shipping_carrier ?? "",
-    tracking_number: order.tracking_no ?? "",
-    paid_at: safeShopeeDate(order.pay_time ?? null),
-    order_created_at: safeShopeeDate(order.create_time ?? null),
-    order_updated_at: safeShopeeDate(order.update_time ?? null),
-    synced_at: now.toISOString(),
-  }))
+        const ordersToUpsert = (orderDetails.order_list ?? []).map(order => ({
+          integration_id: connection_id,
+          external_order_id: order.order_sn,
+          status: order.order_status || "UNKNOWN",
+          total_amount: Number(order.total_amount) || 0,
+          currency: order.currency || "BRL",
+          buyer_username: order.buyer_username ?? "",
+          shipping_carrier: order.shipping_carrier ?? "",
+          tracking_number: order.tracking_no ?? "",
+          paid_at: safeShopeeDate(order.pay_time ?? null),
+          order_created_at: safeShopeeDate(order.create_time ?? null),
+          order_updated_at: safeShopeeDate(order.update_time ?? null),
+          synced_at: now.toISOString(),
+        }))
 
- // Primeiro tenta inserir ignorando duplicatas
-const { data: insertedOrders, error: insertError } = await supabaseAdmin
-  .from("orders")
-  .insert(ordersToUpsert)
-  .select("id, external_order_id")
+        const { data: insertedOrders, error: insertError } = await supabaseAdmin
+          .from("orders")
+          .insert(ordersToUpsert)
+          .select("id, external_order_id")
 
-let upsertedOrders = insertedOrders
-let upsertError = insertError
+        let upsertedOrders = insertedOrders
+        let upsertError = insertError
 
-if (insertError?.code === '23505') {
-  // Tem duplicatas, faz upsert um por um
-  upsertedOrders = []
-  upsertError = null
-  for (const order of ordersToUpsert) {
-    const { data, error } = await supabaseAdmin
-      .from("orders")
-      .upsert(order, { onConflict: "integration_id,external_order_id" })
-      .select("id, external_order_id")
-      .single()
-    if (!error && data) upsertedOrders.push(data)
-  }
-}
+        if (insertError?.code === '23505') {
+          upsertedOrders = []
+          upsertError = null
+          for (const order of ordersToUpsert) {
+            const { data, error } = await supabaseAdmin
+              .from("orders")
+              .upsert(order, { onConflict: "integration_id,external_order_id" })
+              .select("id, external_order_id")
+              .single()
+            if (!error && data) upsertedOrders.push(data)
+          }
+        }
 
-console.log("🔍 insertError code:", insertError?.code)
-console.log("🔍 insertError message:", insertError?.message)
-console.log("🔍 upsertedOrders length:", upsertedOrders?.length)
-console.log("🔍 primeiro ordersToUpsert:", JSON.stringify(ordersToUpsert[0]))
+        if (upsertError) {
+          console.error("❌ Erro ao salvar pedidos em batch:", JSON.stringify(upsertError))
+        } else {
+          ordersCount += upsertedOrders?.length || 0
+          console.log(`✅ ${upsertedOrders?.length} pedidos salvos em batch`)
 
-if (upsertError) {
-  console.error("❌ Erro ao salvar pedidos em batch:", JSON.stringify(upsertError))
-} else {
-  ordersCount += upsertedOrders?.length || 0
-  console.log(`✅ ${upsertedOrders?.length} pedidos salvos em batch`)
+          const itemsToUpsert: {
+            order_id: string
+            external_item_id: string
+            item_name: string
+            sku: string
+            quantity: number
+            unit_price: number
+            total_price: number
+          }[] = []
 
-  const itemsToUpsert: {
-    order_id: string
-    external_item_id: string
-    item_name: string
-    sku: string
-    quantity: number
-    unit_price: number
-    total_price: number
-  }[] = []
+          for (const order of orderDetails.order_list ?? []) {
+            const savedOrder = upsertedOrders?.find(o => o.external_order_id === order.order_sn)
+            if (!savedOrder?.id) continue
+            const items = order.item_list ?? []
+            if (items.length === 0) continue
+            itemsToUpsert.push(...items.map(item => ({
+              order_id: savedOrder.id,
+              external_item_id: String(item.item_id),
+              item_name: item.item_name || item.model_name || "Produto sem nome",
+              sku: item.model_sku || item.item_sku || "",
+              quantity: item.model_quantity_purchased || 1,
+              unit_price: Number(item.model_discounted_price) || Number(item.model_original_price) || 0,
+              total_price: (Number(item.model_discounted_price) || Number(item.model_original_price) || 0) * (item.model_quantity_purchased || 1),
+            })))
+          }
 
-  for (const order of orderDetails.order_list ?? []) {
-    const savedOrder = upsertedOrders?.find(o => o.external_order_id === order.order_sn)
-    if (!savedOrder?.id) continue
-    const items = order.item_list ?? []
-    if (items.length === 0) continue
-    itemsToUpsert.push(...items.map(item => ({
-      order_id: savedOrder.id,
-      external_item_id: String(item.item_id),
-      item_name: item.item_name || item.model_name || "Produto sem nome",
-      sku: item.model_sku || item.item_sku || "",
-      quantity: item.model_quantity_purchased || 1,
-      unit_price: Number(item.model_discounted_price) || Number(item.model_original_price) || 0,
-      total_price: (Number(item.model_discounted_price) || Number(item.model_original_price) || 0) * (item.model_quantity_purchased || 1),
-    })))
-  }
+          const deduped = new Map()
+          itemsToUpsert.forEach(item => {
+            const key = `${item.order_id}_${item.external_item_id}`
+            if (!deduped.has(key)) deduped.set(key, item)
+          })
+          const uniqueItems = Array.from(deduped.values())
 
-  if (itemsToUpsert.length > 0) {
-    const { error: itemsError } = await supabaseAdmin
-      .from("order_items")
-      .upsert(itemsToUpsert, { onConflict: "order_id,external_item_id" })
-    if (itemsError) console.error("❌ Erro ao salvar items em batch:", JSON.stringify(itemsError))
-    else console.log(`✅ ${itemsToUpsert.length} items salvos em batch`)
-  }
-}
-}
+          if (uniqueItems.length > 0) {
+            const { error: itemsError } = await supabaseAdmin
+              .from("order_items")
+              .upsert(uniqueItems, { onConflict: "order_id,external_item_id" })
+            if (itemsError) console.error("❌ Erro ao salvar items em batch:", JSON.stringify(itemsError))
+            else console.log(`✅ ${uniqueItems.length} items salvos em batch`)
+          }
+        }
+      }
+
       hasMore = Boolean(orderList?.more)
       cursor = orderList?.next_cursor ?? ""
       safetyLimit++
@@ -468,7 +462,7 @@ if (upsertError) {
                 amount: Number(fee.amount),
                 currency: "BRL",
                 description: fee.description,
-                fee_date: now.toISOString(),
+                fee_date: safeShopeeDate(escrowOrder.escrow_release_time) ?? now.toISOString(),
                 synced_at: now.toISOString(),
               }, { onConflict: "external_fee_id" })
               if (feeError) console.error("❌ Erro ao salvar fee:", fee.key, JSON.stringify(feeError))
