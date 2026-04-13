@@ -1,5 +1,6 @@
 import { useState, useCallback, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
+import { useCompany } from '@/contexts/CompanyContext';
 import { supabase } from '@/integrations/supabase/client';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { ProtectedRoute } from '@/components/layout/ProtectedRoute';
@@ -58,6 +59,7 @@ interface ParsedRow {
   rebate_shopee: number;
   custo_unitario: number;
   data_pedido: string | null;
+  company_id?: string;
 }
 
 interface ColumnMapping {
@@ -90,6 +92,7 @@ const requiredFields: (keyof ColumnMapping)[] = ['order_id', 'nome_produto', 'qu
 
 function UploadContent() {
   const { user } = useAuth();
+  const { currentCompany } = useCompany();
   const [isDragActive, setIsDragActive] = useState(false);
   const [file, setFile] = useState<File | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
@@ -288,19 +291,19 @@ function UploadContent() {
   };
 
   const handleImport = async () => {
-    if (!user) return;
+    if (!user || !currentCompany?.id) return;
 
     setIsProcessing(true);
     const dataToImport = processDataForImport();
     setImportStats({ total: dataToImport.length, imported: 0, errors: 0 });
 
     try {
-      // If replacing existing, delete all previous orders first
+      // If replacing existing, delete all previous orders for this company
       if (replaceExisting) {
         const { error: deleteError } = await supabase
           .from('raw_orders')
           .delete()
-          .eq('user_id', user.id);
+          .eq('company_id', currentCompany.id);
 
         if (deleteError) {
           console.error('Error deleting existing orders:', deleteError);
@@ -319,6 +322,7 @@ function UploadContent() {
         const batch = dataToImport.slice(i, i + batchSize).map(row => ({
           ...row,
           user_id: user.id,
+          company_id: currentCompany.id,
         }));
 
         const { error } = await supabase.from('raw_orders').insert(batch);

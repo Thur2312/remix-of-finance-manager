@@ -92,7 +92,13 @@ export function parseTikTokCSVRow(row: Record<string, string>): ParsedTikTokRow 
 }
 
 // Fetch all TikTok orders with pagination (to overcome 1000 row limit)
-export async function fetchAllTikTokOrders(userId: string): Promise<TikTokOrder[]> {
+// Now uses company_id for multi-tenant support
+export async function fetchAllTikTokOrders(companyId: string): Promise<TikTokOrder[]> {
+  if (!companyId) {
+    console.error('Company ID é obrigatório');
+    return [];
+  }
+  
   const allOrders: TikTokOrder[] = [];
   const pageSize = 1000;
   let page = 0;
@@ -102,7 +108,7 @@ export async function fetchAllTikTokOrders(userId: string): Promise<TikTokOrder[
     const { data, error } = await supabase
       .from('tiktok_orders')
       .select('*')
-      .eq('user_id', userId)
+      .eq('company_id', companyId)
       .range(page * pageSize, (page + 1) * pageSize - 1)
       .order('data_pedido', { ascending: false });
 

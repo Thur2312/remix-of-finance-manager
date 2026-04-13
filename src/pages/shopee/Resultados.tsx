@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
+import { useCompany } from '@/contexts/CompanyContext';
 import { supabase } from '@/integrations/supabase/client';
 import { fetchAllOrders } from '@/lib/supabase-helpers';
 import { AppLayout } from '@/components/layout/AppLayout';
@@ -49,6 +50,7 @@ import { InPageNav, shopeeNavTabs } from '@/components/layout/InPageNav';
 
 function ResultadosContent() {
   const { user } = useAuth();
+  const { currentCompany } = useCompany();
   const [isSettingsLoaded, setIsSettingsLoaded] = useState(false);
   const [isOrdersLoading, setIsOrdersLoading] = useState(false);
   const [orders, setOrders] = useState<RawOrder[]>([]);
@@ -135,10 +137,15 @@ function ResultadosContent() {
   };
 
   const handleCostSave = useCallback(async (sku: string, nomeProduto: string, newCost: number) => {
+    if (!currentCompany?.id) return;
+    
     // Determine if SKU is empty/invalid - use nome_produto instead
     const isEmptySku = !sku || sku === '-' || sku.trim() === '';
     
     let query = supabase.from('raw_orders').update({ custo_unitario: newCost });
+    
+    // Always filter by company_id for security
+    query = query.eq('company_id', currentCompany.id);
     
     if (isEmptySku) {
       // Search by product name when SKU is empty
@@ -216,7 +223,8 @@ function ResultadosContent() {
         const { error } = await supabase
           .from('raw_orders')
           .update({ custo_unitario: numValue })
-          .in('sku', skusToUpdate);
+          .in('sku', skusToUpdate)
+          .eq('company_id', currentCompany?.id);
 
         if (error) {
           console.error('Erro ao atualizar por SKU:', error);
@@ -230,7 +238,8 @@ function ResultadosContent() {
         const { error } = await supabase
           .from('raw_orders')
           .update({ custo_unitario: numValue })
-          .eq('nome_produto', product.nome_produto);
+          .eq('nome_produto', product.nome_produto)
+          .eq('company_id', currentCompany?.id);
 
         if (error) {
           console.error(`Erro ao atualizar ${product.nome_produto}:`, error);

@@ -1,11 +1,13 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
+import { useCompany } from '@/contexts/CompanyContext';
 import { useToast } from '@/hooks/use-toast';
 
 export interface CashFlowCategory {
   id: string;
   user_id: string;
+  company_id: string;
   name: string;
   type: 'income' | 'expense';
   color: string;
@@ -18,6 +20,7 @@ export interface CashFlowCategory {
 export interface CashFlowEntry {
   id: string;
   user_id: string;
+  company_id: string;
   category_id: string | null;
   description: string;
   amount: number;
@@ -35,8 +38,8 @@ export interface CashFlowEntry {
   category?: CashFlowCategory;
 }
 
-export type NewCashFlowCategory = Omit<CashFlowCategory, 'id' | 'user_id' | 'created_at' | 'updated_at'>;
-export type NewCashFlowEntry = Omit<CashFlowEntry, 'id' | 'user_id' | 'created_at' | 'updated_at' | 'category'>;
+export type NewCashFlowCategory = Omit<CashFlowCategory, 'id' | 'user_id' | 'company_id' | 'created_at' | 'updated_at'>;
+export type NewCashFlowEntry = Omit<CashFlowEntry, 'id' | 'user_id' | 'company_id' | 'created_at' | 'updated_at' | 'category'>;
 
 const DEFAULT_CATEGORIES: Omit<NewCashFlowCategory, 'is_default'>[] = [
   // Income categories
@@ -56,33 +59,36 @@ const DEFAULT_CATEGORIES: Omit<NewCashFlowCategory, 'is_default'>[] = [
 
 export function useCashFlowCategories() {
   const { user } = useAuth();
+  const { currentCompany } = useCompany();
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
   const categoriesQuery = useQuery({
-    queryKey: ['cash-flow-categories', user?.id],
+    queryKey: ['cash-flow-categories', user?.id, currentCompany?.id],
     queryFn: async () => {
-      if (!user?.id) return [];
+      if (!user?.id || !currentCompany?.id) return [];
       
       const { data, error } = await supabase
         .from('cash_flow_categories')
         .select('*')
         .eq('user_id', user.id)
+        .eq('company_id', currentCompany.id)
         .order('name');
 
       if (error) throw error;
       return data as CashFlowCategory[];
     },
-    enabled: !!user?.id,
+    enabled: !!user?.id && !!currentCompany?.id,
   });
 
   const initializeDefaultCategories = useMutation({
     mutationFn: async () => {
-      if (!user?.id) throw new Error('User not authenticated');
+      if (!user?.id || !currentCompany?.id) throw new Error('User or company not authenticated');
 
       const categories = DEFAULT_CATEGORIES.map(cat => ({
         ...cat,
         user_id: user.id,
+        company_id: currentCompany.id,
         is_default: true,
       }));
 
@@ -93,7 +99,7 @@ export function useCashFlowCategories() {
       if (error) throw error;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['cash-flow-categories', user?.id] });
+      queryClient.invalidateQueries({ queryKey: ['cash-flow-categories', user?.id, currentCompany?.id] });
     },
     onError: (error) => {
       console.error('Error initializing categories:', error);
@@ -107,19 +113,19 @@ export function useCashFlowCategories() {
 
   const createCategory = useMutation({
     mutationFn: async (category: NewCashFlowCategory) => {
-      if (!user?.id) throw new Error('User not authenticated');
+      if (!user?.id || !currentCompany?.id) throw new Error('User or company not authenticated');
 
       const { data, error } = await supabase
         .from('cash_flow_categories')
-        .insert({ ...category, user_id: user.id })
+        .insert({ ...category, user_id: user.id, company_id: currentCompany.id })
         .select()
         .single();
 
       if (error) throw error;
-      return data;
+      return data as CashFlowCategory;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['cash-flow-categories', user?.id] });
+      queryClient.invalidateQueries({ queryKey: ['cash-flow-categories', user?.id, currentCompany?.id] });
       toast({ title: 'Categoria criada com sucesso!' });
     },
     onError: () => {
@@ -132,7 +138,7 @@ export function useCashFlowCategories() {
   });
 
   const updateCategory = useMutation({
-    mutationFn: async ({ id, ...updates }: Partial<CashFlowCategory> & { id: string }) => {
+    mutationFn: async ({ id, ...updates }: { id: string } & Partial<CashFlowCategory>) => {
       const { data, error } = await supabase
         .from('cash_flow_categories')
         .update(updates)
@@ -141,10 +147,10 @@ export function useCashFlowCategories() {
         .single();
 
       if (error) throw error;
-      return data;
+      return data as CashFlowCategory;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['cash-flow-categories', user?.id] });
+      queryClient.invalidateQueries({ queryKey: ['cash-flow-categories', user?.id, currentCompany?.id] });
       toast({ title: 'Categoria atualizada!' });
     },
     onError: () => {
@@ -164,9 +170,10 @@ export function useCashFlowCategories() {
         .eq('id', id);
 
       if (error) throw error;
+      return { success: true };
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['cash-flow-categories', user?.id] });
+      queryClient.invalidateQueries({ queryKey: ['cash-flow-categories', user?.id, currentCompany?.id] });
       toast({ title: 'Categoria excluída!' });
     },
     onError: () => {
@@ -197,13 +204,14 @@ export function useCashFlowEntries(filters?: {
   categoryId?: string;
 }) {
   const { user } = useAuth();
+  const { currentCompany } = useCompany();
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
   const entriesQuery = useQuery({
-    queryKey: ['cash-flow-entries', user?.id, filters],
+    queryKey: ['cash-flow-entries', user?.id, currentCompany?.id, filters],
     queryFn: async () => {
-      if (!user?.id) return [];
+      if (!user?.id || !currentCompany?.id) return [];
 
       let query = supabase
         .from('cash_flow_entries')
@@ -212,6 +220,7 @@ export function useCashFlowEntries(filters?: {
           category:cash_flow_categories(*)
         `)
         .eq('user_id', user.id)
+        .eq('company_id', currentCompany.id)
         .order('date', { ascending: false });
 
       if (filters?.startDate) {
@@ -235,24 +244,24 @@ export function useCashFlowEntries(filters?: {
       if (error) throw error;
       return data as CashFlowEntry[];
     },
-    enabled: !!user?.id,
+    enabled: !!user?.id && !!currentCompany?.id,
   });
 
   const createEntry = useMutation({
     mutationFn: async (entry: NewCashFlowEntry) => {
-      if (!user?.id) throw new Error('User not authenticated');
+      if (!user?.id || !currentCompany?.id) throw new Error('User or company not authenticated');
 
       const { data, error } = await supabase
         .from('cash_flow_entries')
-        .insert({ ...entry, user_id: user.id })
+        .insert({ ...entry, user_id: user.id, company_id: currentCompany.id })
         .select()
         .single();
 
       if (error) throw error;
-      return data;
+      return data as CashFlowEntry;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['cash-flow-entries', user?.id] });
+      queryClient.invalidateQueries({ queryKey: ['cash-flow-entries', user?.id, currentCompany?.id] });
       toast({ title: 'Lançamento criado com sucesso!' });
     },
     onError: () => {
@@ -265,7 +274,7 @@ export function useCashFlowEntries(filters?: {
   });
 
   const updateEntry = useMutation({
-    mutationFn: async ({ id, ...updates }: Partial<CashFlowEntry> & { id: string }) => {
+    mutationFn: async ({ id, ...updates }: { id: string } & Partial<CashFlowEntry>) => {
       const { data, error } = await supabase
         .from('cash_flow_entries')
         .update(updates)
@@ -274,10 +283,10 @@ export function useCashFlowEntries(filters?: {
         .single();
 
       if (error) throw error;
-      return data;
+      return data as CashFlowEntry;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['cash-flow-entries', user?.id] });
+      queryClient.invalidateQueries({ queryKey: ['cash-flow-entries', user?.id, currentCompany?.id] });
       toast({ title: 'Lançamento atualizado!' });
     },
     onError: () => {
@@ -297,9 +306,10 @@ export function useCashFlowEntries(filters?: {
         .eq('id', id);
 
       if (error) throw error;
+      return { success: true };
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['cash-flow-entries', user?.id] });
+      queryClient.invalidateQueries({ queryKey: ['cash-flow-entries', user?.id, currentCompany?.id] });
       toast({ title: 'Lançamento excluído!' });
     },
     onError: () => {
@@ -321,10 +331,10 @@ export function useCashFlowEntries(filters?: {
         .single();
 
       if (error) throw error;
-      return data;
+      return data as CashFlowEntry;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['cash-flow-entries', user?.id] });
+      queryClient.invalidateQueries({ queryKey: ['cash-flow-entries', user?.id, currentCompany?.id] });
       toast({ title: 'Status atualizado!' });
     },
     onError: () => {
