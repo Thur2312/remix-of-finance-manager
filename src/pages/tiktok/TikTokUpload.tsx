@@ -1,6 +1,5 @@
 import { useState, useCallback } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
-import { useCompany } from '@/contexts/CompanyContext';
 import { supabase } from '@/integrations/supabase/client';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { ProtectedRoute } from '@/components/layout/ProtectedRoute';
@@ -31,7 +30,6 @@ import { InPageNav, tiktokNavTabs } from '@/components/layout/InPageNav';
 
 function TikTokUploadContent() {
   const { user } = useAuth();
-  const { currentCompany } = useCompany();
   const [isDragActive, setIsDragActive] = useState(false);
   const [file, setFile] = useState<File | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
@@ -167,7 +165,7 @@ function TikTokUploadContent() {
   };
 
   const handleImport = async () => {
-    if (!user || !currentCompany?.id || parsedData.length === 0) return;
+    if (!user || parsedData.length === 0) return;
 
     setStep('importing');
     setProgress(0);
@@ -177,7 +175,7 @@ function TikTokUploadContent() {
         const { error: deleteError } = await supabase
           .from('tiktok_orders')
           .delete()
-          .eq('company_id', currentCompany.id);
+          .eq('user_id', user.id);
 
         if (deleteError) {
           console.error('Error deleting existing orders:', deleteError);
@@ -194,7 +192,6 @@ function TikTokUploadContent() {
       for (let i = 0; i < parsedData.length; i += batchSize) {
         const batch = parsedData.slice(i, i + batchSize).map(row => ({
           user_id: user.id,
-          company_id: currentCompany.id,
           order_id: row.order_id,
           sku: row.sku,
           nome_produto: row.nome_produto,

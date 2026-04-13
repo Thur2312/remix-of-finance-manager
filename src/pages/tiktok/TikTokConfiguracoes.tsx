@@ -1,6 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
-import { useCompany } from '@/contexts/CompanyContext';
 import { supabase } from '@/integrations/supabase/client';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { ProtectedRoute } from '@/components/layout/ProtectedRoute';
@@ -62,7 +61,6 @@ interface SettingsRow extends TikTokSettingsData {
 
 function TikTokConfiguracoesContent() {
   const { user } = useAuth();
-  const { currentCompany } = useCompany();
   const [settings, setSettings] = useState<SettingsRow[]>([]);
   const [selectedSettings, setSelectedSettings] = useState<SettingsRow | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -74,13 +72,10 @@ function TikTokConfiguracoesContent() {
   const [errors, setErrors] = useState<Record<string, string>>({});
 
   const fetchSettings = useCallback(async () => {
-    if (!currentCompany?.id) return;
-    
     setIsLoading(true);
     const { data, error } = await supabase
       .from('tiktok_settings')
       .select('*')
-      .eq('company_id', currentCompany.id)
       .order('is_default', { ascending: false })
       .order('created_at', { ascending: true });
 
@@ -97,10 +92,10 @@ function TikTokConfiguracoesContent() {
       }
     }
     setIsLoading(false);
-  }, [currentCompany?.id]);
+  }, []);
 
   useEffect(() => {
-    if (user && currentCompany?.id) {
+    if (user) {
       fetchSettings();
     }
   }, [fetchSettings, user]);
@@ -220,7 +215,7 @@ function TikTokConfiguracoesContent() {
   };
 
   const handleSave = async () => {
-    if (!user || !currentCompany?.id || !validateForm()) return;
+    if (!user || !validateForm()) return;
 
     setIsSaving(true);
 
@@ -229,7 +224,7 @@ function TikTokConfiguracoesContent() {
         await supabase
           .from('tiktok_settings')
           .update({ is_default: false })
-          .eq('company_id', currentCompany.id);
+          .eq('user_id', user.id);
       }
 
       if (isCreating) {
@@ -237,7 +232,6 @@ function TikTokConfiguracoesContent() {
           .from('tiktok_settings')
           .insert({
             user_id: user.id,
-            company_id: currentCompany.id,
             ...formData,
           })
           .select()
@@ -252,8 +246,7 @@ function TikTokConfiguracoesContent() {
         const { error } = await supabase
           .from('tiktok_settings')
           .update(formData)
-          .eq('id', selectedSettings.id)
-          .eq('company_id', currentCompany.id);
+          .eq('id', selectedSettings.id);
 
         if (error) throw error;
         
@@ -269,16 +262,16 @@ function TikTokConfiguracoesContent() {
   };
 
   const handleDelete = async () => {
-    if (!selectedSettings || !user || !currentCompany?.id) return;
+    if (!selectedSettings || !user) return;
 
     setIsDeleting(true);
 
     try {
-      // Apagar todos os dados relacionados ao TikTok para esta empresa
+      // Apagar todos os dados relacionados ao TikTok
       const [ordersResult, settlementsResult, statementsResult] = await Promise.all([
-        supabase.from('tiktok_orders').delete().eq('company_id', currentCompany.id),
-        supabase.from('tiktok_settlements').delete().eq('company_id', currentCompany.id),
-        supabase.from('tiktok_statements').delete().eq('company_id', currentCompany.id),
+        supabase.from('tiktok_orders').delete().eq('user_id', user.id),
+        supabase.from('tiktok_settlements').delete().eq('user_id', user.id),
+        supabase.from('tiktok_statements').delete().eq('user_id', user.id),
       ]);
 
       if (ordersResult.error || settlementsResult.error || statementsResult.error) {
@@ -292,8 +285,7 @@ function TikTokConfiguracoesContent() {
       const { error } = await supabase
         .from('tiktok_settings')
         .delete()
-        .eq('id', selectedSettings.id)
-        .eq('company_id', currentCompany.id);
+        .eq('id', selectedSettings.id);
 
       if (error) throw error;
 

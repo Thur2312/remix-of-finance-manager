@@ -1,6 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
-import { useCompany } from '@/contexts/CompanyContext';
 import { supabase } from '@/integrations/supabase/client';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { ProtectedRoute } from '@/components/layout/ProtectedRoute';
@@ -29,7 +28,6 @@ import { InPageNav, shopeeNavTabs } from '@/components/layout/InPageNav';
 interface SettingsData {
   id: string;
   user_id: string;
-  company_id: string;
   name: string;
   taxa_comissao_shopee: number;
   adicional_por_item: number;
@@ -72,7 +70,6 @@ const defaultSettings = {
 
 function ConfiguracoesContent() {
   const { user } = useAuth();
-  const { currentCompany } = useCompany();
   const [settings, setSettings] = useState<SettingsData[]>([]);
   const [selectedSettings, setSelectedSettings] = useState<SettingsData | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -85,13 +82,10 @@ function ConfiguracoesContent() {
   const [errors, setErrors] = useState<Record<string, string>>({});
 
   const fetchSettings = useCallback(async () => {
-    if (!currentCompany?.id) return;
-    
     setIsLoading(true);
     const { data, error } = await supabase
       .from('settings')
       .select('*')
-      .eq('company_id', currentCompany.id)
       .order('is_default', { ascending: false })
       .order('created_at', { ascending: true });
 
@@ -111,10 +105,10 @@ function ConfiguracoesContent() {
   }, []);
 
   useEffect(() => {
-    if (user && currentCompany?.id) {
+    if (user) {
       fetchSettings();
     }
-  }, [fetchSettings, user, currentCompany?.id]);
+  }, [fetchSettings, user]);
 
   const selectSettings = (setting: SettingsData) => {
     setSelectedSettings(setting);
@@ -230,17 +224,17 @@ function ConfiguracoesContent() {
   };
 
   const handleSave = async () => {
-    if (!user || !currentCompany?.id || !validateForm()) return;
+    if (!user || !validateForm()) return;
 
     setIsSaving(true);
 
     try {
-      // If setting as default, unset other defaults for this company
+      // If setting as default, unset other defaults
       if (formData.is_default && settings.some(s => s.is_default && s.id !== selectedSettings?.id)) {
         await supabase
           .from('settings')
           .update({ is_default: false })
-          .eq('company_id', currentCompany.id);
+          .eq('user_id', user.id);
       }
 
       if (isCreating) {
@@ -248,7 +242,6 @@ function ConfiguracoesContent() {
           .from('settings')
           .insert({
             user_id: user.id,
-            company_id: currentCompany.id,
             ...formData,
           })
           .select()
@@ -279,16 +272,16 @@ function ConfiguracoesContent() {
   };
 
   const handleDelete = async () => {
-    if (!selectedSettings || !user || !currentCompany?.id) return;
+    if (!selectedSettings || !user) return;
 
     setIsDeleting(true);
 
     try {
-      // Delete orders only for this company when deleting configuration
+      // Always delete orders when deleting configuration
       const { error: ordersError } = await supabase
         .from('raw_orders')
         .delete()
-        .eq('company_id', currentCompany.id);
+        .eq('user_id', user.id);
 
       if (ordersError) {
         console.error('Error deleting orders:', ordersError);
@@ -300,8 +293,7 @@ function ConfiguracoesContent() {
       const { error } = await supabase
         .from('settings')
         .delete()
-        .eq('id', selectedSettings.id)
-        .eq('company_id', currentCompany.id);
+        .eq('id', selectedSettings.id);
 
       if (error) throw error;
 

@@ -1,6 +1,5 @@
 import { useState, useEffect, useMemo, useCallback } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
-import { useCompany } from '@/contexts/CompanyContext';
 import { supabase } from '@/integrations/supabase/client';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { ProtectedRoute } from '@/components/layout/ProtectedRoute';
@@ -35,7 +34,6 @@ import { InPageNav, tiktokNavTabs } from '@/components/layout/InPageNav';
 
 function TikTokResultadosContent() {
   const { user } = useAuth();
-  const { currentCompany } = useCompany();
   const [isSettingsLoaded, setIsSettingsLoaded] = useState(false);
   const [isOrdersLoading, setIsOrdersLoading] = useState(false);
   const [orders, setOrders] = useState<TikTokOrder[]>([]);
@@ -80,11 +78,11 @@ function TikTokResultadosContent() {
   };
 
   const fetchOrders = useCallback(async () => {
-    if (!currentCompany?.id) return;
+    if (!user) return;
     setIsOrdersLoading(true);
     
     try {
-      const data = await fetchAllTikTokOrders(currentCompany.id);
+      const data = await fetchAllTikTokOrders(user.id);
       setOrders(data);
     } catch (error) {
       toast.error('Erro ao carregar pedidos');
@@ -92,13 +90,13 @@ function TikTokResultadosContent() {
     }
     
     setIsOrdersLoading(false);
-  }, [currentCompany?.id]);
+  }, [user]);
 
   useEffect(() => {
-    if (user && settings && currentCompany?.id) {
+    if (user && settings) {
       fetchOrders();
     }
-  }, [user, settings, currentCompany?.id, fetchOrders]);
+  }, [user, settings, fetchOrders]);
 
   const handleSettingsChange = (settingsId: string) => {
     const selected = allSettings.find(s => s.id === settingsId);
@@ -114,10 +112,10 @@ function TikTokResultadosContent() {
   }, [orders, settings]);
 
   const handleCostSave = useCallback(async (sku: string, nomeProduto: string, newCost: number) => {
-    if (!currentCompany?.id) return;
+    if (!user) return;
     const isEmptySku = !sku || sku === '-' || sku.trim() === '';
     
-    let query = supabase.from('tiktok_orders').update({ custo_unitario: newCost }).eq('company_id', currentCompany.id);
+    let query = supabase.from('tiktok_orders').update({ custo_unitario: newCost }).eq('user_id', user.id);
     
     if (isEmptySku) {
       query = query.eq('nome_produto', nomeProduto);
@@ -167,7 +165,7 @@ function TikTokResultadosContent() {
   };
 
   const handleBatchSave = async () => {
-    if (selectedProducts.size === 0 || !currentCompany?.id) return;
+    if (selectedProducts.size === 0 || !user) return;
     
     const parseResult = parseBatchCostInput(batchCostValue);
     if (!parseResult.isValid) {
@@ -184,7 +182,7 @@ function TikTokResultadosContent() {
       for (const group of selectedGroups) {
         const isEmptySku = !group.sku || group.sku === '-' || group.sku.trim() === '';
         
-        let query = supabase.from('tiktok_orders').update({ custo_unitario: numValue }).eq('company_id', currentCompany.id);
+        let query = supabase.from('tiktok_orders').update({ custo_unitario: numValue }).eq('user_id', user.id);
         
         if (isEmptySku) {
           query = query.eq('nome_produto', group.nome_produto);

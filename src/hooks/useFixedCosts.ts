@@ -1,13 +1,11 @@
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
-import { useCompany } from '@/contexts/CompanyContext';
 import { toast } from 'sonner';
 
 export interface FixedCost {
   id: string;
   user_id: string;
-  company_id: string;
   category: string;
   name: string;
   amount: number;
@@ -20,7 +18,6 @@ export interface FixedCost {
 export interface FixedCostsSettings {
   id: string;
   user_id: string;
-  company_id: string;
   monthly_orders: number;
   monthly_products_sold: number;
   monthly_revenue: number;
@@ -65,20 +62,18 @@ export const COST_CATEGORIES = [
 
 export function useFixedCosts() {
   const { user } = useAuth();
-  const { currentCompany } = useCompany();
   const [costs, setCosts] = useState<FixedCost[]>([]);
   const [settings, setSettings] = useState<FixedCostsSettings | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
   // Fetch fixed costs
   const fetchCosts = useCallback(async () => {
-    if (!user || !currentCompany?.id) return;
+    if (!user) return;
     
     try {
       const { data, error } = await supabase
         .from('fixed_costs')
         .select('*')
-        .eq('company_id', currentCompany.id)
         .order('category', { ascending: true })
         .order('name', { ascending: true });
 
@@ -88,17 +83,16 @@ export function useFixedCosts() {
       console.error('Erro ao buscar custos fixos:', error);
       toast.error('Erro ao carregar custos fixos');
     }
-  }, [user, currentCompany?.id]);
+  }, [user]);
 
   // Fetch settings
   const fetchSettings = useCallback(async () => {
-    if (!user || !currentCompany?.id) return;
+    if (!user) return;
 
     try {
       const { data, error } = await supabase
         .from('fixed_costs_settings')
         .select('*')
-        .eq('company_id', currentCompany.id)
         .maybeSingle();
 
       if (error) throw error;
@@ -111,7 +105,6 @@ export function useFixedCosts() {
           .from('fixed_costs_settings')
           .insert({
             user_id: user.id,
-            company_id: currentCompany.id,
             monthly_orders: 100,
             monthly_products_sold: 100,
             monthly_revenue: 0
@@ -125,7 +118,7 @@ export function useFixedCosts() {
     } catch (error) {
       console.error('Erro ao buscar configurações:', error);
     }
-  }, [user, currentCompany?.id]);
+  }, [user]);
 
   // Load data on mount
   useEffect(() => {
@@ -135,22 +128,21 @@ export function useFixedCosts() {
       setIsLoading(false);
     };
 
-    if (user && currentCompany?.id) {
+    if (user) {
       loadData();
     }
-  }, [user, currentCompany?.id, fetchCosts, fetchSettings]);
+  }, [user, fetchCosts, fetchSettings]);
 
   // Add cost
-  const addCost = async (cost: Omit<FixedCost, 'id' | 'user_id' | 'company_id' | 'created_at' | 'updated_at'>) => {
-    if (!user || !currentCompany?.id) return false;
+  const addCost = async (cost: Omit<FixedCost, 'id' | 'user_id' | 'created_at' | 'updated_at'>) => {
+    if (!user) return false;
 
     try {
       const { error } = await supabase
         .from('fixed_costs')
         .insert({
           ...cost,
-          user_id: user.id,
-          company_id: currentCompany.id
+          user_id: user.id
         });
 
       if (error) throw error;
@@ -166,7 +158,7 @@ export function useFixedCosts() {
   };
 
   // Update cost
-  const updateCost = async (id: string, cost: Partial<Omit<FixedCost, 'id' | 'user_id' | 'company_id' | 'created_at' | 'updated_at'>>) => {
+  const updateCost = async (id: string, cost: Partial<Omit<FixedCost, 'id' | 'user_id' | 'created_at' | 'updated_at'>>) => {
     try {
       const { error } = await supabase
         .from('fixed_costs')
@@ -207,7 +199,7 @@ export function useFixedCosts() {
 
   // Update settings
   const updateSettings = async (newSettings: Partial<Pick<FixedCostsSettings, 'monthly_orders' | 'monthly_products_sold' | 'monthly_revenue'>>) => {
-    if (!user || !currentCompany?.id || !settings) return false;
+    if (!user || !settings) return false;
 
     try {
       const { error } = await supabase

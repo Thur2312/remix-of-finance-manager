@@ -1,6 +1,5 @@
 import { useState, useEffect, useMemo } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
-import { useCompany } from '@/contexts/CompanyContext';
 import { supabase } from '@/integrations/supabase/client';
 import { 
   DREData, 
@@ -28,7 +27,6 @@ interface UseDREDataResult {
 
 export function useDREData(): UseDREDataResult {
   const { user } = useAuth();
-  const { currentCompany } = useCompany();
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   
@@ -45,7 +43,7 @@ export function useDREData(): UseDREDataResult {
   const [selectedPeriod, setSelectedPeriod] = useState<DREPeriod>(periods[0]);
 
   // Helper to fetch all TikTok orders with pagination
-  async function fetchAllTikTokOrders(companyId: string) {
+  async function fetchAllTikTokOrders(userId: string) {
     const PAGE_SIZE = 1000;
     let allOrders: TikTokOrder[] = [];
     let page = 0;
@@ -58,7 +56,7 @@ export function useDREData(): UseDREDataResult {
       const { data, error } = await supabase
         .from('tiktok_orders')
         .select('*')
-        .eq('company_id', companyId)
+        .eq('user_id', userId)
         .range(from, to)
         .order('data_pedido', { ascending: false });
 
@@ -79,7 +77,7 @@ export function useDREData(): UseDREDataResult {
   }
 
   // Helper to fetch all TikTok settlements with pagination
-  async function fetchAllTikTokSettlements(companyId: string) {
+  async function fetchAllTikTokSettlements(userId: string) {
     const PAGE_SIZE = 1000;
     let allSettlements: TikTokSettlement[] = [];
     let page = 0;
@@ -92,7 +90,7 @@ export function useDREData(): UseDREDataResult {
       const { data, error } = await supabase
         .from('tiktok_settlements')
         .select('*')
-        .eq('company_id', companyId)
+        .eq('user_id', userId)
         .range(from, to)
         .order('statement_date', { ascending: false });
 
@@ -115,7 +113,7 @@ export function useDREData(): UseDREDataResult {
   // Initial fetch
   useEffect(() => {
     const fetchAllData = async () => {
-      if (!user || !currentCompany?.id) return;
+      if (!user) return;
       
       setIsLoading(true);
       setError(null);
@@ -130,26 +128,26 @@ export function useDREData(): UseDREDataResult {
           shopeeSettingsResult,
           tiktokSettingsResult
         ] = await Promise.all([
-          // Shopee orders (using the helper for pagination - needs company_id)
-          fetchAllOrders(currentCompany.id),
+          // Shopee orders (using the helper for pagination)
+          fetchAllOrders(),
           
           // TikTok orders
-          fetchAllTikTokOrders(currentCompany.id),
+          fetchAllTikTokOrders(user.id),
           
           // TikTok settlements
-          fetchAllTikTokSettlements(currentCompany.id),
+          fetchAllTikTokSettlements(user.id),
           
           // Fixed costs
           supabase
             .from('fixed_costs')
             .select('*')
-            .eq('company_id', currentCompany.id),
+            .eq('user_id', user.id),
           
           // Shopee settings (get default or first)
           supabase
             .from('settings')
             .select('taxa_comissao_shopee, adicional_por_item, percentual_nf_entrada, gasto_shopee_ads, imposto_nf_saida')
-            .eq('company_id', currentCompany.id)
+            .eq('user_id', user.id)
             .eq('is_default', true)
             .maybeSingle(),
           
@@ -157,7 +155,7 @@ export function useDREData(): UseDREDataResult {
           supabase
             .from('tiktok_settings')
             .select('taxa_comissao_tiktok, taxa_afiliado, adicional_por_item, percentual_nf_entrada, gasto_tiktok_ads, imposto_nf_saida')
-            .eq('company_id', currentCompany.id)
+            .eq('user_id', user.id)
             .eq('is_default', true)
             .maybeSingle()
         ]);
@@ -191,14 +189,14 @@ export function useDREData(): UseDREDataResult {
       }
     };
 
-    if (user && currentCompany?.id) {
+    if (user) {
       fetchAllData();
     }
-  }, [user, currentCompany?.id]);
+  }, [user]);
 
   // Calculate DRE based on selected period
   const dreData = useMemo(() => {
-    if (isLoading || !user || !currentCompany?.id) return null;
+    if (isLoading || !user) return null;
 
     return calculateDRE(
       shopeeOrders,
@@ -218,13 +216,10 @@ export function useDREData(): UseDREDataResult {
     tiktokSettings,
     selectedPeriod,
     isLoading,
-    user,
-    currentCompany?.id
+    user
   ]);
 
   const refetch = async () => {
-    if (!user || !currentCompany?.id) return;
-    
     setIsLoading(true);
     setError(null);
 
@@ -237,23 +232,23 @@ export function useDREData(): UseDREDataResult {
         shopeeSettingsResult,
         tiktokSettingsResult
       ] = await Promise.all([
-        fetchAllOrders(currentCompany.id),
-        fetchAllTikTokOrders(currentCompany.id),
-        fetchAllTikTokSettlements(currentCompany.id),
+        fetchAllOrders(),
+        fetchAllTikTokOrders(user!.id),
+        fetchAllTikTokSettlements(user!.id),
         supabase
           .from('fixed_costs')
           .select('*')
-          .eq('company_id', currentCompany.id),
+          .eq('user_id', user!.id),
         supabase
           .from('settings')
           .select('taxa_comissao_shopee, adicional_por_item, percentual_nf_entrada, gasto_shopee_ads, imposto_nf_saida')
-          .eq('company_id', currentCompany.id)
+          .eq('user_id', user!.id)
           .eq('is_default', true)
           .maybeSingle(),
         supabase
           .from('tiktok_settings')
           .select('taxa_comissao_tiktok, taxa_afiliado, adicional_por_item, percentual_nf_entrada, gasto_tiktok_ads, imposto_nf_saida')
-          .eq('company_id', currentCompany.id)
+          .eq('user_id', user!.id)
           .eq('is_default', true)
           .maybeSingle()
       ]);
