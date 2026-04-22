@@ -23,6 +23,10 @@ import { useNavigate } from 'react-router-dom';
 import { ProductOrdersList } from '@/components/dashboard/ProductOrdersList';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { PeriodComparison } from '@/components/dashboard/PeriodComparison';
+// ── Novos imports ────────────────────────────────────────────────────────────
+import { CompanySelector } from '@/components/dashboard/CompanySelector';
+import { TaxSummaryRow } from '@/hooks/useIntegrationTax';
+import { Company } from '@/hooks/useCompanies';
 
 // ─── Tooltip de info reutilizável ───────────────────────────────────────────
 function InfoPopover({ title, children }: { title: string; children: React.ReactNode }) {
@@ -126,15 +130,18 @@ export default function Dashboard() {
   const [orders, setOrders] = useState<RawOrder[]>([]);
   const [settings, setSettings] = useState<SettingsData | null>(null);
 
+  // ── Empresa selecionada ──────────────────────────────────────────────────
+  const [selectedCompany, setSelectedCompany] = useState<Company | null>(null);
+
   const [syncPeriod, setSyncPeriod] = useState<'7' | '15' | '30' | '60'>('15');
 
   const { getConnection, syncNow } = useIntegrations();
   const shopeeConnection = getConnection('shopee');
   const isConnected = shopeeConnection?.status === 'connected';
   const { data: syncData, isLoading: syncLoading } = useShopeeSync(
-  isConnected ? shopeeConnection!.id : null,
-  Number(syncPeriod)
-);
+    isConnected ? shopeeConnection!.id : null,
+    Number(syncPeriod)
+  );
 
   useEffect(() => {
     if (user) fetchData();
@@ -164,27 +171,24 @@ export default function Dashboard() {
 
   const totalOrders = usingSyncData ? syncData.stats.totalOrders : orders.length;
   const totalRevenue = usingSyncData ? syncData.stats.totalRevenue : (calculatedResults?.totals.total_faturado || 0);
- const totalFees = usingSyncData
-  ? syncData.stats.totalFees
-  : (calculatedResults?.totals.taxa_shopee_reais || 0);
-
-const totalProfit = usingSyncData
-  ? syncData.stats.totalRevenue - syncData.stats.totalFees
-  : (calculatedResults?.totals.lucro_reais || 0);
-
+  const totalFees = usingSyncData
+    ? syncData.stats.totalFees
+    : (calculatedResults?.totals.taxa_shopee_reais || 0);
+  const totalProfit = usingSyncData
+    ? syncData.stats.totalRevenue - syncData.stats.totalFees
+    : (calculatedResults?.totals.lucro_reais || 0);
 
   const loading = isLoading || (isConnected && syncLoading);
-
   const profitTitle = usingSyncData ? 'Valor Líquido' : 'Lucro Estimado';
 
   const stats = [
     {
-          title: 'Total de Pedidos',
-    value: loading ? '...' : totalOrders.toString(),
-    description: usingSyncData ? `Últimos ${syncPeriod} dias (sync)` : 'Pedidos importados',
-    icon: ShoppingCart,
-    color: 'text-blue-500',
-    bgColor: 'bg-blue-500/10',
+      title: 'Total de Pedidos',
+      value: loading ? '...' : totalOrders.toString(),
+      description: usingSyncData ? `Últimos ${syncPeriod} dias (sync)` : 'Pedidos importados',
+      icon: ShoppingCart,
+      color: 'text-blue-500',
+      bgColor: 'bg-blue-500/10',
     },
     {
       title: 'Faturamento',
@@ -219,78 +223,92 @@ const totalProfit = usingSyncData
       <InPageNav tabs={shopeeNavTabs} />
       <div className="space-y-8 animate-fade-in">
 
-        {/* ── Banner de integração ───────────────────────────────── */}
-       {isConnected && (
-  <Card className="border-emerald-500/30 bg-emerald-500/5">
-    <CardContent className="py-4">
-      <div className="flex items-center justify-between flex-wrap gap-3">
-        <div className="flex items-center gap-3">
-          <div className="h-9 w-9 rounded-full bg-emerald-500/15 flex items-center justify-center shrink-0">
-            <Zap className="h-4 w-4 text-emerald-500" />
-          </div>
+        {/* ── Header com CompanySelector ─────────────────────────── */}
+        <div className="flex items-center justify-between flex-wrap gap-3">
           <div>
-            <p className="text-sm font-medium leading-tight">
-              Shopee conectada
-              {shopeeConnection?.shop_name && (
-                <span className="text-muted-foreground font-normal"> — {shopeeConnection.shop_name}</span>
-              )}
-            </p>
-            <p className="text-xs text-muted-foreground mt-0.5">
-              {syncData?.stats.totalOrders
-                ? `${syncData.stats.totalOrders} pedidos sincronizados nos últimos ${syncPeriod} dias`
-                : 'Nenhum pedido sincronizado ainda — clique em Sincronizar'}
+            <h2 className="text-lg font-semibold text-foreground">Dashboard Shopee</h2>
+            <p className="text-sm text-muted-foreground">
+              Acompanhe seus resultados e aplique a alíquota de imposto correta.
             </p>
           </div>
-          <Badge className="bg-emerald-500 text-white text-xs shrink-0">
-            Sincronizado
-          </Badge>
+          <CompanySelector
+            selectedCompany={selectedCompany}
+            onSelect={setSelectedCompany}
+          />
         </div>
 
-        <div className="flex items-center gap-2 flex-wrap">
-          {/* ── Seletor de período ── */}
-          <div className="flex items-center gap-1.5">
-            <span className="text-xs text-muted-foreground whitespace-nowrap">Período:</span>
-            <Select
-              value={syncPeriod}
-              onValueChange={(v) => setSyncPeriod(v as typeof syncPeriod)}
-              disabled={syncNow.isPending}
-            >
-              <SelectTrigger className="h-8 w-[90px] text-xs">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="7">7 dias</SelectItem>
-                <SelectItem value="15">15 dias</SelectItem>
-                <SelectItem value="30">30 dias</SelectItem>
-                <SelectItem value="60">60 dias</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
+        {/* ── Banner de integração ───────────────────────────────── */}
+        {isConnected && (
+          <Card className="border-emerald-500/30 bg-emerald-500/5">
+            <CardContent className="py-4">
+              <div className="flex items-center justify-between flex-wrap gap-3">
+                <div className="flex items-center gap-3">
+                  <div className="h-9 w-9 rounded-full bg-emerald-500/15 flex items-center justify-center shrink-0">
+                    <Zap className="h-4 w-4 text-emerald-500" />
+                  </div>
+                  <div>
+                    <p className="text-sm font-medium leading-tight">
+                      Shopee conectada
+                      {shopeeConnection?.shop_name && (
+                        <span className="text-muted-foreground font-normal"> — {shopeeConnection.shop_name}</span>
+                      )}
+                    </p>
+                    <p className="text-xs text-muted-foreground mt-0.5">
+                      {syncData?.stats.totalOrders
+                        ? `${syncData.stats.totalOrders} pedidos sincronizados nos últimos ${syncPeriod} dias`
+                        : 'Nenhum pedido sincronizado ainda — clique em Sincronizar'}
+                    </p>
+                  </div>
+                  <Badge className="bg-emerald-500 text-white text-xs shrink-0">
+                    Sincronizado
+                  </Badge>
+                </div>
 
-          <Button
-            size="sm"
-            variant="outline"
-            onClick={() => syncNow.mutate({ connectionId: shopeeConnection!.id, days: Number(syncPeriod) })}
-            disabled={syncNow.isPending}
-          >
-            {syncNow.isPending
-              ? <><RefreshCw className="h-3 w-3 mr-1.5 animate-spin" />Sincronizando...</>
-              : <><RefreshCw className="h-3 w-3 mr-1.5" />Sincronizar</>}
-          </Button>
+                <div className="flex items-center gap-2 flex-wrap">
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-xs text-muted-foreground whitespace-nowrap">Período:</span>
+                    <Select
+                      value={syncPeriod}
+                      onValueChange={(v) => setSyncPeriod(v as typeof syncPeriod)}
+                      disabled={syncNow.isPending}
+                    >
+                      <SelectTrigger className="h-8 w-[90px] text-xs">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="7">7 dias</SelectItem>
+                        <SelectItem value="15">15 dias</SelectItem>
+                        <SelectItem value="30">30 dias</SelectItem>
+                        <SelectItem value="60">60 dias</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
 
-          <Button size="sm" onClick={() => navigate('/integrations/shopee')}>
-            Ver detalhes <ArrowRight className="h-3 w-3 ml-1.5" />
-          </Button>
-        </div>
-      </div>
-    </CardContent>
-  </Card>
-)}
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => syncNow.mutate({ connectionId: shopeeConnection!.id, days: Number(syncPeriod) })}
+                    disabled={syncNow.isPending}
+                  >
+                    {syncNow.isPending
+                      ? <><RefreshCw className="h-3 w-3 mr-1.5 animate-spin" />Sincronizando...</>
+                      : <><RefreshCw className="h-3 w-3 mr-1.5" />Sincronizar</>}
+                  </Button>
+
+                  <Button size="sm" onClick={() => navigate('/integrations/shopee')}>
+                    Ver detalhes <ArrowRight className="h-3 w-3 ml-1.5" />
+                  </Button>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        )}
 
         {/* ── Stats Cards ────────────────────────────────────────── */}
         <div className={`grid gap-4 ${usingSyncData ? 'md:grid-cols-4' : 'md:grid-cols-3'}`}>
           {stats.map((stat) => {
             const info = statInfo[stat.title];
+            const isProfit = stat.title === profitTitle;
             return (
               <Card key={stat.title} className="relative overflow-hidden transition-shadow hover:shadow-md">
                 <CardHeader className="flex flex-row items-start justify-between pb-3 space-y-0">
@@ -305,6 +323,15 @@ const totalProfit = usingSyncData
                 <CardContent className="pt-0">
                   <div className="text-2xl font-bold tracking-tight">{stat.value}</div>
                   <p className="text-xs text-muted-foreground mt-1">{stat.description}</p>
+
+                  {/* ── Resumo de imposto no card de Lucro/Líquido ── */}
+                  {isProfit && !loading && selectedCompany && selectedCompany.tax_rate > 0 && (
+                    <TaxSummaryRow
+                      netProfit={totalProfit}
+                      taxRate={selectedCompany.tax_rate}
+                      companyName={selectedCompany.name}
+                    />
+                  )}
                 </CardContent>
               </Card>
             );
@@ -355,9 +382,9 @@ const totalProfit = usingSyncData
 
                 <div className="border-t pt-3 flex items-center justify-between">
                   <span className="text-sm font-semibold">Total de taxas</span>
-                 <span className="text-sm font-semibold text-destructive tabular-nums">
-                  −{formatCurrency(totalFees)}
-                </span>
+                  <span className="text-sm font-semibold text-destructive tabular-nums">
+                    −{formatCurrency(totalFees)}
+                  </span>
                 </div>
 
                 {syncData.stats.totalRevenue > 0 && (
@@ -365,7 +392,7 @@ const totalProfit = usingSyncData
                     <p className="text-xs text-muted-foreground">
                       💡 Inclui taxas de pedidos <span className="font-medium text-foreground">concluídos</span>,{' '}
                       <span className="font-medium text-foreground">em andamento</span> e{' '}
-                      <span className="font-medium text-foreground">cancelados</span> — 
+                      <span className="font-medium text-foreground">cancelados</span> —
                       representa o total cobrado pela Shopee no período.
                     </p>
                   </div>
