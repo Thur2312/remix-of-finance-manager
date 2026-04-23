@@ -8,8 +8,6 @@ import { Avatar, AvatarFallback, AvatarImage} from '@/components/ui/avatar';
 import { User, ChevronUp, LogOut, TrendingUp, Calculator, Receipt, Sparkles, BarChart3, HandCoins,Wallet, Plug, House } from 'lucide-react';
 import logo from '@/assets/logo-new.svg';
 import {useNavigate} from 'react-router-dom';
-import { useTheme } from '@/contexts/ThemeContext';
-import { Sun, Moon } from 'lucide-react';
 
 
 
@@ -41,7 +39,6 @@ export function AppSidebar() {
   const { user, signOut, profile } = useAuth();
   const collapsed = state === 'collapsed';
   const navigate = useNavigate();
-  const { theme, toggleTheme } = useTheme();
 
   const getInitials = (email: string) => {
     return email.slice(0, 2).toUpperCase();
@@ -95,18 +92,6 @@ export function AppSidebar() {
       </SidebarContent>
 
       <SidebarFooter className="border-t border-sidebar-border">
-
-        <SidebarMenuItem>
-          <SidebarMenuButton onClick={toggleTheme} tooltip="Alternar tema">
-            <div className="flex items-center gap-3">
-              {theme === 'blue' 
-                ? <Sun className="h-5 w-5" /> 
-                : <Moon className="h-5 w-5" />
-              }
-              <span>{theme === 'blue' ? 'Tema Claro' : 'Tema Azul'}</span>
-            </div>
-          </SidebarMenuButton>
-        </SidebarMenuItem>
         <SidebarMenu>
           <SidebarMenuItem>
             <DropdownMenu>
