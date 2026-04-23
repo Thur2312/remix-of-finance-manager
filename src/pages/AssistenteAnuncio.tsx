@@ -370,37 +370,6 @@ const AssistenteAnuncio = () => {
               </Card>
             )}
 
-            {generatedAd.generatedImages && generatedAd.generatedImages.length > 0 && (
-              <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <ImagePlus className="h-5 w-5" />
-                    Imagens Geradas
-                  </CardTitle>
-                  <CardDescription>Imagens ilustrativas geradas por IA para seu produto</CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3">
-                    {generatedAd.generatedImages.map((img, index) => (
-                      <div key={index} className="relative group">
-                        <img
-                          src={img}
-                          alt={`Imagem gerada ${index + 1}`}
-                          className="w-full aspect-square object-cover rounded-lg border"
-                        />
-                        <a
-                          href={img}
-                          download={`produto-${index + 1}.jpg`}
-                          className= "absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity rounded-lg flex items-center justify-center">
-                          <span className="text-white text-xs font-medium">Baixar</span>
-                        </a>
-                      </div>
-                    ))}
-                  </div>
-                </CardContent>
-              </Card>
-            )}
-
             <Card>
               <CardHeader>
                 <CardTitle>Títulos Sugeridos</CardTitle>

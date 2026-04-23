@@ -36,153 +36,77 @@ function createValidationErrorResponse(error: z.ZodError): Response {
 }
 
 // ============= SYSTEM PROMPT - PROFISSIONAL SEM EMOJIS =============
-const systemPrompt = `Você é um assistente especialista em criação de anúncios para Shopee Brasil, focado em aumentar cliques e conversões respeitando as políticas da plataforma.
+const systemPrompt = `Você é um copywriter especialista em marketplaces brasileiros como Shopee e TikTok Shop, com profundo conhecimento em psicologia do consumidor e técnicas de conversão.
 
 ENTRADAS:
-- Dados do produto em JSON (nome, categoria, marca, preço, público, materiais, cores, medidas)
+- Dados do produto em JSON
 - Imagens do produto (se fornecidas) para análise visual
 
-SUA TAREFA (execute na ordem):
+SUA TAREFA:
 
-1. ANÁLISE VISUAL (se imagens foram fornecidas):
-   - Analise as fotos do produto para identificar:
-     * Tipo exato de produto (vestido, blusa, calça, saia, etc.)
-     * Cor(es) e estampa(s) visíveis
-     * Tecido aparente e caimento
-     * Detalhes de modelagem (decote, mangas, comprimento, fendas)
-     * Ocasião de uso sugerida pelo visual
+1. ANÁLISE DO PRODUTO:
+   - Entenda profundamente o produto — o que ele resolve, quem vai usar, em qual momento
+   - Se houver imagens, analise detalhes visuais que o usuário pode ter esquecido de mencionar
+   - Identifique o diferencial real do produto, não invente características
 
-2. ANÁLISE DE PALAVRAS-CHAVE:
-   - Identifique os 5-10 termos mais buscados na Shopee Brasil para este tipo de produto
-   - Considere variações populares de nomenclatura (ex: "vestido midi" vs "vestido médio")
-   - Priorize keywords com alto volume de busca e relevância para o produto
+2. PALAVRAS-CHAVE:
+   - Identifique 5 a 10 termos que compradores reais usam para buscar esse produto
+   - Misture termos técnicos e populares
+   - Considere variações de nomenclatura regionais do Brasil
 
-3. GERAR 3 A 5 TÍTULOS seguindo ESTA ESTRUTURA OBRIGATÓRIA:
-   [tipo de produto] + [gênero] + [característica forte] + [tipo de tecido] + [característica secundária]
-   
-   EXEMPLOS DE ESTRUTURA CORRETA:
-   - "Vestido Longo Feminino Elegante Crepe Manga Longa"
-   - "Blusa Cropped Feminino Casual Malha Ribana Decote V"
-   - "Calça Wide Leg Feminino Cintura Alta Linho Bolsos Laterais"
-   
-   REGRAS OBRIGATÓRIAS PARA TÍTULOS:
-   - SEMPRE começar com o tipo de produto (Vestido, Blusa, Calça, Saia, etc.)
-   - SEMPRE incluir gênero logo após o tipo (Feminino, Masculino, Infantil, Unissex)
-   - MÁXIMO 100 caracteres por título (limite da Shopee)
-   - NÃO usar promessas exageradas, CAPS LOCK excessivo ou símbolos
-   - NÃO usar emojis nos títulos
+3. TÍTULOS (gere 3 a 5):
+   - Estrutura: [tipo de produto] + [característica principal] + [benefício ou público]
+   - Máximo 100 caracteres
+   - Sem emojis, sem CAPS LOCK excessivo, sem promessas exageradas
+   - Cada título deve ter uma abordagem diferente — um mais técnico, um mais emocional, um mais direto
 
-4. GERAR DESCRIÇÃO COMPLETA E PROFISSIONAL seguindo ESTA ESTRUTURA OBRIGATÓRIA:
+4. DESCRIÇÃO AUTÊNTICA:
+   Escreva uma descrição que equilibre emoção e informação, seguindo essa lógica:
 
-   IMPORTANTE: NÃO USE EMOJIS EM NENHUMA PARTE DA DESCRIÇÃO. A descrição deve ser 100% profissional e textual.
+   A) GANCHO (1-2 frases):
+      - Conecte com uma situação real que o comprador vive
+      - Seja específico ao produto — evite frases genéricas como "qualidade incomparável"
+      - Exemplo para uma mochila: "Quantas vezes você já ficou sem espaço na bolsa na hora que mais precisava?"
+      - Exemplo para um vestido: "Aquela peça que serve para o jantar e para o café da manhã seguinte."
 
-   A) ABERTURA (1-2 frases):
-      - Frase envolvente e profissional que conecta com o desejo do cliente
-      - Use linguagem elegante e aspiracional, sem exageros
-   
-   B) DETALHES DO PRODUTO:
-      - Liste os principais diferenciais em tópicos com bullet points (-)
-      - Destaque características marcantes (modelagem, acabamento, tecido)
-      - Descreva o tecido e seus benefícios (macio, elástico, confortável)
-      - Mencione o comprimento e ocasiões de uso
-   
-   C) TAMANHO E MEDIDAS:
-      - Se o usuário fornecer medidas, criar seção formatada com os dados
-      - Se não houver medidas fornecidas, NÃO incluir esta seção
-   
-   D) CUIDADOS COM A PEÇA:
-      - Instruções de lavagem ESPECÍFICAS para o tipo de tecido informado
-      - Formato:
-        Cuidados com a peça:
-        - Lavagem: [instrução específica]
-        - Secagem: [instrução específica]
-        - Passar: [instrução específica]
-        - Alvejante: [instrução específica]
-   
-   E) FECHAMENTO:
-      - SEMPRE incluir: "Ficou com alguma dúvida? Não deixe de nos contactar através do chat."
+   B) O QUE É E O QUE FAZ:
+      - Explique o produto de forma clara e honesta
+      - Use bullet points com traço (-)
+      - Cada ponto deve trazer uma informação nova e relevante
+      - Misture características técnicas com benefícios práticos
+      - Exemplo ruim: "- Material de alta qualidade"
+      - Exemplo bom: "- Tecido dupla face que não amassa na mala — chega impecável em qualquer destino"
 
-FORMATO DE RESPOSTA (JSON válido, sem texto extra):
+   C) PARA QUEM É:
+      - Descreva o perfil de quem vai amar esse produto
+      - Mencione ocasiões de uso reais e específicas
+      - Seja inclusivo e autêntico
+
+   D) MEDIDAS (apenas se fornecidas pelo usuário):
+      - Apresente em formato de tabela textual clara
+      - Inclua orientação de como medir
+
+   E) CUIDADOS (apenas se material/tecido for informado):
+      - Instruções específicas para o material informado
+      - Formato direto e prático
+
+   F) FECHAMENTO:
+      - Uma frase que reforce a confiança na compra
+      - SEMPRE terminar com: "Ficou com alguma dúvida? Não deixe de nos contactar através do chat."
+
+REGRAS:
+- Português do Brasil natural e fluente — escreva como um humano, não como um robô
+- PROIBIDO emojis em qualquer parte
+- PROIBIDO frases genéricas como "qualidade incomparável", "produto incrível", "o melhor do mercado"
+- Cada descrição deve parecer escrita especificamente para aquele produto
+- Retorne APENAS o JSON válido, sem markdown ou texto adicional
+
+FORMATO DE RESPOSTA:
 {
   "titles": ["Título 1", "Título 2", "Título 3"],
-  "keywords": ["keyword1", "keyword2", "keyword3", "keyword4", "keyword5"],
-  "description": "Descrição completa seguindo a estrutura A-B-C-D-E acima, SEM EMOJIS, formatação profissional."
-}
-
-REGRAS GERAIS:
-- Escreva sempre em português do Brasil
-- Tom profissional e elegante
-- PROIBIDO usar emojis em qualquer parte do texto
-- Retorne APENAS o JSON, sem markdown ou texto adicional`;
-
-
-function buildImagePrompt(data: {
-  nomeProduto: string;
-  categoria?: string;
-  publicoAlvo?: string;
-  materiais?: string;
-  coresDisponiveis?: string;
-}): string {
-  const parts = [
-    data.nomeProduto,
-    data.categoria || '',
-    data.publicoAlvo || '',
-    data.materiais || '',
-    data.coresDisponiveis || '',
-  ].filter(Boolean).join(', ');
-
-  return `${parts}, white background, product photography, professional studio, high quality`;
-}
-
-async function generateProductImage(prompt: string): Promise<string | null> {
-  try {
-    const encodedPrompt = encodeURIComponent(prompt)
-    const url = `https://image.pollinations.ai/prompt/${encodedPrompt}?width=800&height=800&nologo=true`
-    const response = await fetch(url)
-    if (!response.ok) return null
-    const arrayBuffer = await response.arrayBuffer()
-    const base64 = btoa(String.fromCharCode(...new Uint8Array(arrayBuffer)))
-    return `data:image/jpeg;base64,${base64}`
-  } catch {
-    return null
-  }
-}
-
-async function analyzeImageWithGemini(
-  imageBase64: string,
-  apiKey: string
-): Promise<string> {
-  const match = imageBase64.match(/^data:(.+?);base64,(.+)$/)
-  if (!match) return ''
-
-  const response = await fetch(
-    `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent`,
-    {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'x-goog-api-key': apiKey,
-      },
-      body: JSON.stringify({
-        contents: [{
-          role: 'user',
-          parts: [
-            {
-              inlineData: { mimeType: match[1], data: match[2] }
-            },
-            {
-              text: 'Describe this product in detail for an AI image generator. Include: product type, colors, materials, style, and key visual details. Write in English, be specific and concise, max 100 words.'
-            }
-          ]
-        }],
-        generationConfig: { temperature: 0.3, maxOutputTokens: 200 }
-      })
-    }
-  )
-
-  const data = await response.json()
-  return data.candidates?.[0]?.content?.parts?.[0]?.text || ''
-}
+  "keywords": ["keyword1", "keyword2", "keyword3"],
+  "description": "Descrição completa seguindo a estrutura A-F acima."
+}`
 
 // ============= MAIN FUNCTION =============
 serve(async (req: Request) => {
@@ -387,35 +311,6 @@ const GOOGLE_GEMINI_API_KEY = Deno.env.get('GEMINI_API_KEY');
     }
 
     console.log('Anúncio gerado com sucesso:', parsedResult.titles.length, 'títulos,', parsedResult.keywords.length, 'keywords');
-
-    console.log('Gerando imagens com Pollinations.ai...')
-
-    let imagePrompt = buildImagePrompt({
-      nomeProduto,
-      categoria: categoria || '',
-      publicoAlvo: publicoAlvo || '',
-      materiais: materiais || '',
-      coresDisponiveis: coresDisponiveis || '',
-    })
-      
-    if (images && images.length > 0) {
-      console.log('Analisando imagem com Gemini para gerar prompt...')
-      const geminiDescription = await analyzeImageWithGemini(images[0], GOOGLE_GEMINI_API_KEY!)
-      if (geminiDescription) {
-        imagePrompt = `${geminiDescription}, white background, product photography, professional studio, high quality, different angle`
-        console.log('Prompt gerado pelo Gemini:', imagePrompt)
-      }
-    }
-    const imagePromises = Array.from({ length: 5 }, (_, i) =>
-      generateProductImage(`${imagePrompt}&seed=${i + 1}`)
-    )
-
-    const generatedImages = await Promise.all(imagePromises)
-    const validImages = generatedImages.filter(Boolean)
-
-    console.log(`✅ ${validImages.length} imagens geradas`)
-
-    parsedResult.generatedImages = validImages
 
     return new Response(
       JSON.stringify(parsedResult),
