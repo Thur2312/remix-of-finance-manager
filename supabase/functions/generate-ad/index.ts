@@ -115,6 +115,39 @@ REGRAS GERAIS:
 - PROIBIDO usar emojis em qualquer parte do texto
 - Retorne APENAS o JSON, sem markdown ou texto adicional`;
 
+
+function buildImagePrompt(data: {
+  nomeProduto: string;
+  categoria?: string;
+  publicoAlvo?: string;
+  materiais?: string;
+  coresDisponiveis?: string;
+}): string {
+  const parts = [
+    data.nomeProduto,
+    data.categoria || '',
+    data.publicoAlvo || '',
+    data.materiais || '',
+    data.coresDisponiveis || '',
+  ].filter(Boolean).join(', ');
+
+  return `${parts}, white background, product photography, professional studio, high quality`;
+}
+
+async function generateProductImage(prompt: string): Promise<string | null> {
+  try {
+    const encodedPrompt = encodeURIComponent(prompt)
+    const url = `https://image.pollinations.ai/prompt/${encodedPrompt}?width=800&height=800&nologo=true`
+    const response = await fetch(url)
+    if (!response.ok) return null
+    const arrayBuffer = await response.arrayBuffer()
+    const base64 = btoa(String.fromCharCode(...new Uint8Array(arrayBuffer)))
+    return `data:image/jpeg;base64,${base64}`
+  } catch {
+    return null
+  }
+}
+
 // ============= MAIN FUNCTION =============
 serve(async (req: Request) => {
   // Handle CORS preflight
@@ -281,8 +314,7 @@ const GOOGLE_GEMINI_API_KEY = Deno.env.get('GEMINI_API_KEY');
     // Parse do JSON da resposta
     let parsedResult;
     try {
-      // With responseMimeType: 'application/json', content should be raw JSON
-      // But clean markdown fences as fallback
+      
       const cleanContent = content
         .replace(/^```json\s*/i, '')
         .replace(/\s*```$/i, '')
@@ -319,6 +351,45 @@ const GOOGLE_GEMINI_API_KEY = Deno.env.get('GEMINI_API_KEY');
     }
 
     console.log('Anúncio gerado com sucesso:', parsedResult.titles.length, 'títulos,', parsedResult.keywords.length, 'keywords');
+
+    console.log('Gerando imagens com Pollinations.ai...')
+    const imagePrompt = buildImagePrompt({
+      nomeProduto,
+      categoria: categoria || '',
+      publicoAlvo: publicoAlvo || '',
+      materiais: materiais || '',
+      coresDisponiveis: coresDisponiveis || '',
+    })
+
+    const imagePromises = Array.from({ length: 5 }, (_, i) =>
+      generateProductImage(`${imagePrompt}&seed=${i + 1}`)
+    )
+
+    const generatedImages = await Promise.all(imagePromises)
+    const validImages = generatedImages.filter(Boolean)
+
+    console.log(`✅ ${validImages.length} imagens geradas`)
+
+    parsedResult.generatedImages = validImages
+    console.log('Gerando imagens com Pollinations.ai...')
+    const imagePrompt = buildImagePrompt({
+      nomeProduto,
+      categoria: categoria || '',
+      publicoAlvo: publicoAlvo || '',
+      materiais: materiais || '',
+      coresDisponiveis: coresDisponiveis || '',
+    })
+
+    const imagePromises = Array.from({ length: 5 }, (_, i) =>
+      generateProductImage(`${imagePrompt}&seed=${i + 1}`)
+    )
+
+    const generatedImages = await Promise.all(imagePromises)
+    const validImages = generatedImages.filter(Boolean)
+
+    console.log(`✅ ${validImages.length} imagens geradas`)
+
+    parsedResult.generatedImages = validImages
 
     return new Response(
       JSON.stringify(parsedResult),
