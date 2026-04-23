@@ -371,14 +371,6 @@ const GOOGLE_GEMINI_API_KEY = Deno.env.get('GEMINI_API_KEY');
     console.log(`✅ ${validImages.length} imagens geradas`)
 
     parsedResult.generatedImages = validImages
-    console.log('Gerando imagens com Pollinations.ai...')
-    const imagePrompt = buildImagePrompt({
-      nomeProduto,
-      categoria: categoria || '',
-      publicoAlvo: publicoAlvo || '',
-      materiais: materiais || '',
-      coresDisponiveis: coresDisponiveis || '',
-    })
 
     const imagePromises = Array.from({ length: 5 }, (_, i) =>
       generateProductImage(`${imagePrompt}&seed=${i + 1}`)
