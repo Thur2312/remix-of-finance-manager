@@ -111,7 +111,7 @@ export function PlanosContent() {
       </div>
 
       {/* Plans Grid */}
-      <div className="grid md:grid-cols-2 gap-6 max-w-4xl">
+      <div className="grid md:grid-cols-2 gap-6 max-w-2xl mx-auto w-full">
         {plans.map((plan) => {
           const Icon = plan.icon;
           return (
