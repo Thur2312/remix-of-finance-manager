@@ -148,6 +148,42 @@ async function generateProductImage(prompt: string): Promise<string | null> {
   }
 }
 
+async function analyzeImageWithGemini(
+  imageBase64: string,
+  apiKey: string
+): Promise<string> {
+  const match = imageBase64.match(/^data:(.+?);base64,(.+)$/)
+  if (!match) return ''
+
+  const response = await fetch(
+    `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent`,
+    {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-goog-api-key': apiKey,
+      },
+      body: JSON.stringify({
+        contents: [{
+          role: 'user',
+          parts: [
+            {
+              inlineData: { mimeType: match[1], data: match[2] }
+            },
+            {
+              text: 'Describe this product in detail for an AI image generator. Include: product type, colors, materials, style, and key visual details. Write in English, be specific and concise, max 100 words.'
+            }
+          ]
+        }],
+        generationConfig: { temperature: 0.3, maxOutputTokens: 200 }
+      })
+    }
+  )
+
+  const data = await response.json()
+  return data.candidates?.[0]?.content?.parts?.[0]?.text || ''
+}
+
 // ============= MAIN FUNCTION =============
 serve(async (req: Request) => {
   // Handle CORS preflight
@@ -353,25 +389,23 @@ const GOOGLE_GEMINI_API_KEY = Deno.env.get('GEMINI_API_KEY');
     console.log('Anúncio gerado com sucesso:', parsedResult.titles.length, 'títulos,', parsedResult.keywords.length, 'keywords');
 
     console.log('Gerando imagens com Pollinations.ai...')
-    const imagePrompt = buildImagePrompt({
+
+    let imagePrompt = buildImagePrompt({
       nomeProduto,
       categoria: categoria || '',
       publicoAlvo: publicoAlvo || '',
       materiais: materiais || '',
       coresDisponiveis: coresDisponiveis || '',
     })
-
-    const imagePromises = Array.from({ length: 5 }, (_, i) =>
-      generateProductImage(`${imagePrompt}&seed=${i + 1}`)
-    )
-
-    const generatedImages = await Promise.all(imagePromises)
-    const validImages = generatedImages.filter(Boolean)
-
-    console.log(`✅ ${validImages.length} imagens geradas`)
-
-    parsedResult.generatedImages = validImages
-
+      
+    if (images && images.length > 0) {
+      console.log('Analisando imagem com Gemini para gerar prompt...')
+      const geminiDescription = await analyzeImageWithGemini(images[0], GOOGLE_GEMINI_API_KEY!)
+      if (geminiDescription) {
+        imagePrompt = `${geminiDescription}, white background, product photography, professional studio, high quality, different angle`
+        console.log('Prompt gerado pelo Gemini:', imagePrompt)
+      }
+    }
     const imagePromises = Array.from({ length: 5 }, (_, i) =>
       generateProductImage(`${imagePrompt}&seed=${i + 1}`)
     )

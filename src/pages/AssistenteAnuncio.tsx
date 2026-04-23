@@ -344,7 +344,7 @@ const AssistenteAnuncio = () => {
             <Button onClick={handleGenerate} disabled={isLoading} className="w-full md:w-auto" size="lg">
               {isLoading
                 ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Gerando anúncio...</>
-                : <><Sparkles className="mr-2 h-4 w-4" />Gerar título e descrição</>
+                : <><Sparkles className="mr-2 h-4 w-4" />Gerar com anúncio com IA</>
               }
             </Button>
           </CardContent>
