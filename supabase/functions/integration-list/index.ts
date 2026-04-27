@@ -19,8 +19,6 @@ serve(async (req) => {
         status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" }
       })
     }
-
-    // ✅ Cliente 1: valida o usuário com o token dele
     const supabaseAuth = createClient(
       Deno.env.get("SUPABASE_URL")!,
       Deno.env.get("SUPABASE_ANON_KEY")!,
@@ -34,7 +32,6 @@ serve(async (req) => {
       })
     }
 
-    // ✅ Cliente 2: busca dados com service role (bypassa RLS)
     const supabaseAdmin = createClient(
       Deno.env.get("SUPABASE_URL")!,
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!

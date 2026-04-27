@@ -43,7 +43,6 @@ export function useIntegrations() {
       if (error) throw error;
       return data as { connections: IntegrationConnection[]; logs: SyncLog[] };
     },
-    staleTime: 0,    
   refetchOnWindowFocus: true,  
   });
 
