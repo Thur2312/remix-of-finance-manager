@@ -20,21 +20,27 @@ serve(async (req) => {
       })
     }
 
-    const supabase = createClient(
+    // ✅ Cliente 1: valida o usuário com o token dele
+    const supabaseAuth = createClient(
       Deno.env.get("SUPABASE_URL")!,
       Deno.env.get("SUPABASE_ANON_KEY")!,
       { global: { headers: { Authorization: authHeader } } }
     )
 
-    const { data: { user }, error: userError } = await supabase.auth.getUser()
+    const { data: { user }, error: userError } = await supabaseAuth.auth.getUser()
     if (userError || !user) {
       return new Response(JSON.stringify({ error: "Token inválido" }), {
         status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" }
       })
     }
 
-    // Busca conexões
-    const { data: connections, error: connError } = await supabase
+    // ✅ Cliente 2: busca dados com service role (bypassa RLS)
+    const supabaseAdmin = createClient(
+      Deno.env.get("SUPABASE_URL")!,
+      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
+    )
+
+    const { data: connections, error: connError } = await supabaseAdmin
       .from("integration_connections")
       .select("id, provider, status, external_shop_id, shop_name, scopes, token_expires_at, last_sync_at, next_sync_at, auto_sync_enabled, auto_sync_frequency_minutes, last_error_code, last_error_message, created_at, updated_at")
       .eq("user_id", user.id)
@@ -42,15 +48,13 @@ serve(async (req) => {
 
     if (connError) throw connError
 
-    // Busca logs recentes
-    const { data: logs, error: logsError } = await supabase
+    const { data: logs } = await supabaseAdmin
       .from("integration_sync_logs")
       .select("*")
       .eq("user_id", user.id)
       .order("created_at", { ascending: false })
       .limit(20)
 
-    // Logs podem não existir ainda, não quebra
     return new Response(
       JSON.stringify({ connections: connections || [], logs: logs || [] }),
       { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
