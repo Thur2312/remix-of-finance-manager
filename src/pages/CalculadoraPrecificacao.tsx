@@ -10,31 +10,14 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import {
   AlertTriangle, Calculator, ExternalLink, Info, Target,
-  ShoppingBag, Lightbulb, TrendingUp, CheckCircle2, XCircle,
+  Lightbulb, TrendingUp, CheckCircle2, XCircle,
   HelpCircle, AlertCircle, BarChart3, DollarSign, Tag,
-  Percent, Package, Trash2, Pencil,
+  Percent, Package,
 } from "lucide-react";
 import { Separator } from "@/components/ui/separator";
 import { Badge } from "@/components/ui/badge";
 import { useFixedCosts } from "@/hooks/useFixedCosts";
-import { parseNumericInputSafe } from "@/lib/numeric-validation";
 import { Progress } from "../components/ui/progress";
-import {
-  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
-  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger,
-} from "@/components/ui/alert-dialog";
-import { useAnuncios, AnuncioInput } from "@/hooks/useProdutos";
-import { parseCurrencyInput } from "@/lib/numeric-validation";
-import { toast } from "sonner";
-import {
-  Dialog, DialogContent, DialogTrigger, DialogFooter,
-  DialogTitle, DialogHeader, DialogDescription,
-} from "@/components/ui/dialog";
-import { Button } from "@/components/ui/button";
-import {
-  SelectContent, SelectValue, SelectItem, SelectTrigger,
-  Select,
-} from "@/components/ui/select";
 
 // ─── Helpers ────────────────────────────────────────────────────────────────
 const formatCurrency = (value: number): string =>
@@ -61,21 +44,8 @@ const PLATAFORMA_OPTIONS: { value: Plataforma; label: string; color: string; bg:
 const ABSORCAO_PADRAO = { novo: 10, complementar: 30, principal: 60 } as const;
 type PapelProduto = "novo" | "complementar" | "principal" | "avancado";
 
-// ─── Form produto ────────────────────────────────────────────────────────────
-const EMPTY_PRODUTO = {
-  nome_anuncio: "", custo: "", valor_venda: "", comissao_taxa: "",
-  antecipado: "", afiliados: "", imposto_pct: "", custo_var: "", marketplace: "" as Plataforma | "",
-};
-type ProdutoForm = typeof EMPTY_PRODUTO;
-
-function parseField(val: string): number {
-  const r = parseCurrencyInput(val);
-  return r.isValid ? r.value : 0;
-}
-
 // ════════════════════════════════════════════════════════════════════════════
 function CalculadoraPrecificacaoContent() {
-  // ── Inputs da calculadora ──────────────────────────────────────────────
   const [custoProduto,      setCustoProduto]      = useState("");
   const [embalagemEtiqueta, setEmbalagemEtiqueta] = useState("");
   const [precoPromocional,  setPrecoPromocional]  = useState("");
@@ -89,12 +59,9 @@ function CalculadoraPrecificacaoContent() {
   const [absorpcaoManual,   setAbsorpcaoManual]   = useState<number>(10);
   const [volumeEsperadoProduto, setVolumeEsperadoProduto] = useState<number>(50);
   const [faturamentoTotal,  setFaturamentoTotal]  = useState("");
-
-  // ── Plataforma selecionada no card ─────────────────────────────────────
   const [plataformaSelecionada, setPlataformaSelecionada] = useState<Plataforma | "">("");
 
-  // ── Custos fixos ───────────────────────────────────────────────────────
-  const { totalRecurringCosts, isLoading: isLoadingCosts, settings: fixedCostsSettings, costs, updateSettings } = useFixedCosts();
+  const { totalRecurringCosts, isLoading: isLoadingCosts, settings: fixedCostsSettings, costs } = useFixedCosts();
   const volumeMensal = fixedCostsSettings?.monthly_products_sold || 100;
 
   const handleDecimalInput = (value: string, setter: (v: string) => void) => {
@@ -105,7 +72,6 @@ function CalculadoraPrecificacaoContent() {
     papelProduto === "avancado" ? absorpcaoManual : ABSORCAO_PADRAO[papelProduto],
   [papelProduto, absorpcaoManual]);
 
-  // ── Cálculos principais ────────────────────────────────────────────────
   const results = useMemo(() => {
     const _custo       = parseInput(custoProduto);
     const _custoVar    = parseInput(embalagemEtiqueta);
@@ -151,7 +117,6 @@ function CalculadoraPrecificacaoContent() {
     };
   }, [custoProduto, embalagemEtiqueta, precoPromocional, desconto, comissaoPlataforma, taxaFixa, aliquotaImposto, comissaoAfiliados, margemDesejada, totalRecurringCosts, volumeMensal, volumeEsperadoProduto, percentualAbsorcao]);
 
-  // ── Break-even / Panorama ──────────────────────────────────────────────
   const panorama = useMemo(() => {
     const fat = parseInput(faturamentoTotal);
     const margemPct = results.margemContribuicaoPercent;
@@ -163,71 +128,6 @@ function CalculadoraPrecificacaoContent() {
     return { fat, breakEven, margemGerada, resultadoLiquido, margemLiquidaPct, progressoBreakEven, lucrativo: resultadoLiquido > 0, margemPct };
   }, [faturamentoTotal, results.margemContribuicaoPercent, totalRecurringCosts]);
 
-  // ── Anúncios ───────────────────────────────────────────────────────────
-  const { anuncios, isLoading: isLoadingAnuncios, addAnuncio, updateAnuncio, deleteAnuncio } = useAnuncios();
-  const [isProdutoOpen,   setIsProdutoOpen]   = useState(false);
-  const [editingProdutoId,setEditingProdutoId]= useState<string | null>(null);
-  const [produtoForm,     setProdutoForm]     = useState<ProdutoForm>(EMPTY_PRODUTO);
-
-  const setProdutoField = (field: keyof ProdutoForm) =>
-    (e: React.ChangeEvent<HTMLInputElement>) =>
-      setProdutoForm(prev => ({ ...prev, [field]: e.target.value }));
-
-  const resetProdutoForm = () => { setProdutoForm(EMPTY_PRODUTO); setEditingProdutoId(null); };
-
-  // ── Abre dialog pré-preenchido com dados da calculadora ────────────────
-  const openNewAnuncio = () => {
-    setProdutoForm({
-      nome_anuncio: "",
-      custo:        custoProduto,
-      valor_venda:  precoPromocional,
-      comissao_taxa:String(parseInput(comissaoPlataforma) + parseInput(taxaFixa)),
-      antecipado:   "0",
-      afiliados:    comissaoAfiliados,
-      imposto_pct:  aliquotaImposto,
-      custo_var:    embalagemEtiqueta,
-      marketplace:  plataformaSelecionada,
-    });
-    setEditingProdutoId(null);
-    setIsProdutoOpen(true);
-  };
-
-  const openEditProduto = (a: typeof anuncios[0]) => {
-    setEditingProdutoId(a.id);
-    setProdutoForm({
-      nome_anuncio: a.nome_anuncio,
-      custo:        String(a.custo),
-      valor_venda:  String(a.valor_venda),
-      comissao_taxa:String(a.comissao_taxa),
-      antecipado:   String(a.antecipado),
-      afiliados:    String(a.afiliados),
-      imposto_pct:  String(a.imposto_pct),
-      custo_var:    String(a.custo_var),
-      marketplace:  a.marketplace as Plataforma,
-    });
-    setIsProdutoOpen(true);
-  };
-
-  const handleProdutoSubmit = async () => {
-    if (!produtoForm.nome_anuncio.trim()) { toast.error("Nome do anúncio é obrigatório"); return; }
-    const payload: AnuncioInput = {
-      nome_anuncio: produtoForm.nome_anuncio.trim(),
-      custo:        parseField(produtoForm.custo),
-      valor_venda:  parseField(produtoForm.valor_venda),
-      comissao_taxa:parseField(produtoForm.comissao_taxa),
-      antecipado:   parseField(produtoForm.antecipado),
-      afiliados:    parseField(produtoForm.afiliados),
-      imposto_pct:  parseField(produtoForm.imposto_pct),
-      custo_var:    parseField(produtoForm.custo_var),
-      marketplace:  produtoForm.marketplace.trim(),
-    };
-    const success = editingProdutoId
-      ? await updateAnuncio(editingProdutoId, payload)
-      : await addAnuncio(payload);
-    if (success) { setIsProdutoOpen(false); resetProdutoForm(); }
-  };
-
-  // ── Alertas ────────────────────────────────────────────────────────────
   const alertas = useMemo(() => {
     const lista: { tipo: "critico" | "alerta" | "aviso" | "info"; mensagem: string }[] = [];
     if (results.margemContribuicao <= 0 && results.precoCheio > 0)
@@ -241,7 +141,6 @@ function CalculadoraPrecificacaoContent() {
     return lista;
   }, [results, papelProduto, percentualAbsorcao]);
 
-  // ════════════════════════════════════════════════════════════════════════
   return (
     <AppLayout>
       <TooltipProvider>
@@ -398,9 +297,7 @@ function CalculadoraPrecificacaoContent() {
             </Card>
           </div>
 
-          {/* ════════════════════════════════════════════════════════════
-              CARD PRINCIPAL — layout reorganizado
-          ═══════════════════════════════════════════════════════════════ */}
+          {/* ── Card Principal ──────────────────────────────────────────── */}
           <Card>
             <CardHeader className="pb-2">
               <CardTitle className="text-base flex items-center gap-2">
@@ -411,7 +308,7 @@ function CalculadoraPrecificacaoContent() {
             </CardHeader>
             <CardContent className="p-6 space-y-6">
 
-              {/* ── Seção 1: Plataforma ──────────────────────────────── */}
+              {/* Plataforma */}
               <div className="space-y-2">
                 <Label className="text-sm font-semibold flex items-center gap-1.5">
                   <Tag className="h-3.5 w-3.5 text-muted-foreground" />
@@ -422,9 +319,7 @@ function CalculadoraPrecificacaoContent() {
                     <button
                       key={opt.value}
                       type="button"
-                      onClick={() => setPlataformaSelecionada(
-                        plataformaSelecionada === opt.value ? "" : opt.value
-                      )}
+                      onClick={() => setPlataformaSelecionada(plataformaSelecionada === opt.value ? "" : opt.value)}
                       className={`flex items-center gap-2 px-4 py-2 rounded-lg border text-sm font-medium transition-all ${
                         plataformaSelecionada === opt.value
                           ? `${opt.bg} ${opt.color} ring-1 ring-current`
@@ -432,9 +327,7 @@ function CalculadoraPrecificacaoContent() {
                       }`}
                     >
                       {opt.label}
-                      {plataformaSelecionada === opt.value && (
-                        <CheckCircle2 className="h-3.5 w-3.5" />
-                      )}
+                      {plataformaSelecionada === opt.value && <CheckCircle2 className="h-3.5 w-3.5" />}
                     </button>
                   ))}
                 </div>
@@ -442,7 +335,7 @@ function CalculadoraPrecificacaoContent() {
 
               <Separator />
 
-              {/* ── Seção 2: Custos ──────────────────────────────────── */}
+              {/* Custos */}
               <div className="space-y-3">
                 <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
                   <Package className="h-3.5 w-3.5" /> Custos do Produto
@@ -463,7 +356,7 @@ function CalculadoraPrecificacaoContent() {
 
               <Separator />
 
-              {/* ── Seção 3: Preço ───────────────────────────────────── */}
+              {/* Preço */}
               <div className="space-y-3">
                 <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
                   <DollarSign className="h-3.5 w-3.5" /> Preço de Venda
@@ -480,8 +373,6 @@ function CalculadoraPrecificacaoContent() {
                       onChange={e => handleDecimalInput(e.target.value, setDesconto)} placeholder="0" className="h-10" />
                   </div>
                 </div>
-
-                {/* Preço Cheio calculado */}
                 <div className="flex items-center justify-between px-4 py-3 bg-primary/5 border border-primary/20 rounded-lg">
                   <div className="flex items-center gap-2 text-sm text-muted-foreground">
                     <Tag className="h-3.5 w-3.5" />
@@ -493,7 +384,7 @@ function CalculadoraPrecificacaoContent() {
 
               <Separator />
 
-              {/* ── Seção 4: Taxas e Comissões ───────────────────────── */}
+              {/* Taxas */}
               <div className="space-y-3">
                 <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
                   <Percent className="h-3.5 w-3.5" /> Taxas e Comissões
@@ -524,138 +415,33 @@ function CalculadoraPrecificacaoContent() {
 
               <Separator />
 
-              {/* ── Seção 5: Resultado + Botão ───────────────────────── */}
-              <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-                {/* Margem real e preço ideal lado a lado */}
-                <div className="flex flex-wrap gap-3 flex-1">
-                  <div className="flex items-center gap-2 px-4 py-2.5 bg-muted/50 rounded-lg border">
-                    <TrendingUp className="h-4 w-4 text-muted-foreground" />
+              {/* Resultado */}
+              <div className="flex flex-wrap gap-3">
+                <div className="flex items-center gap-2 px-4 py-2.5 bg-muted/50 rounded-lg border">
+                  <TrendingUp className="h-4 w-4 text-muted-foreground" />
+                  <div>
+                    <p className="text-[10px] text-muted-foreground uppercase tracking-wide">Margem Real</p>
+                    <p className={`text-base font-bold leading-tight ${results.margemReal >= 0 ? "text-primary" : "text-destructive"}`}>
+                      {formatPercent(results.margemReal)}
+                    </p>
+                  </div>
+                </div>
+                {!results.margemInviavel ? (
+                  <div className="flex items-center gap-2 px-4 py-2.5 bg-primary/5 border border-primary/20 rounded-lg">
+                    <Lightbulb className="h-4 w-4 text-primary flex-shrink-0" />
                     <div>
-                      <p className="text-[10px] text-muted-foreground uppercase tracking-wide">Margem Real</p>
-                      <p className={`text-base font-bold leading-tight ${results.margemReal >= 0 ? "text-primary" : "text-destructive"}`}>
-                        {formatPercent(results.margemReal)}
+                      <p className="text-[10px] text-muted-foreground uppercase tracking-wide">
+                        Preço ideal para {margemDesejada}% margem
                       </p>
+                      <p className="text-base font-bold text-primary leading-tight">{formatCurrency(results.precoIdeal)}</p>
                     </div>
                   </div>
-
-                  {!results.margemInviavel ? (
-                    <div className="flex items-center gap-2 px-4 py-2.5 bg-primary/5 border border-primary/20 rounded-lg">
-                      <Lightbulb className="h-4 w-4 text-primary flex-shrink-0" />
-                      <div>
-                        <p className="text-[10px] text-muted-foreground uppercase tracking-wide">
-                          Preço ideal para {margemDesejada}% margem
-                        </p>
-                        <p className="text-base font-bold text-primary leading-tight">{formatCurrency(results.precoIdeal)}</p>
-                      </div>
-                    </div>
-                  ) : (
-                    <div className="flex items-center gap-2 px-4 py-2.5 bg-destructive/10 border border-destructive/30 rounded-lg">
-                      <AlertTriangle className="h-4 w-4 text-destructive" />
-                      <span className="text-sm font-medium text-destructive">Margem inviável</span>
-                    </div>
-                  )}
-                </div>
-
-                {/* Botão Cadastrar Anúncio */}
-                <Dialog open={isProdutoOpen} onOpenChange={open => { setIsProdutoOpen(open); if (!open) resetProdutoForm(); }}>
-                  <DialogTrigger asChild>
-                    <Button onClick={openNewAnuncio} className="gap-2 shrink-0">
-                      <ShoppingBag className="h-4 w-4" />
-                      Cadastrar Anúncio
-                      {plataformaSelecionada && (
-                        <Badge variant="secondary" className="ml-1 text-xs font-normal">
-                          {plataformaSelecionada}
-                        </Badge>
-                      )}
-                    </Button>
-                  </DialogTrigger>
-
-                  {/* ── Dialog ─────────────────────────────────────────── */}
-                  <DialogContent className="max-w-lg">
-                    <DialogHeader>
-                      <DialogTitle>{editingProdutoId ? "Editar Anúncio" : "Cadastrar Anúncio"}</DialogTitle>
-                      <DialogDescription>
-                        {editingProdutoId
-                          ? "Altere as informações do anúncio"
-                          : "Os campos foram pré-preenchidos com os dados da calculadora. Só falta o nome!"}
-                      </DialogDescription>
-                    </DialogHeader>
-
-                    <div className="space-y-4 py-2">
-                      {/* Nome — único campo obrigatório manual */}
-                      <div className="space-y-2">
-                        <Label htmlFor="nome_anuncio" className="font-medium">
-                          Nome do Anúncio <span className="text-destructive">*</span>
-                        </Label>
-                        <Input id="nome_anuncio" autoFocus value={produtoForm.nome_anuncio}
-                          onChange={setProdutoField("nome_anuncio")} placeholder="Ex: Macaquinho Floral" maxLength={255} />
-                      </div>
-
-                      {/* Marketplace — pré-selecionado da plataforma */}
-                      <div className="space-y-2">
-                        <Label>Marketplace</Label>
-                        <Select
-                          value={produtoForm.marketplace}
-                          onValueChange={value => setProdutoForm(prev => ({ ...prev, marketplace: value as Plataforma }))}
-                        >
-                          <SelectTrigger className="w-full">
-                            <SelectValue placeholder="Selecione o marketplace" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="Shopee">Shopee</SelectItem>
-                            <SelectItem value="TiktokShop">TikTok Shop</SelectItem>
-                          </SelectContent>
-                        </Select>
-                      </div>
-
-                      <Separator />
-                      <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Valores (R$) — pré-preenchidos</p>
-
-                      <div className="grid grid-cols-2 gap-4">
-                        <div className="space-y-2">
-                          <Label className="text-sm">Custo</Label>
-                          <Input type="text" inputMode="decimal" value={produtoForm.custo} onChange={setProdutoField("custo")} placeholder="0,00" />
-                        </div>
-                        <div className="space-y-2">
-                          <Label className="text-sm">Valor de Venda</Label>
-                          <Input type="text" inputMode="decimal" value={produtoForm.valor_venda} onChange={setProdutoField("valor_venda")} placeholder="0,00" />
-                        </div>
-                        <div className="space-y-2">
-                          <Label className="text-sm">Comissão + Taxa (R$)</Label>
-                          <Input type="text" inputMode="decimal" value={produtoForm.comissao_taxa} onChange={setProdutoField("comissao_taxa")} placeholder="0,00" />
-                        </div>
-                        <div className="space-y-2">
-                          <Label className="text-sm">Antecipado (R$)</Label>
-                          <Input type="text" inputMode="decimal" value={produtoForm.antecipado} onChange={setProdutoField("antecipado")} placeholder="0,00" />
-                        </div>
-                        <div className="space-y-2">
-                          <Label className="text-sm">Afiliados (R$)</Label>
-                          <Input type="text" inputMode="decimal" value={produtoForm.afiliados} onChange={setProdutoField("afiliados")} placeholder="0,00" />
-                        </div>
-                        <div className="space-y-2">
-                          <Label className="text-sm">Custo Variável (R$)</Label>
-                          <Input type="text" inputMode="decimal" value={produtoForm.custo_var} onChange={setProdutoField("custo_var")} placeholder="0,00" />
-                        </div>
-                      </div>
-
-                      <div className="space-y-2">
-                        <Label className="text-sm">Imposto (%)</Label>
-                        <div className="relative">
-                          <Input type="text" inputMode="decimal" value={produtoForm.imposto_pct}
-                            onChange={setProdutoField("imposto_pct")} placeholder="6" className="pr-8" />
-                          <span className="absolute right-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">%</span>
-                        </div>
-                      </div>
-                    </div>
-
-                    <DialogFooter>
-                      <Button variant="outline" onClick={() => { setIsProdutoOpen(false); resetProdutoForm(); }}>Cancelar</Button>
-                      <Button onClick={handleProdutoSubmit} disabled={!produtoForm.nome_anuncio.trim()}>
-                        {editingProdutoId ? "Salvar Alterações" : "Cadastrar"}
-                      </Button>
-                    </DialogFooter>
-                  </DialogContent>
-                </Dialog>
+                ) : (
+                  <div className="flex items-center gap-2 px-4 py-2.5 bg-destructive/10 border border-destructive/30 rounded-lg">
+                    <AlertTriangle className="h-4 w-4 text-destructive" />
+                    <span className="text-sm font-medium text-destructive">Margem inviável</span>
+                  </div>
+                )}
               </div>
             </CardContent>
           </Card>
@@ -689,7 +475,6 @@ function CalculadoraPrecificacaoContent() {
 
           {/* ── Três análises ──────────────────────────────────────────── */}
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-            {/* Viabilidade */}
             <Card className={`border-2 ${results.produtoViavel ? "border-green-500/30 bg-green-500/5" : "border-destructive/30 bg-destructive/5"}`}>
               <CardHeader className="pb-3">
                 <div className="flex items-center gap-2">
@@ -734,7 +519,6 @@ function CalculadoraPrecificacaoContent() {
               </CardContent>
             </Card>
 
-            {/* Absorção parcial */}
             <Card className="border-2 border-blue-500/30 bg-blue-500/5">
               <CardHeader className="pb-3">
                 <div className="flex items-center gap-2">
@@ -771,7 +555,6 @@ function CalculadoraPrecificacaoContent() {
               </CardContent>
             </Card>
 
-            {/* Portfólio maduro */}
             <Card className="border-2 border-muted bg-muted/30">
               <CardHeader className="pb-3">
                 <div className="flex items-center gap-2">
@@ -841,99 +624,6 @@ function CalculadoraPrecificacaoContent() {
                   <span className="text-xl font-bold text-primary">{formatCurrency(results.totalCustosVar)}</span>
                 </div>
               </div>
-            </CardContent>
-          </Card>
-
-          {/* ── Tabela de anúncios ─────────────────────────────────────── */}
-          <Card>
-            <CardHeader>
-              <div className="flex items-center justify-between">
-                <div>
-                  <CardTitle className="text-lg">Anúncios Cadastrados</CardTitle>
-                  <CardDescription>
-                    {anuncios.length} anúncio{anuncios.length !== 1 ? "s" : ""} cadastrado{anuncios.length !== 1 ? "s" : ""}
-                  </CardDescription>
-                </div>
-                <ShoppingBag className="h-5 w-5 text-muted-foreground" />
-              </div>
-            </CardHeader>
-            <CardContent>
-              {isLoadingAnuncios ? (
-                <div className="space-y-2">{[1, 2, 3].map(i => <Skeleton key={i} className="h-12 w-full" />)}</div>
-              ) : anuncios.length === 0 ? (
-                <div className="text-center py-8 text-muted-foreground">
-                  <ShoppingBag className="h-12 w-12 mx-auto mb-4 opacity-50" />
-                  <p>Nenhum anúncio cadastrado ainda.</p>
-                  <p className="text-sm">Preencha os dados acima e clique em "Cadastrar Anúncio".</p>
-                </div>
-              ) : (
-                <div className="overflow-x-auto">
-                  <table className="w-full text-sm">
-                    <thead>
-                      <tr className="border-b border-border">
-                        {["Nome","Marketplace","Custo","Venda","Comissão/Taxa","Antecipado","Afiliados","Imposto","Custo Var.","Lucro",""].map((h, i) => (
-                          <th key={i} className={`pb-2 px-2 font-medium text-muted-foreground whitespace-nowrap ${i >= 2 && i <= 9 ? "text-right" : "text-left"}`}>{h}</th>
-                        ))}
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {anuncios.map(a => {
-                        const lucro = a.valor_venda - a.custo - a.custo_var - a.comissao_taxa - a.antecipado - a.afiliados;
-                        return (
-                          <tr key={a.id}>
-                            <td className="pt-2" colSpan={11}>
-                              <div className="flex items-center bg-muted/50 rounded-md px-3 py-2.5 gap-0">
-                                <span className="flex-[2] font-medium whitespace-nowrap">{a.nome_anuncio}</span>
-                                <span className="flex-[1.5] whitespace-nowrap">
-                                  {a.marketplace
-                                    ? <Badge variant="outline" className="font-normal">{a.marketplace}</Badge>
-                                    : <span className="text-muted-foreground">—</span>}
-                                </span>
-                                <span className="flex-1 text-right tabular-nums whitespace-nowrap">{formatCurrency(a.custo)}</span>
-                                <span className="flex-1 text-right tabular-nums whitespace-nowrap">{formatCurrency(a.valor_venda)}</span>
-                                <span className="flex-1 text-right tabular-nums whitespace-nowrap">{formatCurrency(a.comissao_taxa)}</span>
-                                <span className="flex-1 text-right tabular-nums whitespace-nowrap">{formatCurrency(a.antecipado)}</span>
-                                <span className="flex-1 text-right tabular-nums whitespace-nowrap">{formatCurrency(a.afiliados)}</span>
-                                <span className="flex-1 text-right whitespace-nowrap">
-                                  <Badge variant="secondary" className="font-normal tabular-nums">{a.imposto_pct}%</Badge>
-                                </span>
-                                <span className="flex-1 text-right tabular-nums whitespace-nowrap">{formatCurrency(a.custo_var)}</span>
-                                <span className={`flex-1 text-right font-semibold tabular-nums whitespace-nowrap ${lucro >= 0 ? "text-green-600" : "text-destructive"}`}>
-                                  {formatCurrency(lucro)}
-                                </span>
-                                <span className="flex items-center justify-end gap-1 pl-2">
-                                  <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => openEditProduto(a)}>
-                                    <Pencil className="h-4 w-4" />
-                                  </Button>
-                                  <AlertDialog>
-                                    <AlertDialogTrigger asChild>
-                                      <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive hover:text-destructive">
-                                        <Trash2 className="h-4 w-4" />
-                                      </Button>
-                                    </AlertDialogTrigger>
-                                    <AlertDialogContent>
-                                      <AlertDialogHeader>
-                                        <AlertDialogTitle>Excluir anúncio?</AlertDialogTitle>
-                                        <AlertDialogDescription>
-                                          Tem certeza que deseja excluir "{a.nome_anuncio}"? Esta ação não pode ser desfeita.
-                                        </AlertDialogDescription>
-                                      </AlertDialogHeader>
-                                      <AlertDialogFooter>
-                                        <AlertDialogCancel>Cancelar</AlertDialogCancel>
-                                        <AlertDialogAction onClick={() => deleteAnuncio(a.id)}>Excluir</AlertDialogAction>
-                                      </AlertDialogFooter>
-                                    </AlertDialogContent>
-                                  </AlertDialog>
-                                </span>
-                              </div>
-                            </td>
-                          </tr>
-                        );
-                      })}
-                    </tbody>
-                  </table>
-                </div>
-              )}
             </CardContent>
           </Card>
 
