@@ -37,11 +37,15 @@ export default function Auth() {
 
 useEffect(() => {
   if (!loading && user) {
-    navigate(redirectPath);
+    const pendingCode = sessionStorage.getItem('pending_oauth_code');
+    if (pendingCode) {
+      navigate('/callback', { replace: true }); 
+    } else {
+      navigate(redirectPath, { replace: true });
+    }
   }
 }, [user, loading, navigate, redirectPath]);
 
-  // Lembrar email
   useEffect(() => {
     const savedEmail = localStorage.getItem('rememberedEmail');
     if (savedEmail) {
@@ -72,7 +76,12 @@ useEffect(() => {
       }
     } else {
       toast.success('Login realizado com sucesso!');
-      navigate(redirectPath); // usa redirect da URL
+      const pendingCode = sessionStorage.getItem('pending_oauth_code');
+      if (pendingCode) {
+        navigate('/callback', { replace: true }); // ← processa o OAuth pendente
+      } else {
+        navigate(redirectPath, { replace: true });
+      }
     }
 
     setIsLoading(false);
