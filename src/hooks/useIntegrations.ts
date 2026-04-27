@@ -36,13 +36,15 @@ export function useIntegrations() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
-  const { data, isLoading, error } = useQuery({
+  const { data, isLoading, error, refetch } = useQuery({
     queryKey: ['integrations'],
     queryFn: async () => {
       const { data, error } = await supabase.functions.invoke('integration-list');
       if (error) throw error;
       return data as { connections: IntegrationConnection[]; logs: SyncLog[] };
     },
+    staleTime: 0,    
+  refetchOnWindowFocus: true,  
   });
 
  const getConnection = useCallback((provider: string) => {
@@ -191,6 +193,7 @@ export function useIntegrations() {
 
   return {
     connections: data?.connections || [],
+    refetch, 
     logs: data?.logs || [],
     isLoading,
     error,

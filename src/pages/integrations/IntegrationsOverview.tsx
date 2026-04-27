@@ -16,7 +16,7 @@ export default function IntegrationsOverview() {
   const navigate = useNavigate();
   const { toast } = useToast();
   const queryClient = useQueryClient();
-  const { connections, logs, isLoading, getConnection, startAuth, manualAuth, syncNow } = useIntegrations();
+  const { connections, logs, isLoading, getConnection, startAuth, manualAuth, syncNow, refetch } = useIntegrations();
   const [connectProvider, setConnectProvider] = useState<'shopee' | 'tiktok' | null>(null);
   const [isSyncing, setIsSyncing] = useState(false);
 
@@ -26,13 +26,15 @@ export default function IntegrationsOverview() {
       toast({ title: `${connected === 'shopee' ? 'Shopee' : 'TikTok Shop'} conectado com sucesso!` });
       window.history.replaceState({}, '', '/integrations');
       queryClient.invalidateQueries({ queryKey: ['integrations'] });
+      refetch()
+;
     }
     const error = searchParams.get('error');
     if (error) {
       toast({ title: 'Erro na conexão', description: error, variant: 'destructive' });
       window.history.replaceState({}, '', '/integrations');
     }
-  }, [searchParams, toast, queryClient]);
+  }, [searchParams, toast, queryClient, refetch]);
 
   const shopee = getConnection('shopee');
   const tiktok = getConnection('tiktok');
