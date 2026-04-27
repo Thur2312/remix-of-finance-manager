@@ -86,9 +86,8 @@ export default function IntegrationManage() {
   const totalFees = fees
     .filter(f => ['commission', 'service_fee', 'shipping_fee'].includes(f.fee_type))
     .reduce((sum, f) => sum + Number(f.amount), 0);
-  const totalNet = payments
-    .filter(p => p.payment_method === 'escrow')
-    .reduce((sum, p) => sum + Number(p.net_amount), 0);
+  const totalNet = totalRevenue - totalFees;
+
 
   // Gráfico dos últimos 7 dias
   const chartData = Array.from({ length: 7 }, (_, i) => {
