@@ -27,6 +27,11 @@ serve(async (req) => {
       );
     }
 
+
+    const authHeader = req.headers.get("Authorization") ?? ""
+    const userToken = authHeader.replace("Bearer ", "")
+    const redirectWithToken = `${REDIRECT_URI}?token=${userToken}`
+
     const partnerIdNum = parseInt(PARTNER_ID, 10);
     const timestamp = Math.floor(Date.now() / 1000);
     const path = "/api/v2/shop/auth_partner";
@@ -41,7 +46,7 @@ serve(async (req) => {
       .update(baseString)
       .digest("hex");
 
-    const authorization_url = `${BASE_URL}${path}?partner_id=${partnerIdNum}&timestamp=${timestamp}&sign=${sign}&redirect=${encodeURIComponent(REDIRECT_URI)}`;
+    const authorization_url = `${BASE_URL}${path}?partner_id=${partnerIdNum}&timestamp=${timestamp}&sign=${sign}&redirect=${encodeURIComponent(redirectWithToken)}`;
 
     console.log({ partnerIdNum, timestamp, baseString, sign, authorization_url });
 

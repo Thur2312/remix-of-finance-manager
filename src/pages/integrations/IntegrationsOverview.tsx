@@ -9,6 +9,7 @@ import { useIntegrations } from '@/hooks/useIntegrations';
 import { useToast } from '@/hooks/use-toast';
 import { useQueryClient } from '@tanstack/react-query';
 import { Plug } from 'lucide-react';
+import { supabase } from '@/integrations/supabase/client';
 
 export default function IntegrationsOverview() {
   const [searchParams] = useSearchParams();
@@ -99,11 +100,19 @@ export default function IntegrationsOverview() {
           onConfirm={async () => {
             if (connectProvider === 'shopee') {
               try {
+
+                  const { data: { session } } = await supabase.auth.getSession();
+                  if (!session?.access_token) {
+                    toast({ title: "Sessão expirada. Faça login novamente.", variant: "destructive" });
+                    return;
+                  }
                 const response = await fetch(
                   "https://opzsrqdvotozawuqpapo.functions.supabase.co/shopee-auth",
                   {
                     method: "POST",
-                    headers: { "Content-Type": "application/json" },
+                    headers: { "Content-Type": "application/json",
+                                "Authorization": `Bearer ${session.access_token}`, 
+                              },
                     body: JSON.stringify({ provider: "shopee" }),
                   }
                 );
