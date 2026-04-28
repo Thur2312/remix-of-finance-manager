@@ -16,8 +16,9 @@ export default function IntegrationCallback() {
     const code = searchParams.get('code');
     const shopId = searchParams.get('shop_id');
     const provider = searchParams.get('provider');
+    const state = searchParams.get('state'); // ✅ captura o state do ML
 
-    // ✅ Detecta ML pela rota dedicada /callback/mercadolivre
+    // Detecta ML pela rota dedicada /callback/mercadolivre
     const isMercadoLivre =
       window.location.pathname.includes('mercadolivre') ||
       provider === 'mercadolivre';
@@ -39,15 +40,18 @@ export default function IntegrationCallback() {
       return;
     }
 
+    // ✅ Resgata da URL ou do sessionStorage (quando vem pós-login)
     const finalCode = code ?? sessionStorage.getItem('pending_oauth_code');
     const finalShopId = shopId ?? sessionStorage.getItem('pending_oauth_shop_id');
     const finalProvider = provider ?? sessionStorage.getItem('pending_oauth_provider');
+    const finalState = state ?? sessionStorage.getItem('pending_oauth_state'); // ✅
 
     if (!finalCode) return;
 
     sessionStorage.removeItem('pending_oauth_code');
     sessionStorage.removeItem('pending_oauth_shop_id');
     sessionStorage.removeItem('pending_oauth_provider');
+    sessionStorage.removeItem('pending_oauth_state');
 
     setStatus('Obtendo sessão do usuário...');
 
@@ -59,11 +63,11 @@ export default function IntegrationCallback() {
           await new Promise(r => setTimeout(r, 800));
           return tryGetSession(retries - 1);
         }
+        // Sem sessão — salva tudo e manda pro login
         sessionStorage.setItem('pending_oauth_code', finalCode);
         if (finalShopId) sessionStorage.setItem('pending_oauth_shop_id', finalShopId);
         if (finalProvider) sessionStorage.setItem('pending_oauth_provider', finalProvider);
-
-        // ✅ Preserva a rota de volta correta
+        if (finalState) sessionStorage.setItem('pending_oauth_state', finalState); // ✅
         const returnPath = isMercadoLivre ? '/callback/mercadolivre' : '/callback';
         navigate(`/user/auth?redirect=${returnPath}`, { replace: true });
         return;
@@ -79,8 +83,11 @@ export default function IntegrationCallback() {
 
       } else if (isMercadoLivre || finalProvider === 'mercadolivre') {
         setStatus('Conectando com o Mercado Livre...');
-        // ✅ Passa o token corretamente
-        const params = new URLSearchParams({ code: finalCode, token });
+        const params = new URLSearchParams({
+          code: finalCode,
+          token,
+          state: finalState ?? '', // ✅ repassa o state para a Edge Function
+        });
         window.location.href =
           `https://opzsrqdvotozawuqpapo.functions.supabase.co/mercadolivre-callback?${params.toString()}`;
 

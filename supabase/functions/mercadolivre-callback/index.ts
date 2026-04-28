@@ -8,6 +8,11 @@ serve(async (req) => {
   const code = url.searchParams.get("code");
   const stateId = url.searchParams.get("state") ?? "";
 
+  console.log("URL completa recebida:", req.url); // ← adicione isso
+  console.log("code:", code);
+  console.log("stateId:", stateId);
+
+
   if (!code) {
     return Response.redirect(`${FRONTEND_URL}/integrations?error=missing_code`, 302);
   }
@@ -26,12 +31,16 @@ serve(async (req) => {
     const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_KEY);
 
     // Busca o token salvo pelo stateId
-    const { data: stateData } = await supabase
-      .from("integration_connections")
-      .select("access_token")
-      .eq("user_id", stateId)
-      .eq("provider", "mercadolivre_pending")
-      .single();
+  const { data: stateData, error: stateError } = await supabase
+  .from("integration_connections")
+  .select("access_token")
+  .eq("user_id", stateId)
+  .eq("provider", "mercadolivre_pending")
+  .single();
+
+console.log("stateId recebido:", stateId);
+console.log("stateData:", stateData);
+console.log("stateError:", stateError);
 
     const userToken = stateData?.access_token ?? "";
 
