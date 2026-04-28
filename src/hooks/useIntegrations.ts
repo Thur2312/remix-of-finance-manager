@@ -43,14 +43,14 @@ export function useIntegrations() {
       if (error) throw error;
       return data as { connections: IntegrationConnection[]; logs: SyncLog[] };
     },
-  refetchOnWindowFocus: true,  
+    refetchOnWindowFocus: true,
   });
 
- const getConnection = useCallback((provider: string) => {
-  return data?.connections?.find(c => c.provider === provider && c.status === 'connected') 
-    || data?.connections?.find(c => c.provider === provider) 
-    || null;
-}, [data]);
+  const getConnection = useCallback((provider: string) => {
+    return data?.connections?.find(c => c.provider === provider && c.status === 'connected')
+      || data?.connections?.find(c => c.provider === provider)
+      || null;
+  }, [data]);
 
   const getLogsForConnection = useCallback((connectionId: string) => {
     return data?.logs?.filter(l => l.connection_id === connectionId) || [];
@@ -75,65 +75,57 @@ export function useIntegrations() {
   });
 
   const syncNow = useMutation({
-    mutationFn: async ({ connectionId, days }: { connectionId: string; days?: number }) => {
-    const daysToSync = days || 15
-    const windowSize = 1
-    const windows = Math.ceil(daysToSync / windowSize)
+    mutationFn: async ({ connectionId, days, provider }: { connectionId: string; days?: number; provider?: string }) => {
+      const daysToSync = days || 15;
 
-    // Etapa 1: Orders — janelas em paralelo (grupos de 3 para não sobrecarregar)
-    const orderWindows = Array.from({ length: windows }, (_, i) => {
-      const timeTo = new Date()
-      timeTo.setDate(timeTo.getDate() - i * windowSize)
-      const timeFrom = new Date()
-      timeFrom.setDate(timeFrom.getDate() - (i + 1) * windowSize)
-      return { timeTo, timeFrom }
-    })
+      // ✅ Roteamento por provider — ML usa função própria
+      if (provider === 'mercadolivre') {
+        const { data, error } = await supabase.functions.invoke('mercadolivre-sync', {
+          body: { connection_id: connectionId, days: daysToSync },
+        });
+        if (error) throw error;
+        return data;
+      }
 
-    const chunkSize = 5
-    for (let i = 0; i < windows; i++) {
-  const timeTo = new Date()
-  timeTo.setDate(timeTo.getDate() - i * windowSize)
-  const timeFrom = new Date()
-  timeFrom.setDate(timeFrom.getDate() - (i + 1) * windowSize)
+      // Shopee / TikTok — lógica original com janelas
+      const windowSize = 1;
+      const windows = Math.ceil(daysToSync / windowSize);
 
-  console.log(`🔄 Chamando janela ${i + 1}/${windows}: ${timeFrom.toISOString()} → ${timeTo.toISOString()}`)
+      for (let i = 0; i < windows; i++) {
+        const timeTo = new Date();
+        timeTo.setDate(timeTo.getDate() - i * windowSize);
+        const timeFrom = new Date();
+        timeFrom.setDate(timeFrom.getDate() - (i + 1) * windowSize);
 
-  const { data, error } = await supabase.functions.invoke('integration-sync', {
-    body: {
-      connection_id: connectionId,
-      time_from: timeFrom.toISOString(),
-      time_to: timeTo.toISOString(),
-      step: 'orders',
+        console.log(`🔄 Janela ${i + 1}/${windows}: ${timeFrom.toISOString()} → ${timeTo.toISOString()}`);
+
+        const { data, error } = await supabase.functions.invoke('integration-sync', {
+          body: {
+            connection_id: connectionId,
+            time_from: timeFrom.toISOString(),
+            time_to: timeTo.toISOString(),
+            step: 'orders',
+          },
+        });
+
+        console.log(`✅ Janela ${i + 1} resultado:`, data, 'erro:', error);
+        if (error) throw error;
+      }
+
+      // Payments
+      const { error: paymentsError } = await supabase.functions.invoke('integration-sync', {
+        body: { connection_id: connectionId, days: daysToSync, step: 'payments' },
+      });
+      if (paymentsError) throw paymentsError;
+
+      // Wallet
+      const { data: walletData, error: walletError } = await supabase.functions.invoke('integration-sync', {
+        body: { connection_id: connectionId, days: daysToSync, step: 'wallet' },
+      });
+      if (walletError) throw walletError;
+
+      return walletData;
     },
-  })
-
-  console.log(`✅ Janela ${i + 1} resultado:`, data, 'erro:', error)
-
-  if (error) throw error
-}
-
-    // Etapa 2: Payments — período completo
-    const { error: paymentsError } = await supabase.functions.invoke('integration-sync', {
-      body: {
-        connection_id: connectionId,
-        days: 15,
-        step: 'payments',
-      },
-    })
-    if (paymentsError) throw paymentsError
-
-    // Etapa 3: Wallet — período completo
-    const { data: walletData, error: walletError } = await supabase.functions.invoke('integration-sync', {
-      body: {
-        connection_id: connectionId,
-        days: daysToSync,
-        step: 'wallet',
-      },
-    })
-    if (walletError) throw walletError
-
-    return walletData
-  },
     onSuccess: (data) => {
       toast({ title: 'Sincronização concluída', description: data?.message });
       queryClient.invalidateQueries({ queryKey: ['integrations'] });
@@ -192,7 +184,7 @@ export function useIntegrations() {
 
   return {
     connections: data?.connections || [],
-    refetch, 
+    refetch,
     logs: data?.logs || [],
     isLoading,
     error,

@@ -6,12 +6,10 @@ const FRONTEND_URL = "https://www.sellerfinance.com.br";
 serve(async (req) => {
   const url = new URL(req.url);
   const code = url.searchParams.get("code");
-  const stateId = url.searchParams.get("state") ?? "";
+  const userToken = url.searchParams.get("token") ?? ""; // ✅ pega direto da URL
 
-  console.log("URL completa recebida:", req.url); // ← adicione isso
   console.log("code:", code);
-  console.log("stateId:", stateId);
-
+  console.log("userToken presente:", !!userToken);
 
   if (!code) {
     return Response.redirect(`${FRONTEND_URL}/integrations?error=missing_code`, 302);
@@ -27,29 +25,6 @@ serve(async (req) => {
     if (!CLIENT_ID || !CLIENT_SECRET || !REDIRECT_URI) {
       return Response.redirect(`${FRONTEND_URL}/integrations?error=missing_env`, 302);
     }
-
-    const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_KEY);
-
-    // Busca o token salvo pelo stateId
-  const { data: stateData, error: stateError } = await supabase
-  .from("integration_connections")
-  .select("access_token")
-  .eq("user_id", stateId)
-  .eq("provider", "mercadolivre_pending")
-  .single();
-
-console.log("stateId recebido:", stateId);
-console.log("stateData:", stateData);
-console.log("stateError:", stateError);
-
-    const userToken = stateData?.access_token ?? "";
-
-    // Limpa o registro temporário
-    await supabase
-      .from("integration_connections")
-      .delete()
-      .eq("user_id", stateId)
-      .eq("provider", "mercadolivre_pending");
 
     // Troca o code pelo access_token
     const tokenRes = await fetch("https://api.mercadolibre.com/oauth/token", {
@@ -82,9 +57,15 @@ console.log("stateError:", stateError);
     });
     const profileData = await profileRes.json();
     const shopName = profileData.nickname ?? profileData.first_name ?? "";
+    console.log("shopName:", shopName);
 
-    // Valida o usuário do Supabase
+    // Valida o usuário do Supabase usando o token direto
+    const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_KEY);
     const { data: { user }, error: userError } = await supabase.auth.getUser(userToken);
+
+    console.log("userError:", userError);
+    console.log("user:", user?.id);
+
     if (userError || !user) {
       return Response.redirect(`${FRONTEND_URL}/integrations?error=unauthorized`, 302);
     }
@@ -96,6 +77,7 @@ console.log("stateError:", stateError);
       return isNaN(futureDate.getTime()) ? null : futureDate.toISOString();
     };
 
+    // Salva na integration_connections
     const { error: dbError } = await supabase
       .from("integration_connections")
       .upsert(

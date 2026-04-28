@@ -22,9 +22,16 @@ import { ptBR } from 'date-fns/locale';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { useState } from 'react';
 
-const providerNames: Record<string, string> = { shopee: 'Shopee', tiktok: 'TikTok Shop' };
+// ✅ Adicionado mercadolivre
+const providerNames: Record<string, string> = {
+  shopee: 'Shopee',
+  tiktok: 'TikTok Shop',
+  mercadolivre: 'Mercado Livre',
+};
 const providerIcons: Record<string, React.ComponentType<{ className?: string; strokeWidth?: string | number }>> = {
-  shopee: ShoppingBag, tiktok: Store,
+  shopee: ShoppingBag,
+  tiktok: Store,
+  mercadolivre: Store,
 };
 const statusLabels: Record<string, string> = {
   disconnected: 'Desconectado', connecting: 'Conectando',
@@ -35,8 +42,8 @@ const statusVariants: Record<string, 'default' | 'secondary' | 'destructive' | '
   connected: 'default', error: 'destructive', expired: 'destructive',
 };
 
-const COMPLETED_STATUSES = ['COMPLETED', 'SHIPPED', 'TO_CONFIRM_RECEIVE', 'READY_TO_SHIP'];
-const CANCELLED_STATUSES = ['CANCELLED', 'UNPAID', 'TO_RETURN'];
+const COMPLETED_STATUSES = ['COMPLETED', 'SHIPPED', 'TO_CONFIRM_RECEIVE', 'READY_TO_SHIP', 'paid'];
+const CANCELLED_STATUSES = ['CANCELLED', 'UNPAID', 'TO_RETURN', 'cancelled'];
 
 export default function IntegrationManage() {
   const { provider } = useParams<{ provider: string }>();
@@ -49,8 +56,9 @@ export default function IntegrationManage() {
   const Icon = providerIcons[provider || ''] || Store;
   const name = providerNames[provider || ''] || provider;
 
+  // ✅ useShopeeSync só para Shopee/TikTok, ML não usa
   const { data: syncData, isLoading: syncLoading } = useShopeeSync(
-    connection?.status === 'connected' ? connection.id : null,
+    connection?.status === 'connected' && provider !== 'mercadolivre' ? connection.id : null,
     Number(syncPeriod)
   );
 
@@ -84,12 +92,10 @@ export default function IntegrationManage() {
 
   const totalRevenue = completedOrders.reduce((sum, o) => sum + Number(o.total_amount), 0);
   const totalFees = fees
-    .filter(f => ['commission', 'service_fee', 'shipping_fee'].includes(f.fee_type))
+    .filter(f => ['commission', 'service_fee', 'shipping_fee', 'marketplace_fee'].includes(f.fee_type))
     .reduce((sum, f) => sum + Number(f.amount), 0);
   const totalNet = totalRevenue - totalFees;
 
-
-  // Gráfico dos últimos 7 dias
   const chartData = Array.from({ length: 7 }, (_, i) => {
     const date = new Date();
     date.setDate(date.getDate() - (6 - i));
@@ -99,7 +105,7 @@ export default function IntegrationManage() {
       .filter(o => o.order_created_at?.startsWith(dateStr))
       .reduce((sum, o) => sum + Number(o.total_amount), 0);
     const liquido = payments
-      .filter(p => p.payment_method === 'escrow' && p.transaction_date?.startsWith(dateStr))
+      .filter(p => p.transaction_date?.startsWith(dateStr))
       .reduce((sum, p) => sum + Number(p.net_amount), 0);
     return { date: label, vendas, liquido };
   });
@@ -109,12 +115,11 @@ export default function IntegrationManage() {
       <AppLayout title={`Gerenciar ${name}`}>
         <div className="space-y-6 max-w-4xl">
 
-          {/* ── Voltar ── */}
           <Button variant="ghost" onClick={() => navigate('/integrations')} className="-ml-2">
             <ArrowLeft className="mr-2 h-4 w-4" /> Voltar
           </Button>
 
-          {/* ── Header da loja ── */}
+          {/* Header da loja */}
           <Card className="border-emerald-500/30 bg-emerald-500/5">
             <CardContent className="py-5">
               <div className="flex items-center justify-between flex-wrap gap-4">
@@ -165,7 +170,7 @@ export default function IntegrationManage() {
             </CardContent>
           </Card>
 
-          {/* ── Stats ── */}
+          {/* Stats */}
           <div>
             <div className="flex items-center justify-between mb-3 flex-wrap gap-2">
               <h3 className="text-sm font-semibold">Resumo — últimos {syncPeriod} dias</h3>
@@ -185,7 +190,11 @@ export default function IntegrationManage() {
                 <Button
                   size="sm"
                   variant="outline"
-                  onClick={() => syncNow.mutate({ connectionId: connection.id, days: Number(syncPeriod) })}
+                  onClick={() => syncNow.mutate({
+                    connectionId: connection.id,
+                    days: Number(syncPeriod),
+                    provider: provider, // ✅ passa o provider para rotear corretamente
+                  })}
                   disabled={syncNow.isPending}
                 >
                   {syncNow.isPending
@@ -199,7 +208,7 @@ export default function IntegrationManage() {
               {[
                 { label: 'Pedidos', value: syncLoading ? '...' : orders.length.toString(), icon: ShoppingCart, color: 'text-blue-500', bg: 'bg-blue-500/10' },
                 { label: 'Faturamento', value: syncLoading ? '...' : formatCurrency(totalRevenue), icon: DollarSign, color: 'text-emerald-500', bg: 'bg-emerald-500/10' },
-                { label: 'Taxas Shopee', value: syncLoading ? '...' : formatCurrency(totalFees), icon: Package, color: 'text-orange-500', bg: 'bg-orange-500/10' },
+                { label: `Taxas ${name}`, value: syncLoading ? '...' : formatCurrency(totalFees), icon: Package, color: 'text-orange-500', bg: 'bg-orange-500/10' },
                 { label: 'Valor Líquido', value: syncLoading ? '...' : formatCurrency(totalNet), icon: TrendingUp, color: 'text-primary', bg: 'bg-primary/10' },
               ].map((stat) => (
                 <Card key={stat.label} className="hover:shadow-md transition-shadow">
@@ -219,7 +228,7 @@ export default function IntegrationManage() {
             </div>
           </div>
 
-          {/* ── Status dos Pedidos ── */}
+          {/* Status dos Pedidos */}
           <div className="grid grid-cols-3 gap-4">
             <Card className="border-emerald-500/20 bg-emerald-500/5">
               <CardContent className="pt-5 pb-5">
@@ -262,7 +271,7 @@ export default function IntegrationManage() {
             </Card>
           </div>
 
-          {/* ── Gráfico ── */}
+          {/* Gráfico */}
           <Card>
             <CardHeader className="pb-3">
               <div className="flex items-center gap-2">
@@ -291,7 +300,7 @@ export default function IntegrationManage() {
             </CardContent>
           </Card>
 
-          {/* ── Sincronização automática ── */}
+          {/* Sincronização automática */}
           <Card>
             <CardHeader>
               <CardTitle className="text-base">Sincronização Automática</CardTitle>
@@ -331,10 +340,10 @@ export default function IntegrationManage() {
             </CardContent>
           </Card>
 
-          {/* ── Exportar ── */}
+          {/* Exportar */}
           <ExportDataSection connectionId={connection.id} providerName={name} />
 
-          {/* ── Logs ── */}
+          {/* Logs */}
           <Card>
             <CardHeader>
               <CardTitle className="text-base">Histórico de Sincronizações</CardTitle>
@@ -345,7 +354,7 @@ export default function IntegrationManage() {
             </CardContent>
           </Card>
 
-          {/* ── Zona de perigo ── */}
+          {/* Zona de perigo */}
           <Card className="border-destructive/30">
             <CardHeader>
               <CardTitle className="text-base text-destructive">Zona de Perigo</CardTitle>

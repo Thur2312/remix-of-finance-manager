@@ -20,7 +20,6 @@ serve(async (req) => {
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
     );
 
-    // Suporte a chamada autenticada pelo frontend (sync manual)
     const authHeader = req.headers.get("Authorization") ?? "";
     const userToken = authHeader.replace("Bearer ", "");
 
@@ -31,12 +30,12 @@ serve(async (req) => {
       userId = user?.id ?? null;
     }
 
-    // Busca integrações ativas do ML
+    // ✅ Fix: status 'connected' em vez de 'active'
     const query = supabase
       .from("integration_connections")
       .select("*")
       .eq("provider", "mercadolivre")
-      .eq("status", "active");
+      .eq("status", "connected");
 
     if (userId) query.eq("user_id", userId);
 
@@ -80,7 +79,8 @@ serve(async (req) => {
 
 async function getValidToken(supabase, connection): Promise<string> {
   const now = new Date();
-  const expiresAt = new Date(connection.expires_at);
+  // ✅ Fix: token_expires_at em vez de expires_at
+  const expiresAt = new Date(connection.token_expires_at);
   const fiveMinutes = 5 * 60 * 1000;
 
   if (expiresAt.getTime() - now.getTime() > fiveMinutes) {
@@ -110,12 +110,14 @@ async function getValidToken(supabase, connection): Promise<string> {
 
   const tokenData = await res.json();
 
+  // ✅ Fix: token_expires_at em vez de expires_at
   await supabase
     .from("integration_connections")
     .update({
       access_token: tokenData.access_token,
       refresh_token: tokenData.refresh_token,
-      expires_at: new Date(Date.now() + tokenData.expires_in * 1000).toISOString(),
+      token_expires_at: new Date(Date.now() + tokenData.expires_in * 1000).toISOString(),
+      updated_at: new Date().toISOString(),
     })
     .eq("id", connection.id);
 
@@ -130,18 +132,15 @@ async function syncConnection(supabase, connection, accessToken: string) {
   let paymentsCount = 0;
   const feesCount = 0;
 
-  // Busca a última sincronização para pegar só o que é novo
   const { data: lastLog } = await supabase
     .from("integration_sync_logs")
     .select("created_at")
-    .eq("integration_id", connection.id)
-    .eq("sync_type", "orders")
+    .eq("connection_id", connection.id)
     .eq("status", "success")
     .order("created_at", { ascending: false })
     .limit(1)
     .maybeSingle();
 
-  // Janela de sync: última sync ou últimos 30 dias
   const since = lastLog?.created_at
     ? new Date(lastLog.created_at)
     : new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
@@ -153,22 +152,21 @@ async function syncConnection(supabase, connection, accessToken: string) {
     ordersCount = await syncOrders(supabase, connection, accessToken, dateFrom);
 
     await supabase.from("integration_sync_logs").insert({
-      integration_id: connection.id,
-      sync_type: "orders",
-      status: "success",
-      records_synced: ordersCount,
-      started_at: logStart,
-      completed_at: new Date().toISOString(),
+      connection_id: connection.id,
+      user_id: connection.user_id,
+      provider: "mercadolivre",
+      event: "sync_success",
+      message: `${ordersCount} pedidos sincronizados`,
+      metadata: { orders_synced: String(ordersCount) },
     });
   } catch (err) {
     console.error("Erro no sync de pedidos ML:", err);
     await supabase.from("integration_sync_logs").insert({
-      integration_id: connection.id,
-      sync_type: "orders",
-      status: "error",
-      error_message: String(err),
-      started_at: logStart,
-      completed_at: new Date().toISOString(),
+      connection_id: connection.id,
+      user_id: connection.user_id,
+      provider: "mercadolivre",
+      event: "sync_error",
+      message: String(err),
     });
   }
 
@@ -177,24 +175,33 @@ async function syncConnection(supabase, connection, accessToken: string) {
     paymentsCount = await syncPayments(supabase, connection, accessToken, dateFrom);
 
     await supabase.from("integration_sync_logs").insert({
-      integration_id: connection.id,
-      sync_type: "payments",
-      status: "success",
-      records_synced: paymentsCount,
-      started_at: logStart,
-      completed_at: new Date().toISOString(),
+      connection_id: connection.id,
+      user_id: connection.user_id,
+      provider: "mercadolivre",
+      event: "sync_success",
+      message: `${paymentsCount} pagamentos sincronizados`,
+      metadata: { payments_synced: String(paymentsCount) },
     });
   } catch (err) {
     console.error("Erro no sync de pagamentos ML:", err);
     await supabase.from("integration_sync_logs").insert({
-      integration_id: connection.id,
-      sync_type: "payments",
-      status: "error",
-      error_message: String(err),
-      started_at: logStart,
-      completed_at: new Date().toISOString(),
+      connection_id: connection.id,
+      user_id: connection.user_id,
+      provider: "mercadolivre",
+      event: "sync_error",
+      message: String(err),
     });
   }
+
+  // ✅ Atualiza last_sync_at na connection
+  await supabase
+    .from("integration_connections")
+    .update({
+      last_sync_at: new Date().toISOString(),
+      last_error_message: null,
+      updated_at: new Date().toISOString(),
+    })
+    .eq("id", connection.id);
 
   return { orders: ordersCount, payments: paymentsCount, fees: feesCount };
 }
@@ -211,8 +218,8 @@ async function syncOrders(
   let offset = 0;
   const limit = 50;
 
-  // Pega o seller_id (shop_id armazenado como string)
-  const sellerId = connection.shop_id;
+  // ✅ Fix: external_shop_id em vez de shop_id
+  const sellerId = connection.external_shop_id;
 
   while (true) {
     const url = `${ML_API}/orders/search?seller=${sellerId}&order.date_created.from=${encodeURIComponent(dateFrom)}&sort=date_desc&offset=${offset}&limit=${limit}`;
@@ -257,7 +264,8 @@ async function syncPayments(
   let offset = 0;
   const limit = 50;
 
-  const sellerId = connection.shop_id;
+  // ✅ Fix: external_shop_id em vez de shop_id
+  const sellerId = connection.external_shop_id;
 
   while (true) {
     const url = `${ML_API}/collections/search?seller=${sellerId}&transaction.date_approved.from=${encodeURIComponent(dateFrom)}&sort=date_desc&offset=${offset}&limit=${limit}`;
@@ -323,6 +331,7 @@ async function upsertOrder(supabase, connection, order) {
 
   // ml_orders (tabela específica)
   const item = order.order_items?.[0];
+  // ✅ Fix: onConflict com sku para bater com a constraint da tabela
   await supabase.from("ml_orders").upsert({
     user_id: connection.user_id,
     order_id: String(order.id),
@@ -339,7 +348,7 @@ async function upsertOrder(supabase, connection, order) {
     status_pedido: order.status,
     data_pedido: order.date_created,
     updated_at: now,
-  }, { onConflict: "user_id,order_id" });
+  }, { onConflict: "user_id,order_id,sku" }); // ✅ Fix
 
   // order_items
   if (order.order_items?.length > 0 && orderRow?.id) {
