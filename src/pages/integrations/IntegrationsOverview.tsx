@@ -11,23 +11,29 @@ import { useQueryClient } from '@tanstack/react-query';
 import { Plug } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 
+type Provider = 'shopee' | 'tiktok' | 'mercadolivre';
+
 export default function IntegrationsOverview() {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const { connections, logs, isLoading, getConnection, startAuth, manualAuth, syncNow, refetch } = useIntegrations();
-  const [connectProvider, setConnectProvider] = useState<'shopee' | 'tiktok' | null>(null);
+  const [connectProvider, setConnectProvider] = useState<Provider | null>(null);
   const [isSyncing, setIsSyncing] = useState(false);
 
   useEffect(() => {
     const connected = searchParams.get('connected');
     if (connected) {
-      toast({ title: `${connected === 'shopee' ? 'Shopee' : 'TikTok Shop'} conectado com sucesso!` });
+      const names: Record<string, string> = {
+        shopee: 'Shopee',
+        tiktok: 'TikTok Shop',
+        mercadolivre: 'Mercado Livre',
+      };
+      toast({ title: `${names[connected] ?? connected} conectado com sucesso!` });
       window.history.replaceState({}, '', '/integrations');
       queryClient.invalidateQueries({ queryKey: ['integrations'] });
-      refetch()
-;
+      refetch();
     }
     const error = searchParams.get('error');
     if (error) {
@@ -38,11 +44,42 @@ export default function IntegrationsOverview() {
 
   const shopee = getConnection('shopee');
   const tiktok = getConnection('tiktok');
+  const mercadolivre = getConnection('mercadolivre');
 
   const allErrors = connections
     .filter(c => c.last_error_message)
     .map(c => `${c.provider}: ${c.last_error_message}`)
     .join('; ');
+
+  // Função genérica para iniciar OAuth via Edge Function
+  const handleOAuthConnect = async (provider: Provider, functionName: string) => {
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session?.access_token) {
+        toast({ title: "Sessão expirada. Faça login novamente.", variant: "destructive" });
+        return;
+      }
+      const response = await fetch(
+        `https://opzsrqdvotozawuqpapo.functions.supabase.co/${functionName}`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "Authorization": `Bearer ${session.access_token}`,
+          },
+          body: JSON.stringify({ provider }),
+        }
+      );
+      const data = await response.json();
+      if (data.authorization_url) {
+        window.location.href = data.authorization_url;
+      } else {
+        toast({ title: `Erro ao conectar ${provider}`, variant: "destructive" });
+      }
+    } catch {
+      toast({ title: `Erro ao conectar ${provider}`, variant: "destructive" });
+    }
+  };
 
   return (
     <ProtectedRoute>
@@ -59,14 +96,14 @@ export default function IntegrationsOverview() {
           </div>
 
           <div className="grid gap-3 md:grid-cols-2">
-           <IntegrationCard
+            <IntegrationCard
               provider="shopee"
               status={shopee?.status || 'disconnected'}
               shopName={shopee?.shop_name}
               shopId={shopee?.external_shop_id}
               lastSyncAt={shopee?.last_sync_at}
               nextSyncAt={shopee?.next_sync_at}
-              lastErrorMessage={shopee?.last_error_message} 
+              lastErrorMessage={shopee?.last_error_message}
               onConnect={() => setConnectProvider('shopee')}
               onManage={() => navigate('/integrations/shopee')}
               isConnecting={startAuth.isPending}
@@ -78,11 +115,24 @@ export default function IntegrationsOverview() {
               shopId={tiktok?.external_shop_id}
               lastSyncAt={tiktok?.last_sync_at}
               nextSyncAt={tiktok?.next_sync_at}
-              lastErrorMessage={tiktok?.last_error_message} 
+              lastErrorMessage={tiktok?.last_error_message}
               onConnect={() => setConnectProvider('tiktok')}
               onManage={() => navigate('/integrations/tiktok')}
               isConnecting={startAuth.isPending}
-/>
+            />
+            {/* ✅ Card do Mercado Livre */}
+            <IntegrationCard
+              provider="mercadolivre"
+              status={mercadolivre?.status || 'disconnected'}
+              shopName={mercadolivre?.shop_name}
+              shopId={mercadolivre?.external_shop_id}
+              lastSyncAt={mercadolivre?.last_sync_at}
+              nextSyncAt={mercadolivre?.next_sync_at}
+              lastErrorMessage={mercadolivre?.last_error_message}
+              onConnect={() => setConnectProvider('mercadolivre')}
+              onManage={() => navigate('/integrations/mercadolivre')}
+              isConnecting={startAuth.isPending}
+            />
           </div>
 
           <IntegrationHealthPanel
@@ -101,34 +151,11 @@ export default function IntegrationsOverview() {
           onOpenChange={(open) => !open && setConnectProvider(null)}
           onConfirm={async () => {
             if (connectProvider === 'shopee') {
-              try {
-
-                  const { data: { session } } = await supabase.auth.getSession();
-                  if (!session?.access_token) {
-                    toast({ title: "Sessão expirada. Faça login novamente.", variant: "destructive" });
-                    return;
-                  }
-                const response = await fetch(
-                  "https://opzsrqdvotozawuqpapo.functions.supabase.co/shopee-auth",
-                  {
-                    method: "POST",
-                    headers: { "Content-Type": "application/json",
-                                "Authorization": `Bearer ${session.access_token}`, 
-                              },
-                    body: JSON.stringify({ provider: "shopee" }),
-                  }
-                );
-                const data = await response.json();
-                if (data.authorization_url) {
-                  window.location.href = data.authorization_url;
-                } else {
-                  toast({ title: "Erro ao conectar Shopee", variant: "destructive" });
-                }
-              } catch {
-                toast({ title: "Erro ao conectar Shopee", variant: "destructive" });
-              }
+              await handleOAuthConnect('shopee', 'shopee-auth');
             } else if (connectProvider === 'tiktok') {
               startAuth.mutate(connectProvider);
+            } else if (connectProvider === 'mercadolivre') {
+              await handleOAuthConnect('mercadolivre', 'mercadolivre-auth');
             }
           }}
           onManualAuth={({ shopId, accessToken, refreshToken }) => {
@@ -139,9 +166,8 @@ export default function IntegrationsOverview() {
                   toast({ title: 'Conectado! Iniciando sincronização...' });
                   setIsSyncing(true);
 
-                  // ✅ Refresca os dados via queryClient em vez de axios
                   await queryClient.invalidateQueries({ queryKey: ['integrations'] });
-                  
+
                   setTimeout(() => {
                     const conn = connections.find(
                       c => c.provider === connectProvider && c.status === 'connected'

@@ -7,7 +7,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { ShoppingBag, Store, ArrowRight, RefreshCw } from 'lucide-react';
 
 interface ConnectDialogProps {
-  provider: 'shopee' | 'tiktok';
+  provider: 'shopee' | 'tiktok' | 'mercadolivre';
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onConfirm: () => void;
@@ -27,6 +27,7 @@ const syncItems = [
 const providerInfo = {
   shopee: { name: 'Shopee', icon: ShoppingBag, color: 'text-orange-500' },
   tiktok: { name: 'TikTok Shop', icon: Store, color: 'text-foreground' },
+  mercadolivre: { name: 'Mercado Livre', icon: Store, color: 'text-yellow-500' },
 };
 
 export function ConnectDialog({

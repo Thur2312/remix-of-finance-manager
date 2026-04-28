@@ -5,9 +5,10 @@ import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import logoShopee from '@/assets/logo-shopee.jpg';
 import logoTiktok from '@/assets/logo-tiktok.png';
+import logoMercadoLivre from '@/assets/logo-mercadolivre.png';
 
 interface IntegrationCardProps {
-  provider: 'shopee' | 'tiktok';
+  provider: 'shopee' | 'tiktok' | 'mercadolivre';
   status: string;
   shopName?: string | null;
   shopId?: string | null;
@@ -22,6 +23,7 @@ interface IntegrationCardProps {
 const providerConfig = {
   shopee: { name: 'Shopee', subtitle: 'Marketplace', logo: logoShopee },
   tiktok: { name: 'TikTok Shop', subtitle: 'Marketplace', logo: logoTiktok },
+  mercadolivre: { name: 'Mercado Livre', subtitle: 'Marketplace', logo: logoMercadoLivre },
 };
 
 const statusConfig: Record<string, { label: string; variant: 'default' | 'secondary' | 'destructive' | 'outline'; icon: React.ReactNode }> = {
