@@ -56,7 +56,9 @@ const App = () => {
             <Route path="user/esqueci-senha" element={<EsqueciSenha />} />
             <Route path="user/reset-password" element={<ResetPassword />} />
 
+            {/* ✅ Rotas de callback OAuth */}
             <Route path="/callback" element={<IntegrationCallback />} />
+            <Route path="/callback/mercadolivre" element={<IntegrationCallback />} />
             <Route path="/integrations/callback/:provider" element={<IntegrationCallback />} />
 
             {/* Protected routes */}
