@@ -5,7 +5,6 @@ import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import logoShopee from '@/assets/logo-shopee.jpg';
 import logoTiktok from '@/assets/logo-tiktok.png';
-import logoMercadoLivre from '@/assets/logo-mercadolivre.png';
 
 interface IntegrationCardProps {
   provider: 'shopee' | 'tiktok' | 'mercadolivre';
@@ -23,7 +22,11 @@ interface IntegrationCardProps {
 const providerConfig = {
   shopee: { name: 'Shopee', subtitle: 'Marketplace', logo: logoShopee },
   tiktok: { name: 'TikTok Shop', subtitle: 'Marketplace', logo: logoTiktok },
-  mercadolivre: { name: 'Mercado Livre', subtitle: 'Marketplace', logo: logoMercadoLivre },
+  mercadolivre: {
+    name: 'Mercado Livre',
+    subtitle: 'Marketplace',
+    logo: 'https://http2.mlstatic.com/frontend-assets/ml-web-navigation/ui-navigation/6.6.92/mercadolibre/logo_large_25years@2x.png',
+  },
 };
 
 const statusConfig: Record<string, { label: string; variant: 'default' | 'secondary' | 'destructive' | 'outline'; icon: React.ReactNode }> = {
@@ -66,7 +69,6 @@ export function IntegrationCard({
           </div>
           <p className="text-sm text-muted-foreground mt-0.5">{config.subtitle}</p>
 
-          {/* Mensagem de erro */}
           {lastErrorMessage && (
             <div className="mt-2 flex items-start gap-1.5 text-xs text-destructive bg-destructive/10 rounded-md p-2">
               <AlertCircle className="h-3.5 w-3.5 mt-0.5 shrink-0" />
