@@ -53,9 +53,11 @@ const App = () => {
             <Route path="user/auth" element={<Auth />} />
             <Route path="termos-de-uso" element={<TermosDeUso />} />
             <Route path="politica-de-privacidade" element={<PoliticaDePrivacidade />} />
-
             <Route path="user/esqueci-senha" element={<EsqueciSenha />} />
             <Route path="user/reset-password" element={<ResetPassword />} />
+
+            <Route path="/callback" element={<IntegrationCallback />} />
+            <Route path="/integrations/callback/:provider" element={<IntegrationCallback />} />
 
             {/* Protected routes */}
             <Route path="/planos" element={<Planos />} />
@@ -83,7 +85,6 @@ const App = () => {
             <Route path="/perfil" element={<ProtectedRoute><Perfil /></ProtectedRoute>} />
             <Route path="/integrations" element={<ProtectedRoute><IntegrationsOverview /></ProtectedRoute>} />
             <Route path="/integrations/:provider" element={<ProtectedRoute><IntegrationManage /></ProtectedRoute>} />
-            <Route path="/integrations/callback/:provider" element={<IntegrationCallback />} />
 
             {/* Catch-all */}
             <Route path="*" element={<NotFound />} />
