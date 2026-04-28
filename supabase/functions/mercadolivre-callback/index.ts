@@ -15,7 +15,7 @@ serve(async (req) => {
 
     const CLIENT_ID = Deno.env.get("ML_CLIENT_ID")?.trim();
     const CLIENT_SECRET = Deno.env.get("ML_CLIENT_SECRET")?.trim();
-    const REDIRECT_URI = Deno.env.get("ML_REDIRECT_URI")?.trim();
+    const REDIRECT_URI = Deno.env.get("ML_REDIRECT_URI")?.trim(); 
     const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
     const SUPABASE_SERVICE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 
@@ -23,7 +23,8 @@ serve(async (req) => {
       return Response.redirect(`${FRONTEND_URL}/integrations?error=missing_env`, 302);
     }
 
-    // Troca o code pelo access_token
+    const redirectUsed = `${REDIRECT_URI}?provider=mercadolivre&token=${userToken}`;
+
     const tokenRes = await fetch("https://api.mercadolibre.com/oauth/token", {
       method: "POST",
       headers: { "Content-Type": "application/x-www-form-urlencoded" },
@@ -32,7 +33,7 @@ serve(async (req) => {
         client_id: CLIENT_ID,
         client_secret: CLIENT_SECRET,
         code,
-        redirect_uri: `${REDIRECT_URI}?token=${userToken}`,
+        redirect_uri: redirectUsed,
       }),
     });
 
@@ -46,14 +47,9 @@ serve(async (req) => {
       );
     }
 
-    const {
-      access_token,
-      refresh_token,
-      expires_in,       // segundos até expirar (normalmente 21600 = 6h)
-      user_id: mlUserId, // ID do usuário no ML
-    } = tokenData;
+    const { access_token, refresh_token, expires_in, user_id: mlUserId } = tokenData;
 
-    // Busca info da conta ML para pegar o nome da loja
+    // Busca o nickname da conta ML
     const profileRes = await fetch(`https://api.mercadolibre.com/users/${mlUserId}`, {
       headers: { Authorization: `Bearer ${access_token}` },
     });
@@ -73,8 +69,6 @@ serve(async (req) => {
       const futureDate = new Date(now.getTime() + expireSeconds * 1000);
       return isNaN(futureDate.getTime()) ? null : futureDate.toISOString();
     };
-
-    // Salva na tabela integration_connections (mesmo padrão da Shopee)
     const { error: dbError } = await supabase
       .from("integration_connections")
       .upsert(
@@ -87,7 +81,7 @@ serve(async (req) => {
           access_token,
           refresh_token,
           token_expires_at: safeTokenExpiresAt(expires_in),
-          refresh_token_expires_at: null, // ML refresh tokens não expiram por padrão
+          refresh_token_expires_at: null, 
           updated_at: now.toISOString(),
         },
         { onConflict: "user_id,provider" }

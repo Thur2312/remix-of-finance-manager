@@ -15,7 +15,7 @@ serve(async (req) => {
 
   try {
     const CLIENT_ID = Deno.env.get("ML_CLIENT_ID")?.trim();
-    const REDIRECT_URI = Deno.env.get("ML_REDIRECT_URI")?.trim();
+    const REDIRECT_URI = Deno.env.get("ML_REDIRECT_URI")?.trim(); // https://www.sellerfinance.com.br/callback
 
     if (!CLIENT_ID || !REDIRECT_URI) {
       return new Response(
@@ -24,16 +24,16 @@ serve(async (req) => {
       );
     }
 
-    // Pega o token do usuário para embutir no redirect_uri
     const authHeader = req.headers.get("Authorization") ?? "";
     const userToken = authHeader.replace("Bearer ", "");
-    const redirectWithToken = `${REDIRECT_URI}?token=${userToken}`;
 
-    // ML OAuth 2.0 — não precisa de assinatura HMAC como a Shopee
+    // ✅ Embute provider e token no redirect_uri para o IntegrationCallback identificar
+    const redirectWithParams = `${REDIRECT_URI}?provider=mercadolivre&token=${userToken}`;
+
     const authorization_url =
       `https://auth.mercadolivre.com.br/authorization?response_type=code` +
       `&client_id=${CLIENT_ID}` +
-      `&redirect_uri=${encodeURIComponent(redirectWithToken)}`;
+      `&redirect_uri=${encodeURIComponent(redirectWithParams)}`;
 
     console.log("ML authorization_url:", authorization_url);
 
