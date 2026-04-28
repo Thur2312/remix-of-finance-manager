@@ -1,4 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2"; 
+
 
 serve(async (req) => {
   if (req.method === "OPTIONS") {
@@ -15,7 +17,7 @@ serve(async (req) => {
 
   try {
     const CLIENT_ID = Deno.env.get("ML_CLIENT_ID")?.trim();
-    const REDIRECT_URI = Deno.env.get("ML_REDIRECT_URI")?.trim(); // https://www.sellerfinance.com.br/callback
+    const REDIRECT_URI = Deno.env.get("ML_REDIRECT_URI")?.trim();
 
     if (!CLIENT_ID || !REDIRECT_URI) {
       return new Response(
@@ -27,14 +29,29 @@ serve(async (req) => {
     const authHeader = req.headers.get("Authorization") ?? "";
     const userToken = authHeader.replace("Bearer ", "");
 
-    // ✅ Embute provider e token no redirect_uri para o IntegrationCallback identificar
-    const redirectWithParams = `${REDIRECT_URI}?provider=mercadolivre&token=${userToken}`;
+    // Gera um state curto e salva o token no Supabase temporariamente
+    const stateId = crypto.randomUUID();
+
+    // Salva o mapeamento state -> token no banco
+    const supabase = createClient(
+      Deno.env.get("SUPABASE_URL")!,
+      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
+    );
+
+    await supabase.from("integration_connections").upsert({
+      user_id: stateId, // temporário
+      provider: "mercadolivre_pending",
+      access_token: userToken, // guarda o JWT aqui temporariamente
+      status: "pending",
+      updated_at: new Date().toISOString(),
+    }, { onConflict: "user_id,provider" });
 
     const authorization_url =
       `https://auth.mercadolivre.com.br/authorization?response_type=code` +
       `&client_id=${CLIENT_ID}` +
-      `&redirect_uri=${encodeURIComponent(redirectWithParams)}`;
-
+      `&redirect_uri=${encodeURIComponent(REDIRECT_URI)}` +
+      `&state=${stateId}`;
+       // só o UUID curto
     console.log("ML authorization_url:", authorization_url);
 
     return new Response(
@@ -51,10 +68,7 @@ serve(async (req) => {
     console.error("Erro na ML Auth:", error);
     return new Response(
       JSON.stringify({ error: "Erro interno na ML Auth" }),
-      {
-        status: 500,
-        headers: { "Access-Control-Allow-Origin": "*", "Content-Type": "application/json" },
-      }
+      { status: 500, headers: { "Access-Control-Allow-Origin": "*", "Content-Type": "application/json" } }
     );
   }
 });

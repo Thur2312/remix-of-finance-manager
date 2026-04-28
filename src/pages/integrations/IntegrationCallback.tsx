@@ -15,7 +15,13 @@ export default function IntegrationCallback() {
     const error = searchParams.get('error');
     const code = searchParams.get('code');
     const shopId = searchParams.get('shop_id');
-    const provider = searchParams.get('provider'); // ✅ ML envia isso
+    const state = searchParams.get('state');
+    const provider = searchParams.get('provider');
+
+    // Detecta ML pela rota ou pelo provider explícito
+    const isMercadoLivre =
+      provider === 'mercadolivre' ||
+      (!shopId && !provider && window.location.pathname.includes('mercadolivre'));
 
     // Redirect final vindo da Edge Function
     if (connected) {
@@ -35,17 +41,17 @@ export default function IntegrationCallback() {
       return;
     }
 
-    // ✅ Resgata da URL ou do sessionStorage (quando vem pós-login)
     const finalCode = code ?? sessionStorage.getItem('pending_oauth_code');
     const finalShopId = shopId ?? sessionStorage.getItem('pending_oauth_shop_id');
     const finalProvider = provider ?? sessionStorage.getItem('pending_oauth_provider');
+    const finalState = state ?? sessionStorage.getItem('pending_oauth_state');
 
     if (!finalCode) return;
 
-    // Limpa imediatamente para não reusar
     sessionStorage.removeItem('pending_oauth_code');
     sessionStorage.removeItem('pending_oauth_shop_id');
     sessionStorage.removeItem('pending_oauth_provider');
+    sessionStorage.removeItem('pending_oauth_state');
 
     setStatus('Obtendo sessão do usuário...');
 
@@ -57,28 +63,24 @@ export default function IntegrationCallback() {
           await new Promise(r => setTimeout(r, 800));
           return tryGetSession(retries - 1);
         }
-        // Sem sessão após retries — salva tudo e manda pro login
         sessionStorage.setItem('pending_oauth_code', finalCode);
         if (finalShopId) sessionStorage.setItem('pending_oauth_shop_id', finalShopId);
         if (finalProvider) sessionStorage.setItem('pending_oauth_provider', finalProvider);
+        if (finalState) sessionStorage.setItem('pending_oauth_state', finalState);
         navigate('/user/auth?redirect=/callback', { replace: true });
         return;
       }
 
       const token = session.access_token;
 
-      // ✅ Detecção do provider:
-      // - Shopee: envia shop_id
-      // - ML: envia ?provider=mercadolivre
-      // - TikTok: nenhum dos dois
       if (finalShopId) {
         setStatus('Conectando com a Shopee...');
         const params = new URLSearchParams({ code: finalCode, token, shop_id: finalShopId });
         window.location.href =
           `https://opzsrqdvotozawuqpapo.functions.supabase.co/integration-callback?${params.toString()}`;
-      } else if (finalProvider === 'mercadolivre') {
+      } else if (isMercadoLivre || finalProvider === 'mercadolivre') {
         setStatus('Conectando com o Mercado Livre...');
-        const params = new URLSearchParams({ code: finalCode, token });
+        const params = new URLSearchParams({ code: finalCode, state: finalState ?? '' });
         window.location.href =
           `https://opzsrqdvotozawuqpapo.functions.supabase.co/mercadolivre-callback?${params.toString()}`;
       } else {

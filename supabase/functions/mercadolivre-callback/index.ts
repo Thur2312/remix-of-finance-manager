@@ -6,16 +6,16 @@ const FRONTEND_URL = "https://www.sellerfinance.com.br";
 serve(async (req) => {
   const url = new URL(req.url);
   const code = url.searchParams.get("code");
-  const userToken = url.searchParams.get("token") ?? "";
+  const stateId = url.searchParams.get("state") ?? "";
+
+  if (!code) {
+    return Response.redirect(`${FRONTEND_URL}/integrations?error=missing_code`, 302);
+  }
 
   try {
-    if (!code) {
-      return Response.redirect(`${FRONTEND_URL}/integrations?error=missing_code`, 302);
-    }
-
     const CLIENT_ID = Deno.env.get("ML_CLIENT_ID")?.trim();
     const CLIENT_SECRET = Deno.env.get("ML_CLIENT_SECRET")?.trim();
-    const REDIRECT_URI = Deno.env.get("ML_REDIRECT_URI")?.trim(); 
+    const REDIRECT_URI = Deno.env.get("ML_REDIRECT_URI")?.trim();
     const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
     const SUPABASE_SERVICE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 
@@ -23,8 +23,26 @@ serve(async (req) => {
       return Response.redirect(`${FRONTEND_URL}/integrations?error=missing_env`, 302);
     }
 
-    const redirectUsed = `${REDIRECT_URI}?provider=mercadolivre&token=${userToken}`;
+    const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_KEY);
 
+    // Busca o token salvo pelo stateId
+    const { data: stateData } = await supabase
+      .from("integration_connections")
+      .select("access_token")
+      .eq("user_id", stateId)
+      .eq("provider", "mercadolivre_pending")
+      .single();
+
+    const userToken = stateData?.access_token ?? "";
+
+    // Limpa o registro temporário
+    await supabase
+      .from("integration_connections")
+      .delete()
+      .eq("user_id", stateId)
+      .eq("provider", "mercadolivre_pending");
+
+    // Troca o code pelo access_token
     const tokenRes = await fetch("https://api.mercadolibre.com/oauth/token", {
       method: "POST",
       headers: { "Content-Type": "application/x-www-form-urlencoded" },
@@ -33,7 +51,7 @@ serve(async (req) => {
         client_id: CLIENT_ID,
         client_secret: CLIENT_SECRET,
         code,
-        redirect_uri: redirectUsed,
+        redirect_uri: REDIRECT_URI,
       }),
     });
 
@@ -57,7 +75,6 @@ serve(async (req) => {
     const shopName = profileData.nickname ?? profileData.first_name ?? "";
 
     // Valida o usuário do Supabase
-    const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_KEY);
     const { data: { user }, error: userError } = await supabase.auth.getUser(userToken);
     if (userError || !user) {
       return Response.redirect(`${FRONTEND_URL}/integrations?error=unauthorized`, 302);
@@ -69,6 +86,7 @@ serve(async (req) => {
       const futureDate = new Date(now.getTime() + expireSeconds * 1000);
       return isNaN(futureDate.getTime()) ? null : futureDate.toISOString();
     };
+
     const { error: dbError } = await supabase
       .from("integration_connections")
       .upsert(
@@ -81,7 +99,7 @@ serve(async (req) => {
           access_token,
           refresh_token,
           token_expires_at: safeTokenExpiresAt(expires_in),
-          refresh_token_expires_at: null, 
+          refresh_token_expires_at: null,
           updated_at: now.toISOString(),
         },
         { onConflict: "user_id,provider" }
