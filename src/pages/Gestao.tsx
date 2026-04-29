@@ -1,13 +1,13 @@
 import { useState } from 'react';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { ProtectedRoute } from '@/components/layout/ProtectedRoute';
-import { Card, CardContent } from '@/components/ui/card';
-import { Store } from 'lucide-react';
 import { InPageNav, shopeeNavTabs, tiktokNavTabs } from '@/components/layout/InPageNav';
+import { mercadolivreNavTabs } from '@/pages/mercadolivre/MercadolivreDashboard';
 
 // Importa apenas o conteúdo interno — sem AppLayout aninhado
 import { ShopeeDashboardContent } from '@/pages/shopee/Dashboard';
 import { TikTokDashboardContent } from '@/pages/tiktok/TikTokDashboard';
+import { MercadolivreDashboardContent } from '@/pages/mercadolivre/MercadolivreDashboard';
 
 import logoShopee from '@/assets/logo-shopee.jpg';
 import logoTikTok from '@/assets/logo-tiktok.png';
@@ -22,9 +22,9 @@ interface MarketplaceOption {
 }
 
 const OPTIONS: MarketplaceOption[] = [
-  { value: 'shopee',        label: 'Shopee',         available: true },
-  { value: 'tiktok',        label: 'TikTok Shop',    available: true },
-  { value: 'mercadolivre',  label: 'Mercado Livre',  available: false, comingSoon: true },
+  { value: 'shopee',       label: 'Shopee',        available: true  },
+  { value: 'tiktok',       label: 'TikTok Shop',   available: true  },
+  { value: 'mercadolivre', label: 'Mercado Livre',  available: true  },
 ];
 
 function MarketplaceLogo({ mp }: { mp: MarketplaceFilter }) {
@@ -38,23 +38,6 @@ function MarketplaceLogo({ mp }: { mp: MarketplaceFilter }) {
     <div className="h-5 w-5 rounded-full bg-yellow-400 flex items-center justify-center text-[9px] font-bold text-yellow-900">
       ML
     </div>
-  );
-}
-
-function ComingSoonCard({ label }: { label: string }) {
-  return (
-    <Card className="border-dashed">
-      <CardContent className="flex flex-col items-center justify-center py-20 text-center gap-3">
-        <Store className="h-10 w-10 text-muted-foreground/40" />
-        <div>
-          <p className="font-medium text-foreground">{label}</p>
-          <p className="text-sm text-muted-foreground mt-1">
-            A integração com {label} estará disponível em breve.
-          </p>
-        </div>
-        <span className="text-xs bg-muted text-muted-foreground px-3 py-1 rounded-full">Em breve</span>
-      </CardContent>
-    </Card>
   );
 }
 
@@ -109,7 +92,10 @@ function GestaoContent() {
       )}
 
       {selected === 'mercadolivre' && (
-        <ComingSoonCard label="Mercado Livre" />
+        <div className="space-y-4">
+          <InPageNav tabs={mercadolivreNavTabs} />
+          <MercadolivreDashboardContent />
+        </div>
       )}
     </div>
   );
