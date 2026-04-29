@@ -16,18 +16,16 @@ import { fetchAllTikTokOrders } from '@/lib/tiktok-helpers';
 import { DashboardCharts } from '@/components/charts/DashboardCharts';
 import { TopVariationsSection } from '@/components/charts/TopVariationsSection';
 import { InPageNav, tiktokNavTabs } from '@/components/layout/InPageNav';
-// ── Novos imports ────────────────────────────────────────────────────────────
 import { CompanySelector } from '@/components/dashboard/CompanySelector';
 import { TaxSummaryRow } from '@/hooks/useIntegrationTax';
 import { Company } from '@/hooks/useCompanies';
 
-function TikTokDashboardContent() {
+// ─── Conteúdo interno — exportado para reuso na Gestão unificada ─────────────
+export function TikTokDashboardContent() {
   const { user } = useAuth();
   const [isLoading, setIsLoading] = useState(true);
   const [orders, setOrders] = useState<TikTokOrder[]>([]);
   const [settings, setSettings] = useState<TikTokSettingsData | null>(null);
-
-  // ── Empresa selecionada ──────────────────────────────────────────────────
   const [selectedCompany, setSelectedCompany] = useState<Company | null>(null);
 
   useEffect(() => {
@@ -121,7 +119,7 @@ function TikTokDashboardContent() {
   return (
     <div className="space-y-8 animate-fade-in">
 
-      {/* ── Header com CompanySelector ───────────────────────────── */}
+      {/* ── Header ──────────────────────────────────────────────── */}
       <div className="flex items-center justify-between flex-wrap gap-3">
         <div>
           <h2 className="text-lg font-semibold text-foreground">Dashboard TikTok Shop</h2>
@@ -129,13 +127,20 @@ function TikTokDashboardContent() {
             Acompanhe seus resultados e aplique a alíquota de imposto correta.
           </p>
         </div>
-        <CompanySelector
-          selectedCompany={selectedCompany}
-          onSelect={setSelectedCompany}
-        />
+        <CompanySelector selectedCompany={selectedCompany} onSelect={setSelectedCompany} />
       </div>
 
-      {/* ── Stats Cards ─────────────────────────────────────────── */}
+      {/* ── Aviso: sem integração ativa ──────────────────────────── */}
+      <Card className="border-muted-foreground/20 bg-muted/30">
+        <CardContent className="py-4">
+          <p className="text-sm text-muted-foreground">
+            🔌 A integração automática com o TikTok Shop ainda está em desenvolvimento.
+            Por enquanto, faça upload do relatório CSV manualmente para visualizar seus dados.
+          </p>
+        </CardContent>
+      </Card>
+
+      {/* ── Stats Cards ──────────────────────────────────────────── */}
       <div className="grid gap-4 md:grid-cols-3">
         {stats.map((stat) => (
           <Card key={stat.title} className="transition-shadow hover:shadow-md">
@@ -148,8 +153,6 @@ function TikTokDashboardContent() {
             <CardContent className="pt-0">
               <div className="text-[28px] font-semibold">{stat.value}</div>
               <p className="text-xs text-muted-foreground mt-1">{stat.description}</p>
-
-              {/* ── Resumo de imposto no card de Lucro Estimado ── */}
               {stat.isProfit && !isLoading && selectedCompany && selectedCompany.tax_rate > 0 && (
                 <TaxSummaryRow
                   netProfit={totalProfit}
@@ -193,32 +196,35 @@ function TikTokDashboardContent() {
       </div>
 
       {/* ── Primeiros Passos ─────────────────────────────────────── */}
-      <Card className="border-dashed">
-        <CardHeader>
-          <CardTitle className="text-lg">🚀 Primeiros Passos</CardTitle>
-          <CardDescription>Para começar a usar o sistema, siga estes passos:</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <ol className="list-decimal list-inside space-y-3 text-muted-foreground">
-            <li>
-              <span className="font-medium text-foreground">Configure seus parâmetros</span>
-              {' '}— Defina taxas, impostos e custos na tela de Configurações
-            </li>
-            <li>
-              <span className="font-medium text-foreground">Faça o upload do relatório</span>
-              {' '}— Importe seu arquivo CSV do TikTok Shop
-            </li>
-            <li>
-              <span className="font-medium text-foreground">Visualize seus resultados</span>
-              {' '}— Analise lucros por produto e variação
-            </li>
-          </ol>
-        </CardContent>
-      </Card>
+      {orders.length === 0 && (
+        <Card className="border-dashed">
+          <CardHeader>
+            <CardTitle className="text-lg">🚀 Primeiros Passos</CardTitle>
+            <CardDescription>Para começar a usar o sistema, siga estes passos:</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <ol className="list-decimal list-inside space-y-3 text-muted-foreground">
+              <li>
+                <span className="font-medium text-foreground">Configure seus parâmetros</span>
+                {' '}— Defina taxas, impostos e custos na tela de Configurações
+              </li>
+              <li>
+                <span className="font-medium text-foreground">Faça o upload do relatório</span>
+                {' '}— Importe seu arquivo CSV do TikTok Shop
+              </li>
+              <li>
+                <span className="font-medium text-foreground">Visualize seus resultados</span>
+                {' '}— Analise lucros por produto e variação
+              </li>
+            </ol>
+          </CardContent>
+        </Card>
+      )}
     </div>
   );
 }
 
+// ─── Página standalone (mantida para acesso direto via rota) ─────────────────
 export default function TikTokDashboard() {
   return (
     <ProtectedRoute>

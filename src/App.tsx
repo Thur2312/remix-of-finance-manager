@@ -2,11 +2,10 @@ import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { Routes, Route } from "react-router-dom";
+import { Routes, Route, Navigate } from "react-router-dom";
 import { AuthProvider } from "@/contexts/AuthContext";
 import { ProtectedRoute } from "@/components/layout/ProtectedRoute";
 import LandingPage from "./pages/LandingPage";
-import Index from "./pages/Index";
 import Auth from "./pages/user/Auth";
 import Configuracoes from "./pages/shopee/Configuracoes";
 import Upload from "./pages/shopee/Upload";
@@ -19,7 +18,6 @@ import FluxoCaixaLancamentos from "./pages/fluxo-caixa/FluxoCaixaLancamentos";
 import FluxoCaixaCategorias from "./pages/fluxo-caixa/FluxoCaixaCategorias";
 import FluxoCaixaImportacao from "./pages/fluxo-caixa/FluxoCaixaImportacao";
 import AssistenteAnuncio from "./pages/AssistenteAnuncio";
-import TikTokDashboard from "./pages/tiktok/TikTokDashboard";
 import TikTokConfiguracoes from "./pages/tiktok/TikTokConfiguracoes";
 import TikTokUpload from "./pages/tiktok/TikTokUpload";
 import TikTokResultados from "./pages/tiktok/TikTokResultados";
@@ -31,12 +29,16 @@ import Perfil from "./pages/Perfil";
 import EsqueciSenha from "./pages/user/EsqueciSenha";
 import ResetPassword from "./pages/user/ResetPassword";
 import NotFound from "./pages/NotFound";
-import Planos, { PlanosContent } from "./pages/Planos";
+import Planos from "./pages/Planos";
 import IntegrationsOverview from "./pages/integrations/IntegrationsOverview";
 import IntegrationManage from "./pages/integrations/IntegrationManage";
 import IntegrationCallback from "./pages/integrations/IntegrationCallback";
 import TermosDeUso from "./pages/TermosDeUso";
 import PoliticaDePrivacidade from "./pages/PoliticaDePrivacidade";
+
+// ── Novas páginas unificadas ────────────────────────────────────────────────
+import UnifiedDashboard from "./pages/UnifiedDashboard";
+import Gestao from "./pages/Gestao";
 
 const queryClient = new QueryClient();
 
@@ -56,19 +58,36 @@ const App = () => {
             <Route path="user/esqueci-senha" element={<EsqueciSenha />} />
             <Route path="user/reset-password" element={<ResetPassword />} />
 
-            {/* ✅ Rotas de callback OAuth */}
+            {/* Callback OAuth */}
             <Route path="/callback" element={<IntegrationCallback />} />
             <Route path="/callback/mercadolivre" element={<IntegrationCallback />} />
             <Route path="/integrations/callback/:provider" element={<IntegrationCallback />} />
 
-            {/* Protected routes */}
+            {/* Planos (semi-public) */}
             <Route path="/planos" element={<Planos />} />
             <Route path="/user/auth/planos" element={<Planos />} />
-            <Route path="shopee/dashboard" element={<ProtectedRoute><Index /></ProtectedRoute>} />
+
+            {/* ── Novas rotas unificadas ──────────────────────────── */}
+            <Route path="/dashboard" element={<ProtectedRoute><UnifiedDashboard /></ProtectedRoute>} />
+            <Route path="/gestao" element={<ProtectedRoute><Gestao /></ProtectedRoute>} />
+
+            {/* ── Rotas de Shopee (sub-rotas da Gestão, mantidas para InPageNav) */}
+            <Route path="shopee/dashboard" element={<ProtectedRoute><Navigate to="/gestao" replace /></ProtectedRoute>} />
             <Route path="shopee/configuracoes" element={<ProtectedRoute><Configuracoes /></ProtectedRoute>} />
             <Route path="shopee/upload" element={<ProtectedRoute><Upload /></ProtectedRoute>} />
             <Route path="shopee/resultados" element={<ProtectedRoute><Resultados /></ProtectedRoute>} />
             <Route path="shopee/variacoes" element={<ProtectedRoute><ResultadosVariacoes /></ProtectedRoute>} />
+
+            {/* ── Rotas de TikTok (sub-rotas da Gestão, mantidas para InPageNav) */}
+            <Route path="/tiktok/dashboard" element={<ProtectedRoute><Navigate to="/gestao" replace /></ProtectedRoute>} />
+            <Route path="/tiktok/configuracoes" element={<ProtectedRoute><TikTokConfiguracoes /></ProtectedRoute>} />
+            <Route path="/tiktok/upload" element={<ProtectedRoute><TikTokUpload /></ProtectedRoute>} />
+            <Route path="/tiktok/resultados" element={<ProtectedRoute><TikTokResultados /></ProtectedRoute>} />
+            <Route path="/tiktok/variacoes" element={<ProtectedRoute><TikTokVariacoes /></ProtectedRoute>} />
+            <Route path="/tiktok/pagamentos" element={<ProtectedRoute><TikTokPagamentos /></ProtectedRoute>} />
+            <Route path="/tiktok/pagamentos/upload" element={<ProtectedRoute><TikTokPagamentosUpload /></ProtectedRoute>} />
+
+            {/* Demais rotas protegidas */}
             <Route path="/calculadora" element={<ProtectedRoute><CalculadoraPrecificacao /></ProtectedRoute>} />
             <Route path="/precificacao/custos" element={<ProtectedRoute><CadastroCustos /></ProtectedRoute>} />
             <Route path="/fluxo-caixa" element={<ProtectedRoute><FluxoCaixaDashboard /></ProtectedRoute>} />
@@ -76,13 +95,6 @@ const App = () => {
             <Route path="/fluxo-caixa/categorias" element={<ProtectedRoute><FluxoCaixaCategorias /></ProtectedRoute>} />
             <Route path="/fluxo-caixa/importacao" element={<ProtectedRoute><FluxoCaixaImportacao /></ProtectedRoute>} />
             <Route path="/assistente-anuncio" element={<ProtectedRoute><AssistenteAnuncio /></ProtectedRoute>} />
-            <Route path="/tiktok/dashboard" element={<ProtectedRoute><TikTokDashboard /></ProtectedRoute>} />
-            <Route path="/tiktok/configuracoes" element={<ProtectedRoute><TikTokConfiguracoes /></ProtectedRoute>} />
-            <Route path="/tiktok/upload" element={<ProtectedRoute><TikTokUpload /></ProtectedRoute>} />
-            <Route path="/tiktok/resultados" element={<ProtectedRoute><TikTokResultados /></ProtectedRoute>} />
-            <Route path="/tiktok/variacoes" element={<ProtectedRoute><TikTokVariacoes /></ProtectedRoute>} />
-            <Route path="/tiktok/pagamentos" element={<ProtectedRoute><TikTokPagamentos /></ProtectedRoute>} />
-            <Route path="/tiktok/pagamentos/upload" element={<ProtectedRoute><TikTokPagamentosUpload /></ProtectedRoute>} />
             <Route path="/dre" element={<ProtectedRoute><DRE /></ProtectedRoute>} />
             <Route path="/perfil" element={<ProtectedRoute><Perfil /></ProtectedRoute>} />
             <Route path="/integrations" element={<ProtectedRoute><IntegrationsOverview /></ProtectedRoute>} />
