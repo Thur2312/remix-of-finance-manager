@@ -1,23 +1,21 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useMemo } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
-import { supabase } from '@/integrations/supabase/client';
-import { calculateResults, formatCurrency, RawOrder, SettingsData } from '@/lib/calculations';
-import { fetchAllOrders } from '@/lib/supabase-helpers';
-import { fetchAllTikTokOrders } from '@/lib/tiktok-helpers';
-import { TikTokOrder, calculateTikTokResults, TikTokSettingsData } from '@/lib/tiktok-calculations';
 import { useShopeeSync } from '@/hooks/useShopeeSync';
 import { useIntegrations } from '@/hooks/useIntegrations';
+import { useMercadolivreData } from '@/hooks/useMercadolivreData';
+import { formatCurrency } from '@/lib/calculations';
 
 export type Marketplace = 'shopee' | 'tiktok' | 'mercadolivre' | 'todos';
 
 export interface MarketplaceStats {
   totalOrders: number;
-  grossRevenue: number;   // faturamento bruto
-  netRevenue: number;     // faturamento líquido (após taxas marketplace)
-  fees: number;           // total de taxas
-  profit: number;         // lucro estimado
+  grossRevenue: number;   
+  netRevenue: number;   
+  fees: number;          
+  profit: number;        
   isLoading: boolean;
   hasData: boolean;
+  unavailable?: boolean; 
 }
 
 export interface DashboardData {
@@ -41,16 +39,6 @@ export function useDashboardData(syncPeriod: number = 15) {
   const { user } = useAuth();
 
   // ── Shopee ───────────────────────────────────────────────────────────────
-  const [shopeeOrders, setShopeeOrders] = useState<RawOrder[]>([]);
-  const [shopeeSettings, setShopeeSettings] = useState<SettingsData | null>(null);
-  const [shopeeLoading, setShopeeLoading] = useState(true);
-
-  // ── TikTok ───────────────────────────────────────────────────────────────
-  const [tiktokOrders, setTiktokOrders] = useState<TikTokOrder[]>([]);
-  const [tiktokSettings, setTiktokSettings] = useState<TikTokSettingsData | null>(null);
-  const [tiktokLoading, setTiktokLoading] = useState(true);
-
-  // ── Shopee sync (integração ativa) ───────────────────────────────────────
   const { getConnection, syncNow } = useIntegrations();
   const shopeeConnection = getConnection('shopee');
   const isShopeeConnected = shopeeConnection?.status === 'connected';
@@ -59,128 +47,66 @@ export function useDashboardData(syncPeriod: number = 15) {
     syncPeriod
   );
 
-  // ── Fetch Shopee ─────────────────────────────────────────────────────────
-  useEffect(() => {
-    if (!user) return;
-    const fetch = async () => {
-      setShopeeLoading(true);
-      try {
-        const { data } = await supabase
-          .from('settings')
-          .select('*')
-          .order('is_default', { ascending: false })
-          .limit(1);
-        if (data && data.length > 0) setShopeeSettings(data[0] as SettingsData);
-        const orders = await fetchAllOrders();
-        setShopeeOrders(orders);
-      } finally {
-        setShopeeLoading(false);
-      }
-    };
-    fetch();
-  }, [user]);
+  // ── Mercado Livre ────────────────────────────────────────────────────────
+  const { stats: mlStats } = useMercadolivreData();
 
-  // ── Fetch TikTok ─────────────────────────────────────────────────────────
-  useEffect(() => {
-    if (!user) return;
-    const fetch = async () => {
-      setTiktokLoading(true);
-      try {
-        const { data } = await supabase
-          .from('tiktok_settings')
-          .select('*')
-          .eq('is_default', true)
-          .maybeSingle();
-        if (data) setTiktokSettings(data);
-        const orders = await fetchAllTikTokOrders(user.id);
-        setTiktokOrders(orders);
-      } finally {
-        setTiktokLoading(false);
-      }
-    };
-    fetch();
-  }, [user]);
-
-  // ── Calcular stats Shopee ────────────────────────────────────────────────
+  // ── Stats Shopee ─────────────────────────────────────────────────────────
   const shopeeStats: MarketplaceStats = useMemo(() => {
-    const usingSyncData = isShopeeConnected && syncData && syncData.stats.totalOrders > 0;
-
-    if (usingSyncData) {
-      const gross = syncData.stats.totalRevenue;
-      const fees = syncData.stats.totalFees;
-      return {
-        totalOrders: syncData.stats.totalOrders,
-        grossRevenue: gross,
-        netRevenue: gross - fees,
-        fees,
-        profit: gross - fees,
-        isLoading: syncLoading,
-        hasData: true,
-      };
+    if (!isShopeeConnected || !syncData) {
+      return { ...EMPTY_STATS, isLoading: syncLoading };
     }
 
-    if (!shopeeSettings || shopeeOrders.length === 0) {
-      return { ...EMPTY_STATS, isLoading: shopeeLoading };
-    }
-
-    const results = calculateResults(shopeeOrders, shopeeSettings, 'produto');
-    const gross = results.totals.total_faturado;
-    const fees = results.totals.taxa_shopee_reais;
+    const gross = syncData.stats.totalRevenue;
+    const fees = syncData.stats.totalFees;
     return {
-      totalOrders: shopeeOrders.length,
+      totalOrders: syncData.stats.totalOrders,
       grossRevenue: gross,
       netRevenue: gross - fees,
       fees,
-      profit: results.totals.lucro_reais,
-      isLoading: shopeeLoading,
-      hasData: shopeeOrders.length > 0,
+      profit: gross - fees,
+      isLoading: syncLoading,
+      hasData: syncData.stats.totalOrders > 0,
     };
-  }, [shopeeOrders, shopeeSettings, shopeeLoading, syncData, syncLoading, isShopeeConnected]);
+  }, [syncData, syncLoading, isShopeeConnected]);
 
-  // ── Calcular stats TikTok ────────────────────────────────────────────────
-  const tiktokStats: MarketplaceStats = useMemo(() => {
-    if (!tiktokSettings || tiktokOrders.length === 0) {
-      return { ...EMPTY_STATS, isLoading: tiktokLoading };
-    }
-    const results = calculateTikTokResults(tiktokOrders, tiktokSettings, 'produto');
-    const gross = results.totals.total_faturado;
-    const fees = results.totals.taxa_tiktok_reais ?? 0;
-    return {
-      totalOrders: tiktokOrders.length,
-      grossRevenue: gross,
-      netRevenue: gross - fees,
-      fees,
-      profit: results.totals.lucro_reais,
-      isLoading: tiktokLoading,
-      hasData: tiktokOrders.length > 0,
-    };
-  }, [tiktokOrders, tiktokSettings, tiktokLoading]);
+  // ── Stats TikTok (indisponível por enquanto) ──────────────────────────────
+  const tiktokStats: MarketplaceStats = useMemo(() => ({
+    ...EMPTY_STATS,
+    unavailable: true,
+  }), []);
 
-  // ── Mercado Livre (placeholder — sem API ainda) ──────────────────────────
-  const mercadolivreStats: MarketplaceStats = useMemo(() => ({ ...EMPTY_STATS }), []);
+  // ── Stats Mercado Livre ───────────────────────────────────────────────────
+  const mercadolivreStats: MarketplaceStats = useMemo(() => ({
+    totalOrders: mlStats.totalOrders,
+    grossRevenue: mlStats.grossRevenue,
+    netRevenue: mlStats.netRevenue,
+    fees: mlStats.fees,
+    profit: mlStats.profit,
+    isLoading: mlStats.isLoading,
+    hasData: mlStats.hasData,
+  }), [mlStats]);
 
-  // ── Combined ─────────────────────────────────────────────────────────────
+  // ── Combined (Shopee + ML — TikTok excluído enquanto indisponível) ────────
   const combined: MarketplaceStats = useMemo(() => {
-    const all = [shopeeStats, tiktokStats, mercadolivreStats];
-    const isLoading = all.some(s => s.isLoading);
-    const hasData = all.some(s => s.hasData);
+    const active = [shopeeStats, mercadolivreStats];
+    const isLoading = active.some(s => s.isLoading);
+    const hasData = active.some(s => s.hasData);
     return {
-      totalOrders: all.reduce((a, s) => a + s.totalOrders, 0),
-      grossRevenue: all.reduce((a, s) => a + s.grossRevenue, 0),
-      netRevenue: all.reduce((a, s) => a + s.netRevenue, 0),
-      fees: all.reduce((a, s) => a + s.fees, 0),
-      profit: all.reduce((a, s) => a + s.profit, 0),
+      totalOrders: active.reduce((a, s) => a + s.totalOrders, 0),
+      grossRevenue: active.reduce((a, s) => a + s.grossRevenue, 0),
+      netRevenue: active.reduce((a, s) => a + s.netRevenue, 0),
+      fees: active.reduce((a, s) => a + s.fees, 0),
+      profit: active.reduce((a, s) => a + s.profit, 0),
       isLoading,
       hasData,
     };
-  }, [shopeeStats, tiktokStats, mercadolivreStats]);
+  }, [shopeeStats, mercadolivreStats]);
 
   return {
     shopee: shopeeStats,
     tiktok: tiktokStats,
     mercadolivre: mercadolivreStats,
     combined,
-    // Dados extras úteis para o dashboard de Shopee
     shopeeConnection,
     isShopeeConnected,
     syncData,
