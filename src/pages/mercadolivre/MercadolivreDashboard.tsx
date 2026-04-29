@@ -183,7 +183,7 @@ export function MercadolivreDashboardContent() {
                 <Button
                   size="sm"
                   variant="outline"
-                  onClick={() => syncNow.mutate({ connectionId: mlConnection!.id, days: 30 })}
+                  onClick={() => syncNow.mutate({ connectionId: mlConnection!.id, days: 30, provider: 'mercadolivre' })}
                   disabled={syncNow.isPending}
                 >
                   {syncNow.isPending
