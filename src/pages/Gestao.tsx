@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { ProtectedRoute } from '@/components/layout/ProtectedRoute';
 import { InPageNav, shopeeNavTabs, tiktokNavTabs } from '@/components/layout/InPageNav';
-import { mercadolivreNavTabs } from '@/pages/mercadolivre/MercadolivreDashboard';
+import { mercadolivreNavTabs } from '@/components/layout/InPageNav';
 
 // Importa apenas o conteúdo interno — sem AppLayout aninhado
 import { ShopeeDashboardContent } from '@/pages/shopee/Dashboard';
