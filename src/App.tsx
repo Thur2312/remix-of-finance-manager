@@ -77,29 +77,27 @@ const App = () => {
 
             {/* ── Rotas de MErcado-livre (sub-rotas da Gestão, mantidas para InPageNav) */}
 
-         <Route path="/gestao" element={<ProtectedRoute><Gestao /></ProtectedRoute>}>
-            {/* Shopee */}
-            <Route path="/shopee/dashboard"      element={<Navigate to="/shopee/resultados" replace />} />
-            <Route path="/shopee/resultados"     element={<Resultados />} />
-            <Route path="/shopee/variacoes"      element={<ResultadosVariacoes />} />
-            <Route path="/shopee/upload"         element={<Upload />} />
-            <Route path="/shopee/configuracoes"  element={<Configuracoes />} />
-
-            {/* TikTok */}
-            <Route path="/tiktok/dashboard"         element={<Navigate to="/tiktok/resultados" replace />} />
-            <Route path="/tiktok/resultados"        element={<TikTokResultados />} />
-            <Route path="/tiktok/variacoes"         element={<TikTokVariacoes />} />
-            <Route path="/tiktok/upload"            element={<TikTokUpload />} />
-            <Route path="/tiktok/pagamentos"        element={<TikTokPagamentos />} />
-            <Route path="/tiktok/pagamentos/upload" element={<TikTokPagamentosUpload />} />
-            <Route path="/tiktok/configuracoes"     element={<TikTokConfiguracoes />} />
-
-            {/* Mercado Livre */}
             <Route path="/mercadolivre/resultados"    element={<MercadoLivreResultados />} />
             <Route path="/mercadolivre/variacoes"     element={<MercadoLivreVariacoes />} />
             <Route path="/mercadolivre/pagamentos"    element={<MercadoLivrePagamentos />} />
             <Route path="/mercadolivre/configuracoes" element={<MercadoLivreConfiguracoes />} />
-          </Route>
+
+            {/* ── Rotas de Shopee (sub-rotas da Gestão, mantidas para InPageNav) */}
+            <Route path="shopee/dashboard" element={<ProtectedRoute><Navigate to="/gestao" replace /></ProtectedRoute>} />
+            <Route path="shopee/configuracoes" element={<ProtectedRoute><Configuracoes /></ProtectedRoute>} />
+            <Route path="shopee/upload" element={<ProtectedRoute><Upload /></ProtectedRoute>} />
+            <Route path="shopee/resultados" element={<ProtectedRoute><Resultados /></ProtectedRoute>} />
+            <Route path="shopee/variacoes" element={<ProtectedRoute><ResultadosVariacoes /></ProtectedRoute>} />
+
+            {/* ── Rotas de TikTok (sub-rotas da Gestão, mantidas para InPageNav) */}
+            <Route path="/tiktok/dashboard" element={<ProtectedRoute><Navigate to="/gestao" replace /></ProtectedRoute>} />
+            <Route path="/tiktok/configuracoes" element={<ProtectedRoute><TikTokConfiguracoes /></ProtectedRoute>} />
+            <Route path="/tiktok/upload" element={<ProtectedRoute><TikTokUpload /></ProtectedRoute>} />
+            <Route path="/tiktok/resultados" element={<ProtectedRoute><TikTokResultados /></ProtectedRoute>} />
+            <Route path="/tiktok/variacoes" element={<ProtectedRoute><TikTokVariacoes /></ProtectedRoute>} />
+            <Route path="/tiktok/pagamentos" element={<ProtectedRoute><TikTokPagamentos /></ProtectedRoute>} />
+            <Route path="/tiktok/pagamentos/upload" element={<ProtectedRoute><TikTokPagamentosUpload /></ProtectedRoute>} />
+
             {/* Demais rotas protegidas */}
             <Route path="/calculadora" element={<ProtectedRoute><CalculadoraPrecificacao /></ProtectedRoute>} />
             <Route path="/precificacao/custos" element={<ProtectedRoute><CadastroCustos /></ProtectedRoute>} />
@@ -123,6 +121,4 @@ const App = () => {
 };
 
 export default App;
-
-// Substitua o bloco de rotas do /gestao, shopee, tiktok e mercadolivre por isso:
 
