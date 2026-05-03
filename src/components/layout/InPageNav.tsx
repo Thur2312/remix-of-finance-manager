@@ -62,7 +62,7 @@ export const fluxoCaixaNavTabs: NavTab[] = [
 ];
 
 export const mercadolivreNavTabs: NavTab[] = [
-  { label: 'Dashboard',     href: '/gestão' },
+  { label: 'Dashboard',     href: '/gestao' },
   { label: 'Resultados',    href: '/mercadolivre/resultados' },
   { label: 'Variações',     href: '/mercadolivre/variacoes' },
   { label: 'Pagamentos',    href: '/mercadolivre/pagamentos' },
