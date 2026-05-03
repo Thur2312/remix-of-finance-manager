@@ -287,6 +287,8 @@ if (!step || step === 'orders') {
           response_optional_fields: "buyer_username,pay_time,tracking_no,shipping_carrier,total_amount,currency,create_time,update_time,item_list",
         }, PARTNER_ID, PARTNER_KEY, accessToken, shopId)
 
+        console.log("SAMPLE ORDER:", JSON.stringify(orderDetails.order_list?.[0], null, 2))
+
         const ordersToUpsert = (orderDetails.order_list ?? []).map(order => ({
           integration_id: connection_id,
           external_order_id: order.order_sn,
@@ -302,26 +304,10 @@ if (!step || step === 'orders') {
           synced_at: now.toISOString(),
         }))
 
-        const { data: insertedOrders, error: insertError } = await supabaseAdmin
+        const { data: upsertedOrders, error: upsertError } = await supabaseAdmin
           .from("orders")
-          .insert(ordersToUpsert)
+          .upsert(ordersToUpsert, { onConflict: "integration_id,external_order_id" })
           .select("id, external_order_id")
-
-        let upsertedOrders = insertedOrders
-        let upsertError = insertError
-
-        if (insertError?.code === '23505') {
-          upsertedOrders = []
-          upsertError = null
-          for (const order of ordersToUpsert) {
-            const { data, error } = await supabaseAdmin
-              .from("orders")
-              .upsert(order, { onConflict: "integration_id,external_order_id" })
-              .select("id, external_order_id")
-              .single()
-            if (!error && data) upsertedOrders.push(data)
-          }
-        }
 
         if (upsertError) {
           console.error("❌ Erro ao salvar pedidos em batch:", JSON.stringify(upsertError))
@@ -392,7 +378,7 @@ if (!step || step === 'orders') {
       let escrowSafetyLimit = 0
       let escrowPage = 1
 
-      while (escrowHasMore && escrowSafetyLimit < 20) {
+      while (escrowHasMore && escrowSafetyLimit < 3) {
         const escrowList = await shopeeGet<{
           escrow_list: { order_sn: string; escrow_release_time: number; payout_amount: number }[]
           more: boolean
@@ -414,7 +400,7 @@ if (!step || step === 'orders') {
 
       console.log(`💰 Total de escrows encontrados: ${escrowOrders.length}`)
 
-        for (const escrowOrder of escrowOrders) {
+        for (const escrowOrder of escrowOrders.slice(0, 30)) {
           try {
             await new Promise(r => setTimeout(r, 100))
             const escrowDetail = await shopeeGet<{

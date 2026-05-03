@@ -2,7 +2,6 @@ import { useState, useEffect } from 'react';
 import { supabase } from '../integrations/supabase/client';
 import { applyTaxRate } from './useCompanies';
 
-
 interface TaxInfo {
   companyId: string | null;
   companyName: string | null;
@@ -37,7 +36,7 @@ export function useIntegrationTax(
 
     setInfo(p => ({ ...p, loading: true }));
 
-    void db
+    void supabase  // ← era `db`, corrigido para `supabase`
       .from(table)
       .select('company_id, companies(id, name, tax_rate)')
       .eq('id', integrationId)

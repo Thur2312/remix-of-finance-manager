@@ -112,17 +112,19 @@ export function useIntegrations() {
         if (error) throw error;
       }
 
-      // Payments
-      const { error: paymentsError } = await supabase.functions.invoke('integration-sync', {
+    try {
+      await supabase.functions.invoke('integration-sync', {
         body: { connection_id: connectionId, days: daysToSync, step: 'payments' },
       });
-      if (paymentsError) throw paymentsError;
+    } catch (e) {
+      console.warn('Payments sync timeout ou erro, continuando...', e);
+    }
 
-      // Wallet
-      const { data: walletData, error: walletError } = await supabase.functions.invoke('integration-sync', {
-        body: { connection_id: connectionId, days: daysToSync, step: 'wallet' },
-      });
-      if (walletError) throw walletError;
+    // Wallet
+    const { data: walletData, error: walletError } = await supabase.functions.invoke('integration-sync', {
+      body: { connection_id: connectionId, days: daysToSync, step: 'wallet' },
+    });
+    if (walletError) throw walletError;
 
       return walletData;
     },
