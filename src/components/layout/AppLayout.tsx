@@ -2,15 +2,16 @@ import { ReactNode } from 'react';
 import { SidebarProvider, SidebarTrigger, SidebarInset } from '@/components/ui/sidebar';
 import { AppSidebar } from './AppSidebar';
 import { Separator } from '@/components/ui/separator';
+import { FinancialAssistant } from '@/components/assistant/FinancialAssistant'; // ← adicionar
+
 interface AppLayoutProps {
   children: ReactNode;
   title?: string;
 }
-export function AppLayout({
-  children,
-  title
-}: AppLayoutProps) {
-  return <SidebarProvider>
+
+export function AppLayout({ children, title }: AppLayoutProps) {
+  return (
+    <SidebarProvider>
       <div className="flex min-h-screen w-full">
         <AppSidebar />
         <SidebarInset className="flex-1">
@@ -24,5 +25,7 @@ export function AppLayout({
           </main>
         </SidebarInset>
       </div>
-    </SidebarProvider>;
+      <FinancialAssistant /> 
+    </SidebarProvider>
+  );
 }
