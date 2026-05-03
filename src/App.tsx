@@ -35,6 +35,10 @@ import IntegrationManage from "./pages/integrations/IntegrationManage";
 import IntegrationCallback from "./pages/integrations/IntegrationCallback";
 import TermosDeUso from "./pages/TermosDeUso";
 import PoliticaDePrivacidade from "./pages/PoliticaDePrivacidade";
+import MercadoLivreResultados  from '@/pages/mercadolivre/resultados';
+import MercadoLivreVariacoes   from '@/pages/mercadolivre/variacoes';
+import MercadoLivrePagamentos  from '@/pages/mercadolivre/pagamentos';
+import MercadoLivreConfiguracoes from '@/pages/mercadolivre/configuracoes';
 
 // ── Novas páginas unificadas ────────────────────────────────────────────────
 import UnifiedDashboard from "./pages/UnifiedDashboard";
@@ -70,6 +74,13 @@ const App = () => {
             {/* ── Novas rotas unificadas ──────────────────────────── */}
             <Route path="/dashboard" element={<ProtectedRoute><UnifiedDashboard /></ProtectedRoute>} />
             <Route path="/gestao" element={<ProtectedRoute><Gestao /></ProtectedRoute>} />
+
+            {/* ── Rotas de MErcado-livre (sub-rotas da Gestão, mantidas para InPageNav) */}
+
+            <Route path="/mercadolivre/resultados"    element={<MercadoLivreResultados />} />
+            <Route path="/mercadolivre/variacoes"     element={<MercadoLivreVariacoes />} />
+            <Route path="/mercadolivre/pagamentos"    element={<MercadoLivrePagamentos />} />
+            <Route path="/mercadolivre/configuracoes" element={<MercadoLivreConfiguracoes />} />
 
             {/* ── Rotas de Shopee (sub-rotas da Gestão, mantidas para InPageNav) */}
             <Route path="shopee/dashboard" element={<ProtectedRoute><Navigate to="/gestao" replace /></ProtectedRoute>} />
@@ -110,3 +121,4 @@ const App = () => {
 };
 
 export default App;
+

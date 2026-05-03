@@ -1,6 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '../integrations/supabase/client';
-import { SupabaseClient } from '@supabase/supabase-js';
 
 export interface Company {
   id: string;
@@ -19,7 +18,6 @@ export interface CompanyFormData {
 }
 
 // Cast tipado sem usar 'any'
-const db = supabase as unknown as SupabaseClient;
 
 export function useCompanies() {
   const [companies, setCompanies] = useState<Company[]>([]);

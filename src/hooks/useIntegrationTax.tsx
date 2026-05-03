@@ -1,9 +1,7 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '../integrations/supabase/client';
-import { SupabaseClient } from '@supabase/supabase-js';
 import { applyTaxRate } from './useCompanies';
 
-const db = supabase as unknown as SupabaseClient;
 
 interface TaxInfo {
   companyId: string | null;

@@ -1,10 +1,6 @@
 import { useState, useEffect, useMemo } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
-import { SupabaseClient } from '@supabase/supabase-js';
-
-// Cast tipado para tabelas fora do schema gerado (igual ao useCompanies.ts)
-const db = supabase as unknown as SupabaseClient;
 
 export interface MlOrder {
   user_id: string;
@@ -47,7 +43,7 @@ export function useMercadolivreData() {
       setLoading(true);
       setError(null);
       try {
-        const { data, error: err } = await db
+        const { data, error: err } = await supabase
           .from('ml_orders')
           .select('*')
           .eq('user_id', user.id)

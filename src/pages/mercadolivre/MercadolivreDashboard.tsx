@@ -16,16 +16,7 @@ import { Company } from '@/hooks/useCompanies';
 import { useMercadolivreData } from '@/hooks/useMercadolivreData';
 import { useIntegrations } from '@/hooks/useIntegrations';
 import { formatCurrency } from '@/lib/calculations';
-
-// ─── Abas do Mercado Livre ────────────────────────────────────────────────────
-export const mercadolivreNavTabs: NavTab[] = [
-  { label: 'Dashboard',     href: '/mercadolivre/dashboard' },
-  { label: 'Resultados',    href: '/mercadolivre/resultados' },
-  { label: 'Variações',     href: '/mercadolivre/variacoes' },
-  { label: 'Pagamentos',    href: '/mercadolivre/pagamentos' },
-  { label: 'Configurações', href: '/mercadolivre/configuracoes' },
-];
-
+import { mercadolivreNavTabs } from '@/components/layout/InPageNav';
 // ─── Info Popover ─────────────────────────────────────────────────────────────
 function InfoPopover({ title, children }: { title: string; children: React.ReactNode }) {
   return (
