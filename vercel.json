@@ -7,7 +7,13 @@
   ],
   "redirects": [
     {
-      "source": "https://sellerfinance-seven.vercel.app/(.*)",
+      "source": "/(.*)",
+      "has": [
+        {
+          "type": "host",
+          "value": "sellerfinance-seven.vercel.app"
+        }
+      ],
       "destination": "https://www.sellerfinance.com.br/$1",
       "permanent": true
     }
