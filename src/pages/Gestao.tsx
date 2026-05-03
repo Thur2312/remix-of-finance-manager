@@ -1,31 +1,38 @@
-import { useState } from 'react';
+import { useNavigate, useLocation, Outlet } from 'react-router-dom';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { ProtectedRoute } from '@/components/layout/ProtectedRoute';
-import { InPageNav, shopeeNavTabs, tiktokNavTabs } from '@/components/layout/InPageNav';
-import { mercadolivreNavTabs } from '@/components/layout/InPageNav';
-
-// Importa apenas o conteúdo interno — sem AppLayout aninhado
-import { ShopeeDashboardContent } from '@/pages/shopee/Dashboard';
-import { TikTokDashboardContent } from '@/pages/tiktok/TikTokDashboard';
-import { MercadolivreDashboardContent } from '@/pages/mercadolivre/MercadolivreDashboard';
+import { InPageNav, shopeeNavTabs, tiktokNavTabs, mercadolivreNavTabs } from '@/components/layout/InPageNav';
 
 import logoShopee from '@/assets/logo-shopee.jpg';
 import logoTikTok from '@/assets/logo-tiktok.png';
 
 type MarketplaceFilter = 'shopee' | 'tiktok' | 'mercadolivre';
 
-interface MarketplaceOption {
-  value: MarketplaceFilter;
-  label: string;
-  available: boolean;
-  comingSoon?: boolean;
-}
-
-const OPTIONS: MarketplaceOption[] = [
-  { value: 'shopee',       label: 'Shopee',        available: true  },
-  { value: 'tiktok',       label: 'TikTok Shop',   available: true  },
-  { value: 'mercadolivre', label: 'Mercado Livre',  available: true  },
+const OPTIONS = [
+  { value: 'shopee'       as MarketplaceFilter, label: 'Shopee'       },
+  { value: 'tiktok'       as MarketplaceFilter, label: 'TikTok Shop'  },
+  { value: 'mercadolivre' as MarketplaceFilter, label: 'Mercado Livre' },
 ];
+
+// Mapeia prefixo de rota → marketplace
+const ROUTE_MAP: Record<string, MarketplaceFilter> = {
+  '/shopee':       'shopee',
+  '/tiktok':       'tiktok',
+  '/mercadolivre': 'mercadolivre',
+};
+
+// Dashboard padrão de cada marketplace
+const DASHBOARD_ROUTE: Record<MarketplaceFilter, string> = {
+  shopee:        '/shopee/resultados',
+  tiktok:        '/tiktok/resultados',
+  mercadolivre:  '/mercadolivre/resultados',
+};
+
+const NAV_TABS: Record<MarketplaceFilter, typeof shopeeNavTabs> = {
+  shopee:        shopeeNavTabs,
+  tiktok:        tiktokNavTabs,
+  mercadolivre:  mercadolivreNavTabs,
+};
 
 function MarketplaceLogo({ mp }: { mp: MarketplaceFilter }) {
   if (mp === 'shopee') {
@@ -42,7 +49,24 @@ function MarketplaceLogo({ mp }: { mp: MarketplaceFilter }) {
 }
 
 function GestaoContent() {
-  const [selected, setSelected] = useState<MarketplaceFilter>('shopee');
+  const location = useLocation();
+  const navigate = useNavigate();
+
+  // Detecta qual marketplace está ativo pela rota atual
+  const activeMarketplace: MarketplaceFilter =
+    Object.entries(ROUTE_MAP).find(([prefix]) =>
+      location.pathname.startsWith(prefix)
+    )?.[1] ?? 'shopee';
+
+  const handleSelect = (mp: MarketplaceFilter) => {
+    navigate(DASHBOARD_ROUTE[mp]);
+  };
+
+  // Se estiver em /gestao (sem sub-rota), redireciona para shopee
+  if (location.pathname === '/gestao') {
+    navigate(DASHBOARD_ROUTE['shopee'], { replace: true });
+    return null;
+  }
 
   return (
     <div className="space-y-6 animate-fade-in">
@@ -54,49 +78,30 @@ function GestaoContent() {
         </p>
       </div>
 
+      {/* Seletor de plataforma */}
       <div className="flex items-center gap-1 bg-muted/60 rounded-lg p-1 w-fit">
         {OPTIONS.map(opt => (
           <button
             key={opt.value}
-            onClick={() => opt.available && setSelected(opt.value)}
-            disabled={!opt.available}
-            className={`flex items-center gap-2 px-4 py-2 rounded-md text-sm font-medium transition-all disabled:opacity-50 disabled:cursor-not-allowed ${
-              selected === opt.value && opt.available
+            onClick={() => handleSelect(opt.value)}
+            className={`flex items-center gap-2 px-4 py-2 rounded-md text-sm font-medium transition-all ${
+              activeMarketplace === opt.value
                 ? 'bg-background shadow-sm text-foreground'
                 : 'text-muted-foreground hover:text-foreground'
             }`}
           >
             <MarketplaceLogo mp={opt.value} />
             {opt.label}
-            {opt.comingSoon && (
-              <span className="text-[10px] bg-primary/10 text-primary px-1.5 py-0.5 rounded-full">
-                em breve
-              </span>
-            )}
           </button>
         ))}
       </div>
 
-      {selected === 'shopee' && (
-        <div className="space-y-4">
-          <InPageNav tabs={shopeeNavTabs} />
-          <ShopeeDashboardContent />
-        </div>
-      )}
+      {/* Nav tabs da plataforma ativa */}
+      <InPageNav tabs={NAV_TABS[activeMarketplace]} />
 
-      {selected === 'tiktok' && (
-        <div className="space-y-4">
-          <InPageNav tabs={tiktokNavTabs} />
-          <TikTokDashboardContent />
-        </div>
-      )}
+      {/* Conteúdo da sub-rota */}
+      <Outlet />
 
-      {selected === 'mercadolivre' && (
-        <div className="space-y-4">
-          <InPageNav tabs={mercadolivreNavTabs} />
-          <MercadolivreDashboardContent />
-        </div>
-      )}
     </div>
   );
 }
