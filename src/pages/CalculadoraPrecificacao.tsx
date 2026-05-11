@@ -554,7 +554,7 @@ function CalculadoraPrecificacaoContent() {
                       </DialogDescription>
                     </DialogHeader>
 
-                    <div className="space-y-4 py-2">
+                    <div className="space-y-3 py-2">
                       <div className="space-y-2">
                         <Label htmlFor="nome_anuncio" className="font-medium">
                           Nome do Anúncio <span className="text-destructive">*</span>
