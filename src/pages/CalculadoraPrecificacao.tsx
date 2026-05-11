@@ -49,13 +49,12 @@ const parseInput = (val: string): number => {
 // ─── Tabela de taxas Shopee ───────────────────────────────────────────────────
 // Retorna { comissao: number (%), taxaFixa: number (R$) } com base no preço
 function getShopeeRates(preco: number): { comissao: number; taxaFixa: number } {
-  if (preco < 80)    return { comissao: 20, taxaFixa: 4  };
-  if (preco < 100)   return { comissao: 14, taxaFixa: 16 };
-  if (preco < 200)   return { comissao: 14, taxaFixa: 20 };
-  if (preco < 500)   return { comissao: 14, taxaFixa: 26 };
-  return                    { comissao: 14, taxaFixa: 26 };
+  if (preco <= 79.99)  return { comissao: 20, taxaFixa: 4  };
+  if (preco <= 99.99)  return { comissao: 14, taxaFixa: 16 };
+  if (preco <= 199.99) return { comissao: 14, taxaFixa: 20 };
+  if (preco <= 499.99) return { comissao: 14, taxaFixa: 26 };
+  return               { comissao: 14, taxaFixa: 26 };
 }
-
 // ─── Plataforma selector ─────────────────────────────────────────────────────
 type Plataforma = "Shopee" | "TiktokShop" | "MercadoLivre";
 
@@ -105,14 +104,13 @@ function CalculadoraPrecificacaoContent() {
   const volumeMensal = fixedCostsSettings?.monthly_products_sold || 100;
 
   // ── Auto-fill Shopee ──────────────────────────────────────────────────────
-  // Único useEffect: atualiza comissão e taxa fixa sempre que a plataforma for Shopee ou o preço mudar
   useEffect(() => {
-    if (plataformaSelecionada !== "Shopee") return;
-    const preco = parseInput(precoPromocional);
-    const { comissao, taxaFixa: taxa } = getShopeeRates(preco > 0 ? preco : 0);
-    setComissaoPlataforma(String(comissao));
-    setTaxaFixa(String(taxa));
-  }, [plataformaSelecionada, precoPromocional]);
+  if (plataformaSelecionada !== "Shopee") return;
+  const preco = parseInput(precoPromocional);
+  const { comissao, taxaFixa: taxa } = getShopeeRates(preco);
+  setComissaoPlataforma(String(comissao));
+  setTaxaFixa(String(taxa));
+}, [plataformaSelecionada, precoPromocional]);
 
   const handleDecimalInput = (value: string, setter: (v: string) => void) => {
     if (value === "" || /^[0-9]*[,.]?[0-9]*$/.test(value)) setter(value);
