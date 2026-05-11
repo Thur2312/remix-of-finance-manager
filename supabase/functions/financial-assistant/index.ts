@@ -73,7 +73,6 @@ async function buscarDadosFinanceiros(supabase: ReturnType<typeof createClient>,
   inicio60Dias.setDate(hoje.getDate() - 60);
   const dataInicio = inicio60Dias.toISOString();
 
-  // Busca integrações conectadas do usuário
   const { data: integracoes } = await supabase
     .from('integration_connections')
     .select('id, provider, shop_name, status')
@@ -99,7 +98,6 @@ async function buscarDadosFinanceiros(supabase: ReturnType<typeof createClient>,
     };
   }
 
-  // ETAPA 1 — busca pedidos primeiro para ter os IDs
   const pedidosRes = await supabase
     .from('orders')
     .select('id, external_order_id, status, total_amount, order_created_at, integration_id')
@@ -112,7 +110,6 @@ async function buscarDadosFinanceiros(supabase: ReturnType<typeof createClient>,
   const pedidoIds = pedidos.map((p: { id: string }) => p.id);
   const pedidoIdsFiltro = pedidoIds.length > 0 ? pedidoIds : ['00000000-0000-0000-0000-000000000000'];
 
-  // ETAPA 2 — busca tudo em paralelo com os IDs já disponíveis
   const [
     itensRes,
     pagamentosRes,
@@ -163,7 +160,6 @@ async function buscarDadosFinanceiros(supabase: ReturnType<typeof createClient>,
   const pagamentos = pagamentosRes.data ?? [];
   const taxas = taxasRes.data ?? [];
 
-  // Mapas por order_id para cruzamento
   const pagamentoPorPedido: Record<string, { amount: number; net_amount: number; marketplace_fee: number }> = {};
   for (const p of pagamentos) {
     if (!p.order_id) continue;
@@ -189,7 +185,6 @@ async function buscarDadosFinanceiros(supabase: ReturnType<typeof createClient>,
     itensPorPedido[item.order_id].push(item);
   }
 
-  // Resumo por status
   const porStatus: Record<string, { count: number; total: number }> = {};
   for (const p of pedidos) {
     const s = p.status || 'UNKNOWN';
@@ -198,7 +193,6 @@ async function buscarDadosFinanceiros(supabase: ReturnType<typeof createClient>,
     porStatus[s].total += Number(p.total_amount) || 0;
   }
 
-  // Análise por produto — cruza itens com net_amount proporcional do pagamento
   const porProduto: Record<string, {
     quantidade: number;
     receita_bruta: number;
@@ -248,14 +242,12 @@ async function buscarDadosFinanceiros(supabase: ReturnType<typeof createClient>,
         : 0,
     }));
 
-  // Taxas totais por tipo
   const taxasPorTipo: Record<string, number> = {};
   for (const t of taxas) {
     const tipo = t.fee_type || 'outros';
     taxasPorTipo[tipo] = (taxasPorTipo[tipo] || 0) + Number(t.amount);
   }
 
-  // Totais gerais
   const pedidosAtivos = pedidos.filter(p => p.status !== 'CANCELLED');
   const faturamentoBruto = pedidosAtivos.reduce((acc, p) => acc + (Number(p.total_amount) || 0), 0);
   const valorLiberado = pagamentos.reduce((acc, p) => acc + (Number(p.amount) || 0), 0);
@@ -265,7 +257,6 @@ async function buscarDadosFinanceiros(supabase: ReturnType<typeof createClient>,
     .filter((c: { is_recurring: boolean }) => c.is_recurring)
     .reduce((acc: number, c: { amount: number }) => acc + c.amount, 0);
 
-  // Amostra dos 10 pedidos COMPLETED com maior valor, com margem detalhada
   const pedidosComMargem = pedidos
     .filter(p => p.status === 'COMPLETED' && pagamentoPorPedido[p.id])
     .slice(0, 10)
@@ -341,6 +332,54 @@ async function buscarDadosFinanceiros(supabase: ReturnType<typeof createClient>,
     configuracoes: configRes.data ?? null,
   };
 }
+
+// ─── Retry com backoff exponencial ───────────────────────────────────────────
+// Tenta até MAX_RETRIES vezes para erros 503 e 429 do Gemini.
+// Espera: 1s, 2s, 4s entre as tentativas.
+const MAX_RETRIES = 3;
+const RETRY_STATUS = new Set([429, 503]);
+
+async function callGeminiWithRetry(
+  apiKey: string,
+  body: object,
+): Promise<{ ok: boolean; status: number; data?: unknown; errorText?: string }> {
+  let lastStatus = 500;
+  let lastErrorText = '';
+
+  for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
+    const response = await fetch(
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent`,
+      {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-goog-api-key': apiKey,
+        },
+        body: JSON.stringify(body),
+      }
+    );
+
+    if (response.ok) {
+      const data = await response.json();
+      return { ok: true, status: response.status, data };
+    }
+
+    lastStatus = response.status;
+    lastErrorText = await response.text();
+    console.error(`Gemini tentativa ${attempt}/${MAX_RETRIES} — status ${lastStatus}:`, lastErrorText);
+
+    // Só tenta de novo para 429 e 503
+    if (!RETRY_STATUS.has(lastStatus) || attempt === MAX_RETRIES) break;
+
+    // Backoff exponencial: 1s → 2s → 4s
+    const delay = Math.pow(2, attempt - 1) * 1000;
+    console.log(`Aguardando ${delay}ms antes da próxima tentativa...`);
+    await new Promise(resolve => setTimeout(resolve, delay));
+  }
+
+  return { ok: false, status: lastStatus, errorText: lastErrorText };
+}
+// ─────────────────────────────────────────────────────────────────────────────
 
 serve(async (req: Request) => {
   if (req.method === 'OPTIONS') {
@@ -446,37 +485,35 @@ serve(async (req: Request) => {
       );
     }
 
-    const response = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent`,
-      {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'x-goog-api-key': GEMINI_API_KEY,
-        },
-        body: JSON.stringify({
-          contents,
-          generationConfig: { temperature: 0.4, maxOutputTokens: 1024 },
-        }),
-      }
-    );
+    const geminiResult = await callGeminiWithRetry(GEMINI_API_KEY, {
+      contents,
+      generationConfig: { temperature: 0.4, maxOutputTokens: 1024 },
+    });
 
-    if (!response.ok) {
-      const errorText = await response.text();
-      console.error('Erro Gemini:', response.status, errorText);
-      if (response.status === 429) {
+    if (!geminiResult.ok) {
+      console.error('Gemini falhou após todas as tentativas. Status:', geminiResult.status);
+
+      // Mensagens amigáveis por tipo de erro
+      if (geminiResult.status === 503) {
         return new Response(
-          JSON.stringify({ error: 'Limite de requisições atingido. Aguarde e tente novamente.' }),
+          JSON.stringify({ error: 'O assistente está com alta demanda no momento. Aguarde alguns segundos e tente novamente.' }),
+          { status: 503, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+      if (geminiResult.status === 429) {
+        return new Response(
+          JSON.stringify({ error: 'Limite de requisições atingido. Aguarde um momento e tente novamente.' }),
           { status: 429, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
         );
       }
       return new Response(
-        JSON.stringify({ error: 'Erro ao consultar a IA.' }),
+        JSON.stringify({ error: 'Erro ao consultar a IA. Tente novamente em instantes.' }),
         { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
-    const data = await response.json();
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const data = geminiResult.data as any;
     const resposta = data.candidates?.[0]?.content?.parts?.[0]?.text;
 
     if (!resposta) {

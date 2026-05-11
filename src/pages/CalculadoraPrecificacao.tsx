@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from "react";
+import React, { useState, useMemo, useEffect } from "react";
 import { Link } from "react-router-dom";
 import { ProtectedRoute } from "@/components/layout/ProtectedRoute";
 import { AppLayout } from "@/components/layout/AppLayout";
@@ -46,12 +46,23 @@ const parseInput = (val: string): number => {
   return isNaN(parsed) ? 0 : parsed;
 };
 
+// ─── Tabela de taxas Shopee ───────────────────────────────────────────────────
+// Retorna { comissao: number (%), taxaFixa: number (R$) } com base no preço
+function getShopeeRates(preco: number): { comissao: number; taxaFixa: number } {
+  if (preco < 80)    return { comissao: 20, taxaFixa: 4  };
+  if (preco < 100)   return { comissao: 14, taxaFixa: 16 };
+  if (preco < 200)   return { comissao: 14, taxaFixa: 20 };
+  if (preco < 500)   return { comissao: 14, taxaFixa: 26 };
+  return                    { comissao: 14, taxaFixa: 26 };
+}
+
 // ─── Plataforma selector ─────────────────────────────────────────────────────
-type Plataforma = "Shopee" | "TiktokShop" | "";
+type Plataforma = "Shopee" | "TiktokShop" | "MercadoLivre";
 
 const PLATAFORMA_OPTIONS: { value: Plataforma; label: string; color: string; bg: string }[] = [
-  { value: "Shopee",     label: "Shopee",      color: "text-orange-600", bg: "bg-orange-500/10 border-orange-500/30 hover:bg-orange-500/20" },
-  { value: "TiktokShop", label: "TikTok Shop", color: "text-pink-600",   bg: "bg-pink-500/10 border-pink-500/30 hover:bg-pink-500/20" },
+  { value: "Shopee",       label: "Shopee",        color: "text-orange-600", bg: "bg-orange-500/10 border-orange-500/30 hover:bg-orange-500/20" },
+  { value: "TiktokShop",   label: "TikTok Shop",   color: "text-pink-600",   bg: "bg-pink-500/10 border-pink-500/30 hover:bg-pink-500/20" },
+  { value: "MercadoLivre", label: "Mercado Livre", color: "text-blue-600",   bg: "bg-blue-500/10 border-blue-500/30 hover:bg-blue-500/20" },
 ];
 
 // ─── Absorção ────────────────────────────────────────────────────────────────
@@ -84,14 +95,24 @@ function CalculadoraPrecificacaoContent() {
   const [plataformaSelecionada, setPlataformaSelecionada] = useState<Plataforma | "">("");
 
   // ── Dialog state ──────────────────────────────────────────────────────────
-  const [isDialogOpen,    setIsDialogOpen]    = useState(false);
-  const [editingId,       setEditingId]       = useState<string | null>(null);
-  const [anuncioForm,     setAnuncioForm]     = useState<AnuncioForm>(EMPTY_FORM);
+  const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [editingId,    setEditingId]    = useState<string | null>(null);
+  const [anuncioForm,  setAnuncioForm]  = useState<AnuncioForm>(EMPTY_FORM);
 
   // ── Hooks ─────────────────────────────────────────────────────────────────
   const { totalRecurringCosts, isLoading: isLoadingCosts, settings: fixedCostsSettings, costs } = useFixedCosts();
   const { anuncios, isLoading: isLoadingAnuncios, addAnuncio, updateAnuncio, deleteAnuncio } = useAnuncios();
   const volumeMensal = fixedCostsSettings?.monthly_products_sold || 100;
+
+  // ── Auto-fill Shopee ──────────────────────────────────────────────────────
+  // Único useEffect: atualiza comissão e taxa fixa sempre que a plataforma for Shopee ou o preço mudar
+  useEffect(() => {
+    if (plataformaSelecionada !== "Shopee") return;
+    const preco = parseInput(precoPromocional);
+    const { comissao, taxaFixa: taxa } = getShopeeRates(preco > 0 ? preco : 0);
+    setComissaoPlataforma(String(comissao));
+    setTaxaFixa(String(taxa));
+  }, [plataformaSelecionada, precoPromocional]);
 
   const handleDecimalInput = (value: string, setter: (v: string) => void) => {
     if (value === "" || /^[0-9]*[,.]?[0-9]*$/.test(value)) setter(value);
@@ -109,32 +130,32 @@ function CalculadoraPrecificacaoContent() {
 
   // ── Cálculos ──────────────────────────────────────────────────────────────
   const results = useMemo(() => {
-    const _custo       = parseInput(custoProduto);
-    const _custoVar    = parseInput(embalagemEtiqueta);
-    const _preco       = parseInput(precoPromocional);
-    const _desc        = parseInput(desconto);
-    const _comissao    = parseInput(comissaoPlataforma);
-    const _taxaFixa    = parseInput(taxaFixa);
-    const _imposto     = parseInput(aliquotaImposto);
-    const _afiliados   = parseInput(comissaoAfiliados);
+    const _custo     = parseInput(custoProduto);
+    const _custoVar  = parseInput(embalagemEtiqueta);
+    const _preco     = parseInput(precoPromocional);
+    const _desc      = parseInput(desconto);
+    const _comissao  = parseInput(comissaoPlataforma);
+    const _taxaFixa  = parseInput(taxaFixa);
+    const _imposto   = parseInput(aliquotaImposto);
+    const _afiliados = parseInput(comissaoAfiliados);
 
     const volume     = volumeMensal > 0 ? volumeMensal : 1;
     const volumeProd = volumeEsperadoProduto > 0 ? volumeEsperadoProduto : 1;
 
-    const precoCheio  = _desc > 0 ? _preco / (1 - _desc / 100) : _preco;
-    const comissaoVal = _preco * (_comissao / 100);
-    const impostoVal  = _preco * (_imposto / 100);
-    const afiliadosVal= _preco * (_afiliados / 100);
+    const precoCheio   = _desc > 0 ? _preco / (1 - _desc / 100) : _preco;
+    const comissaoVal  = _preco * (_comissao / 100);
+    const impostoVal   = _preco * (_imposto / 100);
+    const afiliadosVal = _preco * (_afiliados / 100);
 
     const totalCustosVar = _custo + _custoVar + comissaoVal + _taxaFixa + impostoVal + afiliadosVal;
-    const lucro      = _preco - totalCustosVar;
-    const margemReal = _preco > 0 ? (lucro / _preco) * 100 : 0;
+    const lucro          = _preco - totalCustosVar;
+    const margemReal     = _preco > 0 ? (lucro / _preco) * 100 : 0;
 
-    const custoFixoAlocado   = totalRecurringCosts * (percentualAbsorcao / 100);
-    const custoFixoPorItem   = custoFixoAlocado / volumeProd;
-    const lucroLiquido       = lucro - custoFixoPorItem;
-    const margemAbsorcao     = _preco > 0 ? (lucroLiquido / _preco) * 100 : 0;
-    const custoFixo100       = totalRecurringCosts / volumeProd;
+    const custoFixoAlocado  = totalRecurringCosts * (percentualAbsorcao / 100);
+    const custoFixoPorItem  = custoFixoAlocado / volumeProd;
+    const lucroLiquido      = lucro - custoFixoPorItem;
+    const margemAbsorcao    = _preco > 0 ? (lucroLiquido / _preco) * 100 : 0;
+    const custoFixo100      = totalRecurringCosts / volumeProd;
 
     const taxasPct           = (_comissao + _imposto + _afiliados + margemDesejada) / 100;
     const denom              = 1 - taxasPct;
@@ -153,10 +174,10 @@ function CalculadoraPrecificacaoContent() {
   }, [custoProduto, embalagemEtiqueta, precoPromocional, desconto, comissaoPlataforma, taxaFixa, aliquotaImposto, comissaoAfiliados, margemDesejada, totalRecurringCosts, volumeMensal, volumeEsperadoProduto, percentualAbsorcao]);
 
   const panorama = useMemo(() => {
-    const fat            = parseInput(faturamentoTotal);
-    const margemPct      = results.margemContribuicaoPercent;
-    const breakEven      = margemPct > 0 ? (totalRecurringCosts / margemPct) * 100 : 0;
-    const margemGerada   = fat * (margemPct / 100);
+    const fat               = parseInput(faturamentoTotal);
+    const margemPct         = results.margemContribuicaoPercent;
+    const breakEven         = margemPct > 0 ? (totalRecurringCosts / margemPct) * 100 : 0;
+    const margemGerada      = fat * (margemPct / 100);
     const resultadoLiquido  = margemGerada - totalRecurringCosts;
     const margemLiquidaPct  = fat > 0 ? (resultadoLiquido / fat) * 100 : 0;
     const progressoBreakEven = breakEven > 0 ? Math.min((fat / breakEven) * 100, 100) : 0;
@@ -402,7 +423,7 @@ function CalculadoraPrecificacaoContent() {
                   <Tag className="h-3.5 w-3.5 text-muted-foreground" />
                   Plataforma de Venda
                 </Label>
-                <div className="flex gap-3">
+                <div className="flex gap-3 flex-wrap">
                   {PLATAFORMA_OPTIONS.map(opt => (
                     <button key={opt.value} type="button"
                       onClick={() => setPlataformaSelecionada(plataformaSelecionada === opt.value ? "" : opt.value)}
@@ -416,6 +437,13 @@ function CalculadoraPrecificacaoContent() {
                     </button>
                   ))}
                 </div>
+                {/* Aviso Shopee quando ativo */}
+                {plataformaSelecionada === "Shopee" && (
+                  <p className="text-xs text-orange-600 dark:text-orange-400 flex items-center gap-1.5 mt-1">
+                    <Info className="h-3.5 w-3.5 flex-shrink-0" />
+                    Comissão e taxa fixa preenchidas automaticamente conforme a tabela da Shopee
+                  </p>
+                )}
               </div>
 
               <Separator />
@@ -476,14 +504,26 @@ function CalculadoraPrecificacaoContent() {
                 </p>
                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
                   <div className="space-y-1.5">
-                    <Label htmlFor="comissaoPlataforma" className="text-sm">Comissão Plataforma (%)</Label>
+                    <Label htmlFor="comissaoPlataforma" className="text-sm flex items-center gap-1">
+                      Comissão Plataforma (%)
+                      {plataformaSelecionada === "Shopee" && (
+                        <Badge variant="outline" className="text-[10px] px-1 py-0 text-orange-600 border-orange-400">Auto</Badge>
+                      )}
+                    </Label>
                     <Input id="comissaoPlataforma" type="text" inputMode="decimal" value={comissaoPlataforma}
-                      onChange={e => handleDecimalInput(e.target.value, setComissaoPlataforma)} placeholder="20" className="h-10" />
+                      onChange={e => handleDecimalInput(e.target.value, setComissaoPlataforma)} placeholder="20" className="h-10"
+                      readOnly={plataformaSelecionada === "Shopee"} />
                   </div>
                   <div className="space-y-1.5">
-                    <Label htmlFor="taxaFixa" className="text-sm">Taxa Fixa por Venda (R$)</Label>
+                    <Label htmlFor="taxaFixa" className="text-sm flex items-center gap-1">
+                      Taxa Fixa por Venda (R$)
+                      {plataformaSelecionada === "Shopee" && (
+                        <Badge variant="outline" className="text-[10px] px-1 py-0 text-orange-600 border-orange-400">Auto</Badge>
+                      )}
+                    </Label>
                     <Input id="taxaFixa" type="text" inputMode="decimal" value={taxaFixa}
-                      onChange={e => handleDecimalInput(e.target.value, setTaxaFixa)} placeholder="4,00" className="h-10" />
+                      onChange={e => handleDecimalInput(e.target.value, setTaxaFixa)} placeholder="4,00" className="h-10"
+                      readOnly={plataformaSelecionada === "Shopee"} />
                   </div>
                   <div className="space-y-1.5">
                     <Label htmlFor="aliquotaImposto" className="text-sm">Imposto (%)</Label>
@@ -544,7 +584,7 @@ function CalculadoraPrecificacaoContent() {
                     </Button>
                   </DialogTrigger>
 
-               <DialogContent className="max-w-3xl w-[95vw]">
+                  <DialogContent className="max-w-3xl w-[95vw]">
                     <DialogHeader>
                       <DialogTitle>{editingId ? "Editar Anúncio" : "Cadastrar Anúncio"}</DialogTitle>
                       <DialogDescription>
