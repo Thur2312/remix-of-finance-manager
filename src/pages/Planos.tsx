@@ -31,7 +31,6 @@ const plans = [
     features: [
       'Lucro real por venda',
       'Dashboard básico',
-      'Integração com 1 marketplace',
       'Suporte por e-mail',
     ],
     cta: 'Plano Atual',
