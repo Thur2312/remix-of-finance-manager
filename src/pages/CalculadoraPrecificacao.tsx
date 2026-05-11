@@ -10,14 +10,28 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import {
   AlertTriangle, Calculator, ExternalLink, Info, Target,
-  Lightbulb, TrendingUp, CheckCircle2, XCircle,
+  ShoppingBag, Lightbulb, TrendingUp, CheckCircle2, XCircle,
   HelpCircle, AlertCircle, BarChart3, DollarSign, Tag,
-  Percent, Package,
+  Percent, Package, Trash2, Pencil,
 } from "lucide-react";
 import { Separator } from "@/components/ui/separator";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { useFixedCosts } from "@/hooks/useFixedCosts";
 import { Progress } from "../components/ui/progress";
+import {
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
+  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
+import {
+  Dialog, DialogContent, DialogTrigger, DialogFooter,
+  DialogTitle, DialogHeader, DialogDescription,
+} from "@/components/ui/dialog";
+import {
+  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
+} from "@/components/ui/select";
+import { useAnuncios, AnuncioInput } from "@/hooks/useProdutos";
+import { toast } from "sonner";
 
 // ─── Helpers ────────────────────────────────────────────────────────────────
 const formatCurrency = (value: number): string =>
@@ -44,34 +58,56 @@ const PLATAFORMA_OPTIONS: { value: Plataforma; label: string; color: string; bg:
 const ABSORCAO_PADRAO = { novo: 10, complementar: 30, principal: 60 } as const;
 type PapelProduto = "novo" | "complementar" | "principal" | "avancado";
 
+// ─── Form anúncio ────────────────────────────────────────────────────────────
+const EMPTY_FORM = {
+  nome_anuncio: "", custo: "", valor_venda: "", comissao_taxa: "",
+  antecipado: "", afiliados: "", imposto_pct: "", custo_var: "",
+  marketplace: "" as Plataforma | "",
+};
+type AnuncioForm = typeof EMPTY_FORM;
+
 // ════════════════════════════════════════════════════════════════════════════
 function CalculadoraPrecificacaoContent() {
-  const [custoProduto,      setCustoProduto]      = useState("");
-  const [embalagemEtiqueta, setEmbalagemEtiqueta] = useState("");
-  const [precoPromocional,  setPrecoPromocional]  = useState("");
-  const [desconto,          setDesconto]          = useState("");
-  const [comissaoPlataforma,setComissaoPlataforma]= useState("20");
-  const [taxaFixa,          setTaxaFixa]          = useState("4");
-  const [aliquotaImposto,   setAliquotaImposto]   = useState("6");
-  const [comissaoAfiliados, setComissaoAfiliados] = useState("0");
-  const [margemDesejada,    setMargemDesejada]    = useState<number>(30);
-  const [papelProduto,      setPapelProduto]      = useState<PapelProduto>("novo");
-  const [absorpcaoManual,   setAbsorpcaoManual]   = useState<number>(10);
+  const [custoProduto,          setCustoProduto]          = useState("");
+  const [embalagemEtiqueta,     setEmbalagemEtiqueta]     = useState("");
+  const [precoPromocional,      setPrecoPromocional]      = useState("");
+  const [desconto,              setDesconto]              = useState("");
+  const [comissaoPlataforma,    setComissaoPlataforma]    = useState("20");
+  const [taxaFixa,              setTaxaFixa]              = useState("4");
+  const [aliquotaImposto,       setAliquotaImposto]       = useState("6");
+  const [comissaoAfiliados,     setComissaoAfiliados]     = useState("0");
+  const [margemDesejada]                                  = useState<number>(30);
+  const [papelProduto,          setPapelProduto]          = useState<PapelProduto>("novo");
+  const [absorpcaoManual]                                 = useState<number>(10);
   const [volumeEsperadoProduto, setVolumeEsperadoProduto] = useState<number>(50);
-  const [faturamentoTotal,  setFaturamentoTotal]  = useState("");
+  const [faturamentoTotal,      setFaturamentoTotal]      = useState("");
   const [plataformaSelecionada, setPlataformaSelecionada] = useState<Plataforma | "">("");
 
+  // ── Dialog state ──────────────────────────────────────────────────────────
+  const [isDialogOpen,    setIsDialogOpen]    = useState(false);
+  const [editingId,       setEditingId]       = useState<string | null>(null);
+  const [anuncioForm,     setAnuncioForm]     = useState<AnuncioForm>(EMPTY_FORM);
+
+  // ── Hooks ─────────────────────────────────────────────────────────────────
   const { totalRecurringCosts, isLoading: isLoadingCosts, settings: fixedCostsSettings, costs } = useFixedCosts();
+  const { anuncios, isLoading: isLoadingAnuncios, addAnuncio, updateAnuncio, deleteAnuncio } = useAnuncios();
   const volumeMensal = fixedCostsSettings?.monthly_products_sold || 100;
 
   const handleDecimalInput = (value: string, setter: (v: string) => void) => {
     if (value === "" || /^[0-9]*[,.]?[0-9]*$/.test(value)) setter(value);
   };
 
+  const setFormField = (field: keyof AnuncioForm) =>
+    (e: React.ChangeEvent<HTMLInputElement>) =>
+      setAnuncioForm(prev => ({ ...prev, [field]: e.target.value }));
+
+  const resetForm = () => { setAnuncioForm(EMPTY_FORM); setEditingId(null); };
+
   const percentualAbsorcao = useMemo(() =>
     papelProduto === "avancado" ? absorpcaoManual : ABSORCAO_PADRAO[papelProduto],
   [papelProduto, absorpcaoManual]);
 
+  // ── Cálculos ──────────────────────────────────────────────────────────────
   const results = useMemo(() => {
     const _custo       = parseInput(custoProduto);
     const _custoVar    = parseInput(embalagemEtiqueta);
@@ -82,29 +118,28 @@ function CalculadoraPrecificacaoContent() {
     const _imposto     = parseInput(aliquotaImposto);
     const _afiliados   = parseInput(comissaoAfiliados);
 
-    const volume = volumeMensal > 0 ? volumeMensal : 1;
+    const volume     = volumeMensal > 0 ? volumeMensal : 1;
     const volumeProd = volumeEsperadoProduto > 0 ? volumeEsperadoProduto : 1;
 
-    const precoCheio = _desc > 0 ? _preco / (1 - _desc / 100) : _preco;
-
+    const precoCheio  = _desc > 0 ? _preco / (1 - _desc / 100) : _preco;
     const comissaoVal = _preco * (_comissao / 100);
     const impostoVal  = _preco * (_imposto / 100);
     const afiliadosVal= _preco * (_afiliados / 100);
 
     const totalCustosVar = _custo + _custoVar + comissaoVal + _taxaFixa + impostoVal + afiliadosVal;
-    const lucro = _preco - totalCustosVar;
+    const lucro      = _preco - totalCustosVar;
     const margemReal = _preco > 0 ? (lucro / _preco) * 100 : 0;
 
-    const custoFixoAlocado = totalRecurringCosts * (percentualAbsorcao / 100);
-    const custoFixoPorItem = custoFixoAlocado / volumeProd;
-    const lucroLiquido     = lucro - custoFixoPorItem;
-    const margemAbsorcao   = _preco > 0 ? (lucroLiquido / _preco) * 100 : 0;
-    const custoFixo100     = totalRecurringCosts / volumeProd;
+    const custoFixoAlocado   = totalRecurringCosts * (percentualAbsorcao / 100);
+    const custoFixoPorItem   = custoFixoAlocado / volumeProd;
+    const lucroLiquido       = lucro - custoFixoPorItem;
+    const margemAbsorcao     = _preco > 0 ? (lucroLiquido / _preco) * 100 : 0;
+    const custoFixo100       = totalRecurringCosts / volumeProd;
 
-    const taxasPct = (_comissao + _imposto + _afiliados + margemDesejada) / 100;
-    const denom    = 1 - taxasPct;
-    const precoIdeal            = denom > 0 ? (_custo + _custoVar + _taxaFixa) / denom : 0;
-    const precoNecessario100    = denom > 0 ? (_custo + _custoVar + _taxaFixa + custoFixo100) / denom : 0;
+    const taxasPct           = (_comissao + _imposto + _afiliados + margemDesejada) / 100;
+    const denom              = 1 - taxasPct;
+    const precoIdeal         = denom > 0 ? (_custo + _custoVar + _taxaFixa) / denom : 0;
+    const precoNecessario100 = denom > 0 ? (_custo + _custoVar + _taxaFixa + custoFixo100) / denom : 0;
 
     return {
       precoCheio, totalCustosVar, lucro, margemReal, produtoViavel: lucro > 0,
@@ -118,12 +153,12 @@ function CalculadoraPrecificacaoContent() {
   }, [custoProduto, embalagemEtiqueta, precoPromocional, desconto, comissaoPlataforma, taxaFixa, aliquotaImposto, comissaoAfiliados, margemDesejada, totalRecurringCosts, volumeMensal, volumeEsperadoProduto, percentualAbsorcao]);
 
   const panorama = useMemo(() => {
-    const fat = parseInput(faturamentoTotal);
-    const margemPct = results.margemContribuicaoPercent;
-    const breakEven = margemPct > 0 ? (totalRecurringCosts / margemPct) * 100 : 0;
-    const margemGerada = fat * (margemPct / 100);
-    const resultadoLiquido = margemGerada - totalRecurringCosts;
-    const margemLiquidaPct = fat > 0 ? (resultadoLiquido / fat) * 100 : 0;
+    const fat            = parseInput(faturamentoTotal);
+    const margemPct      = results.margemContribuicaoPercent;
+    const breakEven      = margemPct > 0 ? (totalRecurringCosts / margemPct) * 100 : 0;
+    const margemGerada   = fat * (margemPct / 100);
+    const resultadoLiquido  = margemGerada - totalRecurringCosts;
+    const margemLiquidaPct  = fat > 0 ? (resultadoLiquido / fat) * 100 : 0;
     const progressoBreakEven = breakEven > 0 ? Math.min((fat / breakEven) * 100, 100) : 0;
     return { fat, breakEven, margemGerada, resultadoLiquido, margemLiquidaPct, progressoBreakEven, lucrativo: resultadoLiquido > 0, margemPct };
   }, [faturamentoTotal, results.margemContribuicaoPercent, totalRecurringCosts]);
@@ -141,12 +176,65 @@ function CalculadoraPrecificacaoContent() {
     return lista;
   }, [results, papelProduto, percentualAbsorcao]);
 
+  // ── Abrir dialog para novo anúncio pré-preenchido ─────────────────────────
+  const openNovoAnuncio = () => {
+    setAnuncioForm({
+      nome_anuncio:  "",
+      custo:         custoProduto,
+      valor_venda:   precoPromocional,
+      comissao_taxa: String(parseInput(comissaoPlataforma) + parseInput(taxaFixa)),
+      antecipado:    "0",
+      afiliados:     comissaoAfiliados,
+      imposto_pct:   aliquotaImposto,
+      custo_var:     embalagemEtiqueta,
+      marketplace:   plataformaSelecionada,
+    });
+    setEditingId(null);
+    setIsDialogOpen(true);
+  };
+
+  const openEditAnuncio = (a: typeof anuncios[0]) => {
+    setEditingId(a.id);
+    setAnuncioForm({
+      nome_anuncio:  a.nome_anuncio,
+      custo:         String(a.custo),
+      valor_venda:   String(a.valor_venda),
+      comissao_taxa: String(a.comissao_taxa),
+      antecipado:    String(a.antecipado),
+      afiliados:     String(a.afiliados),
+      imposto_pct:   String(a.imposto_pct),
+      custo_var:     String(a.custo_var),
+      marketplace:   (a.marketplace ?? "") as Plataforma,
+    });
+    setIsDialogOpen(true);
+  };
+
+  const handleSubmit = async () => {
+    if (!anuncioForm.nome_anuncio.trim()) { toast.error("Nome do anúncio é obrigatório"); return; }
+    const payload: AnuncioInput = {
+      nome_anuncio:  anuncioForm.nome_anuncio.trim(),
+      custo:         parseInput(anuncioForm.custo),
+      valor_venda:   parseInput(anuncioForm.valor_venda),
+      comissao_taxa: anuncioForm.comissao_taxa,
+      antecipado:    parseInput(anuncioForm.antecipado),
+      afiliados:     parseInput(anuncioForm.afiliados),
+      imposto_pct:   parseInput(anuncioForm.imposto_pct),
+      custo_var:     parseInput(anuncioForm.custo_var),
+      marketplace:   anuncioForm.marketplace,
+    };
+    const ok = editingId
+      ? await updateAnuncio(editingId, payload)
+      : await addAnuncio(payload);
+    if (ok) { setIsDialogOpen(false); resetForm(); }
+  };
+
+  // ══════════════════════════════════════════════════════════════════════════
   return (
     <AppLayout>
       <TooltipProvider>
         <div className="max-w-5xl mx-auto space-y-6">
 
-          {/* ── Header ─────────────────────────────────────────────────── */}
+          {/* ── Header ───────────────────────────────────────────────────── */}
           <div className="text-center">
             <h1 className="text-2xl font-bold tracking-tight flex items-center justify-center gap-2">
               <Calculator className="h-6 w-6 text-primary" />
@@ -157,7 +245,7 @@ function CalculadoraPrecificacaoContent() {
             </p>
           </div>
 
-          {/* ── Banner custos fixos ─────────────────────────────────────── */}
+          {/* ── Banner custos fixos ───────────────────────────────────────── */}
           {isLoadingCosts ? (
             <Skeleton className="h-16 w-full" />
           ) : costs.length > 0 ? (
@@ -194,7 +282,7 @@ function CalculadoraPrecificacaoContent() {
             </Card>
           )}
 
-          {/* ── Break-even + Panorama ───────────────────────────────────── */}
+          {/* ── Break-even + Panorama ─────────────────────────────────────── */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
             <Card className="border-primary/20">
               <CardHeader className="pb-4">
@@ -297,7 +385,7 @@ function CalculadoraPrecificacaoContent() {
             </Card>
           </div>
 
-          {/* ── Card Principal ──────────────────────────────────────────── */}
+          {/* ── Card Principal ────────────────────────────────────────────── */}
           <Card>
             <CardHeader className="pb-2">
               <CardTitle className="text-base flex items-center gap-2">
@@ -316,16 +404,13 @@ function CalculadoraPrecificacaoContent() {
                 </Label>
                 <div className="flex gap-3">
                   {PLATAFORMA_OPTIONS.map(opt => (
-                    <button
-                      key={opt.value}
-                      type="button"
+                    <button key={opt.value} type="button"
                       onClick={() => setPlataformaSelecionada(plataformaSelecionada === opt.value ? "" : opt.value)}
                       className={`flex items-center gap-2 px-4 py-2 rounded-lg border text-sm font-medium transition-all ${
                         plataformaSelecionada === opt.value
                           ? `${opt.bg} ${opt.color} ring-1 ring-current`
                           : "border-border bg-background text-muted-foreground hover:bg-muted"
-                      }`}
-                    >
+                      }`}>
                       {opt.label}
                       {plataformaSelecionada === opt.value && <CheckCircle2 className="h-3.5 w-3.5" />}
                     </button>
@@ -415,38 +500,128 @@ function CalculadoraPrecificacaoContent() {
 
               <Separator />
 
-              {/* Resultado */}
-              <div className="flex flex-wrap gap-3">
-                <div className="flex items-center gap-2 px-4 py-2.5 bg-muted/50 rounded-lg border">
-                  <TrendingUp className="h-4 w-4 text-muted-foreground" />
-                  <div>
-                    <p className="text-[10px] text-muted-foreground uppercase tracking-wide">Margem Real</p>
-                    <p className={`text-base font-bold leading-tight ${results.margemReal >= 0 ? "text-primary" : "text-destructive"}`}>
-                      {formatPercent(results.margemReal)}
-                    </p>
-                  </div>
-                </div>
-                {!results.margemInviavel ? (
-                  <div className="flex items-center gap-2 px-4 py-2.5 bg-primary/5 border border-primary/20 rounded-lg">
-                    <Lightbulb className="h-4 w-4 text-primary flex-shrink-0" />
+              {/* Resultado + Botão Cadastrar */}
+              <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+                <div className="flex flex-wrap gap-3 flex-1">
+                  <div className="flex items-center gap-2 px-4 py-2.5 bg-muted/50 rounded-lg border">
+                    <TrendingUp className="h-4 w-4 text-muted-foreground" />
                     <div>
-                      <p className="text-[10px] text-muted-foreground uppercase tracking-wide">
-                        Preço ideal para {margemDesejada}% margem
+                      <p className="text-[10px] text-muted-foreground uppercase tracking-wide">Margem Real</p>
+                      <p className={`text-base font-bold leading-tight ${results.margemReal >= 0 ? "text-primary" : "text-destructive"}`}>
+                        {formatPercent(results.margemReal)}
                       </p>
-                      <p className="text-base font-bold text-primary leading-tight">{formatCurrency(results.precoIdeal)}</p>
                     </div>
                   </div>
-                ) : (
-                  <div className="flex items-center gap-2 px-4 py-2.5 bg-destructive/10 border border-destructive/30 rounded-lg">
-                    <AlertTriangle className="h-4 w-4 text-destructive" />
-                    <span className="text-sm font-medium text-destructive">Margem inviável</span>
-                  </div>
-                )}
+                  {!results.margemInviavel ? (
+                    <div className="flex items-center gap-2 px-4 py-2.5 bg-primary/5 border border-primary/20 rounded-lg">
+                      <Lightbulb className="h-4 w-4 text-primary flex-shrink-0" />
+                      <div>
+                        <p className="text-[10px] text-muted-foreground uppercase tracking-wide">
+                          Preço ideal para {margemDesejada}% margem
+                        </p>
+                        <p className="text-base font-bold text-primary leading-tight">{formatCurrency(results.precoIdeal)}</p>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="flex items-center gap-2 px-4 py-2.5 bg-destructive/10 border border-destructive/30 rounded-lg">
+                      <AlertTriangle className="h-4 w-4 text-destructive" />
+                      <span className="text-sm font-medium text-destructive">Margem inviável</span>
+                    </div>
+                  )}
+                </div>
+
+                {/* ── Botão + Dialog ──────────────────────────────────────── */}
+                <Dialog open={isDialogOpen} onOpenChange={open => { setIsDialogOpen(open); if (!open) resetForm(); }}>
+                  <DialogTrigger asChild>
+                    <Button onClick={openNovoAnuncio} className="gap-2 shrink-0">
+                      <ShoppingBag className="h-4 w-4" />
+                      Cadastrar Anúncio
+                      {plataformaSelecionada && (
+                        <Badge variant="secondary" className="ml-1 text-xs font-normal">
+                          {plataformaSelecionada}
+                        </Badge>
+                      )}
+                    </Button>
+                  </DialogTrigger>
+
+                  <DialogContent className="max-w-lg">
+                    <DialogHeader>
+                      <DialogTitle>{editingId ? "Editar Anúncio" : "Cadastrar Anúncio"}</DialogTitle>
+                      <DialogDescription>
+                        {editingId
+                          ? "Altere as informações do anúncio."
+                          : "Os campos foram pré-preenchidos com os dados da calculadora. Só falta o nome!"}
+                      </DialogDescription>
+                    </DialogHeader>
+
+                    <div className="space-y-4 py-2">
+                      <div className="space-y-2">
+                        <Label htmlFor="nome_anuncio" className="font-medium">
+                          Nome do Anúncio <span className="text-destructive">*</span>
+                        </Label>
+                        <Input id="nome_anuncio" autoFocus value={anuncioForm.nome_anuncio}
+                          onChange={setFormField("nome_anuncio")} placeholder="Ex: Macaquinho Floral" maxLength={255} />
+                      </div>
+
+                      <div className="space-y-2">
+                        <Label>Marketplace</Label>
+                        <Select
+                          value={anuncioForm.marketplace}
+                          onValueChange={v => setAnuncioForm(prev => ({ ...prev, marketplace: v as Plataforma }))}
+                        >
+                          <SelectTrigger className="w-full">
+                            <SelectValue placeholder="Selecione o marketplace" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="Shopee">Shopee</SelectItem>
+                            <SelectItem value="TiktokShop">TikTok Shop</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+
+                      <Separator />
+                      <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Valores (R$) — pré-preenchidos</p>
+
+                      <div className="grid grid-cols-2 gap-4">
+                        {([
+                          { field: "custo",         label: "Custo" },
+                          { field: "valor_venda",   label: "Valor de Venda" },
+                          { field: "comissao_taxa", label: "Comissão + Taxa (R$)" },
+                          { field: "antecipado",    label: "Antecipado (R$)" },
+                          { field: "afiliados",     label: "Afiliados (R$)" },
+                          { field: "custo_var",     label: "Custo Variável (R$)" },
+                        ] as { field: keyof AnuncioForm; label: string }[]).map(({ field, label }) => (
+                          <div key={field} className="space-y-2">
+                            <Label className="text-sm">{label}</Label>
+                            <Input type="text" inputMode="decimal" value={anuncioForm[field]}
+                              onChange={setFormField(field)} placeholder="0,00" />
+                          </div>
+                        ))}
+                      </div>
+
+                      <div className="space-y-2">
+                        <Label className="text-sm">Imposto (%)</Label>
+                        <div className="relative">
+                          <Input type="text" inputMode="decimal" value={anuncioForm.imposto_pct}
+                            onChange={setFormField("imposto_pct")} placeholder="6" className="pr-8" />
+                          <span className="absolute right-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">%</span>
+                        </div>
+                      </div>
+                    </div>
+
+                    <DialogFooter>
+                      <Button variant="outline" onClick={() => { setIsDialogOpen(false); resetForm(); }}>Cancelar</Button>
+                      <Button onClick={handleSubmit} disabled={!anuncioForm.nome_anuncio.trim()}>
+                        {editingId ? "Salvar Alterações" : "Cadastrar"}
+                      </Button>
+                    </DialogFooter>
+                  </DialogContent>
+                </Dialog>
               </div>
             </CardContent>
           </Card>
 
-          {/* ── Alertas ────────────────────────────────────────────────── */}
+          {/* ── Alertas ──────────────────────────────────────────────────── */}
           {alertas.length > 0 && (
             <div className="space-y-3">
               {alertas.map((alerta, index) => (
@@ -473,7 +648,7 @@ function CalculadoraPrecificacaoContent() {
             </div>
           )}
 
-          {/* ── Três análises ──────────────────────────────────────────── */}
+          {/* ── Três análises ─────────────────────────────────────────────── */}
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
             <Card className={`border-2 ${results.produtoViavel ? "border-green-500/30 bg-green-500/5" : "border-destructive/30 bg-destructive/5"}`}>
               <CardHeader className="pb-3">
@@ -585,7 +760,7 @@ function CalculadoraPrecificacaoContent() {
             </Card>
           </div>
 
-          {/* ── Dica educacional ───────────────────────────────────────── */}
+          {/* ── Dica educacional ──────────────────────────────────────────── */}
           <div className="flex items-start gap-3 p-4 bg-primary/5 border border-primary/20 rounded-lg">
             <Lightbulb className="h-5 w-5 text-primary flex-shrink-0 mt-0.5" />
             <div className="text-sm">
@@ -597,7 +772,7 @@ function CalculadoraPrecificacaoContent() {
             </div>
           </div>
 
-          {/* ── Detalhamento custos variáveis ──────────────────────────── */}
+          {/* ── Detalhamento custos variáveis ─────────────────────────────── */}
           <Card>
             <CardHeader className="pb-3">
               <CardTitle className="text-base">Detalhamento dos Custos Variáveis</CardTitle>
@@ -624,6 +799,99 @@ function CalculadoraPrecificacaoContent() {
                   <span className="text-xl font-bold text-primary">{formatCurrency(results.totalCustosVar)}</span>
                 </div>
               </div>
+            </CardContent>
+          </Card>
+
+          {/* ── Tabela de Anúncios ────────────────────────────────────────── */}
+          <Card>
+            <CardHeader>
+              <div className="flex items-center justify-between">
+                <div>
+                  <CardTitle className="text-lg">Anúncios Cadastrados</CardTitle>
+                  <CardDescription>
+                    {anuncios.length} anúncio{anuncios.length !== 1 ? "s" : ""} cadastrado{anuncios.length !== 1 ? "s" : ""}
+                  </CardDescription>
+                </div>
+                <ShoppingBag className="h-5 w-5 text-muted-foreground" />
+              </div>
+            </CardHeader>
+            <CardContent>
+              {isLoadingAnuncios ? (
+                <div className="space-y-2">{[1, 2, 3].map(i => <Skeleton key={i} className="h-12 w-full" />)}</div>
+              ) : anuncios.length === 0 ? (
+                <div className="text-center py-8 text-muted-foreground">
+                  <ShoppingBag className="h-12 w-12 mx-auto mb-4 opacity-50" />
+                  <p>Nenhum anúncio cadastrado ainda.</p>
+                  <p className="text-sm">Preencha os dados acima e clique em "Cadastrar Anúncio".</p>
+                </div>
+              ) : (
+                <div className="overflow-x-auto">
+                  <table className="w-full text-sm">
+                    <thead>
+                      <tr className="border-b border-border">
+                        {["Nome", "Marketplace", "Custo", "Venda", "Comissão/Taxa", "Antecipado", "Afiliados", "Imposto", "Custo Var.", "Lucro", ""].map((h, i) => (
+                          <th key={i} className={`pb-2 px-2 font-medium text-muted-foreground whitespace-nowrap ${i >= 2 && i <= 9 ? "text-right" : "text-left"}`}>{h}</th>
+                        ))}
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {anuncios.map(a => {
+                        const lucro = a.valor_venda - a.custo - a.custo_var - parseFloat(String(a.comissao_taxa) || "0") - a.antecipado - a.afiliados;
+                        return (
+                          <tr key={a.id}>
+                            <td className="pt-2" colSpan={11}>
+                              <div className="flex items-center bg-muted/50 rounded-md px-3 py-2.5 gap-0">
+                                <span className="flex-[2] font-medium whitespace-nowrap">{a.nome_anuncio}</span>
+                                <span className="flex-[1.5] whitespace-nowrap">
+                                  {a.marketplace
+                                    ? <Badge variant="outline" className="font-normal">{a.marketplace}</Badge>
+                                    : <span className="text-muted-foreground">—</span>}
+                                </span>
+                                <span className="flex-1 text-right tabular-nums whitespace-nowrap">{formatCurrency(a.custo)}</span>
+                                <span className="flex-1 text-right tabular-nums whitespace-nowrap">{formatCurrency(a.valor_venda)}</span>
+                                <span className="flex-1 text-right tabular-nums whitespace-nowrap">{formatCurrency(parseFloat(String(a.comissao_taxa) || "0"))}</span>
+                                <span className="flex-1 text-right tabular-nums whitespace-nowrap">{formatCurrency(a.antecipado)}</span>
+                                <span className="flex-1 text-right tabular-nums whitespace-nowrap">{formatCurrency(a.afiliados)}</span>
+                                <span className="flex-1 text-right whitespace-nowrap">
+                                  <Badge variant="secondary" className="font-normal tabular-nums">{a.imposto_pct}%</Badge>
+                                </span>
+                                <span className="flex-1 text-right tabular-nums whitespace-nowrap">{formatCurrency(a.custo_var)}</span>
+                                <span className={`flex-1 text-right font-semibold tabular-nums whitespace-nowrap ${lucro >= 0 ? "text-green-600" : "text-destructive"}`}>
+                                  {formatCurrency(lucro)}
+                                </span>
+                                <span className="flex items-center justify-end gap-1 pl-2">
+                                  <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => openEditAnuncio(a)}>
+                                    <Pencil className="h-4 w-4" />
+                                  </Button>
+                                  <AlertDialog>
+                                    <AlertDialogTrigger asChild>
+                                      <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive hover:text-destructive">
+                                        <Trash2 className="h-4 w-4" />
+                                      </Button>
+                                    </AlertDialogTrigger>
+                                    <AlertDialogContent>
+                                      <AlertDialogHeader>
+                                        <AlertDialogTitle>Excluir anúncio?</AlertDialogTitle>
+                                        <AlertDialogDescription>
+                                          Tem certeza que deseja excluir "{a.nome_anuncio}"? Esta ação não pode ser desfeita.
+                                        </AlertDialogDescription>
+                                      </AlertDialogHeader>
+                                      <AlertDialogFooter>
+                                        <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                                        <AlertDialogAction onClick={() => deleteAnuncio(a.id)}>Excluir</AlertDialogAction>
+                                      </AlertDialogFooter>
+                                    </AlertDialogContent>
+                                  </AlertDialog>
+                                </span>
+                              </div>
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              )}
             </CardContent>
           </Card>
 

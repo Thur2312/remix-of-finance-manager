@@ -20,27 +20,49 @@ COMO RESPONDER:
 - Seja direto e objetivo. O vendedor quer respostas rápidas, não textos longos.
 - Use os dados reais fornecidos no contexto. Nunca invente números.
 - Quando calcular margens ou lucros, mostre o raciocínio de forma simples.
-- Se os dados estiverem incompletos, diga claramente o que falta.
 - Use R$ para valores monetários (ex: R$ 1.234,50).
 - Responda sempre em português do Brasil, de forma natural e humana.
 - Não use emojis em excesso — no máximo um por resposta.
 - Se a pergunta não for relacionada ao negócio do vendedor, redirecione gentilmente.
-- Você também pode fazer cálculos livres com os dados: projeções, simulações, comparativos entre períodos, análises de produto específico, etc.
+- Você também pode fazer cálculos livres: projeções, simulações, comparativos entre períodos, análise de produto específico, etc.
 
-CAPACIDADES DE CÁLCULO:
-- Margem real por canal (aplicando comissões, taxas de serviço, frete e ajustes)
-- Lucro líquido por produto ou SKU
-- Comparativo entre períodos
-- Projeção de receita e fluxo de caixa
-- Break-even por produto
-- Custo total por unidade vendida
-- Qualquer outro cálculo financeiro baseado nos dados disponíveis
+LINGUAGEM — REGRAS ABSOLUTAS:
+- NUNCA mencione nomes de tabelas, colunas, variáveis ou termos técnicos de banco de dados (ex: orders, order_items, net_amount, payments, fees, fee_type, integration_id, etc.)
+- NUNCA diga que um dado "não está disponível na estrutura" ou que "não há registros na tabela"
+- NUNCA invente telas, seções, menus ou funcionalidades que não existem na plataforma. Se não souber onde algo está, não chute.
+- Quando faltar um dado, explique em linguagem simples o que o vendedor precisa fazer. Use os exemplos abaixo como guia.
 
-ESTRUTURA DOS DADOS:
-- pedidos: tabela "orders" com total_amount (valor cobrado do comprador)
-- itens: tabela "order_items" com item_name, sku, quantity, unit_price, total_price
-- pagamentos liberados (escrow): tabela "payments" com amount (bruto), net_amount (líquido após taxas), marketplace_fee
-- taxas detalhadas: tabela "fees" com fee_type (commission, service_fee, shipping_fee, adjustment) e amount
+MAPA REAL DA PLATAFORMA (use apenas essas seções ao orientar o vendedor):
+- Dashboard — visão geral dos resultados
+- Gestão — controle dos pedidos
+- Fluxo de Caixa — entradas e saídas financeiras
+- Precificação — calculadora para simular o preço de venda de um produto (não salva dados, é só uma simulação manual)
+- Custos Fixos — cadastro de despesas mensais fixas da operação (aluguel, internet, funcionários, etc.)
+- Assistente — você, o Finn
+- DRE — demonstrativo de resultados
+- Integrações — conexão com marketplaces (Shopee, TikTok Shop, Mercado Livre)
+- Planos — assinatura da plataforma
+
+ORIENTAÇÕES POR SITUAÇÃO (use linguagem humana, nunca técnica):
+- Sem custo de produto cadastrado → "A plataforma ainda não tem uma seção para cadastrar o custo de aquisição por produto. Por enquanto, me informe o custo do produto aqui na conversa e eu calculo o lucro para você na hora."
+- Sem integração conectada → "Para ver seus dados, você precisa conectar sua conta do marketplace na seção Integrações."
+- Dado zerado ou desatualizado → "Esse valor ainda não foi sincronizado. Tente sincronizar sua loja novamente nas Integrações."
+- Custo fixo não cadastrado → "Você pode cadastrar suas despesas mensais (aluguel, internet, etc.) na seção Custos Fixos para que eu considere no cálculo do seu lucro real."
+- Simulação de preço → "Você pode usar a calculadora de Precificação para simular o preço ideal de venda de qualquer produto."
+
+O QUE VOCÊ CONSEGUE CALCULAR:
+- Receita bruta por produto e no total
+- Receita líquida após as taxas do marketplace (comissão, taxa de serviço, frete, ajustes)
+- Qual produto tem melhor e pior margem do marketplace
+- Pedidos por status (completos, cancelados, a enviar, etc.)
+- Projeção de receita
+- Break-even de qualquer produto se o vendedor informar o custo na conversa
+- Lucro líquido por produto se o vendedor informar o custo de aquisição aqui na conversa
+
+O QUE VOCÊ NÃO CONSEGUE SEM O CUSTO DE AQUISIÇÃO:
+- Lucro líquido final por produto
+- Identificar produtos no prejuízo com precisão
+- Nesse caso, sempre ofereça: "Me diga o custo de aquisição do produto e eu calculo agora para você."
 
 CONTEXTO DOS DADOS:
 Os dados abaixo representam a situação real do vendedor nos últimos 60 dias.`;
@@ -67,59 +89,56 @@ async function buscarDadosFinanceiros(supabase: ReturnType<typeof createClient>,
       aviso: 'Nenhuma integração conectada encontrada para este usuário.',
       resumo_geral: { total_pedidos: 0, faturamento_bruto: 0, valor_liberado_escrow: 0, valor_liquido_apos_taxas: 0, total_taxas_marketplace: 0, margem_liquida_pct: 0 },
       pedidos_por_status: [],
-      top_produtos: [],
+      analise_por_produto: [],
       taxas_detalhadas: {},
+      pedidos_com_margem: [],
       pagamentos_recentes: [],
       custos_fixos: { lista: [], total_mensal_recorrente: 0 },
       custos_por_produto: [],
-      configuracoes_shopee: null,
+      configuracoes: null,
     };
   }
 
+  // ETAPA 1 — busca pedidos primeiro para ter os IDs
+  const pedidosRes = await supabase
+    .from('orders')
+    .select('id, external_order_id, status, total_amount, order_created_at, integration_id')
+    .in('integration_id', integracaoIds)
+    .gte('order_created_at', dataInicio)
+    .order('order_created_at', { ascending: false })
+    .limit(500);
+
+  const pedidos = pedidosRes.data ?? [];
+  const pedidoIds = pedidos.map((p: { id: string }) => p.id);
+  const pedidoIdsFiltro = pedidoIds.length > 0 ? pedidoIds : ['00000000-0000-0000-0000-000000000000'];
+
+  // ETAPA 2 — busca tudo em paralelo com os IDs já disponíveis
   const [
-    pedidosRes,
     itensRes,
     pagamentosRes,
     taxasRes,
     custosFixosRes,
     produtoCostosRes,
-    shopeeSettingsRes,
+    configRes,
   ] = await Promise.all([
-    supabase
-      .from('orders')
-      .select('id, external_order_id, status, total_amount, order_created_at, integration_id')
-      .in('integration_id', integracaoIds)
-      .gte('order_created_at', dataInicio)
-      .order('order_created_at', { ascending: false })
-      .limit(500),
-
     supabase
       .from('order_items')
       .select('order_id, item_name, sku, quantity, unit_price, total_price')
-      .in('order_id',
-        supabase
-          .from('orders')
-          .select('id')
-          .in('integration_id', integracaoIds)
-          .gte('order_created_at', dataInicio)
-      )
-      .limit(1000),
+      .in('order_id', pedidoIdsFiltro)
+      .limit(2000),
 
     supabase
       .from('payments')
-      .select('amount, net_amount, marketplace_fee, status, payment_method, transaction_date, description')
-      .in('integration_id', integracaoIds)
-      .gte('transaction_date', dataInicio)
+      .select('order_id, amount, net_amount, marketplace_fee, status, payment_method, transaction_date, description')
+      .in('order_id', pedidoIdsFiltro)
       .order('transaction_date', { ascending: false })
-      .limit(200),
+      .limit(1000),
 
     supabase
       .from('fees')
-      .select('fee_type, amount, description, fee_date')
-      .in('integration_id', integracaoIds)
-      .gte('fee_date', dataInicio)
-      .order('fee_date', { ascending: false })
-      .limit(500),
+      .select('order_id, fee_type, amount, description, fee_date')
+      .in('order_id', pedidoIdsFiltro)
+      .limit(2000),
 
     supabase
       .from('fixed_costs')
@@ -140,10 +159,35 @@ async function buscarDadosFinanceiros(supabase: ReturnType<typeof createClient>,
       .maybeSingle(),
   ]);
 
-  const pedidos = pedidosRes.data ?? [];
   const itens = itensRes.data ?? [];
   const pagamentos = pagamentosRes.data ?? [];
   const taxas = taxasRes.data ?? [];
+
+  // Mapas por order_id para cruzamento
+  const pagamentoPorPedido: Record<string, { amount: number; net_amount: number; marketplace_fee: number }> = {};
+  for (const p of pagamentos) {
+    if (!p.order_id) continue;
+    pagamentoPorPedido[p.order_id] = {
+      amount: Number(p.amount) || 0,
+      net_amount: Number(p.net_amount) || 0,
+      marketplace_fee: Number(p.marketplace_fee) || 0,
+    };
+  }
+
+  const taxasPorPedido: Record<string, Record<string, number>> = {};
+  for (const t of taxas) {
+    if (!t.order_id) continue;
+    if (!taxasPorPedido[t.order_id]) taxasPorPedido[t.order_id] = {};
+    const tipo = t.fee_type || 'outros';
+    taxasPorPedido[t.order_id][tipo] = (taxasPorPedido[t.order_id][tipo] || 0) + Number(t.amount);
+  }
+
+  const itensPorPedido: Record<string, typeof itens> = {};
+  for (const item of itens) {
+    if (!item.order_id) continue;
+    if (!itensPorPedido[item.order_id]) itensPorPedido[item.order_id] = [];
+    itensPorPedido[item.order_id].push(item);
+  }
 
   // Resumo por status
   const porStatus: Record<string, { count: number; total: number }> = {};
@@ -154,39 +198,100 @@ async function buscarDadosFinanceiros(supabase: ReturnType<typeof createClient>,
     porStatus[s].total += Number(p.total_amount) || 0;
   }
 
-  // Top 10 produtos por faturamento
-  const porProduto: Record<string, { quantidade: number; faturamento: number; sku: string }> = {};
-  for (const item of itens) {
-    const nome = item.item_name || item.sku || 'Sem nome';
-    if (!porProduto[nome]) porProduto[nome] = { quantidade: 0, faturamento: 0, sku: item.sku || '' };
-    porProduto[nome].quantidade += Number(item.quantity) || 0;
-    porProduto[nome].faturamento += Number(item.total_price) || 0;
+  // Análise por produto — cruza itens com net_amount proporcional do pagamento
+  const porProduto: Record<string, {
+    quantidade: number;
+    receita_bruta: number;
+    receita_liquida: number;
+    taxas_marketplace: number;
+    sku: string;
+    pedidos: number;
+  }> = {};
+
+  for (const pedido of pedidos) {
+    if (pedido.status === 'CANCELLED') continue;
+    const itensDoPedido = itensPorPedido[pedido.id] ?? [];
+    const pagamento = pagamentoPorPedido[pedido.id];
+    const totalBrutoPedido = itensDoPedido.reduce((acc, i) => acc + (Number(i.total_price) || 0), 0);
+
+    for (const item of itensDoPedido) {
+      const nome = item.item_name || item.sku || 'Sem nome';
+      if (!porProduto[nome]) {
+        porProduto[nome] = { quantidade: 0, receita_bruta: 0, receita_liquida: 0, taxas_marketplace: 0, sku: item.sku || '', pedidos: 0 };
+      }
+      const receitaBrutaItem = Number(item.total_price) || 0;
+      porProduto[nome].quantidade += Number(item.quantity) || 0;
+      porProduto[nome].receita_bruta += receitaBrutaItem;
+      porProduto[nome].pedidos += 1;
+
+      if (pagamento && totalBrutoPedido > 0) {
+        const proporcao = receitaBrutaItem / totalBrutoPedido;
+        porProduto[nome].receita_liquida += pagamento.net_amount * proporcao;
+        porProduto[nome].taxas_marketplace += pagamento.marketplace_fee * proporcao;
+      }
+    }
   }
-  const topProdutos = Object.entries(porProduto)
-    .sort((a, b) => b[1].faturamento - a[1].faturamento)
-    .slice(0, 10)
+
+  const analisePorProduto = Object.entries(porProduto)
+    .sort((a, b) => b[1].receita_bruta - a[1].receita_bruta)
+    .slice(0, 20)
     .map(([nome, d]) => ({
       nome,
       sku: d.sku,
-      quantidade: d.quantidade,
-      faturamento: Number(d.faturamento.toFixed(2)),
+      quantidade_vendida: d.quantidade,
+      pedidos: d.pedidos,
+      receita_bruta: Number(d.receita_bruta.toFixed(2)),
+      receita_liquida_apos_marketplace: Number(d.receita_liquida.toFixed(2)),
+      taxas_marketplace: Number(d.taxas_marketplace.toFixed(2)),
+      margem_marketplace_pct: d.receita_bruta > 0
+        ? Number(((d.receita_liquida / d.receita_bruta) * 100).toFixed(1))
+        : 0,
     }));
 
-  // Taxas por tipo
+  // Taxas totais por tipo
   const taxasPorTipo: Record<string, number> = {};
   for (const t of taxas) {
     const tipo = t.fee_type || 'outros';
     taxasPorTipo[tipo] = (taxasPorTipo[tipo] || 0) + Number(t.amount);
   }
 
-  // Totais
-  const faturamentoBruto = pedidos.reduce((acc, p) => acc + (Number(p.total_amount) || 0), 0);
+  // Totais gerais
+  const pedidosAtivos = pedidos.filter(p => p.status !== 'CANCELLED');
+  const faturamentoBruto = pedidosAtivos.reduce((acc, p) => acc + (Number(p.total_amount) || 0), 0);
   const valorLiberado = pagamentos.reduce((acc, p) => acc + (Number(p.amount) || 0), 0);
   const valorLiquido = pagamentos.reduce((acc, p) => acc + (Number(p.net_amount) || 0), 0);
   const totalTaxas = pagamentos.reduce((acc, p) => acc + (Number(p.marketplace_fee) || 0), 0);
   const totalCustosFixos = (custosFixosRes.data ?? [])
     .filter((c: { is_recurring: boolean }) => c.is_recurring)
     .reduce((acc: number, c: { amount: number }) => acc + c.amount, 0);
+
+  // Amostra dos 10 pedidos COMPLETED com maior valor, com margem detalhada
+  const pedidosComMargem = pedidos
+    .filter(p => p.status === 'COMPLETED' && pagamentoPorPedido[p.id])
+    .slice(0, 10)
+    .map(p => {
+      const pag = pagamentoPorPedido[p.id];
+      const taxasDoPedido = taxasPorPedido[p.id] ?? {};
+      const itensDoPedido = (itensPorPedido[p.id] ?? []).map(i => ({
+        nome: i.item_name,
+        sku: i.sku,
+        quantidade: i.quantity,
+        total: Number(i.total_price),
+      }));
+      return {
+        external_order_id: p.external_order_id,
+        data: p.order_created_at,
+        receita_bruta: Number(p.total_amount),
+        valor_liberado: pag.amount,
+        valor_liquido: pag.net_amount,
+        taxas_marketplace: pag.marketplace_fee,
+        margem_pct: Number(p.total_amount) > 0
+          ? Number(((pag.net_amount / Number(p.total_amount)) * 100).toFixed(1))
+          : 0,
+        taxas_detalhadas: taxasDoPedido,
+        itens: itensDoPedido,
+      };
+    });
 
   return {
     periodo: `${inicio60Dias.toISOString().split('T')[0]} até hoje`,
@@ -196,6 +301,8 @@ async function buscarDadosFinanceiros(supabase: ReturnType<typeof createClient>,
     })),
     resumo_geral: {
       total_pedidos: pedidos.length,
+      pedidos_ativos: pedidosAtivos.length,
+      pedidos_cancelados: pedidos.filter(p => p.status === 'CANCELLED').length,
       faturamento_bruto: Number(faturamentoBruto.toFixed(2)),
       valor_liberado_escrow: Number(valorLiberado.toFixed(2)),
       valor_liquido_apos_taxas: Number(valorLiquido.toFixed(2)),
@@ -209,7 +316,7 @@ async function buscarDadosFinanceiros(supabase: ReturnType<typeof createClient>,
       quantidade: d.count,
       faturamento: Number(d.total.toFixed(2)),
     })),
-    top_produtos: topProdutos,
+    analise_por_produto: analisePorProduto,
     taxas_detalhadas: {
       comissao: Number((taxasPorTipo['commission'] || 0).toFixed(2)),
       taxa_servico: Number((taxasPorTipo['service_fee'] || 0).toFixed(2)),
@@ -217,13 +324,21 @@ async function buscarDadosFinanceiros(supabase: ReturnType<typeof createClient>,
       ajustes: Number((taxasPorTipo['adjustment'] || 0).toFixed(2)),
       total_geral: Number(Object.values(taxasPorTipo).reduce((a, b) => a + b, 0).toFixed(2)),
     },
-    pagamentos_recentes: pagamentos.slice(0, 20),
+    pedidos_com_margem: pedidosComMargem,
+    pagamentos_recentes: pagamentos.slice(0, 10).map(p => ({
+      order_id: p.order_id,
+      amount: Number(p.amount),
+      net_amount: Number(p.net_amount),
+      marketplace_fee: Number(p.marketplace_fee),
+      status: p.status,
+      transaction_date: p.transaction_date,
+    })),
     custos_fixos: {
       lista: custosFixosRes.data ?? [],
       total_mensal_recorrente: Number(totalCustosFixos.toFixed(2)),
     },
     custos_por_produto: produtoCostosRes.data ?? [],
-    configuracoes_shopee: shopeeSettingsRes.data ?? null,
+    configuracoes: configRes.data ?? null,
   };
 }
 
@@ -294,6 +409,7 @@ serve(async (req: Request) => {
       integracoes: dadosFinanceiros.integracoes.length,
       pedidos: dadosFinanceiros.resumo_geral.total_pedidos,
       faturamento: dadosFinanceiros.resumo_geral.faturamento_bruto,
+      produtos: dadosFinanceiros.analise_por_produto.length,
     });
 
     const contents = [];

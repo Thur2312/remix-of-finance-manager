@@ -17,8 +17,6 @@ export interface CompanyFormData {
   tax_rate: number;
 }
 
-// Cast tipado sem usar 'any'
-
 export function useCompanies() {
   const [companies, setCompanies] = useState<Company[]>([]);
   const [loading, setLoading] = useState(true);
@@ -28,7 +26,7 @@ export function useCompanies() {
     setLoading(true);
     setError(null);
     try {
-      const { data, error: err } = await db
+      const { data, error: err } = await supabase
         .from('companies')
         .select('*')
         .order('created_at', { ascending: false });
@@ -46,11 +44,11 @@ export function useCompanies() {
     fetchCompanies();
   }, [fetchCompanies]);
 
-  const createCompany = async (formData: CompanyFormData) => {
+  const createCompany = async (formData: CompanyFormData): Promise<Company> => {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) throw new Error('Usuário não autenticado');
 
-    const { data, error: err } = await db
+    const { data, error: err } = await supabase
       .from('companies')
       .insert({ ...formData, user_id: user.id })
       .select()
@@ -61,8 +59,8 @@ export function useCompanies() {
     return data as Company;
   };
 
-  const updateCompany = async (id: string, formData: Partial<CompanyFormData>) => {
-    const { data, error: err } = await db
+  const updateCompany = async (id: string, formData: Partial<CompanyFormData>): Promise<Company> => {
+    const { data, error: err } = await supabase
       .from('companies')
       .update(formData)
       .eq('id', id)
@@ -74,8 +72,8 @@ export function useCompanies() {
     return data as Company;
   };
 
-  const deleteCompany = async (id: string) => {
-    const { error: err } = await db
+  const deleteCompany = async (id: string): Promise<void> => {
+    const { error: err } = await supabase
       .from('companies')
       .delete()
       .eq('id', id);
@@ -88,9 +86,9 @@ export function useCompanies() {
     platform: 'tiktok' | 'shopee',
     integrationId: string,
     companyId: string
-  ) => {
+  ): Promise<void> => {
     const table = platform === 'tiktok' ? 'tiktok_integrations' : 'shopee_integrations';
-    const { error: err } = await db
+    const { error: err } = await supabase
       .from(table)
       .update({ company_id: companyId })
       .eq('id', integrationId);
