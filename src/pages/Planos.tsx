@@ -137,17 +137,19 @@ export function PlanosContent() {
                   {plan.period && <span className="text-muted-foreground text-sm mb-1">{plan.period}</span>}
                 </div>
               </CardHeader>
-              <CardContent className="flex-1 space-y-4">
-                <ul className="space-y-2">
-                  {plan.features.map((feat, i) => (
-                    <li key={i} className="flex items-center gap-2 text-sm">
-                      <CheckCircle2 className="h-4 w-4 text-primary flex-shrink-0" />
-                      <span>{feat}</span>
-                    </li>
-                  ))}
-                </ul>
-                <Button
-                  className="w-full"
+              <CardContent className="flex flex-col flex-1">
+                 <div className="flex-1">
+                  <ul className="space-y-2">
+                    {plan.features.map((feat, i) => (
+                      <li key={i} className="flex items-center gap-2 text-sm">
+                        <CheckCircle2 className="h-4 w-4 text-primary flex-shrink-0" />
+                        <span>{feat}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              <Button
+                  className="w-full mt-4"
                   variant={plan.popular ? 'default' : 'outline'}
                   onClick={() => handleSelectPlan(plan)}
                 >
