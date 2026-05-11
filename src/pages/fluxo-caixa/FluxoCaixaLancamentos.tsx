@@ -71,8 +71,8 @@ function NewCategoryDialog({ open, onOpenChange, onSuccess }: NewCategoryDialogP
 
   return (
     <Dialog open={open} onOpenChange={v => { onOpenChange(v); if (!v) reset(); }}>
-      <DialogContent className="max-w-lg w-[95vw] max-h-[90vh] overflow-y-auto top-[5%] translate-y-0">
-        <DialogHeader>
+      <DialogContent className="max-w-3xl w-[95vw]">
+          <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Tag className="h-4 w-4 text-primary" />
             Nova Categoria
@@ -82,8 +82,8 @@ function NewCategoryDialog({ open, onOpenChange, onSuccess }: NewCategoryDialogP
           </DialogDescription>
         </DialogHeader>
 
-        <div className="space-y-5 py-2">
-          {/* Nome */}
+      <div className="grid grid-cols-3 gap-4">   
+         {/* Nome */}
           <div className="space-y-1.5">
             <Label htmlFor="cat-name">
               Nome <span className="text-destructive">*</span>

@@ -544,7 +544,7 @@ function CalculadoraPrecificacaoContent() {
                     </Button>
                   </DialogTrigger>
 
-                  <DialogContent className="max-w-lg w-[95vw] max-h-[90vh] overflow-y-auto top-[5%] translate-y-0">
+                  <DialogContent className="max-w-3xl w-[95vw]">                    
                     <DialogHeader>
                       <DialogTitle>{editingId ? "Editar Anúncio" : "Cadastrar Anúncio"}</DialogTitle>
                       <DialogDescription>
@@ -554,8 +554,8 @@ function CalculadoraPrecificacaoContent() {
                       </DialogDescription>
                     </DialogHeader>
 
-                    <div className="space-y-3 py-2">
-                      <div className="space-y-2">
+                <div className="grid grid-cols-3 gap-4">                     
+                     <div className="space-y-2">
                         <Label htmlFor="nome_anuncio" className="font-medium">
                           Nome do Anúncio <span className="text-destructive">*</span>
                         </Label>
