@@ -875,21 +875,21 @@ function CalculadoraPrecificacaoContent() {
               ) : (
                 <div className="overflow-x-auto">
                   <table className="w-full text-sm">
-                    <thead>
+                 <thead>
                       <tr>
                         <th colSpan={11} className="pb-2">
-                          <div className="flex items-center px-3 gap-5 text-sm font-medium text-muted-foreground">
-                            <span className="flex-[2] text-left">Nome</span>
-                            <span className="flex-[1.5] text-left">Marketplace</span>
+                          <div className="flex items-center px-4 text-sm font-medium text-muted-foreground">
+                            <span className="flex-[2] min-w-[180px] text-left">Nome</span>
+                            <span className="flex-[1.3] min-w-[120px] text-left">Marketplace</span>
 
-                            <span className="flex-1 text-right">Custo</span>
-                            <span className="flex-1 text-right">Venda</span>
-                            <span className="flex-1 text-right">Comissão/Taxa</span>
-                            <span className="flex-1 text-right">Antecipado</span>
-                            <span className="flex-1 text-right">Afiliados</span>
-                            <span className="flex-1 text-right">Imposto</span>
-                            <span className="flex-1 text-right">Custo Var.</span>
-                            <span className="flex-1 text-right">Lucro</span>
+                            <span className="w-[90px] text-right">Custo</span>
+                            <span className="w-[90px] text-right">Venda</span>
+                            <span className="w-[130px] text-right">Comissão/Taxa</span>
+                            <span className="w-[110px] text-right">Antecipado</span>
+                            <span className="w-[100px] text-right">Afiliados</span>
+                            <span className="w-[90px] text-right">Imposto</span>
+                            <span className="w-[110px] text-right">Custo Var.</span>
+                            <span className="w-[90px] text-right">Lucro</span>
 
                             <span className="w-[72px]" />
                           </div>
@@ -902,27 +902,61 @@ function CalculadoraPrecificacaoContent() {
                         return (
                           <tr key={a.id}>
                             <td className="pt-2" colSpan={11}>
-                              <div className="flex items-center bg-muted/50 rounded-md px-3 py-2.5 gap-5">
-                                <span className="flex-[2] font-medium whitespace-nowrap">{a.nome_anuncio}</span>
-                                <span className="flex-[1.5] whitespace-nowrap">
-                                  {a.marketplace
-                                    ? <Badge variant="outline" className="font-normal">{a.marketplace}</Badge>
-                                    : <span className="text-muted-foreground">—</span>}
-                                </span>
-                                <span className="flex-1 text-right tabular-nums whitespace-nowrap">{formatCurrency(a.custo)}</span>
-                                <span className="flex-1 text-right tabular-nums whitespace-nowrap">{formatCurrency(a.valor_venda)}</span>
-                                <span className="flex-1 text-right tabular-nums whitespace-nowrap">{formatCurrency(parseFloat(String(a.comissao_taxa) || "0"))}</span>
-                                <span className="flex-1 text-right tabular-nums whitespace-nowrap">{formatCurrency(a.antecipado)}</span>
-                                <span className="flex-1 text-right tabular-nums whitespace-nowrap">{formatCurrency(a.afiliados)}</span>
-                                <span className="flex-1 text-right whitespace-nowrap">
-                                  <Badge variant="secondary" className="font-normal tabular-nums">{a.imposto_pct}%</Badge>
-                                </span>
-                                <span className="flex-1 text-right tabular-nums whitespace-nowrap">{formatCurrency(a.custo_var)}</span>
-                                <span className={`flex-1 text-right font-semibold tabular-nums whitespace-nowrap ${lucro >= 0 ? "text-green-600" : "text-destructive"}`}>
-                                  {formatCurrency(lucro)}
-                                </span>
-                                <span className="w-[72px] flex items-center justify-end gap-1 pl-2">
-                                    <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => openEditAnuncio(a)}>
+                            <div className="flex items-center bg-muted/50 rounded-md px-4 py-3">
+                              <span className="flex-[2] min-w-[180px] font-medium whitespace-nowrap">
+                                {a.nome_anuncio}
+                              </span>
+
+                              <span className="flex-[1.3] min-w-[120px] whitespace-nowrap">
+                                {a.marketplace ? (
+                                  <Badge variant="outline" className="font-normal">
+                                    {a.marketplace}
+                                  </Badge>
+                                ) : (
+                                  <span className="text-muted-foreground">—</span>
+                                )}
+                              </span>
+
+                              <span className="w-[90px] text-right tabular-nums whitespace-nowrap">
+                                {formatCurrency(a.custo)}
+                              </span>
+
+                              <span className="w-[90px] text-right tabular-nums whitespace-nowrap">
+                                {formatCurrency(a.valor_venda)}
+                              </span>
+
+                              <span className="w-[130px] text-right tabular-nums whitespace-nowrap">
+                                {formatCurrency(parseFloat(String(a.comissao_taxa) || "0"))}
+                              </span>
+
+                              <span className="w-[110px] text-right tabular-nums whitespace-nowrap">
+                                {formatCurrency(a.antecipado)}
+                              </span>
+
+                              <span className="w-[100px] text-right tabular-nums whitespace-nowrap">
+                                {formatCurrency(a.afiliados)}
+                              </span>
+
+                              <span className="w-[90px] text-right whitespace-nowrap">
+                                <Badge variant="secondary" className="font-normal tabular-nums">
+                                  {a.imposto_pct}%
+                                </Badge>
+                              </span>
+
+                              <span className="w-[110px] text-right tabular-nums whitespace-nowrap">
+                                {formatCurrency(a.custo_var)}
+                              </span>
+
+                              <span
+                                className={`w-[90px] text-right font-semibold tabular-nums whitespace-nowrap ${
+                                  lucro >= 0 ? "text-green-600" : "text-destructive"
+                                }`}
+                              >
+                                {formatCurrency(lucro)}
+                              </span>
+
+                              <span className="w-[72px] flex items-center justify-end gap-1 pl-2">                            
+                                  <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => openEditAnuncio(a)}>
                                     <Pencil className="h-4 w-4" />
                                   </Button>
                                   <AlertDialog>
@@ -944,8 +978,8 @@ function CalculadoraPrecificacaoContent() {
                                       </AlertDialogFooter>
                                     </AlertDialogContent>
                                   </AlertDialog>
-                                </span>
-                              </div>
+                              </span>
+                            </div>
                             </td>
                           </tr>
                         );
