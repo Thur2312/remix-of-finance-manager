@@ -544,7 +544,7 @@ function CalculadoraPrecificacaoContent() {
                     </Button>
                   </DialogTrigger>
 
-                  <DialogContent className="max-w-lg">
+                  <DialogContent className="max-w-lg w-[95vw] max-h-[90vh] overflow-y-auto top-[5%] translate-y-0">
                     <DialogHeader>
                       <DialogTitle>{editingId ? "Editar Anúncio" : "Cadastrar Anúncio"}</DialogTitle>
                       <DialogDescription>

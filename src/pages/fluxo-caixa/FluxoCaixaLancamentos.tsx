@@ -71,7 +71,7 @@ function NewCategoryDialog({ open, onOpenChange, onSuccess }: NewCategoryDialogP
 
   return (
     <Dialog open={open} onOpenChange={v => { onOpenChange(v); if (!v) reset(); }}>
-      <DialogContent className="max-w-sm">
+      <DialogContent className="max-w-lg w-[95vw] max-h-[90vh] overflow-y-auto top-[5%] translate-y-0">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Tag className="h-4 w-4 text-primary" />
