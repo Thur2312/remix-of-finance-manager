@@ -575,6 +575,7 @@ function CalculadoraPrecificacaoContent() {
                           <SelectContent>
                             <SelectItem value="Shopee">Shopee</SelectItem>
                             <SelectItem value="TiktokShop">TikTok Shop</SelectItem>
+                            <SelectItem value="MercadoLivre">Mercado Livre</SelectItem>
                           </SelectContent>
                         </Select>
                       </div>
