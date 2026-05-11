@@ -878,7 +878,7 @@ function CalculadoraPrecificacaoContent() {
                     <thead>
                       <tr>
                         <th colSpan={11} className="pb-2">
-                          <div className="flex items-center px-3 gap-2 text-sm font-medium text-muted-foreground">
+                          <div className="flex items-center px-3 gap-5 text-sm font-medium text-muted-foreground">
                             <span className="flex-[2] text-left">Nome</span>
                             <span className="flex-[1.5] text-left">Marketplace</span>
 
@@ -902,7 +902,7 @@ function CalculadoraPrecificacaoContent() {
                         return (
                           <tr key={a.id}>
                             <td className="pt-2" colSpan={11}>
-                              <div className="flex items-center bg-muted/50 rounded-md px-3 py-2.5 gap-2">
+                              <div className="flex items-center bg-muted/50 rounded-md px-3 py-2.5 gap-5">
                                 <span className="flex-[2] font-medium whitespace-nowrap">{a.nome_anuncio}</span>
                                 <span className="flex-[1.5] whitespace-nowrap">
                                   {a.marketplace
