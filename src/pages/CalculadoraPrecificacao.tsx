@@ -876,10 +876,24 @@ function CalculadoraPrecificacaoContent() {
                 <div className="overflow-x-auto">
                   <table className="w-full text-sm">
                     <thead>
-                      <tr className="border-b border-border">
-                        {["Nome", "Marketplace", "Custo", "Venda", "Comissão/Taxa", "Antecipado", "Afiliados", "Imposto", "Custo Var.", "Lucro", ""].map((h, i) => (
-                          <th key={i} className={`pb-2 px-2 font-medium text-muted-foreground whitespace-nowrap ${i >= 2 && i <= 9 ? "text-right" : "text-left"}`}>{h}</th>
-                        ))}
+                      <tr>
+                        <th colSpan={11} className="pb-2">
+                          <div className="flex items-center px-3 gap-0 text-sm font-medium text-muted-foreground">
+                            <span className="flex-[2] text-left">Nome</span>
+                            <span className="flex-[1.5] text-left">Marketplace</span>
+
+                            <span className="flex-1 text-right">Custo</span>
+                            <span className="flex-1 text-right">Venda</span>
+                            <span className="flex-1 text-right">Comissão/Taxa</span>
+                            <span className="flex-1 text-right">Antecipado</span>
+                            <span className="flex-1 text-right">Afiliados</span>
+                            <span className="flex-1 text-right">Imposto</span>
+                            <span className="flex-1 text-right">Custo Var.</span>
+                            <span className="flex-1 text-right">Lucro</span>
+
+                            <span className="w-[72px]" />
+                          </div>
+                        </th>
                       </tr>
                     </thead>
                     <tbody>
@@ -907,8 +921,8 @@ function CalculadoraPrecificacaoContent() {
                                 <span className={`flex-1 text-right font-semibold tabular-nums whitespace-nowrap ${lucro >= 0 ? "text-green-600" : "text-destructive"}`}>
                                   {formatCurrency(lucro)}
                                 </span>
-                                <span className="flex items-center justify-end gap-1 pl-2">
-                                  <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => openEditAnuncio(a)}>
+                                <span className="w-[72px] flex items-center justify-end gap-1 pl-2">
+                                    <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => openEditAnuncio(a)}>
                                     <Pencil className="h-4 w-4" />
                                   </Button>
                                   <AlertDialog>

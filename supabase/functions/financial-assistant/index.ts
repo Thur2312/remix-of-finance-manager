@@ -36,7 +36,7 @@ MAPA REAL DA PLATAFORMA (use apenas essas seções ao orientar o vendedor):
 - Dashboard — visão geral dos resultados
 - Gestão — controle dos pedidos
 - Fluxo de Caixa — entradas e saídas financeiras
-- Precificação — calculadora para simular o preço de venda de um produto (não salva dados, é só uma simulação manual)
+- Precificação — calculadora de preços e cadastro de anúncios com custos, taxas e margens reais
 - Custos Fixos — cadastro de despesas mensais fixas da operação (aluguel, internet, funcionários, etc.)
 - Assistente — você, o Finn
 - DRE — demonstrativo de resultados
@@ -58,6 +58,10 @@ O QUE VOCÊ CONSEGUE CALCULAR:
 - Projeção de receita
 - Break-even de qualquer produto se o vendedor informar o custo na conversa
 - Lucro líquido por produto se o vendedor informar o custo de aquisição aqui na conversa
+- Anúncios cadastrados: nome, marketplace, custo, preço de venda, comissão, taxa fixa, afiliados, imposto e lucro estimado por unidade
+- Comparar margem entre anúncios e identificar o mais e menos rentável
+- Identificar anúncios no prejuízo (lucro negativo)
+- Simular impacto de mudança de preço ou custo em um anúncio específico
 
 O QUE VOCÊ NÃO CONSEGUE SEM O CUSTO DE AQUISIÇÃO:
 - Lucro líquido final por produto
@@ -82,6 +86,16 @@ async function buscarDadosFinanceiros(supabase: ReturnType<typeof createClient>,
   const integracaoIds = (integracoes ?? []).map((i: { id: string }) => i.id);
 
   if (integracaoIds.length === 0) {
+    // Ainda busca anúncios mesmo sem integração conectada
+    const { data: anunciosData } = await supabase
+      .from('anuncios')
+      .select('nome_anuncio, custo, valor_venda, comissao_taxa, antecipado, afiliados, imposto_pct, custo_var, taxafixa, marketplace')
+      .eq('user_id', userId)
+      .order('atualizado_em', { ascending: false })
+      .limit(100);
+
+    const anuncios = processarAnuncios(anunciosData ?? []);
+
     return {
       periodo: `${inicio60Dias.toISOString().split('T')[0]} até hoje`,
       integracoes: [],
@@ -95,6 +109,7 @@ async function buscarDadosFinanceiros(supabase: ReturnType<typeof createClient>,
       custos_fixos: { lista: [], total_mensal_recorrente: 0 },
       custos_por_produto: [],
       configuracoes: null,
+      anuncios_cadastrados: anuncios,
     };
   }
 
@@ -117,6 +132,7 @@ async function buscarDadosFinanceiros(supabase: ReturnType<typeof createClient>,
     custosFixosRes,
     produtoCostosRes,
     configRes,
+    anunciosRes,
   ] = await Promise.all([
     supabase
       .from('order_items')
@@ -154,6 +170,13 @@ async function buscarDadosFinanceiros(supabase: ReturnType<typeof createClient>,
       .eq('user_id', userId)
       .eq('is_default', true)
       .maybeSingle(),
+
+    supabase
+      .from('anuncios')
+      .select('nome_anuncio, custo, valor_venda, comissao_taxa, antecipado, afiliados, imposto_pct, custo_var, taxafixa, marketplace')
+      .eq('user_id', userId)
+      .order('atualizado_em', { ascending: false })
+      .limit(100),
   ]);
 
   const itens = itensRes.data ?? [];
@@ -284,6 +307,8 @@ async function buscarDadosFinanceiros(supabase: ReturnType<typeof createClient>,
       };
     });
 
+  const anuncios = processarAnuncios(anunciosRes.data ?? []);
+
   return {
     periodo: `${inicio60Dias.toISOString().split('T')[0]} até hoje`,
     integracoes: (integracoes ?? []).map((i: { id: string; provider: string; shop_name: string }) => ({
@@ -330,12 +355,76 @@ async function buscarDadosFinanceiros(supabase: ReturnType<typeof createClient>,
     },
     custos_por_produto: produtoCostosRes.data ?? [],
     configuracoes: configRes.data ?? null,
+    anuncios_cadastrados: anuncios,
+  };
+}
+
+// ─── Processa anúncios e calcula lucro estimado ───────────────────────────────
+function processarAnuncios(data: {
+  nome_anuncio: string;
+  custo: number;
+  valor_venda: number;
+  comissao_taxa: string;
+  antecipado: number;
+  afiliados: number;
+  imposto_pct: number;
+  custo_var: number;
+  taxafixa: number | null;
+  marketplace: string | null;
+}[]) {
+  const lista = data.map(a => {
+    const comissaoTaxaVal = parseFloat(String(a.comissao_taxa || '0')) || 0;
+    const impostoVal      = a.valor_venda * (a.imposto_pct / 100);
+    const lucro           = a.valor_venda
+      - a.custo
+      - a.custo_var
+      - comissaoTaxaVal
+      - (a.taxafixa || 0)
+      - a.antecipado
+      - a.afiliados
+      - impostoVal;
+    const margem_pct = a.valor_venda > 0
+      ? Number(((lucro / a.valor_venda) * 100).toFixed(1))
+      : 0;
+
+    return {
+      nome:           a.nome_anuncio,
+      marketplace:    a.marketplace || '—',
+      custo_produto:  a.custo,
+      valor_venda:    a.valor_venda,
+      comissao_taxa:  comissaoTaxaVal,
+      taxa_fixa:      a.taxafixa || 0,
+      antecipado:     a.antecipado,
+      afiliados:      a.afiliados,
+      imposto_pct:    a.imposto_pct,
+      imposto_valor:  Number(impostoVal.toFixed(2)),
+      custo_variavel: a.custo_var,
+      lucro_estimado: Number(lucro.toFixed(2)),
+      margem_pct,
+      viavel:         lucro > 0,
+    };
+  });
+
+  const viaveis   = lista.filter(a => a.viavel);
+  const inviaveis = lista.filter(a => !a.viavel);
+
+  return {
+    total: lista.length,
+    lista,
+    resumo: {
+      melhor_margem: viaveis.length > 0
+        ? viaveis.reduce((a, b) => a.margem_pct > b.margem_pct ? a : b).nome
+        : null,
+      pior_margem: lista.length > 0
+        ? lista.reduce((a, b) => a.margem_pct < b.margem_pct ? a : b).nome
+        : null,
+      total_inviaveis:  inviaveis.length,
+      nomes_inviaveis:  inviaveis.map(a => a.nome),
+    },
   };
 }
 
 // ─── Retry com backoff exponencial ───────────────────────────────────────────
-// Tenta até MAX_RETRIES vezes para erros 503 e 429 do Gemini.
-// Espera: 1s, 2s, 4s entre as tentativas.
 const MAX_RETRIES = 3;
 const RETRY_STATUS = new Set([429, 503]);
 
@@ -368,10 +457,8 @@ async function callGeminiWithRetry(
     lastErrorText = await response.text();
     console.error(`Gemini tentativa ${attempt}/${MAX_RETRIES} — status ${lastStatus}:`, lastErrorText);
 
-    // Só tenta de novo para 429 e 503
     if (!RETRY_STATUS.has(lastStatus) || attempt === MAX_RETRIES) break;
 
-    // Backoff exponencial: 1s → 2s → 4s
     const delay = Math.pow(2, attempt - 1) * 1000;
     console.log(`Aguardando ${delay}ms antes da próxima tentativa...`);
     await new Promise(resolve => setTimeout(resolve, delay));
@@ -379,6 +466,7 @@ async function callGeminiWithRetry(
 
   return { ok: false, status: lastStatus, errorText: lastErrorText };
 }
+
 // ─────────────────────────────────────────────────────────────────────────────
 
 serve(async (req: Request) => {
@@ -449,6 +537,7 @@ serve(async (req: Request) => {
       pedidos: dadosFinanceiros.resumo_geral.total_pedidos,
       faturamento: dadosFinanceiros.resumo_geral.faturamento_bruto,
       produtos: dadosFinanceiros.analise_por_produto.length,
+      anuncios: dadosFinanceiros.anuncios_cadastrados.total,
     });
 
     const contents = [];
@@ -493,7 +582,6 @@ serve(async (req: Request) => {
     if (!geminiResult.ok) {
       console.error('Gemini falhou após todas as tentativas. Status:', geminiResult.status);
 
-      // Mensagens amigáveis por tipo de erro
       if (geminiResult.status === 503) {
         return new Response(
           JSON.stringify({ error: 'O assistente está com alta demanda no momento. Aguarde alguns segundos e tente novamente.' }),
