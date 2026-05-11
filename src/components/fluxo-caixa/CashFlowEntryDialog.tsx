@@ -61,8 +61,6 @@ export default function CashFlowEntryDialog({
   const { categories } = useCashFlowCategories();
   const { createEntry, updateEntry } = useCashFlowEntries();
   const [selectedType, setSelectedType] = useState<'income' | 'expense'>('expense');
-
-  // ✅ Estado local para o display do valor com vírgula
   const [amountDisplay, setAmountDisplay] = useState('');
 
   const form = useForm<EntryFormData>({
@@ -119,7 +117,7 @@ export default function CashFlowEntryDialog({
       setAmountDisplay('');
       setSelectedType('expense');
     }
-  }, [entry, open]);
+  }, [entry, open, form]);
 
   useEffect(() => {
     setSelectedType(type);
@@ -154,7 +152,7 @@ export default function CashFlowEntryDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-lg">
+      <DialogContent className="max-w-2xl w-[95vw]">
         <DialogHeader>
           <DialogTitle>
             {entry ? 'Editar Lançamento' : 'Novo Lançamento'}
@@ -163,60 +161,56 @@ export default function CashFlowEntryDialog({
 
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-            {/* Type Selection */}
-            <FormField
-              control={form.control}
-              name="type"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Tipo</FormLabel>
-                  <div className="grid grid-cols-2 gap-2">
-                    <Button
-                      type="button"
-                      variant={field.value === 'income' ? 'default' : 'outline'}
-                      className={field.value === 'income' ? 'bg-green-600 hover:bg-green-700' : ''}
-                      onClick={() => {
-                        field.onChange('income');
-                        form.setValue('category_id', null);
-                      }}
-                    >
-                      Entrada
-                    </Button>
-                    <Button
-                      type="button"
-                      variant={field.value === 'expense' ? 'default' : 'outline'}
-                      className={field.value === 'expense' ? 'bg-red-600 hover:bg-red-700' : ''}
-                      onClick={() => {
-                        field.onChange('expense');
-                        form.setValue('category_id', null);
-                      }}
-                    >
-                      Saída
-                    </Button>
-                  </div>
-                </FormItem>
-              )}
-            />
 
-            {/* Description */}
-            <FormField
-              control={form.control}
-              name="description"
-              render={({ field }) => (
-                <FormItem>
-                  
-                  <FormLabel>Descrição</FormLabel>
-                  <FormControl>
-                    <Input placeholder="Ex: Pagamento fornecedor X" {...field} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-
-            {/* Amount and Category */}
+            {/* Linha 1: Tipo + Descrição */}
             <div className="grid grid-cols-2 gap-4">
-              {/* ✅ Campo de valor com suporte a vírgula */}
+              {/* Tipo */}
+              <FormField
+                control={form.control}
+                name="type"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Tipo</FormLabel>
+                    <div className="grid grid-cols-2 gap-2">
+                      <Button
+                        type="button"
+                        variant={field.value === 'income' ? 'default' : 'outline'}
+                        className={field.value === 'income' ? 'bg-green-600 hover:bg-green-700' : ''}
+                        onClick={() => { field.onChange('income'); form.setValue('category_id', null); }}
+                      >
+                        Entrada
+                      </Button>
+                      <Button
+                        type="button"
+                        variant={field.value === 'expense' ? 'default' : 'outline'}
+                        className={field.value === 'expense' ? 'bg-red-600 hover:bg-red-700' : ''}
+                        onClick={() => { field.onChange('expense'); form.setValue('category_id', null); }}
+                      >
+                        Saída
+                      </Button>
+                    </div>
+                  </FormItem>
+                )}
+              />
+
+              {/* Descrição */}
+              <FormField
+                control={form.control}
+                name="description"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Descrição</FormLabel>
+                    <FormControl>
+                      <Input placeholder="Ex: Pagamento fornecedor X" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            </div>
+
+            {/* Linha 2: Valor + Categoria + Status */}
+            <div className="grid grid-cols-3 gap-4">
               <FormField
                 control={form.control}
                 name="amount"
@@ -229,21 +223,17 @@ export default function CashFlowEntryDialog({
                         placeholder="0,00"
                         value={amountDisplay}
                         onChange={(e) => {
-                          const raw = e.target.value
-                          // Aceita apenas dígitos, vírgula ou ponto — e só um separador
-                          if (!/^[0-9]*[,.]?[0-9]*$/.test(raw)) return
-                          setAmountDisplay(raw)
-                          // Atualiza o form só se for um número válido
-                          const num = parseFloat(raw.replace(',', '.'))
-                          if (!isNaN(num)) {
-                            field.onChange(num)
-                          }
+                          const raw = e.target.value;
+                          if (!/^[0-9]*[,.]?[0-9]*$/.test(raw)) return;
+                          setAmountDisplay(raw);
+                          const num = parseFloat(raw.replace(',', '.'));
+                          if (!isNaN(num)) field.onChange(num);
                         }}
                         onBlur={() => {
-                          const num = parseFloat(amountDisplay.replace(',', '.'))
+                          const num = parseFloat(amountDisplay.replace(',', '.'));
                           if (!isNaN(num)) {
-                            field.onChange(num)
-                            setAmountDisplay(num.toFixed(2).replace('.', ','))
+                            field.onChange(num);
+                            setAmountDisplay(num.toFixed(2).replace('.', ','));
                           }
                         }}
                       />
@@ -259,23 +249,15 @@ export default function CashFlowEntryDialog({
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Categoria</FormLabel>
-                    <Select
-                      value={field.value || ''}
-                      onValueChange={(value) => field.onChange(value || null)}
-                    >
+                    <Select value={field.value || ''} onValueChange={(v) => field.onChange(v || null)}>
                       <FormControl>
-                        <SelectTrigger>
-                          <SelectValue placeholder="Selecione..." />
-                        </SelectTrigger>
+                        <SelectTrigger><SelectValue placeholder="Selecione..." /></SelectTrigger>
                       </FormControl>
                       <SelectContent>
                         {filteredCategories.map((cat) => (
                           <SelectItem key={cat.id} value={cat.id}>
                             <div className="flex items-center gap-2">
-                              <div
-                                className="w-3 h-3 rounded-full"
-                                style={{ backgroundColor: cat.color }}
-                              />
+                              <div className="w-3 h-3 rounded-full" style={{ backgroundColor: cat.color }} />
                               {cat.name}
                             </div>
                           </SelectItem>
@@ -286,19 +268,38 @@ export default function CashFlowEntryDialog({
                   </FormItem>
                 )}
               />
+
+              <FormField
+                control={form.control}
+                name="status"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Status</FormLabel>
+                    <Select value={field.value} onValueChange={field.onChange}>
+                      <FormControl>
+                        <SelectTrigger><SelectValue /></SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        <SelectItem value="pending">Pendente</SelectItem>
+                        <SelectItem value="paid">Pago</SelectItem>
+                        <SelectItem value="received">Recebido</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
             </div>
 
-            {/* Date and Due Date */}
-            <div className="grid grid-cols-2 gap-4">
+            {/* Linha 3: Data + Vencimento + Recorrente */}
+            <div className="grid grid-cols-3 gap-4 items-end">
               <FormField
                 control={form.control}
                 name="date"
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Data</FormLabel>
-                    <FormControl>
-                      <Input type="date" {...field} />
-                    </FormControl>
+                    <FormControl><Input type="date" {...field} /></FormControl>
                     <FormMessage />
                   </FormItem>
                 )}
@@ -321,54 +322,25 @@ export default function CashFlowEntryDialog({
                   </FormItem>
                 )}
               />
+
+              {/* Recorrente (toggle compacto) */}
+              <FormField
+                control={form.control}
+                name="is_recurring"
+                render={({ field }) => (
+                  <FormItem className="flex items-center justify-between rounded-lg border px-3 py-2 h-10">
+                    <FormLabel className="text-sm font-normal cursor-pointer mb-0">
+                      Recorrente
+                    </FormLabel>
+                    <FormControl>
+                      <Switch checked={field.value} onCheckedChange={field.onChange} />
+                    </FormControl>
+                  </FormItem>
+                )}
+              />
             </div>
 
-            {/* Status */}
-            <FormField
-              control={form.control}
-              name="status"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Status</FormLabel>
-                  <Select value={field.value} onValueChange={field.onChange}>
-                    <FormControl>
-                      <SelectTrigger>
-                        <SelectValue />
-                      </SelectTrigger>
-                    </FormControl>
-                    <SelectContent>
-                      <SelectItem value="pending">Pendente</SelectItem>
-                      <SelectItem value="paid">Pago</SelectItem>
-                      <SelectItem value="received">Recebido</SelectItem>
-                    </SelectContent>
-                  </Select>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-
-            {/* Recurring */}
-            <FormField
-              control={form.control}
-              name="is_recurring"
-              render={({ field }) => (
-                <FormItem className="flex items-center justify-between rounded-lg border p-4">
-                  <div className="space-y-0.5">
-                    <FormLabel className="text-base">Lançamento Recorrente</FormLabel>
-                    <p className="text-sm text-muted-foreground">
-                      Repetir automaticamente este lançamento
-                    </p>
-                  </div>
-                  <FormControl>
-                    <Switch
-                      checked={field.value}
-                      onCheckedChange={field.onChange}
-                    />
-                  </FormControl>
-                </FormItem>
-              )}
-            />
-
+            {/* Linha 4 (condicional): Frequência + Até quando */}
             {isRecurring && (
               <div className="grid grid-cols-2 gap-4">
                 <FormField
@@ -377,14 +349,9 @@ export default function CashFlowEntryDialog({
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel>Frequência</FormLabel>
-                      <Select
-                        value={field.value || ''}
-                        onValueChange={(value) => field.onChange(value || null)}
-                      >
+                      <Select value={field.value || ''} onValueChange={(v) => field.onChange(v || null)}>
                         <FormControl>
-                          <SelectTrigger>
-                            <SelectValue placeholder="Selecione..." />
-                          </SelectTrigger>
+                          <SelectTrigger><SelectValue placeholder="Selecione..." /></SelectTrigger>
                         </FormControl>
                         <SelectContent>
                           <SelectItem value="weekly">Semanal</SelectItem>
@@ -417,7 +384,7 @@ export default function CashFlowEntryDialog({
               </div>
             )}
 
-            {/* Notes */}
+            {/* Linha 5: Observações */}
             <FormField
               control={form.control}
               name="notes"
@@ -427,7 +394,7 @@ export default function CashFlowEntryDialog({
                   <FormControl>
                     <Textarea
                       placeholder="Observações adicionais..."
-                      className="resize-none"
+                      className="resize-none h-16"
                       value={field.value || ''}
                       onChange={(e) => field.onChange(e.target.value || null)}
                     />
@@ -441,10 +408,7 @@ export default function CashFlowEntryDialog({
               <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
                 Cancelar
               </Button>
-              <Button
-                type="submit"
-                disabled={createEntry.isPending || updateEntry.isPending}
-              >
+              <Button type="submit" disabled={createEntry.isPending || updateEntry.isPending}>
                 {entry ? 'Salvar' : 'Criar'}
               </Button>
             </DialogFooter>
