@@ -71,8 +71,8 @@ function NewCategoryDialog({ open, onOpenChange, onSuccess }: NewCategoryDialogP
 
   return (
     <Dialog open={open} onOpenChange={v => { onOpenChange(v); if (!v) reset(); }}>
-      <DialogContent className="max-w-3xl w-[95vw]">
-          <DialogHeader>
+      <DialogContent className="max-w-2xl w-[95vw]">
+        <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Tag className="h-4 w-4 text-primary" />
             Nova Categoria
@@ -82,47 +82,49 @@ function NewCategoryDialog({ open, onOpenChange, onSuccess }: NewCategoryDialogP
           </DialogDescription>
         </DialogHeader>
 
-      <div className="grid grid-cols-3 gap-4">   
-         {/* Nome */}
-          <div className="space-y-1.5">
-            <Label htmlFor="cat-name">
-              Nome <span className="text-destructive">*</span>
-            </Label>
-            <Input
-              id="cat-name"
-              autoFocus
-              value={name}
-              onChange={e => setName(e.target.value)}
-              placeholder="Ex: Marketplace, Embalagens..."
-              maxLength={60}
-              onKeyDown={e => e.key === 'Enter' && handleSubmit()}
-            />
+        <div className="space-y-4 py-2">
+
+          {/* Linha 1: Nome + Tipo */}
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-1.5">
+              <Label htmlFor="cat-name">
+                Nome <span className="text-destructive">*</span>
+              </Label>
+              <Input
+                id="cat-name"
+                autoFocus
+                value={name}
+                onChange={e => setName(e.target.value)}
+                placeholder="Ex: Marketplace, Embalagens..."
+                maxLength={60}
+                onKeyDown={e => e.key === 'Enter' && handleSubmit()}
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label>Tipo</Label>
+              <RadioGroup
+                value={type}
+                onValueChange={v => setType(v as 'income' | 'expense')}
+                className="flex gap-6 pt-1"
+              >
+                <div className="flex items-center gap-2">
+                  <RadioGroupItem value="income" id="type-income" />
+                  <Label htmlFor="type-income" className="cursor-pointer font-normal text-green-600">
+                    Entrada
+                  </Label>
+                </div>
+                <div className="flex items-center gap-2">
+                  <RadioGroupItem value="expense" id="type-expense" />
+                  <Label htmlFor="type-expense" className="cursor-pointer font-normal text-red-600">
+                    Saída
+                  </Label>
+                </div>
+              </RadioGroup>
+            </div>
           </div>
 
-          {/* Tipo */}
-          <div className="space-y-2">
-            <Label>Tipo</Label>
-            <RadioGroup
-              value={type}
-              onValueChange={v => setType(v as 'income' | 'expense')}
-              className="flex gap-4"
-            >
-              <div className="flex items-center gap-2">
-                <RadioGroupItem value="income" id="type-income" />
-                <Label htmlFor="type-income" className="cursor-pointer font-normal text-green-600">
-                  Entrada
-                </Label>
-              </div>
-              <div className="flex items-center gap-2">
-                <RadioGroupItem value="expense" id="type-expense" />
-                <Label htmlFor="type-expense" className="cursor-pointer font-normal text-red-600">
-                  Saída
-                </Label>
-              </div>
-            </RadioGroup>
-          </div>
-
-          {/* Cor */}
+          {/* Linha 2: Cor */}
           <div className="space-y-2">
             <Label>Cor</Label>
             <div className="flex flex-wrap gap-2">
@@ -153,6 +155,7 @@ function NewCategoryDialog({ open, onOpenChange, onSuccess }: NewCategoryDialogP
               </span>
             </div>
           </div>
+
         </div>
 
         <DialogFooter>
@@ -173,8 +176,8 @@ function NewCategoryDialog({ open, onOpenChange, onSuccess }: NewCategoryDialogP
 
 // ── Página principal ─────────────────────────────────────────────────────────
 function FluxoCaixaLancamentosContent() {
-  const [isDialogOpen,       setIsDialogOpen]       = useState(false);
-  const [isImportDialogOpen, setIsImportDialogOpen] = useState(false);
+  const [isDialogOpen,         setIsDialogOpen]         = useState(false);
+  const [isImportDialogOpen,   setIsImportDialogOpen]   = useState(false);
   const [isCategoryDialogOpen, setIsCategoryDialogOpen] = useState(false);
   const [editingEntry,  setEditingEntry]  = useState<CashFlowEntry | null>(null);
   const [deleteEntry,   setDeleteEntry]   = useState<CashFlowEntry | null>(null);
@@ -185,8 +188,8 @@ function FluxoCaixaLancamentosContent() {
 
   const { categories } = useCashFlowCategories();
   const { entries, isLoading, deleteEntry: deleteEntryMutation, updateEntryStatus } = useCashFlowEntries({
-    type:       typeFilter    !== 'all' ? typeFilter    as 'income' | 'expense'           : undefined,
-    status:     statusFilter  !== 'all' ? statusFilter  as 'pending' | 'paid' | 'received': undefined,
+    type:       typeFilter     !== 'all' ? typeFilter     as 'income' | 'expense'            : undefined,
+    status:     statusFilter   !== 'all' ? statusFilter   as 'pending' | 'paid' | 'received' : undefined,
     categoryId: categoryFilter !== 'all' ? categoryFilter : undefined,
   });
 
@@ -198,10 +201,8 @@ function FluxoCaixaLancamentosContent() {
     new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value);
 
   const getStatusBadge = (status: string) => {
-    const labels: Record<string, string> = { pending: 'Pendente', paid: 'Pago', received: 'Recebido' };
-    const variants: Record<string, 'default' | 'secondary' | 'outline'> = {
-      pending: 'outline', paid: 'default', received: 'default',
-    };
+    const labels: Record<string, string>                           = { pending: 'Pendente', paid: 'Pago', received: 'Recebido' };
+    const variants: Record<string, 'default' | 'secondary' | 'outline'> = { pending: 'outline', paid: 'default', received: 'default' };
     return <Badge variant={variants[status] || 'outline'}>{labels[status] || status}</Badge>;
   };
 
@@ -232,10 +233,10 @@ function FluxoCaixaLancamentosContent() {
       entry.status,
       entry.due_date ? format(parseISO(entry.due_date), 'dd/MM/yyyy') : '-',
     ]);
-    const csv = [headers, ...rows].map(row => row.join(',')).join('\n');
+    const csv  = [headers, ...rows].map(row => row.join(',')).join('\n');
     const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
     const link = document.createElement('a');
-    link.href = URL.createObjectURL(blob);
+    link.href     = URL.createObjectURL(blob);
     link.download = `lancamentos_${format(new Date(), 'yyyy-MM-dd')}.csv`;
     link.click();
   };
@@ -254,15 +255,10 @@ function FluxoCaixaLancamentosContent() {
             </p>
           </div>
           <div className="flex flex-wrap gap-2">
-            {/* ✅ Novo botão de categoria */}
-            <Button
-              variant="outline"
-              onClick={() => setIsCategoryDialogOpen(true)}
-            >
+            <Button variant="outline" onClick={() => setIsCategoryDialogOpen(true)}>
               <Tag className="h-4 w-4 mr-2" />
               Nova Categoria
             </Button>
-
             <Button variant="outline" onClick={() => setIsImportDialogOpen(true)}>
               <Upload className="h-4 w-4 mr-2" />
               Importar Extrato
@@ -424,11 +420,10 @@ function FluxoCaixaLancamentosContent() {
         onOpenChange={setIsImportDialogOpen}
       />
 
-      {/* ✅ Dialog de nova categoria */}
       <NewCategoryDialog
         open={isCategoryDialogOpen}
         onOpenChange={setIsCategoryDialogOpen}
-        onSuccess={name => setCategoryFilter('all')} // reseta filtro pra nova categoria aparecer
+        onSuccess={() => setCategoryFilter('all')}
       />
 
       <AlertDialog open={!!deleteEntry} onOpenChange={() => setDeleteEntry(null)}>

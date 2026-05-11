@@ -544,7 +544,7 @@ function CalculadoraPrecificacaoContent() {
                     </Button>
                   </DialogTrigger>
 
-                  <DialogContent className="max-w-3xl w-[95vw]">                    
+               <DialogContent className="max-w-3xl w-[95vw]">
                     <DialogHeader>
                       <DialogTitle>{editingId ? "Editar Anúncio" : "Cadastrar Anúncio"}</DialogTitle>
                       <DialogDescription>
@@ -554,36 +554,43 @@ function CalculadoraPrecificacaoContent() {
                       </DialogDescription>
                     </DialogHeader>
 
-                <div className="grid grid-cols-3 gap-4">                     
-                     <div className="space-y-2">
-                        <Label htmlFor="nome_anuncio" className="font-medium">
-                          Nome do Anúncio <span className="text-destructive">*</span>
-                        </Label>
-                        <Input id="nome_anuncio" autoFocus value={anuncioForm.nome_anuncio}
-                          onChange={setFormField("nome_anuncio")} placeholder="Ex: Macaquinho Floral" maxLength={255} />
-                      </div>
+                    <div className="space-y-4 py-2">
 
-                      <div className="space-y-2">
-                        <Label>Marketplace</Label>
-                        <Select
-                          value={anuncioForm.marketplace}
-                          onValueChange={v => setAnuncioForm(prev => ({ ...prev, marketplace: v as Plataforma }))}
-                        >
-                          <SelectTrigger className="w-full">
-                            <SelectValue placeholder="Selecione o marketplace" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="Shopee">Shopee</SelectItem>
-                            <SelectItem value="TiktokShop">TikTok Shop</SelectItem>
-                            <SelectItem value="MercadoLivre">Mercado Livre</SelectItem>
-                          </SelectContent>
-                        </Select>
+                      {/* Linha 1: Nome + Marketplace */}
+                      <div className="grid grid-cols-2 gap-4">
+                        <div className="space-y-2">
+                          <Label htmlFor="nome_anuncio" className="font-medium">
+                            Nome do Anúncio <span className="text-destructive">*</span>
+                          </Label>
+                          <Input id="nome_anuncio" autoFocus value={anuncioForm.nome_anuncio}
+                            onChange={setFormField("nome_anuncio")} placeholder="Ex: Macaquinho Floral" maxLength={255} />
+                        </div>
+
+                        <div className="space-y-2">
+                          <Label>Marketplace</Label>
+                          <Select
+                            value={anuncioForm.marketplace}
+                            onValueChange={v => setAnuncioForm(prev => ({ ...prev, marketplace: v as Plataforma }))}
+                          >
+                            <SelectTrigger className="w-full">
+                              <SelectValue placeholder="Selecione o marketplace" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="Shopee">Shopee</SelectItem>
+                              <SelectItem value="TiktokShop">TikTok Shop</SelectItem>
+                              <SelectItem value="MercadoLivre">Mercado Livre</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
                       </div>
 
                       <Separator />
-                      <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Valores (R$) — pré-preenchidos</p>
+                      <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+                        Valores (R$) — pré-preenchidos
+                      </p>
 
-                      <div className="grid grid-cols-2 gap-4">
+                      {/* Linha 2: 6 campos numéricos + imposto em grade 4 colunas */}
+                      <div className="grid grid-cols-4 gap-4">
                         {([
                           { field: "custo",         label: "Custo" },
                           { field: "valor_venda",   label: "Valor de Venda" },
@@ -598,16 +605,18 @@ function CalculadoraPrecificacaoContent() {
                               onChange={setFormField(field)} placeholder="0,00" />
                           </div>
                         ))}
-                      </div>
 
-                      <div className="space-y-2">
-                        <Label className="text-sm">Imposto (%)</Label>
-                        <div className="relative">
-                          <Input type="text" inputMode="decimal" value={anuncioForm.imposto_pct}
-                            onChange={setFormField("imposto_pct")} placeholder="6" className="pr-8" />
-                          <span className="absolute right-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">%</span>
+                        {/* Imposto na mesma grade */}
+                        <div className="space-y-2">
+                          <Label className="text-sm">Imposto (%)</Label>
+                          <div className="relative">
+                            <Input type="text" inputMode="decimal" value={anuncioForm.imposto_pct}
+                              onChange={setFormField("imposto_pct")} placeholder="6" className="pr-8" />
+                            <span className="absolute right-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">%</span>
+                          </div>
                         </div>
                       </div>
+
                     </div>
 
                     <DialogFooter>
