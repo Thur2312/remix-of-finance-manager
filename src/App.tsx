@@ -9,6 +9,8 @@ import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { Suspense, lazy } from "react";
 import { PageLoader } from "@/components/layout/PageLoader";
 import { queryClient } from "@/lib/queryClient";
+import { TrialGuard } from "@/components/layout/TrialGuard";
+
 
 // ── Lazy loading ────────────────────────────────────────────────────────────
 const LandingPage               = lazy(() => import("./pages/LandingPage"));
@@ -58,7 +60,9 @@ const Perfil                    = lazy(() => import("./pages/Perfil"));
 const Protected = ({ children }: { children: React.ReactNode }) => (
   <ProtectedRoute>
     <ErrorBoundary>
-      {children}
+      <TrialGuard>
+        {children}
+      </TrialGuard>
     </ErrorBoundary>
   </ProtectedRoute>
 );

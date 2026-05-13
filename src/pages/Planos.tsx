@@ -20,6 +20,8 @@ import { useAuth } from '@/contexts/AuthContext';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { ProtectedRoute } from '@/components/layout/ProtectedRoute';
+import { useStripeCheckout } from "@/hooks/useStripeCheckout";
+
 
 const plans = [
   {
@@ -38,7 +40,7 @@ const plans = [
   },
   {
     name: 'Profissional',
-    price: 'R$ 37,00',
+    price: 'R$ 74,99',
     period: '/mês',
     description: 'Para vendedores em crescimento',
     icon: Crown,
@@ -84,17 +86,20 @@ export function PlanosContent() {
   const navigate = useNavigate();
   const { user } = useAuth();
 
+  const { handleCheckout } = useStripeCheckout();
+
+
   const handleSelectPlan = (plan: typeof plans[0]) => {
-    if (plan.name === 'Starter') {
-      navigate('/fluxo-caixa');
-      return;
-    }
-    if (user) {
-      window.location.href = 'https://payfast.greenn.com.br/m56nu2k';
-    } else {
-      navigate('/user/auth?redirect=/planos');
-    }
-  };
+  if (plan.name === "Starter") {
+    navigate("/fluxo-caixa");
+    return;
+  }
+  if (user) {
+    handleCheckout(); 
+  } else {
+    navigate("/user/auth?redirect=/planos");
+  }
+};
 
   return (
     <div className="space-y-8 animate-fade-in">
