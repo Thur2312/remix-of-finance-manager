@@ -3,6 +3,7 @@ import { SidebarProvider, SidebarTrigger, SidebarInset } from '@/components/ui/s
 import { AppSidebar } from './AppSidebar';
 import { Separator } from '@/components/ui/separator';
 import { FinancialAssistant } from '@/components/assistant/FinancialAssistant'; // ← adicionar
+import { TrialBanner } from '../TrialBanner';
 
 interface AppLayoutProps {
   children: ReactNode;
@@ -15,11 +16,13 @@ export function AppLayout({ children, title }: AppLayoutProps) {
       <div className="flex min-h-screen w-full">
         <AppSidebar />
         <SidebarInset className="flex-1">
+          
           <header className="flex h-16 shrink-0 items-center gap-2 border-b border-border bg-background px-6">
             <SidebarTrigger className="-ml-1" />
             <Separator orientation="vertical" className="mr-2 h-4" />
             {title && <h1 className="text-lg font-semibold">{title}</h1>}
           </header>
+          <TrialBanner />
           <main className="flex-1 p-8 bg-background">
             {children}
           </main>
