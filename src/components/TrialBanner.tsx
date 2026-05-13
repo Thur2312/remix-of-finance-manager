@@ -3,13 +3,9 @@ import { Button } from "@/components/ui/button";
 import { AlertCircle, Clock, Zap } from "lucide-react";
 import { useStripeCheckout } from "@/hooks/useStripeCheckout";
 
-const CHECKOUT_URL = "https://payfast.greenn.com.br/m56nu2k";
-
 export function TrialBanner() {
   const { isTrialActive, daysRemaining, isPaid, isLoading } = useTrialStatus();
-
   const { handleCheckout } = useStripeCheckout();
-
 
   if (isLoading || isPaid || !isTrialActive) return null;
 
@@ -17,8 +13,6 @@ export function TrialBanner() {
 
   const message = daysRemaining === 1
     ? "Seu período gratuito termina hoje!"
-    : daysRemaining === 0
-    ? "Seu período gratuito encerrou."
     : `Você tem ${daysRemaining} dias restantes no período gratuito`;
 
   return (
@@ -32,7 +26,8 @@ export function TrialBanner() {
 
       <Button
         size="sm"
-        className="text-xs bg-white text-amber-700 hover:bg-white/90 font-semibold gap-1.5 shrink-0"
+        className={`text-xs bg-white hover:bg-white/90 font-semibold gap-1.5 shrink-0
+          ${isUrgent ? "text-red-600" : "text-amber-600"}`}
         onClick={handleCheckout}
       >
         <Zap size={13} />
