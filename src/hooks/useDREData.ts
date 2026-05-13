@@ -10,7 +10,9 @@ import {
   TikTokOrder,
   FixedCost,
   ShopeeSettings,
-  TikTokSettings
+  TikTokSettings,
+  MlOrder,
+  CashFlowEntry
 } from '@/lib/dre-calculations';
 import { RawOrder } from '@/lib/calculations';
 import { fetchAllOrders } from '@/lib/supabase-helpers';
@@ -37,12 +39,14 @@ export function useDREData(): UseDREDataResult {
   const [fixedCosts, setFixedCosts] = useState<FixedCost[]>([]);
   const [shopeeSettings, setShopeeSettings] = useState<ShopeeSettings | null>(null);
   const [tiktokSettings, setTiktokSettings] = useState<TikTokSettings | null>(null);
+  const [mlOrders, setMlOrders] = useState<MlOrder[]>([]);
+  const [cashFlowEntries, setCashFlowEntries] = useState<CashFlowEntry[]>([]);
   
   // Period selection
   const periods = useMemo(() => getDefaultPeriods(), []);
   const [selectedPeriod, setSelectedPeriod] = useState<DREPeriod>(periods[0]);
 
-  // Helper to fetch all TikTok orders with pagination
+  // Helper: busca TikTok orders com paginação
   async function fetchAllTikTokOrders(userId: string) {
     const PAGE_SIZE = 1000;
     let allOrders: TikTokOrder[] = [];
@@ -60,9 +64,7 @@ export function useDREData(): UseDREDataResult {
         .range(from, to)
         .order('data_pedido', { ascending: false });
 
-      if (error) {
-        return { data: null, error };
-      }
+      if (error) return { data: null, error };
 
       if (data && data.length > 0) {
         allOrders = [...allOrders, ...data];
@@ -76,7 +78,7 @@ export function useDREData(): UseDREDataResult {
     return { data: allOrders, error: null };
   }
 
-  // Helper to fetch all TikTok settlements with pagination
+  // Helper: busca TikTok settlements com paginação
   async function fetchAllTikTokSettlements(userId: string) {
     const PAGE_SIZE = 1000;
     let allSettlements: TikTokSettlement[] = [];
@@ -94,9 +96,7 @@ export function useDREData(): UseDREDataResult {
         .range(from, to)
         .order('statement_date', { ascending: false });
 
-      if (error) {
-        return { data: null, error };
-      }
+      if (error) return { data: null, error };
 
       if (data && data.length > 0) {
         allSettlements = [...allSettlements, ...data];
@@ -110,7 +110,71 @@ export function useDREData(): UseDREDataResult {
     return { data: allSettlements, error: null };
   }
 
-  // Initial fetch
+  // Helper: busca ML orders com paginação
+  async function fetchAllMlOrders(userId: string) {
+    const PAGE_SIZE = 1000;
+    let allOrders: MlOrder[] = [];
+    let page = 0;
+    let hasMore = true;
+
+    while (hasMore) {
+      const from = page * PAGE_SIZE;
+      const to = from + PAGE_SIZE - 1;
+
+      const { data, error } = await supabase
+        .from('ml_orders')
+        .select('*')
+        .eq('user_id', userId)
+        .range(from, to)
+        .order('data_pedido', { ascending: false });
+
+      if (error) return { data: null, error };
+
+      if (data && data.length > 0) {
+        allOrders = [...allOrders, ...(data as MlOrder[])];
+        hasMore = data.length === PAGE_SIZE;
+        page++;
+      } else {
+        hasMore = false;
+      }
+    }
+
+    return { data: allOrders, error: null };
+  }
+
+  // Helper: busca cash flow entries com paginação
+  async function fetchAllCashFlowEntries(userId: string) {
+    const PAGE_SIZE = 1000;
+    let allEntries: CashFlowEntry[] = [];
+    let page = 0;
+    let hasMore = true;
+
+    while (hasMore) {
+      const from = page * PAGE_SIZE;
+      const to = from + PAGE_SIZE - 1;
+
+      const { data, error } = await supabase
+        .from('cash_flow_entries')
+        .select('*')
+        .eq('user_id', userId)
+        .range(from, to)
+        .order('due_date', { ascending: false });
+
+      if (error) return { data: null, error };
+
+      if (data && data.length > 0) {
+        allEntries = [...allEntries, ...(data as CashFlowEntry[])];
+        hasMore = data.length === PAGE_SIZE;
+        page++;
+      } else {
+        hasMore = false;
+      }
+    }
+
+    return { data: allEntries, error: null };
+  }
+
+  // Carga inicial
   useEffect(() => {
     const fetchAllData = async () => {
       if (!user) return;
@@ -119,45 +183,37 @@ export function useDREData(): UseDREDataResult {
       setError(null);
 
       try {
-        // Fetch all data in parallel
         const [
           shopeeOrdersData,
           tiktokOrdersResult,
           tiktokSettlementsResult,
           fixedCostsResult,
           shopeeSettingsResult,
-          tiktokSettingsResult
+          tiktokSettingsResult,
+          mlOrdersResult,
+          cashFlowResult
         ] = await Promise.all([
-          // Shopee orders (using the helper for pagination)
           fetchAllOrders(),
-          
-          // TikTok orders
           fetchAllTikTokOrders(user.id),
-          
-          // TikTok settlements
           fetchAllTikTokSettlements(user.id),
-          
-          // Fixed costs
           supabase
             .from('fixed_costs')
             .select('*')
             .eq('user_id', user.id),
-          
-          // Shopee settings (get default or first)
           supabase
             .from('settings')
             .select('taxa_comissao_shopee, adicional_por_item, percentual_nf_entrada, gasto_shopee_ads, imposto_nf_saida')
             .eq('user_id', user.id)
             .eq('is_default', true)
             .maybeSingle(),
-          
-          // TikTok settings (get default or first)
           supabase
             .from('tiktok_settings')
             .select('taxa_comissao_tiktok, taxa_afiliado, adicional_por_item, percentual_nf_entrada, gasto_tiktok_ads, imposto_nf_saida')
             .eq('user_id', user.id)
             .eq('is_default', true)
-            .maybeSingle()
+            .maybeSingle(),
+          fetchAllMlOrders(user.id),
+          fetchAllCashFlowEntries(user.id)
         ]);
 
         setShopeeOrders(shopeeOrdersData);
@@ -181,6 +237,12 @@ export function useDREData(): UseDREDataResult {
         }
         setTiktokSettings(tiktokSettingsResult.data);
 
+        if (mlOrdersResult.error) throw mlOrdersResult.error;
+        setMlOrders(mlOrdersResult.data || []);
+
+        if (cashFlowResult.error) throw cashFlowResult.error;
+        setCashFlowEntries(cashFlowResult.data || []);
+
       } catch (err) {
         console.error('Error fetching DRE data:', err);
         setError(err instanceof Error ? err.message : 'Erro ao carregar dados do DRE');
@@ -194,7 +256,7 @@ export function useDREData(): UseDREDataResult {
     }
   }, [user]);
 
-  // Calculate DRE based on selected period
+  // Cálculo da DRE por período
   const dreData = useMemo(() => {
     if (isLoading || !user) return null;
 
@@ -205,7 +267,9 @@ export function useDREData(): UseDREDataResult {
       fixedCosts,
       shopeeSettings,
       tiktokSettings,
-      selectedPeriod
+      selectedPeriod,
+      mlOrders,
+      cashFlowEntries
     );
   }, [
     shopeeOrders,
@@ -215,11 +279,14 @@ export function useDREData(): UseDREDataResult {
     shopeeSettings,
     tiktokSettings,
     selectedPeriod,
+    mlOrders,
+    cashFlowEntries,
     isLoading,
     user
   ]);
 
   const refetch = async () => {
+    if (!user) return;
     setIsLoading(true);
     setError(null);
 
@@ -230,27 +297,31 @@ export function useDREData(): UseDREDataResult {
         tiktokSettlementsResult,
         fixedCostsResult,
         shopeeSettingsResult,
-        tiktokSettingsResult
+        tiktokSettingsResult,
+        mlOrdersResult,
+        cashFlowResult
       ] = await Promise.all([
         fetchAllOrders(),
-        fetchAllTikTokOrders(user!.id),
-        fetchAllTikTokSettlements(user!.id),
+        fetchAllTikTokOrders(user.id),
+        fetchAllTikTokSettlements(user.id),
         supabase
           .from('fixed_costs')
           .select('*')
-          .eq('user_id', user!.id),
+          .eq('user_id', user.id),
         supabase
           .from('settings')
           .select('taxa_comissao_shopee, adicional_por_item, percentual_nf_entrada, gasto_shopee_ads, imposto_nf_saida')
-          .eq('user_id', user!.id)
+          .eq('user_id', user.id)
           .eq('is_default', true)
           .maybeSingle(),
         supabase
           .from('tiktok_settings')
           .select('taxa_comissao_tiktok, taxa_afiliado, adicional_por_item, percentual_nf_entrada, gasto_tiktok_ads, imposto_nf_saida')
-          .eq('user_id', user!.id)
+          .eq('user_id', user.id)
           .eq('is_default', true)
-          .maybeSingle()
+          .maybeSingle(),
+        fetchAllMlOrders(user.id),
+        fetchAllCashFlowEntries(user.id)
       ]);
 
       setShopeeOrders(shopeeOrdersData);
@@ -273,6 +344,12 @@ export function useDREData(): UseDREDataResult {
         throw tiktokSettingsResult.error;
       }
       setTiktokSettings(tiktokSettingsResult.data);
+
+      if (mlOrdersResult.error) throw mlOrdersResult.error;
+      setMlOrders(mlOrdersResult.data || []);
+
+      if (cashFlowResult.error) throw cashFlowResult.error;
+      setCashFlowEntries(cashFlowResult.data || []);
 
     } catch (err) {
       console.error('Error fetching DRE data:', err);

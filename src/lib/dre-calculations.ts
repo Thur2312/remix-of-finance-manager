@@ -31,17 +31,52 @@ export interface DREAlerta {
   campo: string;
 }
 
+// NOVO: interface para pedidos do Mercado Livre
+export interface MlOrder {
+  user_id: string;
+  order_id: string;
+  sku: string | null;
+  nome_produto: string | null;
+  variacao: string | null;
+  quantidade: number;
+  total_faturado: number;
+  desconto_plataforma: number;
+  desconto_vendedor: number;
+  custo_unitario: number;
+  taxa_ml: number;
+  frete_ml: number;
+  status_pedido: string;
+  data_pedido: string;
+  updated_at: string;
+}
+
+// NOVO: interface para lançamentos do fluxo de caixa
+export interface CashFlowEntry {
+  id: string;
+  user_id: string;
+  description: string;
+  amount: number;
+  type: 'income' | 'expense';
+  status: 'pending' | 'received' | 'paid' | 'overdue';
+  due_date: string;
+  category_id: string | null;
+  notes: string | null;
+  created_at: string;
+}
+
 export interface DREData {
   periodo: DREPeriod;
   
   // 1. RECEITA BRUTA
   receitaBrutaShopee: number;
   receitaBrutaTikTok: number;
+  receitaBrutaMercadoLivre: number;   // NOVO
+  receitaBrutaExtra: number;           // NOVO: receitas do fluxo de caixa
   receitaBrutaTotal: number;
   
-  // 2. IMPOSTOS SOBRE VENDAS (NOVA SEÇÃO!)
-  icms: number;                    // ICMS DIFAL + penalties
-  issSimples: number;              // Simples Nacional / ISS
+  // 2. IMPOSTOS SOBRE VENDAS
+  icms: number;
+  issSimples: number;
   impostosSobreVendasTotal: number;
   
   // 3. CANCELAMENTOS E DEVOLUÇÕES
@@ -52,23 +87,23 @@ export interface DREData {
   // 4. RECEITA LÍQUIDA
   receitaLiquida: number;
   
-  // 5. COGS - CUSTO DO PRODUTO/SERVIÇO
-  custoProdutos: number;           // Custo das mercadorias
-  custoEmbalagem: number;          // Embalagens (novo!)
-  custoFreteEnvio: number;         // Frete pago pelo seller (movido!)
-  nfEntrada: number;               // NF de entrada
-  cogsTotal: number;               // Antes era cmvTotal
+  // 5. COGS
+  custoProdutos: number;
+  custoEmbalagem: number;
+  custoFreteEnvio: number;
+  nfEntrada: number;
+  cogsTotal: number;
   
   // 6. LUCRO BRUTO
   lucroBruto: number;
   margemBruta: number;
   
   // 7. CUSTOS VARIÁVEIS OPERACIONAIS
-  comissoesMarketplace: number;    // Taxas Shopee + TikTok
-  comissoesAfiliados: number;      // Comissões afiliados
-  adsMarketing: number;            // MOVIDO para cá!
-  taxasGateway: number;            // Gateway de pagamento (novo!)
-  taxasServicos: number;           // SFP, fee per item, etc
+  comissoesMarketplace: number;
+  comissoesAfiliados: number;
+  adsMarketing: number;
+  taxasGateway: number;
+  taxasServicos: number;
   custosVariaveisTotal: number;
   
   // 8. MARGEM DE CONTRIBUIÇÃO
@@ -78,23 +113,27 @@ export interface DREData {
   // 9. CUSTOS FIXOS
   custosFixosPorCategoria: Record<string, number>;
   custosFixosTotal: number;
-  custosFixosProrrateados: number; // Valor após prorrateio
-  diasPeriodo: number;             // Para mostrar prorrateio
+  custosFixosProrrateados: number;
+  diasPeriodo: number;
   
   // 10. LUCRO OPERACIONAL
   lucroOperacional: number;
   margemOperacional: number;
   
-  // 11. DESPESAS FINANCEIRAS (opcional)
+  // 11. DESPESAS FINANCEIRAS
   jurosMultas: number;
   impostosSobreLucro: number;
   despesasFinanceirasTotal: number;
+
+  // NOVO: Outras despesas operacionais do fluxo de caixa
+  outrasReceitasFluxo: number;
+  outrasDespesasFluxo: number;
+  outrasDespesasFluxoPorCategoria: Record<string, number>;
   
   // 12. LUCRO LÍQUIDO
   lucroLiquido: number;
   margemLiquida: number;
   
-  // Alertas de validação
   alertas: DREAlerta[];
 }
 
@@ -111,16 +150,12 @@ export interface TikTokSettlement {
   quantidade: number | null;
   type: string | null;
   status: string | null;
-  
-  // Financial fields
   total_settlement_amount: number | null;
   net_sales: number | null;
   subtotal_before_discounts: number | null;
   customer_payment: number | null;
   customer_refund: number | null;
   refund_subtotal: number | null;
-  
-  // Discounts
   seller_discounts: number | null;
   refund_seller_discounts: number | null;
   platform_discounts: number | null;
@@ -128,8 +163,6 @@ export interface TikTokSettlement {
   seller_cofunded_discount: number | null;
   seller_cofunded_discount_refund: number | null;
   platform_cofunded_discount: number | null;
-  
-  // Shipping
   tiktok_shipping_fee: number | null;
   customer_shipping_fee: number | null;
   refunded_shipping: number | null;
@@ -138,8 +171,6 @@ export interface TikTokSettlement {
   shipping_subsidy: number | null;
   shipping_total: number | null;
   actual_return_shipping_fee: number | null;
-  
-  // Fees
   total_fees: number | null;
   tiktok_commission_fee: number | null;
   affiliate_commission: number | null;
@@ -150,8 +181,6 @@ export interface TikTokSettlement {
   voucher_xtra_fee: number | null;
   live_specials_fee: number | null;
   bonus_cashback_fee: number | null;
-  
-  // Taxes and adjustments
   icms_difal: number | null;
   icms_penalty: number | null;
   adjustment_amount: number | null;
@@ -188,7 +217,7 @@ export interface ShopeeSettings {
   adicional_por_item: number | null;
   percentual_nf_entrada: number | null;
   gasto_shopee_ads: number | null;
-  imposto_nf_saida?: number | null;  // Simples Nacional % (opcional para compatibilidade)
+  imposto_nf_saida?: number | null;
 }
 
 export interface TikTokSettings {
@@ -197,7 +226,7 @@ export interface TikTokSettings {
   adicional_por_item: number | null;
   percentual_nf_entrada: number | null;
   gasto_tiktok_ads: number | null;
-  imposto_nf_saida?: number | null;  // Simples Nacional % (opcional para compatibilidade)
+  imposto_nf_saida?: number | null;
 }
 
 // ============= HELPER FUNCTIONS =============
@@ -233,10 +262,10 @@ export function getDefaultPeriods(): DREPeriod[] {
   ];
 }
 
-export function filterByPeriod<T extends { data_pedido?: string | null; statement_date?: string | null; data_criacao_pedido?: string | null }>(
+export function filterByPeriod<T extends { data_pedido?: string | null; statement_date?: string | null; data_criacao_pedido?: string | null; due_date?: string | null }>(
   items: T[],
   period: DREPeriod,
-  dateField: 'data_pedido' | 'statement_date' | 'data_criacao_pedido' = 'data_pedido'
+  dateField: 'data_pedido' | 'statement_date' | 'data_criacao_pedido' | 'due_date' = 'data_pedido'
 ): T[] {
   return items.filter(item => {
     const dateValue = item[dateField];
@@ -251,7 +280,6 @@ export function filterByPeriod<T extends { data_pedido?: string | null; statemen
 function gerarAlertas(data: Partial<DREData>): DREAlerta[] {
   const alertas: DREAlerta[] = [];
   
-  // Alerta: Nenhum imposto sobre vendas configurado
   if ((data.impostosSobreVendasTotal || 0) === 0 && (data.receitaBrutaTotal || 0) > 0) {
     alertas.push({
       tipo: 'warning',
@@ -260,7 +288,6 @@ function gerarAlertas(data: Partial<DREData>): DREAlerta[] {
     });
   }
   
-  // Alerta: COGS zerado com vendas
   if ((data.cogsTotal || 0) === 0 && (data.receitaBrutaTotal || 0) > 0) {
     alertas.push({
       tipo: 'error',
@@ -269,7 +296,6 @@ function gerarAlertas(data: Partial<DREData>): DREAlerta[] {
     });
   }
   
-  // Alerta: Margem de contribuição negativa
   if ((data.margemContribuicao || 0) < 0) {
     alertas.push({
       tipo: 'error',
@@ -278,7 +304,6 @@ function gerarAlertas(data: Partial<DREData>): DREAlerta[] {
     });
   }
   
-  // Alerta: Lucro operacional negativo
   if ((data.lucroOperacional || 0) < 0 && (data.margemContribuicao || 0) > 0) {
     alertas.push({
       tipo: 'warning',
@@ -287,7 +312,6 @@ function gerarAlertas(data: Partial<DREData>): DREAlerta[] {
     });
   }
   
-  // Alerta: Custos fixos não configurados
   if ((data.custosFixosTotal || 0) === 0 && (data.receitaBrutaTotal || 0) > 0) {
     alertas.push({
       tipo: 'info',
@@ -308,17 +332,24 @@ export function calculateDRE(
   fixedCosts: FixedCost[],
   shopeeSettings: ShopeeSettings | null,
   tiktokSettings: TikTokSettings | null,
-  period: DREPeriod
+  period: DREPeriod,
+  mlOrders: MlOrder[] = [],
+  cashFlowEntries: CashFlowEntry[] = []
 ): DREData {
   // Filtrar dados por período
   const filteredShopeeOrders = filterByPeriod(shopeeOrders, period, 'data_pedido');
   const filteredTikTokOrders = filterByPeriod(tiktokOrders, period, 'data_pedido');
   const filteredSettlements = filterByPeriod(tiktokSettlements, period, 'statement_date');
+  const filteredCashFlow = filterByPeriod(cashFlowEntries, period, 'due_date');
+
+  // Filtrar ML: apenas pedidos pagos/entregues
+  const filteredMlOrders = filterByPeriod(mlOrders, period, 'data_pedido').filter(o =>
+    ['paid', 'delivered', 'payment_done'].includes(o.status_pedido)
+  );
 
   // Calcular dias do período para prorrateio
   const diasPeriodo = differenceInDays(period.end, period.start) + 1;
-  const diasNoMes = getDaysInMonth(period.start);
-  const proporcaoPeriodo = Math.min(diasPeriodo / 30, 1); // Usa 30 dias como base mensal
+  const proporcaoPeriodo = Math.min(diasPeriodo / 30, 1);
 
   // =========== 1. RECEITA BRUTA ===========
   const receitaBrutaShopee = filteredShopeeOrders.reduce((sum, order) => {
@@ -329,15 +360,23 @@ export function calculateDRE(
     return sum + (order.total_faturado || 0);
   }, 0);
 
-  const receitaBrutaTotal = receitaBrutaShopee + receitaBrutaTikTok;
+  // NOVO: Receita bruta do Mercado Livre
+  const receitaBrutaMercadoLivre = filteredMlOrders.reduce((sum, o) => {
+    return sum + (o.total_faturado ?? 0);
+  }, 0);
+
+  // NOVO: Receitas confirmadas do fluxo de caixa (type=income, status=received)
+  const receitaBrutaExtra = filteredCashFlow
+    .filter(e => e.type === 'income' && e.status === 'received')
+    .reduce((sum, e) => sum + (e.amount || 0), 0);
+
+  const receitaBrutaTotal = receitaBrutaShopee + receitaBrutaTikTok + receitaBrutaMercadoLivre + receitaBrutaExtra;
 
   // =========== 2. IMPOSTOS SOBRE VENDAS ===========
-  // ICMS DIFAL e penalties vêm do TikTok settlements
   const icms = filteredSettlements.reduce((sum, s) => {
     return sum + Math.abs(s.icms_difal || 0) + Math.abs(s.icms_penalty || 0);
   }, 0);
 
-  // Simples Nacional / ISS: percentual sobre receita bruta (das settings)
   const issShopee = receitaBrutaShopee * ((shopeeSettings?.imposto_nf_saida || 0) / 100);
   const issTikTok = receitaBrutaTikTok * ((tiktokSettings?.imposto_nf_saida || 0) / 100);
   const issSimples = issShopee + issTikTok;
@@ -345,7 +384,7 @@ export function calculateDRE(
   const impostosSobreVendasTotal = icms + issSimples;
 
   // =========== 3. CANCELAMENTOS E DEVOLUÇÕES ===========
-  const cancelamentos = 0; // Por enquanto não temos dados de cancelamentos
+  const cancelamentos = 0;
 
   const devolucoes = filteredSettlements
     .filter(s => s.type === 'Refund')
@@ -356,8 +395,7 @@ export function calculateDRE(
   // =========== 4. RECEITA LÍQUIDA ===========
   const receitaLiquida = receitaBrutaTotal - impostosSobreVendasTotal - deducoesTotal;
 
-  // =========== 5. COGS - CUSTO DO PRODUTO/SERVIÇO ===========
-  // Custo dos produtos
+  // =========== 5. COGS ===========
   const custoProdutosShopee = filteredShopeeOrders.reduce((sum, order) => {
     return sum + ((order.custo_unitario || 0) * (order.quantidade || 1));
   }, 0);
@@ -366,51 +404,59 @@ export function calculateDRE(
     return sum + ((order.custo_unitario || 0) * (order.quantidade || 1));
   }, 0);
 
-  const custoProdutos = custoProdutosShopee + custoProdutosTikTok;
+  // NOVO: custo dos produtos do ML
+  const custoProdutosMl = filteredMlOrders.reduce((sum, o) => {
+    return sum + ((o.custo_unitario ?? 0) * (o.quantidade ?? 1));
+  }, 0);
 
-  // Embalagens (por enquanto não temos dados específicos)
+  const custoProdutos = custoProdutosShopee + custoProdutosTikTok + custoProdutosMl;
+
   const custoEmbalagem = 0;
 
-  // Frete de envio pago pelo seller (MOVIDO para COGS!)
   const custoFreteEnvio = filteredSettlements.reduce((sum, s) => {
     const shippingCost = Math.abs(s.tiktok_shipping_fee || 0);
     const shippingIncome = (s.customer_shipping_fee || 0) + (s.shipping_subsidy || 0) + (s.shipping_incentive || 0);
     return sum + Math.max(0, shippingCost - shippingIncome);
   }, 0);
 
-  // NF Entrada (percentual do custo dos produtos)
+  // NOVO: frete ML (custo líquido pago pelo seller)
+  const custoFreteMl = filteredMlOrders.reduce((sum, o) => {
+    return sum + (o.frete_ml ?? 0);
+  }, 0);
+
   const nfEntradaShopee = custoProdutosShopee * ((shopeeSettings?.percentual_nf_entrada || 0) / 100);
   const nfEntradaTikTok = custoProdutosTikTok * ((tiktokSettings?.percentual_nf_entrada || 0) / 100);
   const nfEntrada = nfEntradaShopee + nfEntradaTikTok;
 
-  const cogsTotal = custoProdutos + custoEmbalagem + custoFreteEnvio + nfEntrada;
+  const cogsTotal = custoProdutos + custoEmbalagem + custoFreteEnvio + custoFreteMl + nfEntrada;
 
   // =========== 6. LUCRO BRUTO ===========
   const lucroBruto = receitaLiquida - cogsTotal;
   const margemBruta = receitaLiquida > 0 ? (lucroBruto / receitaLiquida) * 100 : 0;
 
   // =========== 7. CUSTOS VARIÁVEIS OPERACIONAIS ===========
-  // Comissões do Marketplace
   const comissaoShopee = receitaBrutaShopee * ((shopeeSettings?.taxa_comissao_shopee || 0) / 100);
   const comissaoTikTok = filteredSettlements.reduce((sum, s) => {
     return sum + Math.abs(s.tiktok_commission_fee || 0);
   }, 0);
-  const comissoesMarketplace = comissaoShopee + comissaoTikTok;
 
-  // Comissões de Afiliados
+  // NOVO: taxas do ML (taxa_ml já inclui comissão + frete ML no campo taxa_ml)
+  const comissaoMl = filteredMlOrders.reduce((sum, o) => {
+    return sum + (o.taxa_ml ?? 0);
+  }, 0);
+
+  const comissoesMarketplace = comissaoShopee + comissaoTikTok + comissaoMl;
+
   const comissoesAfiliados = filteredSettlements.reduce((sum, s) => {
     return sum + Math.abs(s.affiliate_commission || 0) + 
            Math.abs(s.affiliate_partner_commission || 0) + 
            Math.abs(s.affiliate_shop_ads_commission || 0);
   }, 0);
 
-  // Ads/Marketing DENTRO dos custos variáveis!
   const adsMarketing = (shopeeSettings?.gasto_shopee_ads || 0) + (tiktokSettings?.gasto_tiktok_ads || 0);
 
-  // Taxa de gateway (por enquanto não temos dados específicos)
   const taxasGateway = 0;
 
-  // Taxas de serviços (SFP, fee per item, etc)
   const taxasAdicionaisShopee = filteredShopeeOrders.reduce((sum, order) => {
     return sum + ((shopeeSettings?.adicional_por_item || 0) * (order.quantidade || 1));
   }, 0);
@@ -431,13 +477,11 @@ export function calculateDRE(
   const margemContribuicao = lucroBruto - custosVariaveisTotal;
   const percentualMargemContribuicao = receitaLiquida > 0 ? (margemContribuicao / receitaLiquida) * 100 : 0;
 
-  // =========== 9. CUSTOS FIXOS (com prorrateio!) ===========
+  // =========== 9. CUSTOS FIXOS ===========
   const custosFixosPorCategoria: Record<string, number> = {};
   let custosFixosTotal = 0;
 
   fixedCosts.forEach(cost => {
-    // Custos recorrentes são considerados mensais
-    // Custos não recorrentes entram pelo valor total (sem prorrateio aqui, prorrateio aplicado depois)
     const amount = cost.amount;
     if (!custosFixosPorCategoria[cost.category]) {
       custosFixosPorCategoria[cost.category] = 0;
@@ -446,7 +490,6 @@ export function calculateDRE(
     custosFixosTotal += amount;
   });
 
-  // Prorrateio dos custos fixos pelo período
   const custosFixosProrrateados = custosFixosTotal * proporcaoPeriodo;
 
   // =========== 10. LUCRO OPERACIONAL ===========
@@ -454,16 +497,34 @@ export function calculateDRE(
   const margemOperacional = receitaLiquida > 0 ? (lucroOperacional / receitaLiquida) * 100 : 0;
 
   // =========== 11. DESPESAS FINANCEIRAS ===========
-  // Por enquanto não temos dados de juros/multas e impostos sobre lucro
   const jurosMultas = 0;
   const impostosSobreLucro = 0;
   const despesasFinanceirasTotal = jurosMultas + impostosSobreLucro;
 
+  // NOVO: Outras receitas e despesas do fluxo de caixa (excluindo as já contabilizadas na receita bruta)
+  // Receitas já foram somadas em receitaBrutaExtra; aqui guardamos para exibição separada se necessário
+  const outrasReceitasFluxo = receitaBrutaExtra;
+
+  // Despesas pagas do fluxo de caixa (type=expense, status=paid)
+  const outrasDespesasFluxoPorCategoria: Record<string, number> = {};
+  let outrasDespesasFluxo = 0;
+
+  filteredCashFlow
+    .filter(e => e.type === 'expense' && e.status === 'paid')
+    .forEach(e => {
+      const categoria = e.category_id || 'Sem categoria';
+      if (!outrasDespesasFluxoPorCategoria[categoria]) {
+        outrasDespesasFluxoPorCategoria[categoria] = 0;
+      }
+      outrasDespesasFluxoPorCategoria[categoria] += e.amount;
+      outrasDespesasFluxo += e.amount;
+    });
+
   // =========== 12. LUCRO LÍQUIDO ===========
-  const lucroLiquido = lucroOperacional - despesasFinanceirasTotal;
+  // Despesas do fluxo de caixa entram como redutoras do lucro operacional
+  const lucroLiquido = lucroOperacional - despesasFinanceirasTotal - outrasDespesasFluxo;
   const margemLiquida = receitaLiquida > 0 ? (lucroLiquido / receitaLiquida) * 100 : 0;
 
-  // Construir objeto de dados
   const dreDataParcial = {
     receitaBrutaTotal,
     impostosSobreVendasTotal,
@@ -473,42 +534,36 @@ export function calculateDRE(
     custosFixosTotal
   };
 
-  // Gerar alertas de validação
   const alertas = gerarAlertas(dreDataParcial);
 
   return {
     periodo: period,
     
-    // 1. Receita Bruta
     receitaBrutaShopee,
     receitaBrutaTikTok,
+    receitaBrutaMercadoLivre,
+    receitaBrutaExtra,
     receitaBrutaTotal,
     
-    // 2. Impostos sobre Vendas
     icms,
     issSimples,
     impostosSobreVendasTotal,
     
-    // 3. Cancelamentos e Devoluções
     cancelamentos,
     devolucoes,
     deducoesTotal,
     
-    // 4. Receita Líquida
     receitaLiquida,
     
-    // 5. COGS
     custoProdutos,
     custoEmbalagem,
-    custoFreteEnvio,
+    custoFreteEnvio: custoFreteEnvio + custoFreteMl,
     nfEntrada,
     cogsTotal,
     
-    // 6. Lucro Bruto
     lucroBruto,
     margemBruta,
     
-    // 7. Custos Variáveis
     comissoesMarketplace,
     comissoesAfiliados,
     adsMarketing,
@@ -516,30 +571,28 @@ export function calculateDRE(
     taxasServicos,
     custosVariaveisTotal,
     
-    // 8. Margem de Contribuição
     margemContribuicao,
     percentualMargemContribuicao,
     
-    // 9. Custos Fixos
     custosFixosPorCategoria,
     custosFixosTotal,
     custosFixosProrrateados,
     diasPeriodo,
     
-    // 10. Lucro Operacional
     lucroOperacional,
     margemOperacional,
     
-    // 11. Despesas Financeiras
     jurosMultas,
     impostosSobreLucro,
     despesasFinanceirasTotal,
+
+    outrasReceitasFluxo,
+    outrasDespesasFluxo,
+    outrasDespesasFluxoPorCategoria,
     
-    // 12. Lucro Líquido
     lucroLiquido,
     margemLiquida,
     
-    // Alertas
     alertas
   };
 }
@@ -555,6 +608,12 @@ export function formatDREForDisplay(dre: DREData): DRESection[] {
     items: [
       { label: 'Vendas Shopee', value: dre.receitaBrutaShopee, indent: 1 },
       { label: 'Vendas TikTok Shop', value: dre.receitaBrutaTikTok, indent: 1 },
+      ...(dre.receitaBrutaMercadoLivre > 0
+        ? [{ label: 'Vendas Mercado Livre', value: dre.receitaBrutaMercadoLivre, indent: 1 }]
+        : []),
+      ...(dre.receitaBrutaExtra > 0
+        ? [{ label: 'Outras Receitas (Fluxo de Caixa)', value: dre.receitaBrutaExtra, indent: 1 }]
+        : []),
     ],
     total: { label: 'RECEITA BRUTA TOTAL', value: dre.receitaBrutaTotal, isSubtotal: true }
   });
@@ -587,15 +646,10 @@ export function formatDREForDisplay(dre: DREData): DRESection[] {
   sections.push({
     title: 'RECEITA LÍQUIDA',
     items: [],
-    total: { 
-      label: 'RECEITA LÍQUIDA', 
-      value: dre.receitaLiquida, 
-      isTotal: true, 
-      isHighlight: true 
-    }
+    total: { label: 'RECEITA LÍQUIDA', value: dre.receitaLiquida, isTotal: true, isHighlight: true }
   });
 
-  // 5. COGS - CUSTO DO PRODUTO/SERVIÇO
+  // 5. COGS
   sections.push({
     title: 'CUSTO DO PRODUTO/SERVIÇO (COGS)',
     items: [
@@ -611,20 +665,14 @@ export function formatDREForDisplay(dre: DREData): DRESection[] {
   sections.push({
     title: 'RESULTADO BRUTO',
     items: [],
-    total: { 
-      label: 'LUCRO BRUTO', 
-      value: dre.lucroBruto, 
-      percentage: dre.margemBruta, 
-      isTotal: true, 
-      isHighlight: true 
-    }
+    total: { label: 'LUCRO BRUTO', value: dre.lucroBruto, percentage: dre.margemBruta, isTotal: true, isHighlight: true }
   });
 
   // 7. CUSTOS VARIÁVEIS OPERACIONAIS
   sections.push({
     title: 'CUSTOS VARIÁVEIS OPERACIONAIS',
     items: [
-      { label: 'Comissões Marketplace (Shopee + TikTok)', value: -dre.comissoesMarketplace, indent: 1 },
+      { label: 'Comissões Marketplace (Shopee + TikTok + ML)', value: -dre.comissoesMarketplace, indent: 1 },
       ...(dre.comissoesAfiliados > 0 ? [{ label: 'Comissões Afiliados', value: -dre.comissoesAfiliados, indent: 1 }] : []),
       ...(dre.adsMarketing > 0 ? [{ label: 'Ads e Marketing', value: -dre.adsMarketing, indent: 1 }] : []),
       ...(dre.taxasGateway > 0 ? [{ label: 'Taxas Gateway/Pagamento', value: -dre.taxasGateway, indent: 1 }] : []),
@@ -637,19 +685,13 @@ export function formatDREForDisplay(dre: DREData): DRESection[] {
   sections.push({
     title: 'MARGEM DE CONTRIBUIÇÃO',
     items: [],
-    total: { 
-      label: 'MARGEM DE CONTRIBUIÇÃO', 
-      value: dre.margemContribuicao, 
-      percentage: dre.percentualMargemContribuicao, 
-      isTotal: true, 
-      isHighlight: true 
-    }
+    total: { label: 'MARGEM DE CONTRIBUIÇÃO', value: dre.margemContribuicao, percentage: dre.percentualMargemContribuicao, isTotal: true, isHighlight: true }
   });
 
   // 9. CUSTOS FIXOS
   const fixedCostItems: DRELineItem[] = Object.entries(dre.custosFixosPorCategoria).map(([category, amount]) => ({
     label: category,
-    value: -(amount * (dre.diasPeriodo / 30)), // Prorrateado
+    value: -(amount * (dre.diasPeriodo / 30)),
     indent: 1
   }));
 
@@ -665,16 +707,25 @@ export function formatDREForDisplay(dre: DREData): DRESection[] {
   sections.push({
     title: 'RESULTADO OPERACIONAL',
     items: [],
-    total: { 
-      label: 'LUCRO OPERACIONAL', 
-      value: dre.lucroOperacional, 
-      percentage: dre.margemOperacional, 
-      isTotal: true, 
-      isHighlight: true 
-    }
+    total: { label: 'LUCRO OPERACIONAL', value: dre.lucroOperacional, percentage: dre.margemOperacional, isTotal: true, isHighlight: true }
   });
 
-  // 11. DESPESAS FINANCEIRAS (se houver)
+  // NOVO: OUTRAS DESPESAS OPERACIONAIS (Fluxo de Caixa)
+  if (dre.outrasDespesasFluxo > 0) {
+    const despesasFluxoItems: DRELineItem[] = Object.entries(dre.outrasDespesasFluxoPorCategoria).map(([cat, amount]) => ({
+      label: cat,
+      value: -amount,
+      indent: 1
+    }));
+
+    sections.push({
+      title: 'OUTRAS DESPESAS OPERACIONAIS (Fluxo de Caixa)',
+      items: despesasFluxoItems,
+      total: { label: 'TOTAL OUTRAS DESPESAS', value: -dre.outrasDespesasFluxo, isSubtotal: true }
+    });
+  }
+
+  // 11. DESPESAS FINANCEIRAS
   if (dre.despesasFinanceirasTotal > 0) {
     sections.push({
       title: 'DESPESAS FINANCEIRAS E IMPOSTOS SOBRE LUCRO',
@@ -690,13 +741,7 @@ export function formatDREForDisplay(dre: DREData): DRESection[] {
   sections.push({
     title: 'RESULTADO FINAL',
     items: [],
-    total: { 
-      label: 'LUCRO LÍQUIDO', 
-      value: dre.lucroLiquido, 
-      percentage: dre.margemLiquida, 
-      isTotal: true, 
-      isHighlight: true 
-    }
+    total: { label: 'LUCRO LÍQUIDO', value: dre.lucroLiquido, percentage: dre.margemLiquida, isTotal: true, isHighlight: true }
   });
 
   return sections;

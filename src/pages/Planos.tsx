@@ -65,7 +65,7 @@ const comparisonFeatures = [
   { feature: 'Lucro real por venda', basico: true, profissional: true },
   { feature: 'Dashboard básico', basico: true, profissional: true },
   { feature: 'Dashboard avançado', basico: false, profissional: true },
-  { feature: 'Integração com marketplaces', basico: '1', profissional: 'ilimitada' },
+  { feature: 'Integração com marketplaces', basico: 'ilimitada', profissional: 'ilimitada' },
   { feature: 'Análise inteligente por produto', basico: false, profissional: true },
   { feature: 'DRE automatizado', basico: false, profissional: true },
   { feature: 'Precificação otimizada', basico: false, profissional: true },

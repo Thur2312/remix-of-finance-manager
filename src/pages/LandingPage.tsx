@@ -536,8 +536,8 @@ function PricingSection() {
             <div className="px-8 py-6 border-b border-gray-100">
               <div className="flex items-end gap-1">
                 <span className="text-gray-500 text-lg font-medium">R$</span>
-                <span className="text-5xl font-bold text-[#0A1628]">37</span>
-                <span className="text-gray-500 text-lg mb-1">,00</span>
+                <span className="text-5xl font-bold text-[#0A1628]">74</span>
+                <span className="text-gray-500 text-lg mb-1">,99</span>
               </div>
               <p className="text-gray-500 text-sm mt-1">por mês · cancele quando quiser</p>
             </div>

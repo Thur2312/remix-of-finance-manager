@@ -47,14 +47,14 @@ const parseInput = (val: string): number => {
 };
 
 // ─── Tabela de taxas Shopee ───────────────────────────────────────────────────
-// Retorna { comissao: number (%), taxaFixa: number (R$) } com base no preço
 function getShopeeRates(preco: number): { comissao: number; taxaFixa: number } {
   if (preco <= 79.99)  return { comissao: 20, taxaFixa: 4  };
   if (preco <= 99.99)  return { comissao: 14, taxaFixa: 16 };
   if (preco <= 199.99) return { comissao: 14, taxaFixa: 20 };
   if (preco <= 499.99) return { comissao: 14, taxaFixa: 26 };
-  return               { comissao: 14, taxaFixa: 26 };
+  return                      { comissao: 14, taxaFixa: 26 };
 }
+
 // ─── Plataforma selector ─────────────────────────────────────────────────────
 type Plataforma = "Shopee" | "TiktokShop" | "MercadoLivre";
 
@@ -103,14 +103,33 @@ function CalculadoraPrecificacaoContent() {
   const { anuncios, isLoading: isLoadingAnuncios, addAnuncio, updateAnuncio, deleteAnuncio } = useAnuncios();
   const volumeMensal = fixedCostsSettings?.monthly_products_sold || 100;
 
+  // ── Média das margens do portfólio (todos os anúncios cadastrados) ────────
+  // Para cada anúncio: margem = (valor_venda - todos os custos) / valor_venda * 100
+  // Break-even usa a média dessas margens em vez da margem do produto atual
+  const mediaMargemPortfolio = useMemo(() => {
+    if (!anuncios || anuncios.length === 0) return null;
+
+    const margens = anuncios.map(a => {
+      const comissaoTaxa = parseFloat(String(a.comissao_taxa) || "0");
+      const taxaFixaAnuncio = a.taxafixa ?? 0;
+      const impostoVal   = a.valor_venda * (a.imposto_pct / 100);
+      const totalCustos  = a.custo + a.custo_var + comissaoTaxa + taxaFixaAnuncio + a.antecipado + a.afiliados + impostoVal;
+      const margem       = a.valor_venda > 0 ? ((a.valor_venda - totalCustos) / a.valor_venda) * 100 : 0;
+      return margem;
+    });
+
+    const soma = margens.reduce((acc, m) => acc + m, 0);
+    return soma / margens.length;
+  }, [anuncios]);
+
   // ── Auto-fill Shopee ──────────────────────────────────────────────────────
   useEffect(() => {
-  if (plataformaSelecionada !== "Shopee") return;
-  const preco = parseInput(precoPromocional);
-  const { comissao, taxaFixa: taxa } = getShopeeRates(preco);
-  setComissaoPlataforma(String(comissao));
-  setTaxaFixa(String(taxa));
-}, [plataformaSelecionada, precoPromocional]);
+    if (plataformaSelecionada !== "Shopee") return;
+    const preco = parseInput(precoPromocional);
+    const { comissao, taxaFixa: taxa } = getShopeeRates(preco);
+    setComissaoPlataforma(String(comissao));
+    setTaxaFixa(String(taxa));
+  }, [plataformaSelecionada, precoPromocional]);
 
   const handleDecimalInput = (value: string, setter: (v: string) => void) => {
     if (value === "" || /^[0-9]*[,.]?[0-9]*$/.test(value)) setter(value);
@@ -126,7 +145,7 @@ function CalculadoraPrecificacaoContent() {
     papelProduto === "avancado" ? absorpcaoManual : ABSORCAO_PADRAO[papelProduto],
   [papelProduto, absorpcaoManual]);
 
-  // ── Cálculos ──────────────────────────────────────────────────────────────
+  // ── Cálculos do produto atual ─────────────────────────────────────────────
   const results = useMemo(() => {
     const _custo     = parseInput(custoProduto);
     const _custoVar  = parseInput(embalagemEtiqueta);
@@ -171,16 +190,31 @@ function CalculadoraPrecificacaoContent() {
     };
   }, [custoProduto, embalagemEtiqueta, precoPromocional, desconto, comissaoPlataforma, taxaFixa, aliquotaImposto, comissaoAfiliados, margemDesejada, totalRecurringCosts, volumeMensal, volumeEsperadoProduto, percentualAbsorcao]);
 
+  // ── Panorama / Break-even ─────────────────────────────────────────────────
+  // Se há anúncios cadastrados → usa a média das margens do portfólio
+  // Se não há anúncios → usa a margem do produto sendo simulado agora
   const panorama = useMemo(() => {
-    const fat               = parseInput(faturamentoTotal);
-    const margemPct         = results.margemContribuicaoPercent;
-    const breakEven         = margemPct > 0 ? (totalRecurringCosts / margemPct) * 100 : 0;
-    const margemGerada      = fat * (margemPct / 100);
-    const resultadoLiquido  = margemGerada - totalRecurringCosts;
-    const margemLiquidaPct  = fat > 0 ? (resultadoLiquido / fat) * 100 : 0;
+    const fat = parseInput(faturamentoTotal);
+
+    const margemPct = mediaMargemPortfolio !== null
+      ? mediaMargemPortfolio
+      : results.margemContribuicaoPercent;
+
+    const breakEven          = margemPct > 0 ? (totalRecurringCosts / margemPct) * 100 : 0;
+    const margemGerada       = fat * (margemPct / 100);
+    const resultadoLiquido   = margemGerada - totalRecurringCosts;
+    const margemLiquidaPct   = fat > 0 ? (resultadoLiquido / fat) * 100 : 0;
     const progressoBreakEven = breakEven > 0 ? Math.min((fat / breakEven) * 100, 100) : 0;
-    return { fat, breakEven, margemGerada, resultadoLiquido, margemLiquidaPct, progressoBreakEven, lucrativo: resultadoLiquido > 0, margemPct };
-  }, [faturamentoTotal, results.margemContribuicaoPercent, totalRecurringCosts]);
+
+    return {
+      fat, breakEven, margemGerada, resultadoLiquido,
+      margemLiquidaPct, progressoBreakEven,
+      lucrativo: resultadoLiquido > 0,
+      margemPct,
+      usandoPortfolio: mediaMargemPortfolio !== null,
+      qtdAnuncios: anuncios.length,
+    };
+  }, [faturamentoTotal, mediaMargemPortfolio, results.margemContribuicaoPercent, totalRecurringCosts, anuncios.length]);
 
   const alertas = useMemo(() => {
     const lista: { tipo: "critico" | "alerta" | "aviso" | "info"; mensagem: string }[] = [];
@@ -314,10 +348,26 @@ function CalculadoraPrecificacaoContent() {
               <CardContent className="space-y-4">
                 <div className="flex flex-col items-center justify-center py-4 bg-muted/30 rounded-lg">
                   <span className="text-3xl font-bold tracking-tight">{formatCurrency(panorama.breakEven)}</span>
-                  <span className="text-sm text-muted-foreground mt-1">
-                    Margem de contribuição real:{" "}
-                    <span className="text-primary font-semibold">{formatPercent(panorama.margemPct)}</span>
+                  {/* Mostra de onde vem a margem usada no cálculo */}
+                  <span className="text-sm text-muted-foreground mt-1 text-center px-2">
+                    {panorama.usandoPortfolio ? (
+                      <>
+                        Média do portfólio ({panorama.qtdAnuncios} anúncio{panorama.qtdAnuncios !== 1 ? "s" : ""}):{" "}
+                        <span className="text-primary font-semibold">{formatPercent(panorama.margemPct)}</span>
+                      </>
+                    ) : (
+                      <>
+                        Margem do produto atual:{" "}
+                        <span className="text-primary font-semibold">{formatPercent(panorama.margemPct)}</span>
+                      </>
+                    )}
                   </span>
+                  {/* Dica quando não há anúncios */}
+                  {!panorama.usandoPortfolio && (
+                    <span className="text-xs text-muted-foreground mt-1 text-center px-4">
+                      Cadastre seus anúncios para usar a média real do portfólio
+                    </span>
+                  )}
                 </div>
                 <div className="space-y-1.5">
                   <Label htmlFor="faturamentoTotal" className="text-sm font-medium">Faturamento mensal atual (R$)</Label>
@@ -435,7 +485,6 @@ function CalculadoraPrecificacaoContent() {
                     </button>
                   ))}
                 </div>
-                {/* Aviso Shopee quando ativo */}
                 {plataformaSelecionada === "Shopee" && (
                   <p className="text-xs text-orange-600 dark:text-orange-400 flex items-center gap-1.5 mt-1">
                     <Info className="h-3.5 w-3.5 flex-shrink-0" />
@@ -593,8 +642,6 @@ function CalculadoraPrecificacaoContent() {
                     </DialogHeader>
 
                     <div className="space-y-4 py-2">
-
-                      {/* Linha 1: Nome + Marketplace */}
                       <div className="grid grid-cols-2 gap-4">
                         <div className="space-y-2">
                           <Label htmlFor="nome_anuncio" className="font-medium">
@@ -603,7 +650,6 @@ function CalculadoraPrecificacaoContent() {
                           <Input id="nome_anuncio" autoFocus value={anuncioForm.nome_anuncio}
                             onChange={setFormField("nome_anuncio")} placeholder="Ex: Macaquinho Floral" maxLength={255} />
                         </div>
-
                         <div className="space-y-2">
                           <Label>Marketplace</Label>
                           <Select
@@ -627,7 +673,6 @@ function CalculadoraPrecificacaoContent() {
                         Valores (R$) — pré-preenchidos
                       </p>
 
-                      {/* Linha 2: 6 campos numéricos + imposto em grade 4 colunas */}
                       <div className="grid grid-cols-4 gap-4">
                         {([
                           { field: "custo",         label: "Custo" },
@@ -643,8 +688,6 @@ function CalculadoraPrecificacaoContent() {
                               onChange={setFormField(field)} placeholder="0,00" />
                           </div>
                         ))}
-
-                        {/* Imposto na mesma grade */}
                         <div className="space-y-2">
                           <Label className="text-sm">Imposto (%)</Label>
                           <div className="relative">
@@ -654,7 +697,6 @@ function CalculadoraPrecificacaoContent() {
                           </div>
                         </div>
                       </div>
-
                     </div>
 
                     <DialogFooter>
@@ -858,6 +900,11 @@ function CalculadoraPrecificacaoContent() {
                   <CardTitle className="text-lg">Anúncios Cadastrados</CardTitle>
                   <CardDescription>
                     {anuncios.length} anúncio{anuncios.length !== 1 ? "s" : ""} cadastrado{anuncios.length !== 1 ? "s" : ""}
+                    {panorama.usandoPortfolio && (
+                      <span className="ml-2 text-primary font-medium">
+                        · Margem média: {formatPercent(panorama.margemPct)}
+                      </span>
+                    )}
                   </CardDescription>
                 </div>
                 <ShoppingBag className="h-5 w-5 text-muted-foreground" />
@@ -875,13 +922,12 @@ function CalculadoraPrecificacaoContent() {
               ) : (
                 <div className="overflow-x-auto">
                   <table className="w-full text-sm">
-                 <thead>
+                    <thead>
                       <tr>
                         <th colSpan={11} className="pb-2">
                           <div className="flex items-center px-4 text-sm font-medium text-muted-foreground">
                             <span className="flex-[2] min-w-[180px] text-left">Nome</span>
                             <span className="flex-[1.3] min-w-[120px] text-left">Marketplace</span>
-
                             <span className="w-[90px] text-right">Custo</span>
                             <span className="w-[90px] text-right">Venda</span>
                             <span className="w-[130px] text-right">Comissão/Taxa</span>
@@ -889,8 +935,8 @@ function CalculadoraPrecificacaoContent() {
                             <span className="w-[100px] text-right">Afiliados</span>
                             <span className="w-[90px] text-right">Imposto</span>
                             <span className="w-[110px] text-right">Custo Var.</span>
+                            <span className="w-[90px] text-right">Margem</span>
                             <span className="w-[90px] text-right">Lucro</span>
-
                             <span className="w-[72px]" />
                           </div>
                         </th>
@@ -898,64 +944,57 @@ function CalculadoraPrecificacaoContent() {
                     </thead>
                     <tbody>
                       {anuncios.map(a => {
-                        const lucro = a.valor_venda - a.custo - a.custo_var - parseFloat(String(a.comissao_taxa) || "0") - a.antecipado - a.afiliados;
+                        const comissaoTaxa    = parseFloat(String(a.comissao_taxa) || "0");
+                        const taxaFixaAnuncio = a.taxafixa ?? 0;
+                        const impostoVal      = a.valor_venda * (a.imposto_pct / 100);
+                        const totalCustos     = a.custo + a.custo_var + comissaoTaxa + taxaFixaAnuncio + a.antecipado + a.afiliados + impostoVal;
+                        const lucro           = a.valor_venda - totalCustos;
+                        const margem          = a.valor_venda > 0 ? (lucro / a.valor_venda) * 100 : 0;
                         return (
                           <tr key={a.id}>
                             <td className="pt-2" colSpan={11}>
-                            <div className="flex items-center bg-muted/50 rounded-md px-4 py-3">
-                              <span className="flex-[2] min-w-[180px] font-medium whitespace-nowrap">
-                                {a.nome_anuncio}
-                              </span>
-
-                              <span className="flex-[1.3] min-w-[120px] whitespace-nowrap">
-                                {a.marketplace ? (
-                                  <Badge variant="outline" className="font-normal">
-                                    {a.marketplace}
+                              <div className="flex items-center bg-muted/50 rounded-md px-4 py-3">
+                                <span className="flex-[2] min-w-[180px] font-medium whitespace-nowrap">
+                                  {a.nome_anuncio}
+                                </span>
+                                <span className="flex-[1.3] min-w-[120px] whitespace-nowrap">
+                                  {a.marketplace ? (
+                                    <Badge variant="outline" className="font-normal">{a.marketplace}</Badge>
+                                  ) : (
+                                    <span className="text-muted-foreground">—</span>
+                                  )}
+                                </span>
+                                <span className="w-[90px] text-right tabular-nums whitespace-nowrap">
+                                  {formatCurrency(a.custo)}
+                                </span>
+                                <span className="w-[90px] text-right tabular-nums whitespace-nowrap">
+                                  {formatCurrency(a.valor_venda)}
+                                </span>
+                                <span className="w-[130px] text-right tabular-nums whitespace-nowrap">
+                                  {formatCurrency(comissaoTaxa)}
+                                </span>
+                                <span className="w-[110px] text-right tabular-nums whitespace-nowrap">
+                                  {formatCurrency(a.antecipado)}
+                                </span>
+                                <span className="w-[100px] text-right tabular-nums whitespace-nowrap">
+                                  {formatCurrency(a.afiliados)}
+                                </span>
+                                <span className="w-[90px] text-right whitespace-nowrap">
+                                  <Badge variant="secondary" className="font-normal tabular-nums">
+                                    {a.imposto_pct}%
                                   </Badge>
-                                ) : (
-                                  <span className="text-muted-foreground">—</span>
-                                )}
-                              </span>
-
-                              <span className="w-[90px] text-right tabular-nums whitespace-nowrap">
-                                {formatCurrency(a.custo)}
-                              </span>
-
-                              <span className="w-[90px] text-right tabular-nums whitespace-nowrap">
-                                {formatCurrency(a.valor_venda)}
-                              </span>
-
-                              <span className="w-[130px] text-right tabular-nums whitespace-nowrap">
-                                {formatCurrency(parseFloat(String(a.comissao_taxa) || "0"))}
-                              </span>
-
-                              <span className="w-[110px] text-right tabular-nums whitespace-nowrap">
-                                {formatCurrency(a.antecipado)}
-                              </span>
-
-                              <span className="w-[100px] text-right tabular-nums whitespace-nowrap">
-                                {formatCurrency(a.afiliados)}
-                              </span>
-
-                              <span className="w-[90px] text-right whitespace-nowrap">
-                                <Badge variant="secondary" className="font-normal tabular-nums">
-                                  {a.imposto_pct}%
-                                </Badge>
-                              </span>
-
-                              <span className="w-[110px] text-right tabular-nums whitespace-nowrap">
-                                {formatCurrency(a.custo_var)}
-                              </span>
-
-                              <span
-                                className={`w-[90px] text-right font-semibold tabular-nums whitespace-nowrap ${
-                                  lucro >= 0 ? "text-green-600" : "text-destructive"
-                                }`}
-                              >
-                                {formatCurrency(lucro)}
-                              </span>
-
-                              <span className="w-[72px] flex items-center justify-end gap-1 pl-2">                            
+                                </span>
+                                <span className="w-[110px] text-right tabular-nums whitespace-nowrap">
+                                  {formatCurrency(a.custo_var)}
+                                </span>
+                                {/* Coluna Margem — nova */}
+                                <span className={`w-[90px] text-right font-semibold tabular-nums whitespace-nowrap ${margem >= 0 ? "text-primary" : "text-destructive"}`}>
+                                  {formatPercent(margem)}
+                                </span>
+                                <span className={`w-[90px] text-right font-semibold tabular-nums whitespace-nowrap ${lucro >= 0 ? "text-green-600" : "text-destructive"}`}>
+                                  {formatCurrency(lucro)}
+                                </span>
+                                <span className="w-[72px] flex items-center justify-end gap-1 pl-2">
                                   <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => openEditAnuncio(a)}>
                                     <Pencil className="h-4 w-4" />
                                   </Button>
@@ -978,8 +1017,8 @@ function CalculadoraPrecificacaoContent() {
                                       </AlertDialogFooter>
                                     </AlertDialogContent>
                                   </AlertDialog>
-                              </span>
-                            </div>
+                                </span>
+                              </div>
                             </td>
                           </tr>
                         );
