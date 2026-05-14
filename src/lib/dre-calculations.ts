@@ -1,5 +1,4 @@
-import { RawOrder } from '@/lib/calculations';
-import { format, startOfMonth, endOfMonth, subMonths, differenceInDays, getDaysInMonth } from 'date-fns';
+import { format, startOfMonth, endOfMonth, subMonths, differenceInDays } from 'date-fns';
 
 // ============= INTERFACES =============
 
@@ -31,7 +30,16 @@ export interface DREAlerta {
   campo: string;
 }
 
-// NOVO: interface para pedidos do Mercado Livre
+// Pedido Shopee normalizado para o DRE (vem de orders + fees)
+export interface ShopeeOrderDRE {
+  id: string;
+  total_faturado: number;
+  custo_unitario: number;
+  quantidade: number;
+  data_pedido: string | null;
+}
+
+// Pedido Mercado Livre
 export interface MlOrder {
   user_id: string;
   order_id: string;
@@ -50,7 +58,7 @@ export interface MlOrder {
   updated_at: string;
 }
 
-// NOVO: interface para lançamentos do fluxo de caixa
+// Lançamento do fluxo de caixa
 export interface CashFlowEntry {
   id: string;
   user_id: string;
@@ -66,74 +74,61 @@ export interface CashFlowEntry {
 
 export interface DREData {
   periodo: DREPeriod;
-  
-  // 1. RECEITA BRUTA
+
   receitaBrutaShopee: number;
   receitaBrutaTikTok: number;
-  receitaBrutaMercadoLivre: number;   // NOVO
-  receitaBrutaExtra: number;           // NOVO: receitas do fluxo de caixa
+  receitaBrutaMercadoLivre: number;
+  receitaBrutaExtra: number;
   receitaBrutaTotal: number;
-  
-  // 2. IMPOSTOS SOBRE VENDAS
+
   icms: number;
   issSimples: number;
   impostosSobreVendasTotal: number;
-  
-  // 3. CANCELAMENTOS E DEVOLUÇÕES
+
   cancelamentos: number;
   devolucoes: number;
   deducoesTotal: number;
-  
-  // 4. RECEITA LÍQUIDA
+
   receitaLiquida: number;
-  
-  // 5. COGS
+
   custoProdutos: number;
   custoEmbalagem: number;
   custoFreteEnvio: number;
   nfEntrada: number;
   cogsTotal: number;
-  
-  // 6. LUCRO BRUTO
+
   lucroBruto: number;
   margemBruta: number;
-  
-  // 7. CUSTOS VARIÁVEIS OPERACIONAIS
+
   comissoesMarketplace: number;
   comissoesAfiliados: number;
   adsMarketing: number;
   taxasGateway: number;
   taxasServicos: number;
   custosVariaveisTotal: number;
-  
-  // 8. MARGEM DE CONTRIBUIÇÃO
+
   margemContribuicao: number;
   percentualMargemContribuicao: number;
-  
-  // 9. CUSTOS FIXOS
+
   custosFixosPorCategoria: Record<string, number>;
   custosFixosTotal: number;
   custosFixosProrrateados: number;
   diasPeriodo: number;
-  
-  // 10. LUCRO OPERACIONAL
+
   lucroOperacional: number;
   margemOperacional: number;
-  
-  // 11. DESPESAS FINANCEIRAS
+
   jurosMultas: number;
   impostosSobreLucro: number;
   despesasFinanceirasTotal: number;
 
-  // NOVO: Outras despesas operacionais do fluxo de caixa
   outrasReceitasFluxo: number;
   outrasDespesasFluxo: number;
   outrasDespesasFluxoPorCategoria: Record<string, number>;
-  
-  // 12. LUCRO LÍQUIDO
+
   lucroLiquido: number;
   margemLiquida: number;
-  
+
   alertas: DREAlerta[];
 }
 
@@ -229,40 +224,25 @@ export interface TikTokSettings {
   imposto_nf_saida?: number | null;
 }
 
-// ============= HELPER FUNCTIONS =============
+// ============= HELPERS =============
 
 export function getDefaultPeriods(): DREPeriod[] {
   const now = new Date();
   return [
-    {
-      start: startOfMonth(now),
-      end: endOfMonth(now),
-      label: 'Mês Atual'
-    },
-    {
-      start: startOfMonth(subMonths(now, 1)),
-      end: endOfMonth(subMonths(now, 1)),
-      label: 'Mês Anterior'
-    },
-    {
-      start: startOfMonth(subMonths(now, 2)),
-      end: endOfMonth(now),
-      label: 'Últimos 3 Meses'
-    },
-    {
-      start: startOfMonth(subMonths(now, 5)),
-      end: endOfMonth(now),
-      label: 'Últimos 6 Meses'
-    },
-    {
-      start: new Date(now.getFullYear(), 0, 1),
-      end: new Date(now.getFullYear(), 11, 31),
-      label: 'Ano Atual'
-    }
+    { start: startOfMonth(now), end: endOfMonth(now), label: 'Mês Atual' },
+    { start: startOfMonth(subMonths(now, 1)), end: endOfMonth(subMonths(now, 1)), label: 'Mês Anterior' },
+    { start: startOfMonth(subMonths(now, 2)), end: endOfMonth(now), label: 'Últimos 3 Meses' },
+    { start: startOfMonth(subMonths(now, 5)), end: endOfMonth(now), label: 'Últimos 6 Meses' },
+    { start: new Date(now.getFullYear(), 0, 1), end: new Date(now.getFullYear(), 11, 31), label: 'Ano Atual' },
   ];
 }
 
-export function filterByPeriod<T extends { data_pedido?: string | null; statement_date?: string | null; data_criacao_pedido?: string | null; due_date?: string | null }>(
+export function filterByPeriod<T extends {
+  data_pedido?: string | null;
+  statement_date?: string | null;
+  data_criacao_pedido?: string | null;
+  due_date?: string | null;
+}>(
   items: T[],
   period: DREPeriod,
   dateField: 'data_pedido' | 'statement_date' | 'data_criacao_pedido' | 'due_date' = 'data_pedido'
@@ -275,58 +255,34 @@ export function filterByPeriod<T extends { data_pedido?: string | null; statemen
   });
 }
 
-// ============= FUNÇÃO DE ALERTAS =============
+// ============= ALERTAS =============
 
 function gerarAlertas(data: Partial<DREData>): DREAlerta[] {
   const alertas: DREAlerta[] = [];
-  
+
   if ((data.impostosSobreVendasTotal || 0) === 0 && (data.receitaBrutaTotal || 0) > 0) {
-    alertas.push({
-      tipo: 'warning',
-      mensagem: 'Nenhum imposto sobre vendas configurado. Verifique as configurações de Simples Nacional/ISS.',
-      campo: 'impostosSobreVendasTotal'
-    });
+    alertas.push({ tipo: 'warning', mensagem: 'Nenhum imposto sobre vendas configurado. Verifique as configurações de Simples Nacional/ISS.', campo: 'impostosSobreVendasTotal' });
   }
-  
   if ((data.cogsTotal || 0) === 0 && (data.receitaBrutaTotal || 0) > 0) {
-    alertas.push({
-      tipo: 'error',
-      mensagem: 'Custo dos produtos (COGS) zerado. Cadastre os custos unitários dos produtos.',
-      campo: 'cogsTotal'
-    });
+    alertas.push({ tipo: 'error', mensagem: 'Custo dos produtos (COGS) zerado. Cadastre os custos unitários dos produtos.', campo: 'cogsTotal' });
   }
-  
   if ((data.margemContribuicao || 0) < 0) {
-    alertas.push({
-      tipo: 'error',
-      mensagem: 'Margem de contribuição negativa! A operação não é sustentável.',
-      campo: 'margemContribuicao'
-    });
+    alertas.push({ tipo: 'error', mensagem: 'Margem de contribuição negativa! A operação não é sustentável.', campo: 'margemContribuicao' });
   }
-  
   if ((data.lucroOperacional || 0) < 0 && (data.margemContribuicao || 0) > 0) {
-    alertas.push({
-      tipo: 'warning',
-      mensagem: 'Lucro operacional negativo. Custos fixos estão acima da margem de contribuição.',
-      campo: 'lucroOperacional'
-    });
+    alertas.push({ tipo: 'warning', mensagem: 'Lucro operacional negativo. Custos fixos estão acima da margem de contribuição.', campo: 'lucroOperacional' });
   }
-  
   if ((data.custosFixosTotal || 0) === 0 && (data.receitaBrutaTotal || 0) > 0) {
-    alertas.push({
-      tipo: 'info',
-      mensagem: 'Nenhum custo fixo cadastrado. Cadastre custos fixos para uma DRE completa.',
-      campo: 'custosFixosTotal'
-    });
+    alertas.push({ tipo: 'info', mensagem: 'Nenhum custo fixo cadastrado. Cadastre custos fixos para uma DRE completa.', campo: 'custosFixosTotal' });
   }
-  
+
   return alertas;
 }
 
 // ============= CÁLCULO PRINCIPAL =============
 
 export function calculateDRE(
-  shopeeOrders: RawOrder[],
+  shopeeOrders: ShopeeOrderDRE[],
   tiktokOrders: TikTokOrder[],
   tiktokSettlements: TikTokSettlement[],
   fixedCosts: FixedCost[],
@@ -336,424 +292,253 @@ export function calculateDRE(
   mlOrders: MlOrder[] = [],
   cashFlowEntries: CashFlowEntry[] = []
 ): DREData {
-  // Filtrar dados por período
-  const filteredShopeeOrders = filterByPeriod(shopeeOrders, period, 'data_pedido');
-  const filteredTikTokOrders = filterByPeriod(tiktokOrders, period, 'data_pedido');
-  const filteredSettlements = filterByPeriod(tiktokSettlements, period, 'statement_date');
-  const filteredCashFlow = filterByPeriod(cashFlowEntries, period, 'due_date');
 
-  // Filtrar ML: apenas pedidos pagos/entregues
-  const filteredMlOrders = filterByPeriod(mlOrders, period, 'data_pedido').filter(o =>
-    ['paid', 'delivered', 'payment_done'].includes(o.status_pedido)
-  );
+  const filteredShopeeOrders  = filterByPeriod(shopeeOrders,    period, 'data_pedido');
+  const filteredTikTokOrders  = filterByPeriod(tiktokOrders,    period, 'data_pedido');
+  const filteredSettlements   = filterByPeriod(tiktokSettlements, period, 'statement_date');
+  const filteredCashFlow      = filterByPeriod(cashFlowEntries, period, 'due_date');
+  const filteredMlOrders      = filterByPeriod(mlOrders, period, 'data_pedido')
+    .filter(o => ['paid', 'delivered', 'payment_done'].includes(o.status_pedido));
 
-  // Calcular dias do período para prorrateio
-  const diasPeriodo = differenceInDays(period.end, period.start) + 1;
-  const proporcaoPeriodo = Math.min(diasPeriodo / 30, 1);
+  const diasPeriodo       = differenceInDays(period.end, period.start) + 1;
+  const proporcaoPeriodo  = Math.min(diasPeriodo / 30, 1);
 
-  // =========== 1. RECEITA BRUTA ===========
-  const receitaBrutaShopee = filteredShopeeOrders.reduce((sum, order) => {
-    return sum + (order.total_faturado || 0);
-  }, 0);
-
-  const receitaBrutaTikTok = filteredTikTokOrders.reduce((sum, order) => {
-    return sum + (order.total_faturado || 0);
-  }, 0);
-
-  // NOVO: Receita bruta do Mercado Livre
-  const receitaBrutaMercadoLivre = filteredMlOrders.reduce((sum, o) => {
-    return sum + (o.total_faturado ?? 0);
-  }, 0);
-
-  // NOVO: Receitas confirmadas do fluxo de caixa (type=income, status=received)
+  // 1. RECEITA BRUTA
+  const receitaBrutaShopee = filteredShopeeOrders.reduce((s, o) => s + (o.total_faturado || 0), 0);
+  const receitaBrutaTikTok = filteredTikTokOrders.reduce((s, o) => s + (o.total_faturado || 0), 0);
+  const receitaBrutaMercadoLivre = filteredMlOrders.reduce((s, o) => s + (o.total_faturado ?? 0), 0);
   const receitaBrutaExtra = filteredCashFlow
     .filter(e => e.type === 'income' && e.status === 'received')
-    .reduce((sum, e) => sum + (e.amount || 0), 0);
-
+    .reduce((s, e) => s + (e.amount || 0), 0);
   const receitaBrutaTotal = receitaBrutaShopee + receitaBrutaTikTok + receitaBrutaMercadoLivre + receitaBrutaExtra;
 
-  // =========== 2. IMPOSTOS SOBRE VENDAS ===========
-  const icms = filteredSettlements.reduce((sum, s) => {
-    return sum + Math.abs(s.icms_difal || 0) + Math.abs(s.icms_penalty || 0);
-  }, 0);
-
-  const issShopee = receitaBrutaShopee * ((shopeeSettings?.imposto_nf_saida || 0) / 100);
-  const issTikTok = receitaBrutaTikTok * ((tiktokSettings?.imposto_nf_saida || 0) / 100);
+  // 2. IMPOSTOS
+  const icms = filteredSettlements.reduce((s, x) => s + Math.abs(x.icms_difal || 0) + Math.abs(x.icms_penalty || 0), 0);
+  const issShopee  = receitaBrutaShopee * ((shopeeSettings?.imposto_nf_saida || 0) / 100);
+  const issTikTok  = receitaBrutaTikTok * ((tiktokSettings?.imposto_nf_saida || 0) / 100);
   const issSimples = issShopee + issTikTok;
-
   const impostosSobreVendasTotal = icms + issSimples;
 
-  // =========== 3. CANCELAMENTOS E DEVOLUÇÕES ===========
+  // 3. DEDUÇÕES
   const cancelamentos = 0;
-
   const devolucoes = filteredSettlements
     .filter(s => s.type === 'Refund')
-    .reduce((sum, s) => sum + Math.abs(s.refund_subtotal || s.customer_refund || 0), 0);
-
+    .reduce((s, x) => s + Math.abs(x.refund_subtotal || x.customer_refund || 0), 0);
   const deducoesTotal = cancelamentos + devolucoes;
 
-  // =========== 4. RECEITA LÍQUIDA ===========
+  // 4. RECEITA LÍQUIDA
   const receitaLiquida = receitaBrutaTotal - impostosSobreVendasTotal - deducoesTotal;
 
-  // =========== 5. COGS ===========
-  const custoProdutosShopee = filteredShopeeOrders.reduce((sum, order) => {
-    return sum + ((order.custo_unitario || 0) * (order.quantidade || 1));
-  }, 0);
-
-  const custoProdutosTikTok = filteredTikTokOrders.reduce((sum, order) => {
-    return sum + ((order.custo_unitario || 0) * (order.quantidade || 1));
-  }, 0);
-
-  // NOVO: custo dos produtos do ML
-  const custoProdutosMl = filteredMlOrders.reduce((sum, o) => {
-    return sum + ((o.custo_unitario ?? 0) * (o.quantidade ?? 1));
-  }, 0);
-
+  // 5. COGS
+  const custoProdutosShopee = filteredShopeeOrders.reduce((s, o) => s + ((o.custo_unitario || 0) * (o.quantidade || 1)), 0);
+  const custoProdutosTikTok = filteredTikTokOrders.reduce((s, o) => s + ((o.custo_unitario || 0) * (o.quantidade || 1)), 0);
+  const custoProdutosMl     = filteredMlOrders.reduce((s, o) => s + ((o.custo_unitario ?? 0) * (o.quantidade ?? 1)), 0);
   const custoProdutos = custoProdutosShopee + custoProdutosTikTok + custoProdutosMl;
-
   const custoEmbalagem = 0;
-
-  const custoFreteEnvio = filteredSettlements.reduce((sum, s) => {
-    const shippingCost = Math.abs(s.tiktok_shipping_fee || 0);
-    const shippingIncome = (s.customer_shipping_fee || 0) + (s.shipping_subsidy || 0) + (s.shipping_incentive || 0);
-    return sum + Math.max(0, shippingCost - shippingIncome);
+  const custoFreteTikTok = filteredSettlements.reduce((s, x) => {
+    const cost   = Math.abs(x.tiktok_shipping_fee || 0);
+    const income = (x.customer_shipping_fee || 0) + (x.shipping_subsidy || 0) + (x.shipping_incentive || 0);
+    return s + Math.max(0, cost - income);
   }, 0);
+  const custoFreteMl = filteredMlOrders.reduce((s, o) => s + (o.frete_ml ?? 0), 0);
+  const custoFreteEnvio = custoFreteTikTok + custoFreteMl;
+  const nfEntrada = custoProdutosShopee * ((shopeeSettings?.percentual_nf_entrada || 0) / 100)
+                  + custoProdutosTikTok * ((tiktokSettings?.percentual_nf_entrada || 0) / 100);
+  const cogsTotal = custoProdutos + custoEmbalagem + custoFreteEnvio + nfEntrada;
 
-  // NOVO: frete ML (custo líquido pago pelo seller)
-  const custoFreteMl = filteredMlOrders.reduce((sum, o) => {
-    return sum + (o.frete_ml ?? 0);
-  }, 0);
-
-  const nfEntradaShopee = custoProdutosShopee * ((shopeeSettings?.percentual_nf_entrada || 0) / 100);
-  const nfEntradaTikTok = custoProdutosTikTok * ((tiktokSettings?.percentual_nf_entrada || 0) / 100);
-  const nfEntrada = nfEntradaShopee + nfEntradaTikTok;
-
-  const cogsTotal = custoProdutos + custoEmbalagem + custoFreteEnvio + custoFreteMl + nfEntrada;
-
-  // =========== 6. LUCRO BRUTO ===========
-  const lucroBruto = receitaLiquida - cogsTotal;
+  // 6. LUCRO BRUTO
+  const lucroBruto  = receitaLiquida - cogsTotal;
   const margemBruta = receitaLiquida > 0 ? (lucroBruto / receitaLiquida) * 100 : 0;
 
-  // =========== 7. CUSTOS VARIÁVEIS OPERACIONAIS ===========
-  const comissaoShopee = receitaBrutaShopee * ((shopeeSettings?.taxa_comissao_shopee || 0) / 100);
-  const comissaoTikTok = filteredSettlements.reduce((sum, s) => {
-    return sum + Math.abs(s.tiktok_commission_fee || 0);
-  }, 0);
-
-  // NOVO: taxas do ML (taxa_ml já inclui comissão + frete ML no campo taxa_ml)
-  const comissaoMl = filteredMlOrders.reduce((sum, o) => {
-    return sum + (o.taxa_ml ?? 0);
-  }, 0);
-
+  // 7. CUSTOS VARIÁVEIS
+  const comissaoShopee   = receitaBrutaShopee * ((shopeeSettings?.taxa_comissao_shopee || 0) / 100);
+  const comissaoTikTok   = filteredSettlements.reduce((s, x) => s + Math.abs(x.tiktok_commission_fee || 0), 0);
+  const comissaoMl       = filteredMlOrders.reduce((s, o) => s + (o.taxa_ml ?? 0), 0);
   const comissoesMarketplace = comissaoShopee + comissaoTikTok + comissaoMl;
 
-  const comissoesAfiliados = filteredSettlements.reduce((sum, s) => {
-    return sum + Math.abs(s.affiliate_commission || 0) + 
-           Math.abs(s.affiliate_partner_commission || 0) + 
-           Math.abs(s.affiliate_shop_ads_commission || 0);
-  }, 0);
+  const comissoesAfiliados = filteredSettlements.reduce((s, x) =>
+    s + Math.abs(x.affiliate_commission || 0)
+      + Math.abs(x.affiliate_partner_commission || 0)
+      + Math.abs(x.affiliate_shop_ads_commission || 0), 0);
 
-  const adsMarketing = (shopeeSettings?.gasto_shopee_ads || 0) + (tiktokSettings?.gasto_tiktok_ads || 0);
-
-  const taxasGateway = 0;
-
-  const taxasAdicionaisShopee = filteredShopeeOrders.reduce((sum, order) => {
-    return sum + ((shopeeSettings?.adicional_por_item || 0) * (order.quantidade || 1));
-  }, 0);
-  
-  const taxasAdicionaisTikTok = filteredSettlements.reduce((sum, s) => {
-    return sum + Math.abs(s.sfp_service_fee || 0) + 
-           Math.abs(s.fee_per_item || 0) + 
-           Math.abs(s.voucher_xtra_fee || 0) + 
-           Math.abs(s.live_specials_fee || 0) +
-           Math.abs(s.bonus_cashback_fee || 0);
-  }, 0);
-  
+  const adsMarketing  = (shopeeSettings?.gasto_shopee_ads || 0) + (tiktokSettings?.gasto_tiktok_ads || 0);
+  const taxasGateway  = 0;
+  const taxasAdicionaisShopee = filteredShopeeOrders.reduce((s, o) =>
+    s + ((shopeeSettings?.adicional_por_item || 0) * (o.quantidade || 1)), 0);
+  const taxasAdicionaisTikTok = filteredSettlements.reduce((s, x) =>
+    s + Math.abs(x.sfp_service_fee || 0)
+      + Math.abs(x.fee_per_item || 0)
+      + Math.abs(x.voucher_xtra_fee || 0)
+      + Math.abs(x.live_specials_fee || 0)
+      + Math.abs(x.bonus_cashback_fee || 0), 0);
   const taxasServicos = taxasAdicionaisShopee + taxasAdicionaisTikTok;
-
   const custosVariaveisTotal = comissoesMarketplace + comissoesAfiliados + adsMarketing + taxasGateway + taxasServicos;
 
-  // =========== 8. MARGEM DE CONTRIBUIÇÃO ===========
+  // 8. MARGEM DE CONTRIBUIÇÃO
   const margemContribuicao = lucroBruto - custosVariaveisTotal;
   const percentualMargemContribuicao = receitaLiquida > 0 ? (margemContribuicao / receitaLiquida) * 100 : 0;
 
-  // =========== 9. CUSTOS FIXOS ===========
+  // 9. CUSTOS FIXOS
   const custosFixosPorCategoria: Record<string, number> = {};
   let custosFixosTotal = 0;
-
-  fixedCosts.forEach(cost => {
-    const amount = cost.amount;
-    if (!custosFixosPorCategoria[cost.category]) {
-      custosFixosPorCategoria[cost.category] = 0;
-    }
-    custosFixosPorCategoria[cost.category] += amount;
-    custosFixosTotal += amount;
+  fixedCosts.forEach(c => {
+    custosFixosPorCategoria[c.category] = (custosFixosPorCategoria[c.category] || 0) + c.amount;
+    custosFixosTotal += c.amount;
   });
-
   const custosFixosProrrateados = custosFixosTotal * proporcaoPeriodo;
 
-  // =========== 10. LUCRO OPERACIONAL ===========
-  const lucroOperacional = margemContribuicao - custosFixosProrrateados;
+  // 10. LUCRO OPERACIONAL
+  const lucroOperacional  = margemContribuicao - custosFixosProrrateados;
   const margemOperacional = receitaLiquida > 0 ? (lucroOperacional / receitaLiquida) * 100 : 0;
 
-  // =========== 11. DESPESAS FINANCEIRAS ===========
+  // 11. DESPESAS FINANCEIRAS
   const jurosMultas = 0;
   const impostosSobreLucro = 0;
   const despesasFinanceirasTotal = jurosMultas + impostosSobreLucro;
 
-  // NOVO: Outras receitas e despesas do fluxo de caixa (excluindo as já contabilizadas na receita bruta)
-  // Receitas já foram somadas em receitaBrutaExtra; aqui guardamos para exibição separada se necessário
+  // Outras despesas do fluxo de caixa (type=expense, status=paid)
   const outrasReceitasFluxo = receitaBrutaExtra;
-
-  // Despesas pagas do fluxo de caixa (type=expense, status=paid)
   const outrasDespesasFluxoPorCategoria: Record<string, number> = {};
   let outrasDespesasFluxo = 0;
-
   filteredCashFlow
     .filter(e => e.type === 'expense' && e.status === 'paid')
     .forEach(e => {
-      const categoria = e.category_id || 'Sem categoria';
-      if (!outrasDespesasFluxoPorCategoria[categoria]) {
-        outrasDespesasFluxoPorCategoria[categoria] = 0;
-      }
-      outrasDespesasFluxoPorCategoria[categoria] += e.amount;
+      const cat = e.category_id || 'Sem categoria';
+      outrasDespesasFluxoPorCategoria[cat] = (outrasDespesasFluxoPorCategoria[cat] || 0) + e.amount;
       outrasDespesasFluxo += e.amount;
     });
 
-  // =========== 12. LUCRO LÍQUIDO ===========
-  // Despesas do fluxo de caixa entram como redutoras do lucro operacional
-  const lucroLiquido = lucroOperacional - despesasFinanceirasTotal - outrasDespesasFluxo;
+  // 12. LUCRO LÍQUIDO
+  const lucroLiquido  = lucroOperacional - despesasFinanceirasTotal - outrasDespesasFluxo;
   const margemLiquida = receitaLiquida > 0 ? (lucroLiquido / receitaLiquida) * 100 : 0;
 
-  const dreDataParcial = {
-    receitaBrutaTotal,
-    impostosSobreVendasTotal,
-    cogsTotal,
-    margemContribuicao,
-    lucroOperacional,
-    custosFixosTotal
-  };
-
-  const alertas = gerarAlertas(dreDataParcial);
+  const alertas = gerarAlertas({ receitaBrutaTotal, impostosSobreVendasTotal, cogsTotal, margemContribuicao, lucroOperacional, custosFixosTotal });
 
   return {
     periodo: period,
-    
-    receitaBrutaShopee,
-    receitaBrutaTikTok,
-    receitaBrutaMercadoLivre,
-    receitaBrutaExtra,
-    receitaBrutaTotal,
-    
-    icms,
-    issSimples,
-    impostosSobreVendasTotal,
-    
-    cancelamentos,
-    devolucoes,
-    deducoesTotal,
-    
+    receitaBrutaShopee, receitaBrutaTikTok, receitaBrutaMercadoLivre, receitaBrutaExtra, receitaBrutaTotal,
+    icms, issSimples, impostosSobreVendasTotal,
+    cancelamentos, devolucoes, deducoesTotal,
     receitaLiquida,
-    
-    custoProdutos,
-    custoEmbalagem,
-    custoFreteEnvio: custoFreteEnvio + custoFreteMl,
-    nfEntrada,
-    cogsTotal,
-    
-    lucroBruto,
-    margemBruta,
-    
-    comissoesMarketplace,
-    comissoesAfiliados,
-    adsMarketing,
-    taxasGateway,
-    taxasServicos,
-    custosVariaveisTotal,
-    
-    margemContribuicao,
-    percentualMargemContribuicao,
-    
-    custosFixosPorCategoria,
-    custosFixosTotal,
-    custosFixosProrrateados,
-    diasPeriodo,
-    
-    lucroOperacional,
-    margemOperacional,
-    
-    jurosMultas,
-    impostosSobreLucro,
-    despesasFinanceirasTotal,
-
-    outrasReceitasFluxo,
-    outrasDespesasFluxo,
-    outrasDespesasFluxoPorCategoria,
-    
-    lucroLiquido,
-    margemLiquida,
-    
-    alertas
+    custoProdutos, custoEmbalagem, custoFreteEnvio, nfEntrada, cogsTotal,
+    lucroBruto, margemBruta,
+    comissoesMarketplace, comissoesAfiliados, adsMarketing, taxasGateway, taxasServicos, custosVariaveisTotal,
+    margemContribuicao, percentualMargemContribuicao,
+    custosFixosPorCategoria, custosFixosTotal, custosFixosProrrateados, diasPeriodo,
+    lucroOperacional, margemOperacional,
+    jurosMultas, impostosSobreLucro, despesasFinanceirasTotal,
+    outrasReceitasFluxo, outrasDespesasFluxo, outrasDespesasFluxoPorCategoria,
+    lucroLiquido, margemLiquida,
+    alertas,
   };
 }
 
-// ============= FORMATAÇÃO PARA EXIBIÇÃO =============
+// ============= FORMATAÇÃO =============
 
 export function formatDREForDisplay(dre: DREData): DRESection[] {
   const sections: DRESection[] = [];
 
-  // 1. RECEITA OPERACIONAL BRUTA
   sections.push({
     title: 'RECEITA OPERACIONAL BRUTA',
     items: [
-      { label: 'Vendas Shopee', value: dre.receitaBrutaShopee, indent: 1 },
-      { label: 'Vendas TikTok Shop', value: dre.receitaBrutaTikTok, indent: 1 },
-      ...(dre.receitaBrutaMercadoLivre > 0
-        ? [{ label: 'Vendas Mercado Livre', value: dre.receitaBrutaMercadoLivre, indent: 1 }]
-        : []),
-      ...(dre.receitaBrutaExtra > 0
-        ? [{ label: 'Outras Receitas (Fluxo de Caixa)', value: dre.receitaBrutaExtra, indent: 1 }]
-        : []),
+      { label: 'Vendas Shopee',       value: dre.receitaBrutaShopee,        indent: 1 },
+      { label: 'Vendas TikTok Shop',  value: dre.receitaBrutaTikTok,        indent: 1 },
+      ...(dre.receitaBrutaMercadoLivre > 0 ? [{ label: 'Vendas Mercado Livre',               value: dre.receitaBrutaMercadoLivre, indent: 1 }] : []),
+      ...(dre.receitaBrutaExtra       > 0 ? [{ label: 'Outras Receitas (Fluxo de Caixa)',    value: dre.receitaBrutaExtra,        indent: 1 }] : []),
     ],
-    total: { label: 'RECEITA BRUTA TOTAL', value: dre.receitaBrutaTotal, isSubtotal: true }
+    total: { label: 'RECEITA BRUTA TOTAL', value: dre.receitaBrutaTotal, isSubtotal: true },
   });
 
-  // 2. IMPOSTOS SOBRE VENDAS
   if (dre.impostosSobreVendasTotal > 0) {
     sections.push({
       title: 'IMPOSTOS SOBRE VENDAS',
       items: [
-        ...(dre.icms > 0 ? [{ label: 'ICMS (DIFAL + Penalties)', value: -dre.icms, indent: 1 }] : []),
-        ...(dre.issSimples > 0 ? [{ label: 'Simples Nacional / ISS', value: -dre.issSimples, indent: 1 }] : []),
+        ...(dre.icms      > 0 ? [{ label: 'ICMS (DIFAL + Penalties)', value: -dre.icms,      indent: 1 }] : []),
+        ...(dre.issSimples > 0 ? [{ label: 'Simples Nacional / ISS',  value: -dre.issSimples, indent: 1 }] : []),
       ],
-      total: { label: 'TOTAL IMPOSTOS', value: -dre.impostosSobreVendasTotal, isSubtotal: true }
+      total: { label: 'TOTAL IMPOSTOS', value: -dre.impostosSobreVendasTotal, isSubtotal: true },
     });
   }
 
-  // 3. CANCELAMENTOS E DEVOLUÇÕES
   if (dre.deducoesTotal > 0) {
     sections.push({
       title: 'CANCELAMENTOS E DEVOLUÇÕES',
       items: [
         ...(dre.cancelamentos > 0 ? [{ label: 'Cancelamentos', value: -dre.cancelamentos, indent: 1 }] : []),
-        ...(dre.devolucoes > 0 ? [{ label: 'Devoluções', value: -dre.devolucoes, indent: 1 }] : []),
+        ...(dre.devolucoes    > 0 ? [{ label: 'Devoluções',    value: -dre.devolucoes,    indent: 1 }] : []),
       ],
-      total: { label: 'TOTAL DEDUÇÕES', value: -dre.deducoesTotal, isSubtotal: true }
+      total: { label: 'TOTAL DEDUÇÕES', value: -dre.deducoesTotal, isSubtotal: true },
     });
   }
 
-  // 4. RECEITA LÍQUIDA
-  sections.push({
-    title: 'RECEITA LÍQUIDA',
-    items: [],
-    total: { label: 'RECEITA LÍQUIDA', value: dre.receitaLiquida, isTotal: true, isHighlight: true }
-  });
+  sections.push({ title: 'RECEITA LÍQUIDA', items: [], total: { label: 'RECEITA LÍQUIDA', value: dre.receitaLiquida, isTotal: true, isHighlight: true } });
 
-  // 5. COGS
   sections.push({
     title: 'CUSTO DO PRODUTO/SERVIÇO (COGS)',
     items: [
-      { label: 'Custo das Mercadorias', value: -dre.custoProdutos, indent: 1 },
-      ...(dre.custoEmbalagem > 0 ? [{ label: 'Embalagens', value: -dre.custoEmbalagem, indent: 1 }] : []),
+      { label: 'Custo das Mercadorias',      value: -dre.custoProdutos,   indent: 1 },
+      ...(dre.custoEmbalagem  > 0 ? [{ label: 'Embalagens',               value: -dre.custoEmbalagem,  indent: 1 }] : []),
       ...(dre.custoFreteEnvio > 0 ? [{ label: 'Frete de Envio (seller)', value: -dre.custoFreteEnvio, indent: 1 }] : []),
-      ...(dre.nfEntrada > 0 ? [{ label: 'NF de Entrada', value: -dre.nfEntrada, indent: 1 }] : []),
+      ...(dre.nfEntrada       > 0 ? [{ label: 'NF de Entrada',            value: -dre.nfEntrada,       indent: 1 }] : []),
     ],
-    total: { label: 'COGS TOTAL', value: -dre.cogsTotal, isSubtotal: true }
+    total: { label: 'COGS TOTAL', value: -dre.cogsTotal, isSubtotal: true },
   });
 
-  // 6. LUCRO BRUTO
-  sections.push({
-    title: 'RESULTADO BRUTO',
-    items: [],
-    total: { label: 'LUCRO BRUTO', value: dre.lucroBruto, percentage: dre.margemBruta, isTotal: true, isHighlight: true }
-  });
+  sections.push({ title: 'RESULTADO BRUTO', items: [], total: { label: 'LUCRO BRUTO', value: dre.lucroBruto, percentage: dre.margemBruta, isTotal: true, isHighlight: true } });
 
-  // 7. CUSTOS VARIÁVEIS OPERACIONAIS
   sections.push({
     title: 'CUSTOS VARIÁVEIS OPERACIONAIS',
     items: [
       { label: 'Comissões Marketplace (Shopee + TikTok + ML)', value: -dre.comissoesMarketplace, indent: 1 },
-      ...(dre.comissoesAfiliados > 0 ? [{ label: 'Comissões Afiliados', value: -dre.comissoesAfiliados, indent: 1 }] : []),
-      ...(dre.adsMarketing > 0 ? [{ label: 'Ads e Marketing', value: -dre.adsMarketing, indent: 1 }] : []),
-      ...(dre.taxasGateway > 0 ? [{ label: 'Taxas Gateway/Pagamento', value: -dre.taxasGateway, indent: 1 }] : []),
-      ...(dre.taxasServicos > 0 ? [{ label: 'Taxas de Serviços (SFP, etc)', value: -dre.taxasServicos, indent: 1 }] : []),
+      ...(dre.comissoesAfiliados > 0 ? [{ label: 'Comissões Afiliados',        value: -dre.comissoesAfiliados, indent: 1 }] : []),
+      ...(dre.adsMarketing       > 0 ? [{ label: 'Ads e Marketing',            value: -dre.adsMarketing,       indent: 1 }] : []),
+      ...(dre.taxasGateway       > 0 ? [{ label: 'Taxas Gateway/Pagamento',    value: -dre.taxasGateway,       indent: 1 }] : []),
+      ...(dre.taxasServicos      > 0 ? [{ label: 'Taxas de Serviços (SFP, etc)', value: -dre.taxasServicos,    indent: 1 }] : []),
     ],
-    total: { label: 'TOTAL CUSTOS VARIÁVEIS', value: -dre.custosVariaveisTotal, isSubtotal: true }
+    total: { label: 'TOTAL CUSTOS VARIÁVEIS', value: -dre.custosVariaveisTotal, isSubtotal: true },
   });
 
-  // 8. MARGEM DE CONTRIBUIÇÃO
-  sections.push({
-    title: 'MARGEM DE CONTRIBUIÇÃO',
-    items: [],
-    total: { label: 'MARGEM DE CONTRIBUIÇÃO', value: dre.margemContribuicao, percentage: dre.percentualMargemContribuicao, isTotal: true, isHighlight: true }
-  });
+  sections.push({ title: 'MARGEM DE CONTRIBUIÇÃO', items: [], total: { label: 'MARGEM DE CONTRIBUIÇÃO', value: dre.margemContribuicao, percentage: dre.percentualMargemContribuicao, isTotal: true, isHighlight: true } });
 
-  // 9. CUSTOS FIXOS
-  const fixedCostItems: DRELineItem[] = Object.entries(dre.custosFixosPorCategoria).map(([category, amount]) => ({
-    label: category,
-    value: -(amount * (dre.diasPeriodo / 30)),
-    indent: 1
+  const fixedCostItems: DRELineItem[] = Object.entries(dre.custosFixosPorCategoria).map(([cat, amt]) => ({
+    label: cat, value: -(amt * (dre.diasPeriodo / 30)), indent: 1,
   }));
-
   if (fixedCostItems.length > 0 || dre.custosFixosProrrateados > 0) {
     sections.push({
       title: `CUSTOS FIXOS (prorrateado: ${dre.diasPeriodo} dias)`,
       items: fixedCostItems,
-      total: { label: 'TOTAL CUSTOS FIXOS', value: -dre.custosFixosProrrateados, isSubtotal: true }
+      total: { label: 'TOTAL CUSTOS FIXOS', value: -dre.custosFixosProrrateados, isSubtotal: true },
     });
   }
 
-  // 10. LUCRO OPERACIONAL
-  sections.push({
-    title: 'RESULTADO OPERACIONAL',
-    items: [],
-    total: { label: 'LUCRO OPERACIONAL', value: dre.lucroOperacional, percentage: dre.margemOperacional, isTotal: true, isHighlight: true }
-  });
+  sections.push({ title: 'RESULTADO OPERACIONAL', items: [], total: { label: 'LUCRO OPERACIONAL', value: dre.lucroOperacional, percentage: dre.margemOperacional, isTotal: true, isHighlight: true } });
 
-  // NOVO: OUTRAS DESPESAS OPERACIONAIS (Fluxo de Caixa)
   if (dre.outrasDespesasFluxo > 0) {
-    const despesasFluxoItems: DRELineItem[] = Object.entries(dre.outrasDespesasFluxoPorCategoria).map(([cat, amount]) => ({
-      label: cat,
-      value: -amount,
-      indent: 1
-    }));
-
     sections.push({
       title: 'OUTRAS DESPESAS OPERACIONAIS (Fluxo de Caixa)',
-      items: despesasFluxoItems,
-      total: { label: 'TOTAL OUTRAS DESPESAS', value: -dre.outrasDespesasFluxo, isSubtotal: true }
+      items: Object.entries(dre.outrasDespesasFluxoPorCategoria).map(([cat, amt]) => ({ label: cat, value: -amt, indent: 1 })),
+      total: { label: 'TOTAL OUTRAS DESPESAS', value: -dre.outrasDespesasFluxo, isSubtotal: true },
     });
   }
 
-  // 11. DESPESAS FINANCEIRAS
   if (dre.despesasFinanceirasTotal > 0) {
     sections.push({
       title: 'DESPESAS FINANCEIRAS E IMPOSTOS SOBRE LUCRO',
       items: [
-        ...(dre.jurosMultas > 0 ? [{ label: 'Juros e Multas', value: -dre.jurosMultas, indent: 1 }] : []),
-        ...(dre.impostosSobreLucro > 0 ? [{ label: 'IRPJ / CSLL', value: -dre.impostosSobreLucro, indent: 1 }] : []),
+        ...(dre.jurosMultas       > 0 ? [{ label: 'Juros e Multas', value: -dre.jurosMultas,       indent: 1 }] : []),
+        ...(dre.impostosSobreLucro > 0 ? [{ label: 'IRPJ / CSLL',   value: -dre.impostosSobreLucro, indent: 1 }] : []),
       ],
-      total: { label: 'TOTAL DESPESAS FINANCEIRAS', value: -dre.despesasFinanceirasTotal, isSubtotal: true }
+      total: { label: 'TOTAL DESPESAS FINANCEIRAS', value: -dre.despesasFinanceirasTotal, isSubtotal: true },
     });
   }
 
-  // 12. LUCRO LÍQUIDO
-  sections.push({
-    title: 'RESULTADO FINAL',
-    items: [],
-    total: { label: 'LUCRO LÍQUIDO', value: dre.lucroLiquido, percentage: dre.margemLiquida, isTotal: true, isHighlight: true }
-  });
+  sections.push({ title: 'RESULTADO FINAL', items: [], total: { label: 'LUCRO LÍQUIDO', value: dre.lucroLiquido, percentage: dre.margemLiquida, isTotal: true, isHighlight: true } });
 
   return sections;
 }
 
-// ============= FUNÇÕES DE FORMATAÇÃO =============
-
 export function formatCurrency(value: number): string {
-  return new Intl.NumberFormat('pt-BR', {
-    style: 'currency',
-    currency: 'BRL'
-  }).format(value);
+  return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value);
 }
 
 export function formatPercent(value: number): string {
