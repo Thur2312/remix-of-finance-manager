@@ -103,9 +103,7 @@ function CalculadoraPrecificacaoContent() {
   const { anuncios, isLoading: isLoadingAnuncios, addAnuncio, updateAnuncio, deleteAnuncio } = useAnuncios();
   const volumeMensal = fixedCostsSettings?.monthly_products_sold || 100;
 
-  // ── Média das margens do portfólio (todos os anúncios cadastrados) ────────
-  // Para cada anúncio: margem = (valor_venda - todos os custos) / valor_venda * 100
-  // Break-even usa a média dessas margens em vez da margem do produto atual
+
   const mediaMargemPortfolio = useMemo(() => {
     if (!anuncios || anuncios.length === 0) return null;
 
@@ -113,8 +111,8 @@ function CalculadoraPrecificacaoContent() {
       const comissaoTaxa = parseFloat(String(a.comissao_taxa) || "0");
       const taxaFixaAnuncio = a.taxafixa ?? 0;
       const impostoVal   = a.valor_venda * (a.imposto_pct / 100);
-      const totalCustos  = a.custo + a.custo_var + comissaoTaxa + taxaFixaAnuncio + a.antecipado + a.afiliados + impostoVal;
-      const margem       = a.valor_venda > 0 ? ((a.valor_venda - totalCustos) / a.valor_venda) * 100 : 0;
+      const afiliadosVal = a.valor_venda * (a.afiliados / 100);
+      const totalCustos  = a.custo + a.custo_var + comissaoTaxa + taxaFixaAnuncio + a.antecipado + afiliadosVal + impostoVal;      const margem       = a.valor_venda > 0 ? ((a.valor_venda - totalCustos) / a.valor_venda) * 100 : 0;
       return margem;
     });
 
@@ -679,7 +677,7 @@ function CalculadoraPrecificacaoContent() {
                           { field: "valor_venda",   label: "Valor de Venda" },
                           { field: "comissao_taxa", label: "Comissão + Taxa (R$)" },
                           { field: "antecipado",    label: "Antecipado (R$)" },
-                          { field: "afiliados",     label: "Afiliados (R$)" },
+                          { field: "afiliados", label: "Afiliados (%)" },
                           { field: "custo_var",     label: "Custo Variável (R$)" },
                         ] as { field: keyof AnuncioForm; label: string }[]).map(({ field, label }) => (
                           <div key={field} className="space-y-2">
@@ -932,7 +930,7 @@ function CalculadoraPrecificacaoContent() {
                             <span className="w-[90px] text-right">Venda</span>
                             <span className="w-[130px] text-right">Comissão/Taxa</span>
                             <span className="w-[110px] text-right">Antecipado</span>
-                            <span className="w-[100px] text-right">Afiliados</span>
+                            <span className="w-[100px] text-right">Afiliados %</span>
                             <span className="w-[90px] text-right">Imposto</span>
                             <span className="w-[110px] text-right">Custo Var.</span>
                             <span className="w-[90px] text-right">Margem</span>
@@ -947,8 +945,8 @@ function CalculadoraPrecificacaoContent() {
                         const comissaoTaxa    = parseFloat(String(a.comissao_taxa) || "0");
                         const taxaFixaAnuncio = a.taxafixa ?? 0;
                         const impostoVal      = a.valor_venda * (a.imposto_pct / 100);
-                        const totalCustos     = a.custo + a.custo_var + comissaoTaxa + taxaFixaAnuncio + a.antecipado + a.afiliados + impostoVal;
-                        const lucro           = a.valor_venda - totalCustos;
+                        const afiliadosVal = a.valor_venda * (a.afiliados / 100);
+                        const totalCustos  = a.custo + a.custo_var + comissaoTaxa + taxaFixaAnuncio + a.antecipado + afiliadosVal + impostoVal;                        const lucro           = a.valor_venda - totalCustos;
                         const margem          = a.valor_venda > 0 ? (lucro / a.valor_venda) * 100 : 0;
                         return (
                           <tr key={a.id}>
@@ -977,7 +975,9 @@ function CalculadoraPrecificacaoContent() {
                                   {formatCurrency(a.antecipado)}
                                 </span>
                                 <span className="w-[100px] text-right tabular-nums whitespace-nowrap">
-                                  {formatCurrency(a.afiliados)}
+                                  <Badge variant="secondary" className="font-normal tabular-nums">
+                                    {a.afiliados}%
+                                  </Badge>
                                 </span>
                                 <span className="w-[90px] text-right whitespace-nowrap">
                                   <Badge variant="secondary" className="font-normal tabular-nums">
