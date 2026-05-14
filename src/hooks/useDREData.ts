@@ -324,6 +324,11 @@ export function useDREData(): UseDREDataResult {
         fetchAllCashFlowEntries(user.id)
       ]);
 
+      console.log('Shopee orders:', shopeeOrdersData.length);
+console.log('TikTok orders:', tiktokOrdersResult.data?.length);
+console.log('ML orders:', mlOrdersResult.data?.length);
+console.log('Cash flow:', cashFlowResult.data?.length);
+
       setShopeeOrders(shopeeOrdersData);
       
       if (tiktokOrdersResult.error) throw tiktokOrdersResult.error;
