@@ -5,6 +5,9 @@ import { Lock, Crown, Check, ArrowRight, CreditCard } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { useStripeCheckout } from "@/hooks/useStripeCheckout";
 
+// Rotas onde o paywall NUNCA deve aparecer
+const PAYWALL_EXCLUDED = ["/setup-payment", "/planos", "/auth", "/login"];
+
 const PAYWALL_FEATURES = [
   "Dashboard avançado",
   "DRE automatizado",
@@ -17,13 +20,15 @@ const PAYWALL_FEATURES = [
 ];
 
 export function PaywallModal() {
-  const { isTrialExpired, isLoading } = useTrialStatus();
+  const { isBlocked, isLoading } = useTrialStatus();
   const navigate = useNavigate();
   const { pathname } = useLocation();
-  const { handleCheckout } = useStripeCheckout();
+  const { handleCheckout, loadingCheckout } = useStripeCheckout();
 
-  // Não exibir durante carregamento, trial válido ou na página de setup
-  if (isLoading || !isTrialExpired || pathname === "/setup-payment") return null;
+  // Não mostrar nas rotas excluídas
+  const isExcluded = PAYWALL_EXCLUDED.some((r) => pathname.startsWith(r));
+
+  if (isLoading || !isBlocked || isExcluded) return null;
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
@@ -45,8 +50,8 @@ export function PaywallModal() {
             Continue gerenciando sua loja
           </h2>
           <p className="text-sm text-muted-foreground leading-relaxed">
-            Você usou o Seller Finance gratuitamente. Para continuar com acesso
-            completo, assine o plano Profissional.
+            Seu período de teste terminou. Assine o plano Profissional para
+            continuar com acesso completo.
           </p>
         </div>
 
@@ -66,7 +71,10 @@ export function PaywallModal() {
 
           <div className="grid grid-cols-2 gap-1.5">
             {PAYWALL_FEATURES.map((feat) => (
-              <div key={feat} className="flex items-center gap-1.5 text-xs text-muted-foreground">
+              <div
+                key={feat}
+                className="flex items-center gap-1.5 text-xs text-muted-foreground"
+              >
                 <Check size={12} className="text-primary flex-shrink-0" />
                 {feat}
               </div>
@@ -79,10 +87,11 @@ export function PaywallModal() {
           className="w-full bg-orange-500 hover:bg-orange-600 text-white font-medium mb-2"
           size="lg"
           onClick={handleCheckout}
+          disabled={loadingCheckout}
         >
           <CreditCard size={16} className="mr-2" />
-          Assinar agora — R$ 74,99/mês
-          <ArrowRight size={16} className="ml-2" />
+          {loadingCheckout ? "Redirecionando..." : "Assinar agora — R$ 74,99/mês"}
+          {!loadingCheckout && <ArrowRight size={16} className="ml-2" />}
         </Button>
 
         <Button

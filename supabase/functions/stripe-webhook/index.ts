@@ -26,30 +26,30 @@ Deno.serve(async (req) => {
     return new Response("Webhook signature inválida", { status: 400 });
   }
 
-  // ----------------------------------------------------------------
-  // Checkout concluído — usuário cadastrou o cartão
-  // ----------------------------------------------------------------
+  // ──────────────────────────────────────────────────────────────────
+  // Checkout concluído — usuário cadastrou o cartão no Stripe
+  // Neste momento o plano muda para "trial" (ou "profissional" se já
+  // usou trial antes e foi cobrado direto)
+  // ──────────────────────────────────────────────────────────────────
   if (event.type === "checkout.session.completed") {
     const session = event.data.object as Stripe.CheckoutSession;
     const userId = session.metadata?.userId;
 
     if (userId && session.subscription) {
-      // Buscar detalhes da subscription para saber se está em trial
       const sub = await stripe.subscriptions.retrieve(
         session.subscription as string
       );
 
       const emTrial = sub.status === "trialing";
       const plano = emTrial ? "trial" : "profissional";
+      const trialEndsAt =
+        emTrial && sub.trial_end
+          ? new Date(sub.trial_end * 1000).toISOString()
+          : null;
 
       await supabase
         .from("profiles")
-        .update({
-          plan: plano,
-          trial_ends_at: emTrial && sub.trial_end
-            ? new Date(sub.trial_end * 1000).toISOString()
-            : null,
-        })
+        .update({ plan: plano, trial_ends_at: trialEndsAt })
         .eq("id", userId);
 
       await supabase.from("subscriptions").upsert({
@@ -57,17 +57,19 @@ Deno.serve(async (req) => {
         plan: plano,
         status: sub.status,
         user_plan: plano,
+        stripe_subscription_id: sub.id,
+        stripe_customer_id: sub.customer as string,
       });
     }
   }
 
-  // ----------------------------------------------------------------
-  // Trial converteu para pago — Stripe cobrou com sucesso
-  // ----------------------------------------------------------------
+  // ──────────────────────────────────────────────────────────────────
+  // Trial converteu — Stripe cobrou com sucesso após os 5 dias
+  // Plano vira "profissional"
+  // ──────────────────────────────────────────────────────────────────
   if (event.type === "invoice.payment_succeeded") {
     const invoice = event.data.object as Stripe.Invoice;
 
-    // Só processar faturas de subscription (não avulsas)
     if (!invoice.subscription) {
       return new Response(JSON.stringify({ received: true }), {
         headers: { "Content-Type": "application/json" },
@@ -87,14 +89,19 @@ Deno.serve(async (req) => {
 
       await supabase
         .from("subscriptions")
-        .update({ plan: "profissional", status: "active", user_plan: "profissional" })
+        .update({
+          plan: "profissional",
+          status: "active",
+          user_plan: "profissional",
+        })
         .eq("user_id", userId);
     }
   }
 
-  // ----------------------------------------------------------------
-  // Subscription atualizada — cobre mudanças de status (trial → active, etc.)
-  // ----------------------------------------------------------------
+  // ──────────────────────────────────────────────────────────────────
+  // Subscription atualizada — cobre transições de status do Stripe
+  // (trialing → active, active → past_due, etc.)
+  // ──────────────────────────────────────────────────────────────────
   if (event.type === "customer.subscription.updated") {
     const sub = event.data.object as Stripe.Subscription;
     const userId = sub.metadata?.userId;
@@ -102,15 +109,14 @@ Deno.serve(async (req) => {
     if (userId) {
       const emTrial = sub.status === "trialing";
       const plano = emTrial ? "trial" : "profissional";
+      const trialEndsAt =
+        emTrial && sub.trial_end
+          ? new Date(sub.trial_end * 1000).toISOString()
+          : null;
 
       await supabase
         .from("profiles")
-        .update({
-          plan: plano,
-          trial_ends_at: emTrial && sub.trial_end
-            ? new Date(sub.trial_end * 1000).toISOString()
-            : null,
-        })
+        .update({ plan: plano, trial_ends_at: trialEndsAt })
         .eq("id", userId);
 
       await supabase
@@ -120,30 +126,40 @@ Deno.serve(async (req) => {
     }
   }
 
-  // ----------------------------------------------------------------
-  // Subscription cancelada ou expirada — igual ao original, sem alteração
-  // ----------------------------------------------------------------
+  // ──────────────────────────────────────────────────────────────────
+  // Subscription cancelada ou expirada
+  // O Stripe só dispara este evento ao FIM do período pago —
+  // comportamento padrão que você escolheu (sem bloqueio imediato)
+  //
+  // CORREÇÃO vs versão anterior: usa metadata.userId em vez de
+  // buscar por email (mais seguro e sem dependência do customer object)
+  // ──────────────────────────────────────────────────────────────────
   if (event.type === "customer.subscription.deleted") {
-    const subscription = event.data.object as Stripe.Subscription;
-    const customerId = subscription.customer as string;
+    const sub = event.data.object as Stripe.Subscription;
 
-    const customer = await stripe.customers.retrieve(customerId) as Stripe.Customer;
-    const { data: profile } = await supabase
-      .from("profiles")
-      .select("id")
-      .eq("email", customer.email)
-      .single();
+    // Tenta pegar userId direto dos metadados da subscription
+    let userId = sub.metadata?.userId;
 
-    if (profile) {
+    // Fallback: busca pela tabela subscriptions usando o ID da sub
+    if (!userId) {
+      const { data } = await supabase
+        .from("subscriptions")
+        .select("user_id")
+        .eq("stripe_subscription_id", sub.id)
+        .single();
+      userId = data?.user_id;
+    }
+
+    if (userId) {
       await supabase
         .from("profiles")
-        .update({ plan: "free", trial_ends_at: null })
-        .eq("id", profile.id);
+        .update({ plan: "cancelado", trial_ends_at: null })
+        .eq("id", userId);
 
       await supabase
         .from("subscriptions")
-        .update({ status: "canceled", plan: "free" })
-        .eq("user_id", profile.id);
+        .update({ status: "canceled", plan: "cancelado", user_plan: "cancelado" })
+        .eq("user_id", userId);
     }
   }
 

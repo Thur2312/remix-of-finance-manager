@@ -1,4 +1,4 @@
-import { useNavigate, useSearchParams } from 'react-router-dom';
+import { useSearchParams, useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -10,10 +10,11 @@ import {
   Crown,
   AlertCircle,
 } from 'lucide-react';
-import { useAuth } from '@/contexts/AuthContext';
 import { useStripeCheckout } from '@/hooks/useStripeCheckout';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { ProtectedRoute } from '@/components/layout/ProtectedRoute';
+import { useTrialStatus } from '@/hooks/useTrialStatus';
+import { useEffect } from 'react';
 
 const beneficios = [
   'Acesso completo a todos os recursos por 5 dias',
@@ -27,8 +28,15 @@ function SetupPaymentContent() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const canceled = searchParams.get('canceled') === 'true';
-  const { user } = useAuth();
   const { handleCheckout, loadingCheckout } = useStripeCheckout();
+  const { plan, isLoading } = useTrialStatus();
+
+  // Se o usuário já tem plano ativo, redirecionar para o dashboard
+  useEffect(() => {
+    if (!isLoading && (plan === 'trial' || plan === 'profissional')) {
+      navigate('/dashboard', { replace: true });
+    }
+  }, [plan, isLoading, navigate]);
 
   return (
     <div className="min-h-[80vh] flex items-center justify-center">
@@ -38,7 +46,9 @@ function SetupPaymentContent() {
         {canceled && (
           <div className="flex items-center gap-2 text-sm text-muted-foreground bg-muted rounded-lg px-4 py-3">
             <AlertCircle className="h-4 w-4 flex-shrink-0" />
-            <span>Você cancelou o cadastro do cartão. Conclua para liberar seu acesso.</span>
+            <span>
+              Você cancelou o cadastro do cartão. Conclua para liberar seu acesso.
+            </span>
           </div>
         )}
 
@@ -53,7 +63,8 @@ function SetupPaymentContent() {
               </div>
               <h1 className="text-xl font-bold">Comece seu período grátis</h1>
               <p className="text-sm text-muted-foreground">
-                Experimente o plano Profissional por <span className="font-semibold text-foreground">5 dias grátis</span>.
+                Experimente o plano Profissional por{' '}
+                <span className="font-semibold text-foreground">5 dias grátis</span>.
                 Cancele antes e não será cobrado nada.
               </p>
             </div>
@@ -74,10 +85,12 @@ function SetupPaymentContent() {
                 <p className="text-xs text-muted-foreground">Após os 5 dias</p>
                 <p className="font-semibold text-sm">R$ 74,99 / mês</p>
               </div>
-              <Badge variant="secondary" className="text-xs">Cancele quando quiser</Badge>
+              <Badge variant="secondary" className="text-xs">
+                Cancele quando quiser
+              </Badge>
             </div>
 
-            {/* Botão */}
+            {/* Botão principal — único CTA, sem opção de pular */}
             <Button
               className="w-full"
               size="lg"
@@ -85,7 +98,7 @@ function SetupPaymentContent() {
               disabled={loadingCheckout}
             >
               {loadingCheckout ? (
-                "Redirecionando..."
+                'Redirecionando...'
               ) : (
                 <>
                   <CreditCard className="mr-2 h-4 w-4" />
@@ -98,20 +111,17 @@ function SetupPaymentContent() {
             {/* Segurança */}
             <div className="flex items-center justify-center gap-1.5 text-xs text-muted-foreground">
               <Shield className="h-3.5 w-3.5" />
-              <span>Pagamento seguro via Stripe. Seus dados são criptografados.</span>
+              <span>
+                Pagamento seguro via Stripe. Seus dados são criptografados.
+              </span>
             </div>
           </CardContent>
         </Card>
 
-        {/* Link para pular */}
-        <p className="text-center text-xs text-muted-foreground">
-          Quer explorar o plano gratuito antes?{' '}
-          <button
-            onClick={() => navigate('/dashboard')}
-            className="underline underline-offset-2 hover:text-foreground transition-colors"
-          >
-            Continuar sem assinar
-          </button>
+        {/* Nota de transparência — sem botão de escape */}
+        <p className="text-center text-xs text-muted-foreground px-4">
+          O cartão é necessário para iniciar o teste. Nenhum valor será cobrado
+          durante os 5 dias. Cancele a qualquer momento antes do vencimento.
         </p>
       </div>
     </div>

@@ -55,6 +55,14 @@ function getShopeeRates(preco: number): { comissao: number; taxaFixa: number } {
   return                      { comissao: 14, taxaFixa: 26 };
 }
 
+// ─── Calcula comissão em R$ para Shopee ──────────────────────────────────────
+// Recebe o valor de venda e retorna (valorVenda × comissao%) + taxaFixa
+function calcShopeeComissaoReais(valorVenda: number): number {
+  if (valorVenda <= 0) return 0;
+  const { comissao, taxaFixa } = getShopeeRates(valorVenda);
+  return valorVenda * (comissao / 100) + taxaFixa;
+}
+
 // ─── Plataforma selector ─────────────────────────────────────────────────────
 type Plataforma = "Shopee" | "TiktokShop" | "MercadoLivre";
 
@@ -103,7 +111,6 @@ function CalculadoraPrecificacaoContent() {
   const { anuncios, isLoading: isLoadingAnuncios, addAnuncio, updateAnuncio, deleteAnuncio } = useAnuncios();
   const volumeMensal = fixedCostsSettings?.monthly_products_sold || 100;
 
-
   const mediaMargemPortfolio = useMemo(() => {
     if (!anuncios || anuncios.length === 0) return null;
 
@@ -112,7 +119,8 @@ function CalculadoraPrecificacaoContent() {
       const taxaFixaAnuncio = a.taxafixa ?? 0;
       const impostoVal   = a.valor_venda * (a.imposto_pct / 100);
       const afiliadosVal = a.valor_venda * (a.afiliados / 100);
-      const totalCustos  = a.custo + a.custo_var + comissaoTaxa + taxaFixaAnuncio + a.antecipado + afiliadosVal + impostoVal;      const margem       = a.valor_venda > 0 ? ((a.valor_venda - totalCustos) / a.valor_venda) * 100 : 0;
+      const totalCustos  = a.custo + a.custo_var + comissaoTaxa + taxaFixaAnuncio + a.antecipado + afiliadosVal + impostoVal;
+      const margem       = a.valor_venda > 0 ? ((a.valor_venda - totalCustos) / a.valor_venda) * 100 : 0;
       return margem;
     });
 
@@ -120,7 +128,7 @@ function CalculadoraPrecificacaoContent() {
     return soma / margens.length;
   }, [anuncios]);
 
-  // ── Auto-fill Shopee ──────────────────────────────────────────────────────
+  // ── Auto-fill Shopee (calculadora principal) ──────────────────────────────
   useEffect(() => {
     if (plataformaSelecionada !== "Shopee") return;
     const preco = parseInput(precoPromocional);
@@ -128,6 +136,17 @@ function CalculadoraPrecificacaoContent() {
     setComissaoPlataforma(String(comissao));
     setTaxaFixa(String(taxa));
   }, [plataformaSelecionada, precoPromocional]);
+
+  // ── Auto-fill comissão no dialog quando Shopee + valor_venda muda ─────────
+  useEffect(() => {
+    if (anuncioForm.marketplace !== "Shopee") return;
+    const venda = parseInput(anuncioForm.valor_venda);
+    const comissaoReais = calcShopeeComissaoReais(venda);
+    setAnuncioForm(prev => ({
+      ...prev,
+      comissao_taxa: comissaoReais > 0 ? comissaoReais.toFixed(2) : "",
+    }));
+  }, [anuncioForm.valor_venda, anuncioForm.marketplace]);
 
   const handleDecimalInput = (value: string, setter: (v: string) => void) => {
     if (value === "" || /^[0-9]*[,.]?[0-9]*$/.test(value)) setter(value);
@@ -189,8 +208,6 @@ function CalculadoraPrecificacaoContent() {
   }, [custoProduto, embalagemEtiqueta, precoPromocional, desconto, comissaoPlataforma, taxaFixa, aliquotaImposto, comissaoAfiliados, margemDesejada, totalRecurringCosts, volumeMensal, volumeEsperadoProduto, percentualAbsorcao]);
 
   // ── Panorama / Break-even ─────────────────────────────────────────────────
-  // Se há anúncios cadastrados → usa a média das margens do portfólio
-  // Se não há anúncios → usa a margem do produto sendo simulado agora
   const panorama = useMemo(() => {
     const fat = parseInput(faturamentoTotal);
 
@@ -229,16 +246,31 @@ function CalculadoraPrecificacaoContent() {
 
   // ── Abrir dialog para novo anúncio pré-preenchido ─────────────────────────
   const openNovoAnuncio = () => {
+    const valorVenda = parseInput(precoPromocional);
+    const marketplace = plataformaSelecionada;
+
+    // Calcula comissão em R$ se for Shopee, senão usa o valor já calculado
+    // na calculadora principal (comissão % + taxa fixa)
+    let comissaoTaxaInicial = "";
+    if (marketplace === "Shopee" && valorVenda > 0) {
+      comissaoTaxaInicial = calcShopeeComissaoReais(valorVenda).toFixed(2);
+    } else {
+      const comissaoReais = valorVenda * (parseInput(comissaoPlataforma) / 100);
+      const taxaFixaReais = parseInput(taxaFixa);
+      const total = comissaoReais + taxaFixaReais;
+      comissaoTaxaInicial = total > 0 ? total.toFixed(2) : String(parseInput(comissaoPlataforma) + parseInput(taxaFixa));
+    }
+
     setAnuncioForm({
       nome_anuncio:  "",
       custo:         custoProduto,
       valor_venda:   precoPromocional,
-      comissao_taxa: String(parseInput(comissaoPlataforma) + parseInput(taxaFixa)),
+      comissao_taxa: comissaoTaxaInicial,
       antecipado:    "0",
       afiliados:     comissaoAfiliados,
       imposto_pct:   aliquotaImposto,
       custo_var:     embalagemEtiqueta,
-      marketplace:   plataformaSelecionada,
+      marketplace:   marketplace,
     });
     setEditingId(null);
     setIsDialogOpen(true);
@@ -278,6 +310,15 @@ function CalculadoraPrecificacaoContent() {
       : await addAnuncio(payload);
     if (ok) { setIsDialogOpen(false); resetForm(); }
   };
+
+  // ── Helper: label do campo comissão no dialog ─────────────────────────────
+  const comissaoTaxaLabel = useMemo(() => {
+    if (anuncioForm.marketplace !== "Shopee") return "Comissão + Taxa (R$)";
+    const venda = parseInput(anuncioForm.valor_venda);
+    if (venda <= 0) return "Comissão + Taxa (R$) — Shopee";
+    const { comissao, taxaFixa: taxa } = getShopeeRates(venda);
+    return `Comissão + Taxa (R$) — Shopee ${comissao}% + R$${taxa}`;
+  }, [anuncioForm.marketplace, anuncioForm.valor_venda]);
 
   // ══════════════════════════════════════════════════════════════════════════
   return (
@@ -346,7 +387,6 @@ function CalculadoraPrecificacaoContent() {
               <CardContent className="space-y-4">
                 <div className="flex flex-col items-center justify-center py-4 bg-muted/30 rounded-lg">
                   <span className="text-3xl font-bold tracking-tight">{formatCurrency(panorama.breakEven)}</span>
-                  {/* Mostra de onde vem a margem usada no cálculo */}
                   <span className="text-sm text-muted-foreground mt-1 text-center px-2">
                     {panorama.usandoPortfolio ? (
                       <>
@@ -360,7 +400,6 @@ function CalculadoraPrecificacaoContent() {
                       </>
                     )}
                   </span>
-                  {/* Dica quando não há anúncios */}
                   {!panorama.usandoPortfolio && (
                     <span className="text-xs text-muted-foreground mt-1 text-center px-4">
                       Cadastre seus anúncios para usar a média real do portfólio
@@ -652,7 +691,9 @@ function CalculadoraPrecificacaoContent() {
                           <Label>Marketplace</Label>
                           <Select
                             value={anuncioForm.marketplace}
-                            onValueChange={v => setAnuncioForm(prev => ({ ...prev, marketplace: v as Plataforma }))}
+                            onValueChange={v =>
+                              setAnuncioForm(prev => ({ ...prev, marketplace: v as Plataforma }))
+                            }
                           >
                             <SelectTrigger className="w-full">
                               <SelectValue placeholder="Selecione o marketplace" />
@@ -672,20 +713,67 @@ function CalculadoraPrecificacaoContent() {
                       </p>
 
                       <div className="grid grid-cols-4 gap-4">
-                        {([
-                          { field: "custo",         label: "Custo" },
-                          { field: "valor_venda",   label: "Valor de Venda" },
-                          { field: "comissao_taxa", label: "Comissão + Taxa (R$)" },
-                          { field: "antecipado",    label: "Antecipado (R$)" },
-                          { field: "afiliados", label: "Afiliados (%)" },
-                          { field: "custo_var",     label: "Custo Variável (R$)" },
-                        ] as { field: keyof AnuncioForm; label: string }[]).map(({ field, label }) => (
-                          <div key={field} className="space-y-2">
-                            <Label className="text-sm">{label}</Label>
-                            <Input type="text" inputMode="decimal" value={anuncioForm[field]}
-                              onChange={setFormField(field)} placeholder="0,00" />
-                          </div>
-                        ))}
+                        {/* Custo */}
+                        <div className="space-y-2">
+                          <Label className="text-sm">Custo</Label>
+                          <Input type="text" inputMode="decimal" value={anuncioForm.custo}
+                            onChange={setFormField("custo")} placeholder="0,00" />
+                        </div>
+
+                        {/* Valor de Venda */}
+                        <div className="space-y-2">
+                          <Label className="text-sm">Valor de Venda</Label>
+                          <Input type="text" inputMode="decimal" value={anuncioForm.valor_venda}
+                            onChange={setFormField("valor_venda")} placeholder="0,00" />
+                        </div>
+
+                        {/* Comissão + Taxa — auto para Shopee */}
+                        <div className="space-y-2">
+                          <Label className="text-sm flex items-center gap-1.5">
+                            {comissaoTaxaLabel}
+                            {anuncioForm.marketplace === "Shopee" && (
+                              <Badge variant="outline" className="text-[10px] px-1 py-0 text-orange-600 border-orange-400">
+                                Auto
+                              </Badge>
+                            )}
+                          </Label>
+                          <Input
+                            type="text"
+                            inputMode="decimal"
+                            value={anuncioForm.comissao_taxa}
+                            onChange={setFormField("comissao_taxa")}
+                            placeholder="0,00"
+                            className={anuncioForm.marketplace === "Shopee" ? "border-orange-400/60 focus-visible:ring-orange-400/40" : ""}
+                          />
+                          {anuncioForm.marketplace === "Shopee" && parseInput(anuncioForm.valor_venda) > 0 && (
+                            <p className="text-[10px] text-orange-600 dark:text-orange-400">
+                              Calculado automaticamente — você pode editar se necessário
+                            </p>
+                          )}
+                        </div>
+
+                        {/* Antecipado */}
+                        <div className="space-y-2">
+                          <Label className="text-sm">Antecipado (R$)</Label>
+                          <Input type="text" inputMode="decimal" value={anuncioForm.antecipado}
+                            onChange={setFormField("antecipado")} placeholder="0,00" />
+                        </div>
+
+                        {/* Afiliados */}
+                        <div className="space-y-2">
+                          <Label className="text-sm">Afiliados (%)</Label>
+                          <Input type="text" inputMode="decimal" value={anuncioForm.afiliados}
+                            onChange={setFormField("afiliados")} placeholder="0" />
+                        </div>
+
+                        {/* Custo Variável */}
+                        <div className="space-y-2">
+                          <Label className="text-sm">Custo Variável (R$)</Label>
+                          <Input type="text" inputMode="decimal" value={anuncioForm.custo_var}
+                            onChange={setFormField("custo_var")} placeholder="0,00" />
+                        </div>
+
+                        {/* Imposto */}
                         <div className="space-y-2">
                           <Label className="text-sm">Imposto (%)</Label>
                           <div className="relative">
@@ -945,8 +1033,9 @@ function CalculadoraPrecificacaoContent() {
                         const comissaoTaxa    = parseFloat(String(a.comissao_taxa) || "0");
                         const taxaFixaAnuncio = a.taxafixa ?? 0;
                         const impostoVal      = a.valor_venda * (a.imposto_pct / 100);
-                        const afiliadosVal = a.valor_venda * (a.afiliados / 100);
-                        const totalCustos  = a.custo + a.custo_var + comissaoTaxa + taxaFixaAnuncio + a.antecipado + afiliadosVal + impostoVal;                        const lucro           = a.valor_venda - totalCustos;
+                        const afiliadosVal    = a.valor_venda * (a.afiliados / 100);
+                        const totalCustos     = a.custo + a.custo_var + comissaoTaxa + taxaFixaAnuncio + a.antecipado + afiliadosVal + impostoVal;
+                        const lucro           = a.valor_venda - totalCustos;
                         const margem          = a.valor_venda > 0 ? (lucro / a.valor_venda) * 100 : 0;
                         return (
                           <tr key={a.id}>
@@ -962,32 +1051,17 @@ function CalculadoraPrecificacaoContent() {
                                     <span className="text-muted-foreground">—</span>
                                   )}
                                 </span>
-                                <span className="w-[90px] text-right tabular-nums whitespace-nowrap">
-                                  {formatCurrency(a.custo)}
-                                </span>
-                                <span className="w-[90px] text-right tabular-nums whitespace-nowrap">
-                                  {formatCurrency(a.valor_venda)}
-                                </span>
-                                <span className="w-[130px] text-right tabular-nums whitespace-nowrap">
-                                  {formatCurrency(comissaoTaxa)}
-                                </span>
-                                <span className="w-[110px] text-right tabular-nums whitespace-nowrap">
-                                  {formatCurrency(a.antecipado)}
-                                </span>
+                                <span className="w-[90px] text-right tabular-nums whitespace-nowrap">{formatCurrency(a.custo)}</span>
+                                <span className="w-[90px] text-right tabular-nums whitespace-nowrap">{formatCurrency(a.valor_venda)}</span>
+                                <span className="w-[130px] text-right tabular-nums whitespace-nowrap">{formatCurrency(comissaoTaxa)}</span>
+                                <span className="w-[110px] text-right tabular-nums whitespace-nowrap">{formatCurrency(a.antecipado)}</span>
                                 <span className="w-[100px] text-right tabular-nums whitespace-nowrap">
-                                  <Badge variant="secondary" className="font-normal tabular-nums">
-                                    {a.afiliados}%
-                                  </Badge>
+                                  <Badge variant="secondary" className="font-normal tabular-nums">{a.afiliados}%</Badge>
                                 </span>
                                 <span className="w-[90px] text-right whitespace-nowrap">
-                                  <Badge variant="secondary" className="font-normal tabular-nums">
-                                    {a.imposto_pct}%
-                                  </Badge>
+                                  <Badge variant="secondary" className="font-normal tabular-nums">{a.imposto_pct}%</Badge>
                                 </span>
-                                <span className="w-[110px] text-right tabular-nums whitespace-nowrap">
-                                  {formatCurrency(a.custo_var)}
-                                </span>
-                                {/* Coluna Margem — nova */}
+                                <span className="w-[110px] text-right tabular-nums whitespace-nowrap">{formatCurrency(a.custo_var)}</span>
                                 <span className={`w-[90px] text-right font-semibold tabular-nums whitespace-nowrap ${margem >= 0 ? "text-primary" : "text-destructive"}`}>
                                   {formatPercent(margem)}
                                 </span>
