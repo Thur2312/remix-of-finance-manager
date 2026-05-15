@@ -1,10 +1,9 @@
 import { useTrialStatus } from "@/hooks/useTrialStatus";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Lock, Crown, Check, ArrowRight, CreditCard } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { useStripeCheckout } from "@/hooks/useStripeCheckout";
-
 
 const PAYWALL_FEATURES = [
   "Dashboard avançado",
@@ -20,9 +19,11 @@ const PAYWALL_FEATURES = [
 export function PaywallModal() {
   const { isTrialExpired, isLoading } = useTrialStatus();
   const navigate = useNavigate();
+  const { pathname } = useLocation();
   const { handleCheckout } = useStripeCheckout();
 
-  if (isLoading || !isTrialExpired) return null;
+  // Não exibir durante carregamento, trial válido ou na página de setup
+  if (isLoading || !isTrialExpired || pathname === "/setup-payment") return null;
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
@@ -77,7 +78,7 @@ export function PaywallModal() {
         <Button
           className="w-full bg-orange-500 hover:bg-orange-600 text-white font-medium mb-2"
           size="lg"
-                onClick={handleCheckout}
+          onClick={handleCheckout}
         >
           <CreditCard size={16} className="mr-2" />
           Assinar agora — R$ 74,99/mês

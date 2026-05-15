@@ -15,13 +15,28 @@ import {
   Users,
   TrendingUp,
   Shield,
+  Loader2,
+  XCircle,
+  Clock,
 } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { ProtectedRoute } from '@/components/layout/ProtectedRoute';
 import { useStripeCheckout } from "@/hooks/useStripeCheckout";
+import { useEffect, useState } from 'react';
+import { supabase } from '@/integrations/supabase/client';
 
+// ─── Types ────────────────────────────────────────────────────────────────────
+
+type UserPlan = 'free' | 'trial' | 'profissional';
+
+interface ProfileData {
+  plan: UserPlan;
+  trial_ends_at: string | null;
+}
+
+// ─── Static data ──────────────────────────────────────────────────────────────
 
 const plans = [
   {
@@ -76,30 +91,134 @@ const comparisonFeatures = [
 ];
 
 const faqs = [
-  { question: 'Posso cancelar a qualquer momento?', answer: 'Sim, você pode cancelar seu plano a qualquer momento sem multas ou taxas adicionais.' },
-  { question: 'Como funciona o período de teste?', answer: 'O plano Básico oferece 7 dias grátis para você testar todas as funcionalidades da plataforma.' },
-  { question: 'Preciso de cartão de crédito para testar?', answer: 'Não, o plano Básico é completamente grátis e não requer informações de pagamento.' },
-  { question: 'Quais marketplaces são suportados?', answer: 'Atualmente suportamos Shopee e TikTok Shop, com mais marketplaces sendo adicionados em breve.' },
+  {
+    question: 'Posso cancelar a qualquer momento?',
+    answer: 'Sim, você pode cancelar sua assinatura a qualquer momento pelo próprio app, sem multas ou taxas adicionais. Se cancelar durante o período de trial, não será cobrado.',
+  },
+  {
+    question: 'Como funciona o período de teste?',
+    answer: 'Ao assinar o plano Profissional você tem 5 dias grátis. O cartão é solicitado no cadastro, mas a cobrança só acontece após o período de teste — e somente se você não cancelar.',
+  },
+  {
+    question: 'Preciso de cartão de crédito para testar?',
+    answer: 'Sim, pedimos o cartão no início para garantir a continuidade caso você queira manter o plano. Mas não cobramos nada nos primeiros 5 dias.',
+  },
+  {
+    question: 'Quais marketplaces são suportados?',
+    answer: 'Atualmente suportamos Shopee e TikTok Shop, com mais marketplaces sendo adicionados em breve.',
+  },
 ];
+
+// ─── Helper ───────────────────────────────────────────────────────────────────
+
+function trialDaysLeft(trialEndsAt: string | null): number | null {
+  if (!trialEndsAt) return null;
+  const diff = new Date(trialEndsAt).getTime() - Date.now();
+  return Math.max(0, Math.ceil(diff / (1000 * 60 * 60 * 24)));
+}
+
+// ─── Component ────────────────────────────────────────────────────────────────
 
 export function PlanosContent() {
   const navigate = useNavigate();
   const { user } = useAuth();
 
-  const { handleCheckout } = useStripeCheckout();
+  const { handleCheckout, handleCancel: cancelSubscription, loadingCancel } = useStripeCheckout();
 
+  const [profile, setProfile] = useState<ProfileData | null>(null);
+  const [loadingProfile, setLoadingProfile] = useState(true);
+  const [cancelSuccess, setCancelSuccess] = useState(false);
+
+  // Fetch current plan from Supabase
+  useEffect(() => {
+    if (!user) return;
+    supabase
+      .from('profiles')
+      .select('plan, trial_ends_at')
+      .eq('id', user.id)
+      .single()
+      .then(({ data }) => {
+        if (data) setProfile(data as unknown as ProfileData);
+        setLoadingProfile(false);
+      });
+  }, [user]);
+
+  const userPlan: UserPlan = profile?.plan ?? 'free';
+  const isPro = userPlan === 'profissional';
+  const isTrial = userPlan === 'trial';
+  const isActive = isPro || isTrial; // has a paid subscription (even in trial)
+  const daysLeft = trialDaysLeft(profile?.trial_ends_at ?? null);
 
   const handleSelectPlan = (plan: typeof plans[0]) => {
-  if (plan.name === "Starter") {
-    navigate("/fluxo-caixa");
-    return;
-  }
-  if (user) {
-    handleCheckout(); 
-  } else {
-    navigate("/user/auth?redirect=/planos");
-  }
-};
+    if (plan.name === 'Starter') {
+      navigate('/fluxo-caixa');
+      return;
+    }
+    if (isActive) return; // already subscribed, button is hidden
+    if (user) {
+      handleCheckout();
+    } else {
+      navigate('/user/auth?redirect=/planos');
+    }
+  };
+
+  const handleCancel = async () => {
+    if (!window.confirm('Tem certeza que quer cancelar sua assinatura? Você perderá o acesso ao plano Profissional.')) return;
+    const result = await cancelSubscription();
+    if (result.success) {
+      setCancelSuccess(true);
+      // Refresh profile
+      if (user) {
+        const { data } = await supabase.from('profiles').select('plan, trial_ends_at').eq('id', user.id).single();
+        if (data) setProfile(data as unknown as ProfileData);
+      }
+    }
+  };
+
+  // Decide what to render in the Profissional card CTA
+  const renderProCta = () => {
+    if (loadingProfile) {
+      return (
+        <Button className="w-full mt-4" disabled>
+          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+          Carregando...
+        </Button>
+      );
+    }
+
+    if (cancelSuccess) {
+      return (
+        <Button className="w-full mt-4" variant="outline" disabled>
+          <XCircle className="mr-2 h-4 w-4" />
+          Assinatura cancelada
+        </Button>
+      );
+    }
+
+    if (isActive) {
+      return (
+        <Button
+          className="w-full mt-4"
+          variant="destructive"
+          onClick={handleCancel}
+          disabled={loadingCancel}
+        >
+          {loadingCancel ? (
+            <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Cancelando...</>
+          ) : (
+            <><XCircle className="mr-2 h-4 w-4" /> Cancelar assinatura</>
+          )}
+        </Button>
+      );
+    }
+
+    return (
+      <Button className="w-full mt-4" variant="default" onClick={() => handleSelectPlan(plans[1])}>
+        Assinar Profissional
+        <ArrowRight className="ml-2 h-4 w-4" />
+      </Button>
+    );
+  };
 
   return (
     <div className="space-y-8 animate-fade-in">
@@ -109,15 +228,48 @@ export function PlanosContent() {
           <Sparkles className="h-5 w-5 text-primary" />
           <h1 className="text-2xl font-bold">Planos e Preços</h1>
         </div>
-        <p className="text-muted-foreground">
-          Escolha o plano ideal para o seu negócio
-        </p>
+        <p className="text-muted-foreground">Escolha o plano ideal para o seu negócio</p>
       </div>
+
+      {/* Active plan banner */}
+      {!loadingProfile && isActive && (
+        <Card className={`border-primary/40 bg-primary/5 ${isTrial ? 'border-amber-400/40 bg-amber-50/30 dark:bg-amber-950/20' : ''}`}>
+          <CardContent className="py-4 flex items-center gap-3">
+            {isTrial ? (
+              <Clock className="h-5 w-5 text-amber-500 flex-shrink-0" />
+            ) : (
+              <Crown className="h-5 w-5 text-primary flex-shrink-0" />
+            )}
+            <div>
+              {isTrial ? (
+                <>
+                  <p className="text-sm font-semibold text-amber-700 dark:text-amber-400">
+                    Você está no período de trial
+                    {daysLeft !== null && ` — ${daysLeft} dia${daysLeft !== 1 ? 's' : ''} restante${daysLeft !== 1 ? 's' : ''}`}
+                  </p>
+                  <p className="text-xs text-muted-foreground">
+                    Após o trial, você será cobrado R$ 74,99/mês automaticamente. Cancele a qualquer momento.
+                  </p>
+                </>
+              ) : (
+                <>
+                  <p className="text-sm font-semibold text-primary">Você está no plano Profissional</p>
+                  <p className="text-xs text-muted-foreground">Acesso completo a todas as funcionalidades.</p>
+                </>
+              )}
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Plans Grid */}
       <div className="grid md:grid-cols-2 gap-6 max-w-2xl mx-auto w-full">
         {plans.map((plan) => {
           const Icon = plan.icon;
+          const isCurrentPlan =
+            (plan.name === 'Starter' && userPlan === 'free') ||
+            (plan.name === 'Profissional' && isActive);
+
           return (
             <Card key={plan.name} className={`relative flex flex-col ${plan.popular ? 'border-primary shadow-md' : ''}`}>
               {plan.popular && (
@@ -127,6 +279,16 @@ export function PlanosContent() {
                   </Badge>
                 </div>
               )}
+
+              {/* "Seu plano atual" badge */}
+              {!loadingProfile && isCurrentPlan && (
+                <div className="absolute top-3 right-3">
+                  <Badge variant="secondary" className="text-xs">
+                    {isTrial && plan.name === 'Profissional' ? 'Em trial' : 'Seu plano atual'}
+                  </Badge>
+                </div>
+              )}
+
               <CardHeader className="pt-8">
                 <div className="flex items-center gap-3 mb-2">
                   <div className={`h-10 w-10 rounded-lg flex items-center justify-center ${plan.popular ? 'bg-primary/10' : 'bg-muted'}`}>
@@ -141,9 +303,15 @@ export function PlanosContent() {
                   <span className="text-3xl font-bold">{plan.price}</span>
                   {plan.period && <span className="text-muted-foreground text-sm mb-1">{plan.period}</span>}
                 </div>
+                {plan.name === 'Profissional' && !isActive && (
+                  <p className="text-xs text-muted-foreground mt-1">
+                    🎉 5 dias grátis — cancele antes de ser cobrado
+                  </p>
+                )}
               </CardHeader>
+
               <CardContent className="flex flex-col flex-1">
-                 <div className="flex-1">
+                <div className="flex-1">
                   <ul className="space-y-2">
                     {plan.features.map((feat, i) => (
                       <li key={i} className="flex items-center gap-2 text-sm">
@@ -153,14 +321,20 @@ export function PlanosContent() {
                     ))}
                   </ul>
                 </div>
-              <Button
-                  className="w-full mt-4"
-                  variant={plan.popular ? 'default' : 'outline'}
-                  onClick={() => handleSelectPlan(plan)}
-                >
-                  {plan.cta}
-                  <ArrowRight className="ml-2 h-4 w-4" />
-                </Button>
+
+                {plan.name === 'Profissional' ? (
+                  renderProCta()
+                ) : (
+                  <Button
+                    className="w-full mt-4"
+                    variant="outline"
+                    onClick={() => handleSelectPlan(plan)}
+                    disabled={userPlan === 'free' && !isActive}
+                  >
+                    {userPlan === 'free' ? 'Plano Atual' : 'Ver Starter'}
+                    <ArrowRight className="ml-2 h-4 w-4" />
+                  </Button>
+                )}
               </CardContent>
             </Card>
           );
@@ -259,19 +433,21 @@ export function PlanosContent() {
         </CardContent>
       </Card>
 
-      {/* Bottom CTA */}
-      <Card className="border-primary/20 bg-primary/5">
-        <CardContent className="py-8 text-center">
-          <h2 className="text-lg font-semibold mb-2">Pronto para começar?</h2>
-          <p className="text-sm text-muted-foreground mb-4 max-w-md mx-auto">
-            Junte-se a vendedores que já usam o Seller Finance para maximizar seus lucros.
-          </p>
-          <Button onClick={() => handleSelectPlan(plans[1])}>
-            Assinar Profissional
-            <ArrowRight className="ml-2 h-4 w-4" />
-          </Button>
-        </CardContent>
-      </Card>
+      {/* Bottom CTA — hide when already subscribed */}
+      {!isActive && (
+        <Card className="border-primary/20 bg-primary/5">
+          <CardContent className="py-8 text-center">
+            <h2 className="text-lg font-semibold mb-2">Pronto para começar?</h2>
+            <p className="text-sm text-muted-foreground mb-4 max-w-md mx-auto">
+              Junte-se a vendedores que já usam o Seller Finance para maximizar seus lucros.
+            </p>
+            <Button onClick={() => handleSelectPlan(plans[1])}>
+              Começar 5 dias grátis
+              <ArrowRight className="ml-2 h-4 w-4" />
+            </Button>
+          </CardContent>
+        </Card>
+      )}
 
       <p className="text-center text-xs text-muted-foreground pb-4">
         Todos os planos incluem criptografia de dados e suporte técnico. Cancele a qualquer momento, sem multas.

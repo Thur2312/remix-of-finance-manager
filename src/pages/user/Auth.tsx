@@ -10,8 +10,6 @@ import { toast } from 'sonner';
 import { ShoppingBag, TrendingUp, DollarSign, BarChart3, ArrowLeft } from 'lucide-react';
 import { z } from 'zod';
 
-
-
 const emailSchema = z.string().email('Email inválido');
 const passwordSchema = z.string()
   .min(8, 'Mínimo 8 caracteres')
@@ -19,32 +17,30 @@ const passwordSchema = z.string()
   .regex(/[0-9]/, 'Deve ter número');
 
 export default function Auth() {
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [fullName, setFullName] = useState('');
-  const [isLoading, setIsLoading] = useState(false);
+  const [email, setEmail]           = useState('');
+  const [password, setPassword]     = useState('');
+  const [fullName, setFullName]     = useState('');
+  const [isLoading, setIsLoading]   = useState(false);
   const [rememberMe, setRememberMe] = useState(false);
-  const [termsAccepted, setTermsAccepted] = useState(false);
-  const [privacyPolicyAccepted, setPrivacyPolicyAccepted] = useState(false);
 
   const { signIn, signUp, user, loading } = useAuth();
-  const navigate = useNavigate();
-  const location = useLocation();
+  const navigate  = useNavigate();
+  const location  = useLocation();
 
-  // Pegar o redirect da URL, ou usar /fluxo-caixa por padrão
   const searchParams = new URLSearchParams(location.search);
   const redirectPath = searchParams.get('redirect') || '/fluxo-caixa';
 
-useEffect(() => {
-  if (!loading && user) {
-    const pendingCode = sessionStorage.getItem('pending_oauth_code');
-    if (pendingCode) {
-      navigate('/callback', { replace: true }); 
-    } else {
-      navigate(redirectPath, { replace: true });
+  // Redireciona usuário já logado
+  useEffect(() => {
+    if (!loading && user) {
+      const pendingCode = sessionStorage.getItem('pending_oauth_code');
+      if (pendingCode) {
+        navigate('/callback', { replace: true });
+      } else {
+        navigate(redirectPath, { replace: true });
+      }
     }
-  }
-}, [user, loading, navigate, redirectPath]);
+  }, [user, loading, navigate, redirectPath]);
 
   useEffect(() => {
     const savedEmail = localStorage.getItem('rememberedEmail');
@@ -54,12 +50,11 @@ useEffect(() => {
     }
   }, []);
 
-  // Login
+  // ── Login ────────────────────────────────────────────────────────────────
   const handleSignIn = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
 
-    // Validar email
     const emailResult = emailSchema.safeParse(email);
     if (!emailResult.success) {
       toast.error(emailResult.error.errors[0].message);
@@ -69,27 +64,21 @@ useEffect(() => {
 
     const { error } = await signIn(email, password);
     if (error) {
-      if (error.message.includes('Invalid login credentials')) {
-        toast.error('Email ou senha incorretos');
-      } else {
-        toast.error(error.message);
-      }
+      toast.error(
+        error.message.includes('Invalid login credentials')
+          ? 'Email ou senha incorretos'
+          : error.message
+      );
     } else {
       toast.success('Login realizado com sucesso!');
       const pendingCode = sessionStorage.getItem('pending_oauth_code');
-      if (pendingCode) {
-        navigate('/callback', { replace: true }); // ← processa o OAuth pendente
-      } else {
-        navigate(redirectPath, { replace: true });
-      }
+      navigate(pendingCode ? '/callback' : redirectPath, { replace: true });
     }
 
     setIsLoading(false);
   };
 
-  // Cadastro
-
-
+  // ── Cadastro ─────────────────────────────────────────────────────────────
   const handleSignUp = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
@@ -100,7 +89,6 @@ useEffect(() => {
       localStorage.removeItem('rememberedEmail');
     }
 
-    // Validar email
     const emailResult = emailSchema.safeParse(email);
     if (!emailResult.success) {
       toast.error(emailResult.error.errors[0].message);
@@ -108,7 +96,6 @@ useEffect(() => {
       return;
     }
 
-    // Validar senha
     const passwordResult = passwordSchema.safeParse(password);
     if (!passwordResult.success) {
       toast.error(passwordResult.error.errors[0].message);
@@ -118,18 +105,20 @@ useEffect(() => {
 
     const { error } = await signUp(email, password, fullName);
     if (error) {
-      if (error.message.includes('already registered')) {
-        toast.error('Este email já está cadastrado');
-      } else {
-        toast.error(error.message);
-      }
+      toast.error(
+        error.message.includes('already registered')
+          ? 'Este email já está cadastrado'
+          : error.message
+      );
     } else {
-      toast.success('Conta criada com sucesso! Você já pode fazer login.');
-      navigate(redirectPath); // usa redirect da URL
+      toast.success('Conta criada! Cadastre seu cartão para começar o período grátis.');
+      // Novo usuário → sempre vai para setup-payment
+      navigate('/setup-payment', { replace: true });
     }
 
     setIsLoading(false);
   };
+
   return (
     <div className="min-h-screen flex">
       {/* Botão voltar */}
@@ -150,37 +139,22 @@ useEffect(() => {
           <p className="text-xl opacity-90">
             Gerencie seus resultados de vendas de forma simples e eficiente.
           </p>
-
           <div className="space-y-6 pt-8">
-            <div className="flex items-center gap-4">
-              <div className="bg-primary-foreground/20 p-3 rounded-lg">
-                <TrendingUp className="h-6 w-6" />
+            {[
+              { icon: TrendingUp, title: 'Acompanhe suas vendas',   desc: 'Visualize relatórios detalhados' },
+              { icon: DollarSign, title: 'Calcule seu lucro',        desc: 'Taxas, impostos e custos automáticos' },
+              { icon: BarChart3,  title: 'Análise por produto',      desc: 'Identifique seus melhores itens' },
+            ].map(({ icon: Icon, title, desc }) => (
+              <div key={title} className="flex items-center gap-4">
+                <div className="bg-primary-foreground/20 p-3 rounded-lg">
+                  <Icon className="h-6 w-6" />
+                </div>
+                <div>
+                  <h3 className="font-semibold">{title}</h3>
+                  <p className="text-sm opacity-80">{desc}</p>
+                </div>
               </div>
-              <div>
-                <h3 className="font-semibold">Acompanhe suas vendas</h3>
-                <p className="text-sm opacity-80">Visualize relatórios detalhados</p>
-              </div>
-            </div>
-
-            <div className="flex items-center gap-4">
-              <div className="bg-primary-foreground/20 p-3 rounded-lg">
-                <DollarSign className="h-6 w-6" />
-              </div>
-              <div>
-                <h3 className="font-semibold">Calcule seu lucro</h3>
-                <p className="text-sm opacity-80">Taxas, impostos e custos automáticos</p>
-              </div>
-            </div>
-
-            <div className="flex items-center gap-4">
-              <div className="bg-primary-foreground/20 p-3 rounded-lg">
-                <BarChart3 className="h-6 w-6" />
-              </div>
-              <div>
-                <h3 className="font-semibold">Análise por produto</h3>
-                <p className="text-sm opacity-80">Identifique seus melhores itens</p>
-              </div>
-            </div>
+            ))}
           </div>
         </div>
       </div>
@@ -205,9 +179,7 @@ useEffect(() => {
               <Card>
                 <CardHeader>
                   <CardTitle>Bem-vindo de volta!</CardTitle>
-                  <CardDescription>
-                    Entre com suas credenciais para acessar o sistema
-                  </CardDescription>
+                  <CardDescription>Entre com suas credenciais para acessar o sistema</CardDescription>
                 </CardHeader>
                 <CardContent>
                   <form onSubmit={handleSignIn} className="space-y-4">
@@ -241,7 +213,7 @@ useEffect(() => {
                         type="checkbox"
                         id="remember"
                         checked={rememberMe}
-                        onChange={(e) => setRememberMe(e.target.checked)}
+                        onChange={e => setRememberMe(e.target.checked)}
                         className="h-4 w-4 rounded border-gray-300"
                       />
                       <label htmlFor="remember" className="text-sm text-muted-foreground cursor-pointer">
@@ -250,12 +222,11 @@ useEffect(() => {
                     </div>
                   </form>
                   <p className="text-sm text-center text-muted-foreground mt-4">
-                    Esqueceu a Senha?{' '}
+                    Esqueceu a senha?{' '}
                     <span className="text-primary cursor-pointer" onClick={() => navigate('/user/esqueci-senha')}>
                       Recuperar senha
                     </span>
                   </p>
-              
                 </CardContent>
               </Card>
             </TabsContent>
@@ -265,9 +236,7 @@ useEffect(() => {
               <Card>
                 <CardHeader>
                   <CardTitle>Criar conta</CardTitle>
-                  <CardDescription>
-                    Preencha os dados abaixo para criar sua conta
-                  </CardDescription>
+                  <CardDescription>Preencha os dados abaixo para criar sua conta</CardDescription>
                 </CardHeader>
                 <CardContent>
                   <form onSubmit={handleSignUp} className="space-y-4">

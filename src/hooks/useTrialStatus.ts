@@ -52,8 +52,11 @@ export function useTrialStatus(): TrialStatus {
       const diffMs = now.getTime() - (trialStartedAt?.getTime() ?? now.getTime());
       const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
       const daysRemaining = Math.max(0, TRIAL_DAYS - diffDays);
-      const isTrialExpired = !isPaid && daysRemaining === 0;
-      const isTrialActive = !isPaid && daysRemaining > 0;
+
+      // Se trial_started_at é null, usuário ainda está no fluxo de cadastro
+      // — não considerar como trial expirado
+      const isTrialExpired = !isPaid && trialStartedAt !== null && daysRemaining === 0;
+      const isTrialActive  = !isPaid && trialStartedAt !== null && daysRemaining > 0;
 
       setStatus({
         isLoading: false,

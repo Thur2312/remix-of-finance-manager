@@ -8,6 +8,7 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { User, ChevronUp, LogOut, TrendingUp, Calculator, Receipt, Sparkles, BarChart3, HandCoins, Wallet, Plug, LayoutDashboard } from 'lucide-react';
 import logo from '@/assets/logo-new.svg';
 import { useNavigate } from 'react-router-dom';
+import { PlanBadge } from '@/components/PlanBadge';
 
 const sidebarItems = [
   { title: 'Dashboard',     url: '/dashboard',          icon: LayoutDashboard },
@@ -107,6 +108,7 @@ export function AppSidebar() {
                       <span className="truncate text-xs text-muted-foreground">
                         {user?.email}
                       </span>
+                      <PlanBadge />
                     </div>
                   )}
                   <ChevronUp className="ml-auto h-4 w-4" />

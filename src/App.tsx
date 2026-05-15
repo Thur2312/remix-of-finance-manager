@@ -20,6 +20,7 @@ const ResetPassword             = lazy(() => import("./pages/user/ResetPassword"
 const TermosDeUso               = lazy(() => import("./pages/TermosDeUso"));
 const PoliticaDePrivacidade     = lazy(() => import("./pages/PoliticaDePrivacidade"));
 const Planos                    = lazy(() => import("./pages/Planos"));
+const SetupPayment              = lazy(() => import("./pages/SetupPayments"));
 const NotFound                  = lazy(() => import("./pages/NotFound"));
 
 const IntegrationCallback       = lazy(() => import("./pages/integrations/IntegrationCallback"));
@@ -67,6 +68,15 @@ const Protected = ({ children }: { children: React.ReactNode }) => (
   </ProtectedRoute>
 );
 
+// ── Helper: rota protegida SEM TrialGuard (pós-cadastro / pagamento) ──────────
+const ProtectedNoGuard = ({ children }: { children: React.ReactNode }) => (
+  <ProtectedRoute>
+    <ErrorBoundary>
+      {children}
+    </ErrorBoundary>
+  </ProtectedRoute>
+);
+
 const App = () => {
   return (
     <QueryClientProvider client={queryClient}>
@@ -90,6 +100,9 @@ const App = () => {
               <Route path="/callback" element={<IntegrationCallback />} />
               <Route path="/callback/mercadolivre" element={<IntegrationCallback />} />
               <Route path="/integrations/callback/:provider" element={<IntegrationCallback />} />
+
+              {/* ── Pós-cadastro (auth obrigatória, sem TrialGuard) ───── */}
+              <Route path="/setup-payment" element={<ProtectedNoGuard><SetupPayment /></ProtectedNoGuard>} />
 
               {/* ── Dashboard unificado ────────────────────────────────── */}
               <Route path="/dashboard" element={<Protected><UnifiedDashboard /></Protected>} />
