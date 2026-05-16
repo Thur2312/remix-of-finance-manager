@@ -2,19 +2,16 @@ import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useLocation } from "react-router-dom";
 
-const TRIAL_DAYS = 5;
-
 export type PlanType = "sem_plano" | "trial" | "profissional" | "cancelado";
 
 export type TrialStatus = {
   isLoading: boolean;
   plan: PlanType;
-  // Atalhos para os casos mais comuns
   isTrialActive: boolean;
   isTrialExpired: boolean;
   isPaid: boolean;
   isCanceled: boolean;
-  isBlocked: boolean; // true quando deve bloquear acesso (trial expirado OU cancelado)
+  isBlocked: boolean;
   daysRemaining: number;
   trialEndsAt: Date | null;
 };
@@ -24,8 +21,15 @@ type ProfileRow = {
   trial_ends_at: string | null;
 };
 
+// Planos que significam acesso pago ativo (incluindo cancel_at_period_end
+// pois o usuário ainda tem acesso até o fim do período)
+const PAID_PLANS = ["profissional", "cancel_at_period_end"];
+
+// Planos que significam cancelamento efetivo (sem acesso)
+const CANCELED_PLANS = ["cancelado"];
+
 export function useTrialStatus(): TrialStatus {
-  const { pathname } = useLocation();
+  const { pathname, search } = useLocation();
   const [status, setStatus] = useState<TrialStatus>({
     isLoading: true,
     plan: "sem_plano",
@@ -40,9 +44,7 @@ export function useTrialStatus(): TrialStatus {
 
   useEffect(() => {
     async function fetchStatus() {
-      const {
-        data: { user },
-      } = await supabase.auth.getUser();
+      const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
 
       const { data } = await supabase
@@ -54,33 +56,46 @@ export function useTrialStatus(): TrialStatus {
       if (!data) return;
 
       const profile = data as unknown as ProfileRow;
-      const rawPlan = profile.plan ?? "sem_plano";
+      const rawPlan = (profile.plan ?? "sem_plano").trim().toLowerCase();
+
       const trialEndsAt = profile.trial_ends_at
         ? new Date(profile.trial_ends_at)
         : null;
 
       const now = new Date();
 
-      // ── Calcular dias restantes do trial ──────────────────────────
+      // ── Dias restantes do trial ───────────────────────────────────
       let daysRemaining = 0;
       if (trialEndsAt) {
         const diffMs = trialEndsAt.getTime() - now.getTime();
         daysRemaining = Math.max(0, Math.ceil(diffMs / (1000 * 60 * 60 * 24)));
       }
 
-      // ── Derivar estado a partir do plano salvo no DB ───────────────
-      const isPaid = rawPlan === "profissional";
-      const isCanceled = rawPlan === "cancelado" || rawPlan === "free";
+      // ── Derivar estado ────────────────────────────────────────────
+
+      // Pago = plano profissional ativo (ou cancelado mas ainda no período pago)
+      const isPaid = PAID_PLANS.includes(rawPlan);
+
+      // Cancelado efetivamente = plano explicitamente cancelado
+      // "free" NÃO é cancelado — é usuário que ainda não assinou
+      const isCanceled = CANCELED_PLANS.includes(rawPlan);
+
+      // Sem plano = nunca passou pelo checkout
+      const semPlano = rawPlan === "sem_plano" || rawPlan === "free" || rawPlan === "";
+
+      // Trial ativo = plano "trial" com dias restantes
       const isTrialActive = rawPlan === "trial" && daysRemaining > 0;
-      // Trial expirado = tem plano trial mas daysRemaining zerou
+
+      // Trial expirado = plano "trial" com dias zerados
+      // (enquanto o webhook não chegou para atualizar para "profissional")
       const isTrialExpired = rawPlan === "trial" && daysRemaining === 0;
 
-      // Sem plano = ainda não passou pelo checkout (nunca chegou ao Stripe)
-      // Não bloqueia aqui — o redirecionamento para /setup-payment é feito no Auth
-      const semPlano = rawPlan === "sem_plano" || rawPlan === null;
-
-      // Bloqueado: trial expirado OU cancelado (respeitando fim do período pago)
-      const isBlocked = (isTrialExpired || isCanceled) && !semPlano;
+      // Bloqueado:
+      // - trial expirado (webhook ainda não chegou ou cartão recusado)
+      // - OU plano explicitamente cancelado
+      // NÃO bloqueia: free/sem_plano (redireciona para /setup-payment no auth)
+      // NÃO bloqueia: profissional / cancel_at_period_end
+      const isBlocked = isTrialExpired || isCanceled;
 
       const plan: PlanType = isPaid
         ? "profissional"
@@ -104,7 +119,9 @@ export function useTrialStatus(): TrialStatus {
     }
 
     fetchStatus();
-  }, [pathname]); // re-fetch ao trocar de rota (ex: retorno do Stripe)
+
+    // Re-fetch quando volta do Stripe (?trial=success na URL)
+  }, [pathname, search]);
 
   return status;
 }
