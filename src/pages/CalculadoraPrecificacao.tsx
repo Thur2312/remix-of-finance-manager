@@ -971,7 +971,7 @@ function CalculadoraPrecificacaoContent() {
                   </div>
                 ))}
                 <div className="flex items-center justify-between p-3 bg-primary/10 rounded-lg md:col-span-2">
-                  <span className="text-sm font-bold">Total Custos Variáveis</span>
+                  <span className="text-sm font-bold">Total Custos</span>
                   <span className="text-xl font-bold text-primary">{formatCurrency(results.totalCustosVar)}</span>
                 </div>
               </div>
@@ -1006,100 +1006,165 @@ function CalculadoraPrecificacaoContent() {
                   <p className="text-sm">Preencha os dados acima e clique em "Cadastrar Anúncio".</p>
                 </div>
               ) : (
-                <div className="overflow-x-auto">
-                  <table className="w-full text-sm">
-                    <thead>
-                      <tr>
-                        <th colSpan={11} className="pb-2">
-                          <div className="flex items-center px-4 text-sm font-medium text-muted-foreground">
-                            <span className="flex-[2] min-w-[180px] text-left">Nome</span>
-                            <span className="flex-[1.3] min-w-[120px] text-left">Marketplace</span>
-                            <span className="w-[90px] text-right">Custo</span>
-                            <span className="w-[90px] text-right">Venda</span>
-                            <span className="w-[130px] text-right">Comissão/Taxa</span>
-                            <span className="w-[110px] text-right">Antecipado</span>
-                            <span className="w-[100px] text-right">Afiliados %</span>
-                            <span className="w-[90px] text-right">Imposto</span>
-                            <span className="w-[110px] text-right">Custo Var.</span>
-                            <span className="w-[90px] text-right">Margem</span>
-                            <span className="w-[90px] text-right">Lucro</span>
-                            <span className="w-[72px]" />
-                          </div>
-                        </th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {anuncios.map(a => {
-                        const comissaoTaxa    = parseFloat(String(a.comissao_taxa) || "0");
-                        const taxaFixaAnuncio = a.taxafixa ?? 0;
-                        const impostoVal      = a.valor_venda * (a.imposto_pct / 100);
-                        const afiliadosVal    = a.valor_venda * (a.afiliados / 100);
-                        const totalCustos     = a.custo + a.custo_var + comissaoTaxa + taxaFixaAnuncio + a.antecipado + afiliadosVal + impostoVal;
-                        const lucro           = a.valor_venda - totalCustos;
-                        const margem          = a.valor_venda > 0 ? (lucro / a.valor_venda) * 100 : 0;
-                        return (
-                          <tr key={a.id}>
-                            <td className="pt-2" colSpan={11}>
-                              <div className="flex items-center bg-muted/50 rounded-md px-4 py-3">
-                                <span className="flex-[2] min-w-[180px] font-medium whitespace-nowrap">
-                                  {a.nome_anuncio}
-                                </span>
-                                <span className="flex-[1.3] min-w-[120px] whitespace-nowrap">
-                                  {a.marketplace ? (
-                                    <Badge variant="outline" className="font-normal">{a.marketplace}</Badge>
-                                  ) : (
-                                    <span className="text-muted-foreground">—</span>
-                                  )}
-                                </span>
-                                <span className="w-[90px] text-right tabular-nums whitespace-nowrap">{formatCurrency(a.custo)}</span>
-                                <span className="w-[90px] text-right tabular-nums whitespace-nowrap">{formatCurrency(a.valor_venda)}</span>
-                                <span className="w-[130px] text-right tabular-nums whitespace-nowrap">{formatCurrency(comissaoTaxa)}</span>
-                                <span className="w-[110px] text-right tabular-nums whitespace-nowrap">{formatCurrency(a.antecipado)}</span>
-                                <span className="w-[100px] text-right tabular-nums whitespace-nowrap">
-                                  <Badge variant="secondary" className="font-normal tabular-nums">{a.afiliados}%</Badge>
-                                </span>
-                                <span className="w-[90px] text-right whitespace-nowrap">
-                                  <Badge variant="secondary" className="font-normal tabular-nums">{a.imposto_pct}%</Badge>
-                                </span>
-                                <span className="w-[110px] text-right tabular-nums whitespace-nowrap">{formatCurrency(a.custo_var)}</span>
-                                <span className={`w-[90px] text-right font-semibold tabular-nums whitespace-nowrap ${margem >= 0 ? "text-primary" : "text-destructive"}`}>
-                                  {formatPercent(margem)}
-                                </span>
-                                <span className={`w-[90px] text-right font-semibold tabular-nums whitespace-nowrap ${lucro >= 0 ? "text-green-600" : "text-destructive"}`}>
-                                  {formatCurrency(lucro)}
-                                </span>
-                                <span className="w-[72px] flex items-center justify-end gap-1 pl-2">
-                                  <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => openEditAnuncio(a)}>
-                                    <Pencil className="h-4 w-4" />
-                                  </Button>
-                                  <AlertDialog>
-                                    <AlertDialogTrigger asChild>
-                                      <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive hover:text-destructive">
-                                        <Trash2 className="h-4 w-4" />
-                                      </Button>
-                                    </AlertDialogTrigger>
-                                    <AlertDialogContent>
-                                      <AlertDialogHeader>
-                                        <AlertDialogTitle>Excluir anúncio?</AlertDialogTitle>
-                                        <AlertDialogDescription>
-                                          Tem certeza que deseja excluir "{a.nome_anuncio}"? Esta ação não pode ser desfeita.
-                                        </AlertDialogDescription>
-                                      </AlertDialogHeader>
-                                      <AlertDialogFooter>
-                                        <AlertDialogCancel>Cancelar</AlertDialogCancel>
-                                        <AlertDialogAction onClick={() => deleteAnuncio(a.id)}>Excluir</AlertDialogAction>
-                                      </AlertDialogFooter>
-                                    </AlertDialogContent>
-                                  </AlertDialog>
-                                </span>
-                              </div>
-                            </td>
-                          </tr>
-                        );
-                      })}
-                    </tbody>
-                  </table>
-                </div>
+                // ── SUBSTITUA o bloco <table>...</table> dentro do Card "Anúncios Cadastrados" por este:
+
+<div className="overflow-x-auto">
+  <table className="w-full text-sm border-separate border-spacing-0">
+    <thead>
+      <tr className="text-muted-foreground text-xs font-medium">
+        <th className="pb-2 pl-4 pr-2 text-left w-[160px]">Nome</th>
+        <th className="pb-2 px-2 text-left w-[110px]">Marketplace</th>
+        <th className="pb-2 px-2 text-right w-[88px]">Custo</th>
+        <th className="pb-2 px-2 text-right w-[88px]">Venda</th>
+        <th className="pb-2 px-2 text-right w-[116px]">Comissão/Taxa</th>
+        <th className="pb-2 px-2 text-right w-[100px]">Antecipado</th>
+        <th className="pb-2 px-2 text-right w-[84px]">Afiliados</th>
+        <th className="pb-2 px-2 text-right w-[76px]">Imposto</th>
+        <th className="pb-2 px-2 text-right w-[96px]">Custo Var.</th>
+        <th className="pb-2 px-2 text-right w-[78px]">Margem</th>
+        <th className="pb-2 px-2 text-right w-[88px]">Lucro</th>
+        <th className="pb-2 pl-1 pr-2 w-[64px]" />
+      </tr>
+    </thead>
+    <tbody>
+      {anuncios.map(a => {
+        const comissaoTaxa    = parseFloat(String(a.comissao_taxa) || "0");
+        const taxaFixaAnuncio = a.taxafixa ?? 0;
+        const impostoVal      = a.valor_venda * (a.imposto_pct / 100);
+        const afiliadosVal    = a.valor_venda * (a.afiliados / 100);
+        const totalCustos     = a.custo + a.custo_var + comissaoTaxa + taxaFixaAnuncio + a.antecipado + afiliadosVal + impostoVal;
+        const lucro           = a.valor_venda - totalCustos;
+        const margem          = a.valor_venda > 0 ? (lucro / a.valor_venda) * 100 : 0;
+
+        const cellBase = "bg-muted/50 py-3 flex items-center h-full";
+
+        return (
+          <tr key={a.id}>
+            {/* Nome — truncado com tooltip */}
+            <td className="pt-2 w-[160px] max-w-[160px]">
+              <div className={`${cellBase} rounded-l-md pl-4 pr-2`}>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <span className="font-medium truncate block w-full cursor-default">
+                      {a.nome_anuncio}
+                    </span>
+                  </TooltipTrigger>
+                  {a.nome_anuncio.length > 20 && (
+                    <TooltipContent side="top">
+                      <p>{a.nome_anuncio}</p>
+                    </TooltipContent>
+                  )}
+                </Tooltip>
+              </div>
+            </td>
+
+            {/* Marketplace */}
+            <td className="pt-2 w-[110px]">
+              <div className={`${cellBase} px-2`}>
+                {a.marketplace ? (
+                  <Badge variant="outline" className="font-normal shrink-0">{a.marketplace}</Badge>
+                ) : (
+                  <span className="text-muted-foreground">—</span>
+                )}
+              </div>
+            </td>
+
+            {/* Custo */}
+            <td className="pt-2 w-[88px]">
+              <div className={`${cellBase} px-2 justify-end tabular-nums whitespace-nowrap`}>
+                {formatCurrency(a.custo)}
+              </div>
+            </td>
+
+            {/* Venda */}
+            <td className="pt-2 w-[88px]">
+              <div className={`${cellBase} px-2 justify-end tabular-nums whitespace-nowrap`}>
+                {formatCurrency(a.valor_venda)}
+              </div>
+            </td>
+
+            {/* Comissão/Taxa */}
+            <td className="pt-2 w-[116px]">
+              <div className={`${cellBase} px-2 justify-end tabular-nums whitespace-nowrap`}>
+                {formatCurrency(comissaoTaxa)}
+              </div>
+            </td>
+
+            {/* Antecipado */}
+            <td className="pt-2 w-[100px]">
+              <div className={`${cellBase} px-2 justify-end tabular-nums whitespace-nowrap`}>
+                {formatCurrency(a.antecipado)}
+              </div>
+            </td>
+
+            {/* Afiliados */}
+            <td className="pt-2 w-[84px]">
+              <div className={`${cellBase} px-2 justify-end`}>
+                <Badge variant="secondary" className="font-normal tabular-nums">{a.afiliados}%</Badge>
+              </div>
+            </td>
+
+            {/* Imposto */}
+            <td className="pt-2 w-[76px]">
+              <div className={`${cellBase} px-2 justify-end`}>
+                <Badge variant="secondary" className="font-normal tabular-nums">{a.imposto_pct}%</Badge>
+              </div>
+            </td>
+
+            {/* Custo Variável */}
+            <td className="pt-2 w-[96px]">
+              <div className={`${cellBase} px-2 justify-end tabular-nums whitespace-nowrap`}>
+                {formatCurrency(a.custo_var)}
+              </div>
+            </td>
+
+            {/* Margem */}
+            <td className="pt-2 w-[78px]">
+              <div className={`${cellBase} px-2 justify-end font-semibold tabular-nums whitespace-nowrap ${margem >= 0 ? "text-primary" : "text-destructive"}`}>
+                {formatPercent(margem)}
+              </div>
+            </td>
+
+            {/* Lucro */}
+            <td className="pt-2 w-[88px]">
+              <div className={`${cellBase} px-2 justify-end font-semibold tabular-nums whitespace-nowrap ${lucro >= 0 ? "text-green-600" : "text-destructive"}`}>
+                {formatCurrency(lucro)}
+              </div>
+            </td>
+
+            {/* Ações */}
+            <td className="pt-2 w-[64px]">
+              <div className={`${cellBase} rounded-r-md pl-1 pr-2 justify-end gap-0.5`}>
+                <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => openEditAnuncio(a)}>
+                  <Pencil className="h-4 w-4" />
+                </Button>
+                <AlertDialog>
+                  <AlertDialogTrigger asChild>
+                    <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive hover:text-destructive">
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  </AlertDialogTrigger>
+                  <AlertDialogContent>
+                    <AlertDialogHeader>
+                      <AlertDialogTitle>Excluir anúncio?</AlertDialogTitle>
+                      <AlertDialogDescription>
+                        Tem certeza que deseja excluir "{a.nome_anuncio}"? Esta ação não pode ser desfeita.
+                      </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                      <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                      <AlertDialogAction onClick={() => deleteAnuncio(a.id)}>Excluir</AlertDialogAction>
+                    </AlertDialogFooter>
+                  </AlertDialogContent>
+                </AlertDialog>
+              </div>
+            </td>
+          </tr>
+        );
+      })}
+    </tbody>
+  </table>
+</div>
               )}
             </CardContent>
           </Card>

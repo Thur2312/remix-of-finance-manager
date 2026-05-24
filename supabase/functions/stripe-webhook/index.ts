@@ -38,15 +38,16 @@ Deno.serve(async (req) => {
 
   let event: Stripe.Event;
 
-  try {
-    event = stripe.webhooks.constructEvent(
-      body,
-      signature,
-      Deno.env.get("STRIPE_WEBHOOK_SECRET")!
-    );
-  } catch {
-    return new Response("Webhook signature inválida", { status: 400 });
-  }
+try {
+  event = await stripe.webhooks.constructEventAsync(
+    body,
+    signature,
+    Deno.env.get("STRIPE_WEBHOOK_SECRET")!
+  );
+} catch (err) {
+  console.error("Erro na assinatura:", err.message);
+  return new Response("Webhook signature inválida", { status: 400 });
+}
 
   // ──────────────────────────────────────────────────────────────────
   // checkout.session.completed
