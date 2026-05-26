@@ -1,6 +1,7 @@
 import { ReactNode } from 'react';
 import { Navigate, useLocation } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
+import { isCalculadoraAllowed } from '@/lib/allowlist';
 import { Loader2 } from 'lucide-react';
 
 interface ProtectedRouteProps {
@@ -24,6 +25,14 @@ export function ProtectedRoute({ children }: ProtectedRouteProps) {
 
   if (!user) {
     return <Navigate to={`/user/auth?redirect=${encodeURIComponent(location.pathname)}`} replace />;
+  }
+
+  // Redireciona automaticamente para /calculadora ao logar com email da allowlist
+  const isAllowedUser = isCalculadoraAllowed(user.email);
+  const isOnRoot = location.pathname === '/' || location.pathname === '/dashboard';
+
+  if (isAllowedUser && isOnRoot) {
+    return <Navigate to="/calculadora" replace />;
   }
 
   return <>{children}</>;

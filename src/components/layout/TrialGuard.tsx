@@ -16,8 +16,9 @@ export function TrialGuard({ children }: { children: React.ReactNode }) {
     });
   }, []);
 
-  const isCalculadora = location.pathname === "/calculadora";
-  const isLiberated   = isCalculadora && isCalculadoraAllowed(userEmail);
+  const ALLOWED_PATHS = ["/calculadora", "/precificacao/custos"];
+  const isAllowedPath = ALLOWED_PATHS.includes(location.pathname);
+  const isLiberated   = isAllowedPath && isCalculadoraAllowed(userEmail);
 
   return (
     <>
