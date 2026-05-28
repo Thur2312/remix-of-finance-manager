@@ -3,6 +3,8 @@
 // List of allowed origins for CORS
 const allowedOrigins = [
   'https://id-preview--421daa1a-5e46-4a66-a384-f5a2f89a0cbe.lovable.app',
+  'https://www.sellerfinance.com.br',  
+  'https://sellerfinance.com.br',       
   'http://localhost:5173',
   'http://localhost:5174',
   'http://localhost:3000',

@@ -115,7 +115,7 @@ export default function ResetPassword() {
       
       // Sign out and redirect to login
       await supabase.auth.signOut();
-      navigate('/auth', { replace: true });
+      navigate('/user/auth', { replace: true });
     } catch (err: unknown) {
       console.error('Error updating password:', err);
       const errorMessage = err instanceof Error ? err.message : 'Erro ao atualizar senha. Tente novamente.';
