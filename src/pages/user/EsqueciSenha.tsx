@@ -71,7 +71,7 @@ export default function EsqueciSenha() {
     setError(null);
 
     try {
-      const redirectUrl = `${window.location.origin}/reset-password`;
+      const redirectUrl = `${window.location.origin}/user/reset-password`;
 
       const { error } = await supabase.auth.resetPasswordForEmail(
         email.toLowerCase(),
