@@ -9,6 +9,7 @@ import { toast } from 'sonner';
 import { ArrowLeft, Mail, Loader2, CheckCircle2, AlertCircle } from 'lucide-react';
 import { motion } from 'framer-motion';
 
+
 const fadeInUp = {
   hidden: { opacity: 0, y: 40 },
   visible: { opacity: 1, y: 0 },
@@ -58,37 +59,34 @@ export default function EsqueciSenha() {
   const [touched, setTouched] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setTouched(true);
+  e.preventDefault();
+  setTouched(true);
 
-    const emailError = validateEmail(email);
-    if (emailError) {
-      setError(emailError);
-      return;
-    }
+  const emailError = validateEmail(email);
+  if (emailError) {
+    setError(emailError);
+    return;
+  }
 
-    setIsLoading(true);
-    setError(null);
+  setIsLoading(true);
+  setError(null);
 
-    try {
-      const redirectUrl = `${window.location.origin}/user/reset-password`;
+  try {
+    const redirectUrl = `${window.location.origin}/user/reset-password`;
 
-      const { error } = await supabase.auth.resetPasswordForEmail(
-        email.toLowerCase(),
-        { redirectTo: redirectUrl }
-      );
+    const { error } = await supabase.functions.invoke('send-password-reset', { body: { email: email.toLowerCase(), redirectUrl } })
 
-      if (error) throw error;
+    if (error) throw error;
 
-      setEmailSent(true);
-      toast.success('Se o email estiver cadastrado, você receberá um link de recuperação.');
-    } catch (err: unknown) {
-      console.error('Erro ao enviar reset:', err);
-      toast.error('Erro ao enviar email. Tente novamente.');
-    } finally {
-      setIsLoading(false);
-    }
-  };
+    setEmailSent(true);
+    toast.success('Se o email estiver cadastrado, você receberá um link de recuperação.');
+  } catch (err: unknown) {
+    console.error('Erro ao enviar reset:', err);
+    toast.error('Erro ao enviar email. Tente novamente.');
+  } finally {
+    setIsLoading(false);
+  }
+};
 
   const handleEmailChange = (value: string) => {
     setEmail(value);
