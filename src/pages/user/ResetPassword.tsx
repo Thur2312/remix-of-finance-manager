@@ -160,10 +160,10 @@ export default function ResetPassword() {
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
-            <Button onClick={() => navigate('/esqueci-senha')} className="w-full h-11 bg-blue-600 hover:bg-blue-700">
+            <Button onClick={() => navigate('/user/esqueci-senha')} className="w-full h-11 bg-blue-600 hover:bg-blue-700">
               Solicitar Novo Link
             </Button>
-            <Button variant="ghost" onClick={() => navigate('/auth')} className="w-full border-blue-200 text-blue-700 hover:bg-blue-50">
+            <Button variant="ghost" onClick={() => navigate('/user/auth')} className="w-full border-blue-200 text-blue-700 hover:bg-blue-50">
               Voltar para Login
             </Button>
           </CardContent>
