@@ -56,7 +56,6 @@ function getShopeeRates(preco: number): { comissao: number; taxaFixa: number } {
 }
 
 // ─── Calcula comissão em R$ para Shopee ──────────────────────────────────────
-// Recebe o valor de venda e retorna (valorVenda × comissao%) + taxaFixa
 function calcShopeeComissaoReais(valorVenda: number): number {
   if (valorVenda <= 0) return 0;
   const { comissao, taxaFixa } = getShopeeRates(valorVenda);
@@ -75,6 +74,9 @@ const PLATAFORMA_OPTIONS: { value: Plataforma; label: string; color: string; bg:
 // ─── Absorção ────────────────────────────────────────────────────────────────
 const ABSORCAO_PADRAO = { novo: 10, complementar: 30, principal: 60 } as const;
 type PapelProduto = "novo" | "complementar" | "principal" | "avancado";
+
+// ─── Modo de cálculo ─────────────────────────────────────────────────────────
+type ModoCalculo = "margem" | "preco" | "lucro";
 
 // ─── Form anúncio ────────────────────────────────────────────────────────────
 const EMPTY_FORM = {
@@ -101,6 +103,11 @@ function CalculadoraPrecificacaoContent() {
   const [faturamentoTotal,      setFaturamentoTotal]      = useState("");
   const [plataformaSelecionada, setPlataformaSelecionada] = useState<Plataforma | "">("");
 
+  // ── Modo de cálculo ───────────────────────────────────────────────────────
+  const [modoCalculo,        setModoCalculo]        = useState<ModoCalculo>("preco");
+  const [margemDesejadaSlider, setMargemDesejadaSlider] = useState("30");
+  const [lucroDesejado,      setLucroDesejado]      = useState("");
+
   // ── Dialog state ──────────────────────────────────────────────────────────
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingId,    setEditingId]    = useState<string | null>(null);
@@ -115,11 +122,10 @@ function CalculadoraPrecificacaoContent() {
     if (!anuncios || anuncios.length === 0) return null;
 
     const margens = anuncios.map(a => {
-      const comissaoTaxa = parseFloat(String(a.comissao_taxa) || "0");
-      const taxaFixaAnuncio = a.taxafixa ?? 0;
+      const comissaoTaxa = parseFloat(String(a.comissao_taxa) || "0"); // já inclui taxa fixa
       const impostoVal   = a.valor_venda * (a.imposto_pct / 100);
       const afiliadosVal = a.valor_venda * (a.afiliados / 100);
-      const totalCustos  = a.custo + a.custo_var + comissaoTaxa + taxaFixaAnuncio + a.antecipado + afiliadosVal + impostoVal;
+      const totalCustos  = a.custo + a.custo_var + comissaoTaxa + a.antecipado + afiliadosVal + impostoVal;
       const margem       = a.valor_venda > 0 ? ((a.valor_venda - totalCustos) / a.valor_venda) * 100 : 0;
       return margem;
     });
@@ -207,6 +213,32 @@ function CalculadoraPrecificacaoContent() {
     };
   }, [custoProduto, embalagemEtiqueta, precoPromocional, desconto, comissaoPlataforma, taxaFixa, aliquotaImposto, comissaoAfiliados, margemDesejada, totalRecurringCosts, volumeMensal, volumeEsperadoProduto, percentualAbsorcao]);
 
+  // ── Preço sugerido conforme modo de cálculo ───────────────────────────────
+  const precoSugerido = useMemo(() => {
+    const _custo     = parseInput(custoProduto);
+    const _custoVar  = parseInput(embalagemEtiqueta);
+    const _taxaFixa  = parseInput(taxaFixa);
+    const _comissao  = parseInput(comissaoPlataforma);
+    const _imposto   = parseInput(aliquotaImposto);
+    const _afiliados = parseInput(comissaoAfiliados);
+
+    const taxasPct = (_comissao + _imposto + _afiliados) / 100;
+    const denom    = 1 - taxasPct;
+
+    if (modoCalculo === "margem") {
+      const margem = parseInput(margemDesejadaSlider) / 100;
+      const d = 1 - taxasPct - margem;
+      return d > 0 ? (_custo + _custoVar + _taxaFixa) / d : 0;
+    }
+
+    if (modoCalculo === "lucro") {
+      const lucroAlvo = parseInput(lucroDesejado);
+      return denom > 0 ? (_custo + _custoVar + _taxaFixa + lucroAlvo) / denom : 0;
+    }
+
+    return 0;
+  }, [modoCalculo, margemDesejadaSlider, lucroDesejado, custoProduto, embalagemEtiqueta, taxaFixa, comissaoPlataforma, aliquotaImposto, comissaoAfiliados]);
+
   // ── Panorama / Break-even ─────────────────────────────────────────────────
   const panorama = useMemo(() => {
     const fat = parseInput(faturamentoTotal);
@@ -246,11 +278,9 @@ function CalculadoraPrecificacaoContent() {
 
   // ── Abrir dialog para novo anúncio pré-preenchido ─────────────────────────
   const openNovoAnuncio = () => {
-    const valorVenda = parseInput(precoPromocional);
+    const valorVenda  = parseInput(precoPromocional);
     const marketplace = plataformaSelecionada;
 
-    // Calcula comissão em R$ se for Shopee, senão usa o valor já calculado
-    // na calculadora principal (comissão % + taxa fixa)
     let comissaoTaxaInicial = "";
     if (marketplace === "Shopee" && valorVenda > 0) {
       comissaoTaxaInicial = calcShopeeComissaoReais(valorVenda).toFixed(2);
@@ -319,6 +349,114 @@ function CalculadoraPrecificacaoContent() {
     const { comissao, taxaFixa: taxa } = getShopeeRates(venda);
     return `Comissão + Taxa (R$) — Shopee ${comissao}% + R$${taxa}`;
   }, [anuncioForm.marketplace, anuncioForm.valor_venda]);
+
+  // ── Dialog content (reutilizado) ──────────────────────────────────────────
+  const dialogContent = (
+    <DialogContent className="max-w-3xl w-[95vw]">
+      <DialogHeader>
+        <DialogTitle>{editingId ? "Editar Anúncio" : "Cadastrar Anúncio"}</DialogTitle>
+        <DialogDescription>
+          {editingId
+            ? "Altere as informações do anúncio."
+            : "Os campos foram pré-preenchidos com os dados da calculadora. Só falta o nome!"}
+        </DialogDescription>
+      </DialogHeader>
+
+      <div className="space-y-4 py-2">
+        <div className="grid grid-cols-2 gap-4">
+          <div className="space-y-2">
+            <Label htmlFor="nome_anuncio" className="font-medium">
+              Nome do Anúncio <span className="text-destructive">*</span>
+            </Label>
+            <Input id="nome_anuncio" autoFocus value={anuncioForm.nome_anuncio}
+              onChange={setFormField("nome_anuncio")} placeholder="Ex: Macaquinho Floral" maxLength={255} />
+          </div>
+          <div className="space-y-2">
+            <Label>Marketplace</Label>
+            <Select
+              value={anuncioForm.marketplace}
+              onValueChange={v => setAnuncioForm(prev => ({ ...prev, marketplace: v as Plataforma }))}
+            >
+              <SelectTrigger className="w-full">
+                <SelectValue placeholder="Selecione o marketplace" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="Shopee">Shopee</SelectItem>
+                <SelectItem value="TiktokShop">TikTok Shop</SelectItem>
+                <SelectItem value="MercadoLivre">Mercado Livre</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+        </div>
+
+        <Separator />
+        <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+          Valores (R$) — pré-preenchidos
+        </p>
+
+        <div className="grid grid-cols-4 gap-4">
+          <div className="space-y-2">
+            <Label className="text-sm">Custo</Label>
+            <Input type="text" inputMode="decimal" value={anuncioForm.custo}
+              onChange={setFormField("custo")} placeholder="0,00" />
+          </div>
+          <div className="space-y-2">
+            <Label className="text-sm">Valor de Venda</Label>
+            <Input type="text" inputMode="decimal" value={anuncioForm.valor_venda}
+              onChange={setFormField("valor_venda")} placeholder="0,00" />
+          </div>
+          <div className="space-y-2">
+            <Label className="text-sm flex items-center gap-1.5">
+              {comissaoTaxaLabel}
+              {anuncioForm.marketplace === "Shopee" && (
+                <Badge variant="outline" className="text-[10px] px-1 py-0 text-orange-600 border-orange-400">Auto</Badge>
+              )}
+            </Label>
+            <Input
+              type="text" inputMode="decimal" value={anuncioForm.comissao_taxa}
+              onChange={setFormField("comissao_taxa")} placeholder="0,00"
+              className={anuncioForm.marketplace === "Shopee" ? "border-orange-400/60 focus-visible:ring-orange-400/40" : ""}
+            />
+            {anuncioForm.marketplace === "Shopee" && parseInput(anuncioForm.valor_venda) > 0 && (
+              <p className="text-[10px] text-orange-600 dark:text-orange-400">
+                Calculado automaticamente — você pode editar se necessário
+              </p>
+            )}
+          </div>
+          <div className="space-y-2">
+            <Label className="text-sm">Antecipado (R$)</Label>
+            <Input type="text" inputMode="decimal" value={anuncioForm.antecipado}
+              onChange={setFormField("antecipado")} placeholder="0,00" />
+          </div>
+          <div className="space-y-2">
+            <Label className="text-sm">Afiliados (%)</Label>
+            <Input type="text" inputMode="decimal" value={anuncioForm.afiliados}
+              onChange={setFormField("afiliados")} placeholder="0" />
+          </div>
+          <div className="space-y-2">
+            <Label className="text-sm">Custo Variável (R$)</Label>
+            <Input type="text" inputMode="decimal" value={anuncioForm.custo_var}
+              onChange={setFormField("custo_var")} placeholder="0,00" />
+          </div>
+          <div className="space-y-2">
+            <Label className="text-sm">Imposto (%)</Label>
+            <div className="relative">
+              <Input type="text" inputMode="decimal" value={anuncioForm.imposto_pct}
+                onChange={setFormField("imposto_pct")} placeholder="6" className="pr-8" />
+              <span className="absolute right-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">%</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <DialogFooter>
+        <Button variant="outline" onClick={() => { setIsDialogOpen(false); resetForm(); }}>Cancelar</Button>
+        <Button onClick={handleSubmit} disabled={!anuncioForm.nome_anuncio.trim()}>
+          {editingId ? "Salvar Alterações" : "Cadastrar"}
+        </Button>
+      </DialogFooter>
+    </DialogContent>
+  );
 
   // ══════════════════════════════════════════════════════════════════════════
   return (
@@ -624,175 +762,122 @@ function CalculadoraPrecificacaoContent() {
 
               <Separator />
 
-              {/* Resultado + Botão Cadastrar */}
-              <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-                <div className="flex flex-wrap gap-3 flex-1">
-                  <div className="flex items-center gap-2 px-4 py-2.5 bg-muted/50 rounded-lg border">
+              {/* ── Resultado + Modos de Cálculo + Botão ─────────────────── */}
+              <div className="flex flex-col gap-4">
+
+                {/* Linha 1: Margem Real + Seletor de modos */}
+                <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4">
+
+                  {/* Chip Margem Real — agora com R$ */}
+                  <div className="flex items-center gap-2 px-4 py-2.5 bg-muted/50 rounded-lg border shrink-0">
                     <TrendingUp className="h-4 w-4 text-muted-foreground" />
                     <div>
                       <p className="text-[10px] text-muted-foreground uppercase tracking-wide">Margem Real</p>
                       <p className={`text-base font-bold leading-tight ${results.margemReal >= 0 ? "text-primary" : "text-destructive"}`}>
                         {formatPercent(results.margemReal)}
                       </p>
+                      <p className={`text-xs leading-tight ${results.lucro >= 0 ? "text-muted-foreground" : "text-destructive"}`}>
+                        {formatCurrency(results.lucro)}
+                      </p>
                     </div>
                   </div>
-                  {!results.margemInviavel ? (
-                    <div className="flex items-center gap-2 px-4 py-2.5 bg-primary/5 border border-primary/20 rounded-lg">
-                      <Lightbulb className="h-4 w-4 text-primary flex-shrink-0" />
-                      <div>
-                        <p className="text-[10px] text-muted-foreground uppercase tracking-wide">
-                          Preço ideal para {margemDesejada}% margem
-                        </p>
-                        <p className="text-base font-bold text-primary leading-tight">{formatCurrency(results.precoIdeal)}</p>
-                      </div>
-                    </div>
-                  ) : (
-                    <div className="flex items-center gap-2 px-4 py-2.5 bg-destructive/10 border border-destructive/30 rounded-lg">
-                      <AlertTriangle className="h-4 w-4 text-destructive" />
-                      <span className="text-sm font-medium text-destructive">Margem inviável</span>
-                    </div>
-                  )}
+
+                  {/* Seletor de modos */}
+                  <div className="flex gap-2 flex-wrap">
+                    {(["preco", "margem", "lucro"] as const).map(modo => (
+                      <button key={modo} type="button"
+                        onClick={() => setModoCalculo(modo)}
+                        className={`px-3 py-1.5 rounded-lg border text-xs font-medium transition-all ${
+                          modoCalculo === modo
+                            ? "bg-primary text-primary-foreground border-primary"
+                            : "border-border bg-background text-muted-foreground hover:bg-muted"
+                        }`}>
+                        {modo === "preco" ? "Por Preço" : modo === "margem" ? "Por Margem" : "Por Lucro"}
+                      </button>
+                    ))}
+                  </div>
                 </div>
 
-                {/* ── Botão + Dialog ──────────────────────────────────────── */}
-                <Dialog open={isDialogOpen} onOpenChange={open => { setIsDialogOpen(open); if (!open) resetForm(); }}>
-                  <DialogTrigger asChild>
-                    <Button onClick={openNovoAnuncio} className="gap-2 shrink-0">
-                      <ShoppingBag className="h-4 w-4" />
-                      Cadastrar Anúncio
-                      {plataformaSelecionada && (
-                        <Badge variant="secondary" className="ml-1 text-xs font-normal">
-                          {plataformaSelecionada}
-                        </Badge>
-                      )}
-                    </Button>
-                  </DialogTrigger>
+                {/* Linha 2: Conteúdo do modo + Botão Cadastrar */}
+                <div className="flex flex-col sm:flex-row items-start sm:items-end gap-4">
 
-                  <DialogContent className="max-w-3xl w-[95vw]">
-                    <DialogHeader>
-                      <DialogTitle>{editingId ? "Editar Anúncio" : "Cadastrar Anúncio"}</DialogTitle>
-                      <DialogDescription>
-                        {editingId
-                          ? "Altere as informações do anúncio."
-                          : "Os campos foram pré-preenchidos com os dados da calculadora. Só falta o nome!"}
-                      </DialogDescription>
-                    </DialogHeader>
+                  {/* Modo: Por Preço */}
+                  {modoCalculo === "preco" && (
+                    <div className="flex items-center gap-2 px-4 py-3 bg-muted/30 border border-border rounded-lg text-sm text-muted-foreground flex-1">
+                      <Info className="h-4 w-4 flex-shrink-0" />
+                      <span>Informe o preço no campo "Preço Promocional" acima e veja a margem calculada automaticamente.</span>
+                    </div>
+                  )}
 
-                    <div className="space-y-4 py-2">
-                      <div className="grid grid-cols-2 gap-4">
-                        <div className="space-y-2">
-                          <Label htmlFor="nome_anuncio" className="font-medium">
-                            Nome do Anúncio <span className="text-destructive">*</span>
-                          </Label>
-                          <Input id="nome_anuncio" autoFocus value={anuncioForm.nome_anuncio}
-                            onChange={setFormField("nome_anuncio")} placeholder="Ex: Macaquinho Floral" maxLength={255} />
-                        </div>
-                        <div className="space-y-2">
-                          <Label>Marketplace</Label>
-                          <Select
-                            value={anuncioForm.marketplace}
-                            onValueChange={v =>
-                              setAnuncioForm(prev => ({ ...prev, marketplace: v as Plataforma }))
-                            }
-                          >
-                            <SelectTrigger className="w-full">
-                              <SelectValue placeholder="Selecione o marketplace" />
-                            </SelectTrigger>
-                            <SelectContent>
-                              <SelectItem value="Shopee">Shopee</SelectItem>
-                              <SelectItem value="TiktokShop">TikTok Shop</SelectItem>
-                              <SelectItem value="MercadoLivre">Mercado Livre</SelectItem>
-                            </SelectContent>
-                          </Select>
-                        </div>
+                  {/* Modo: Por Margem */}
+                  {modoCalculo === "margem" && (
+                    <div className="flex-1 space-y-2">
+                      <Label className="text-sm">
+                        Margem desejada: <span className="text-primary font-bold">{margemDesejadaSlider}%</span>
+                      </Label>
+                      <input
+                        type="range" min="1" max="90" step="1"
+                        value={margemDesejadaSlider}
+                        onChange={e => setMargemDesejadaSlider(e.target.value)}
+                        className="w-full accent-primary"
+                      />
+                      <div className="flex justify-between text-[10px] text-muted-foreground">
+                        <span>1%</span><span>90%</span>
                       </div>
-
-                      <Separator />
-                      <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
-                        Valores (R$) — pré-preenchidos
-                      </p>
-
-                      <div className="grid grid-cols-4 gap-4">
-                        {/* Custo */}
-                        <div className="space-y-2">
-                          <Label className="text-sm">Custo</Label>
-                          <Input type="text" inputMode="decimal" value={anuncioForm.custo}
-                            onChange={setFormField("custo")} placeholder="0,00" />
-                        </div>
-
-                        {/* Valor de Venda */}
-                        <div className="space-y-2">
-                          <Label className="text-sm">Valor de Venda</Label>
-                          <Input type="text" inputMode="decimal" value={anuncioForm.valor_venda}
-                            onChange={setFormField("valor_venda")} placeholder="0,00" />
-                        </div>
-
-                        {/* Comissão + Taxa — auto para Shopee */}
-                        <div className="space-y-2">
-                          <Label className="text-sm flex items-center gap-1.5">
-                            {comissaoTaxaLabel}
-                            {anuncioForm.marketplace === "Shopee" && (
-                              <Badge variant="outline" className="text-[10px] px-1 py-0 text-orange-600 border-orange-400">
-                                Auto
-                              </Badge>
-                            )}
-                          </Label>
-                          <Input
-                            type="text"
-                            inputMode="decimal"
-                            value={anuncioForm.comissao_taxa}
-                            onChange={setFormField("comissao_taxa")}
-                            placeholder="0,00"
-                            className={anuncioForm.marketplace === "Shopee" ? "border-orange-400/60 focus-visible:ring-orange-400/40" : ""}
-                          />
-                          {anuncioForm.marketplace === "Shopee" && parseInput(anuncioForm.valor_venda) > 0 && (
-                            <p className="text-[10px] text-orange-600 dark:text-orange-400">
-                              Calculado automaticamente — você pode editar se necessário
+                      {precoSugerido > 0 && (
+                        <div className="flex items-center gap-2 px-4 py-2.5 bg-primary/5 border border-primary/20 rounded-lg">
+                          <Lightbulb className="h-4 w-4 text-primary flex-shrink-0" />
+                          <div>
+                            <p className="text-[10px] text-muted-foreground uppercase tracking-wide">
+                              Preço para {margemDesejadaSlider}% de margem
                             </p>
-                          )}
-                        </div>
-
-                        {/* Antecipado */}
-                        <div className="space-y-2">
-                          <Label className="text-sm">Antecipado (R$)</Label>
-                          <Input type="text" inputMode="decimal" value={anuncioForm.antecipado}
-                            onChange={setFormField("antecipado")} placeholder="0,00" />
-                        </div>
-
-                        {/* Afiliados */}
-                        <div className="space-y-2">
-                          <Label className="text-sm">Afiliados (%)</Label>
-                          <Input type="text" inputMode="decimal" value={anuncioForm.afiliados}
-                            onChange={setFormField("afiliados")} placeholder="0" />
-                        </div>
-
-                        {/* Custo Variável */}
-                        <div className="space-y-2">
-                          <Label className="text-sm">Custo Variável (R$)</Label>
-                          <Input type="text" inputMode="decimal" value={anuncioForm.custo_var}
-                            onChange={setFormField("custo_var")} placeholder="0,00" />
-                        </div>
-
-                        {/* Imposto */}
-                        <div className="space-y-2">
-                          <Label className="text-sm">Imposto (%)</Label>
-                          <div className="relative">
-                            <Input type="text" inputMode="decimal" value={anuncioForm.imposto_pct}
-                              onChange={setFormField("imposto_pct")} placeholder="6" className="pr-8" />
-                            <span className="absolute right-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">%</span>
+                            <p className="text-base font-bold text-primary">{formatCurrency(precoSugerido)}</p>
                           </div>
                         </div>
-                      </div>
+                      )}
                     </div>
+                  )}
 
-                    <DialogFooter>
-                      <Button variant="outline" onClick={() => { setIsDialogOpen(false); resetForm(); }}>Cancelar</Button>
-                      <Button onClick={handleSubmit} disabled={!anuncioForm.nome_anuncio.trim()}>
-                        {editingId ? "Salvar Alterações" : "Cadastrar"}
+                  {/* Modo: Por Lucro Desejado */}
+                  {modoCalculo === "lucro" && (
+                    <div className="flex-1 space-y-2">
+                      <Label htmlFor="lucroDesejado" className="text-sm">Lucro desejado por venda (R$)</Label>
+                      <Input
+                        id="lucroDesejado" type="text" inputMode="decimal"
+                        value={lucroDesejado}
+                        onChange={e => handleDecimalInput(e.target.value, setLucroDesejado)}
+                        placeholder="Ex: 6,00" className="h-10 max-w-[200px]"
+                      />
+                      {precoSugerido > 0 && parseInput(lucroDesejado) > 0 && (
+                        <div className="flex items-center gap-2 px-4 py-2.5 bg-primary/5 border border-primary/20 rounded-lg">
+                          <Lightbulb className="h-4 w-4 text-primary flex-shrink-0" />
+                          <div>
+                            <p className="text-[10px] text-muted-foreground uppercase tracking-wide">
+                              Preço para lucrar {formatCurrency(parseInput(lucroDesejado))}
+                            </p>
+                            <p className="text-base font-bold text-primary">{formatCurrency(precoSugerido)}</p>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+                  {/* Botão Cadastrar — sempre visível */}
+                  <Dialog open={isDialogOpen} onOpenChange={open => { setIsDialogOpen(open); if (!open) resetForm(); }}>
+                    <DialogTrigger asChild>
+                      <Button onClick={openNovoAnuncio} className="gap-2 shrink-0">
+                        <ShoppingBag className="h-4 w-4" />
+                        Cadastrar Anúncio
+                        {plataformaSelecionada && (
+                          <Badge variant="secondary" className="ml-1 text-xs font-normal">
+                            {plataformaSelecionada}
+                          </Badge>
+                        )}
                       </Button>
-                    </DialogFooter>
-                  </DialogContent>
-                </Dialog>
+                    </DialogTrigger>
+                    {dialogContent}
+                  </Dialog>
+                </div>
               </div>
             </CardContent>
           </Card>
@@ -1006,155 +1091,128 @@ function CalculadoraPrecificacaoContent() {
                   <p className="text-sm">Preencha os dados acima e clique em "Cadastrar Anúncio".</p>
                 </div>
               ) : (
-                
-              <div className="overflow-x-auto">
-                <table className="w-full text-sm border-separate border-spacing-0">
-                  <thead>
-                    <tr className="text-muted-foreground text-xs font-medium">
-                      <th className="pb-2 pl-4 pr-2 text-left min-w-[160px]">Nome</th>
-                      <th className="pb-2 px-2 text-left w-[110px]">Marketplace</th>
-                      <th className="pb-2 px-2 text-right w-[88px]">Custo</th>
-                      <th className="pb-2 px-2 text-right w-[88px]">Venda</th>
-                      <th className="pb-2 px-2 text-right w-[116px]">Comissão/Taxa</th>
-                      <th className="pb-2 px-2 text-right w-[100px]">Antecipado</th>
-                      <th className="pb-2 px-2 text-right w-[84px]">Afiliados</th>
-                      <th className="pb-2 px-2 text-right w-[76px]">Imposto</th>
-                      <th className="pb-2 px-2 text-right w-[96px]">Custo Var.</th>
-                      <th className="pb-2 px-2 text-right w-[78px]">Margem</th>
-                      <th className="pb-2 px-2 text-right w-[88px]">Lucro</th>
-                      <th className="pb-2 pl-1 pr-2 w-[64px]" />
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {anuncios.map(a => {
-                      const comissaoTaxa    = parseFloat(String(a.comissao_taxa) || "0");
-                      const taxaFixaAnuncio = a.taxafixa ?? 0;
-                      const impostoVal      = a.valor_venda * (a.imposto_pct / 100);
-                      const afiliadosVal    = a.valor_venda * (a.afiliados / 100);
-                      const totalCustos     = a.custo + a.custo_var + comissaoTaxa + taxaFixaAnuncio + a.antecipado + afiliadosVal + impostoVal;
-                      const lucro           = a.valor_venda - totalCustos;
-                      const margem          = a.valor_venda > 0 ? (lucro / a.valor_venda) * 100 : 0;
+                <div className="overflow-x-auto">
+                  <table className="w-full text-sm border-separate border-spacing-0">
+                    <thead>
+                      <tr className="text-muted-foreground text-xs font-medium">
+                        <th className="pb-2 pl-4 pr-2 text-left min-w-[160px]">Nome</th>
+                        <th className="pb-2 px-2 text-left w-[110px]">Marketplace</th>
+                        <th className="pb-2 px-2 text-right w-[88px]">Custo</th>
+                        <th className="pb-2 px-2 text-right w-[88px]">Venda</th>
+                        <th className="pb-2 px-2 text-right w-[116px]">Comissão/Taxa</th>
+                        <th className="pb-2 px-2 text-right w-[100px]">Antecipado</th>
+                        <th className="pb-2 px-2 text-right w-[84px]">Afiliados</th>
+                        <th className="pb-2 px-2 text-right w-[76px]">Imposto</th>
+                        <th className="pb-2 px-2 text-right w-[96px]">Custo Var.</th>
+                        <th className="pb-2 px-2 text-right w-[78px]">Margem</th>
+                        <th className="pb-2 px-2 text-right w-[88px]">Lucro</th>
+                        <th className="pb-2 pl-1 pr-2 w-[64px]" />
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {anuncios.map(a => {
+                        const comissaoTaxa = parseFloat(String(a.comissao_taxa) || "0"); // já inclui taxa fixa
+                        const impostoVal   = a.valor_venda * (a.imposto_pct / 100);
+                        const afiliadosVal = a.valor_venda * (a.afiliados / 100);
+                        const totalCustos  = a.custo + a.custo_var + comissaoTaxa + a.antecipado + afiliadosVal + impostoVal;
+                        const lucro        = a.valor_venda - totalCustos;
+                        const margem       = a.valor_venda > 0 ? (lucro / a.valor_venda) * 100 : 0;
 
-                      const cellBase = "bg-muted/50 py-3 flex items-center h-full";
+                        const cellBase = "bg-muted/50 py-3 flex items-center h-full";
 
-                      return (
-                        <tr key={a.id}>
-                          {/* Nome — completo em uma linha, coluna se expande conforme necessário */}
-                          <td className="pt-2 min-w-[160px] whitespace-nowrap">
-                            <div className={`${cellBase} rounded-l-md pl-4 pr-3`}>
-                              <span className="font-medium">
-                                {a.nome_anuncio}
-                              </span>
-                            </div>
-                          </td>
-
-                          {/* Marketplace */}
-                          <td className="pt-2 w-[110px]">
-                            <div className={`${cellBase} px-2`}>
-                              {a.marketplace ? (
-                                <Badge variant="outline" className="font-normal shrink-0">{a.marketplace}</Badge>
-                              ) : (
-                                <span className="text-muted-foreground">—</span>
-                              )}
-                            </div>
-                          </td>
-
-                          {/* Custo */}
-                          <td className="pt-2 w-[88px]">
-                            <div className={`${cellBase} px-2 justify-end tabular-nums whitespace-nowrap`}>
-                              {formatCurrency(a.custo)}
-                            </div>
-                          </td>
-
-                          {/* Venda */}
-                          <td className="pt-2 w-[88px]">
-                            <div className={`${cellBase} px-2 justify-end tabular-nums whitespace-nowrap`}>
-                              {formatCurrency(a.valor_venda)}
-                            </div>
-                          </td>
-
-                          {/* Comissão/Taxa */}
-                          <td className="pt-2 w-[116px]">
-                            <div className={`${cellBase} px-2 justify-end tabular-nums whitespace-nowrap`}>
-                              {formatCurrency(comissaoTaxa)}
-                            </div>
-                          </td>
-
-                          {/* Antecipado */}
-                          <td className="pt-2 w-[100px]">
-                            <div className={`${cellBase} px-2 justify-end tabular-nums whitespace-nowrap`}>
-                              {formatCurrency(a.antecipado)}
-                            </div>
-                          </td>
-
-                          {/* Afiliados */}
-                          <td className="pt-2 w-[84px]">
-                            <div className={`${cellBase} px-2 justify-end`}>
-                              <Badge variant="secondary" className="font-normal tabular-nums">{a.afiliados}%</Badge>
-                            </div>
-                          </td>
-
-                          {/* Imposto */}
-                          <td className="pt-2 w-[76px]">
-                            <div className={`${cellBase} px-2 justify-end`}>
-                              <Badge variant="secondary" className="font-normal tabular-nums">{a.imposto_pct}%</Badge>
-                            </div>
-                          </td>
-
-                          {/* Custo Variável */}
-                          <td className="pt-2 w-[96px]">
-                            <div className={`${cellBase} px-2 justify-end tabular-nums whitespace-nowrap`}>
-                              {formatCurrency(a.custo_var)}
-                            </div>
-                          </td>
-
-                          {/* Margem */}
-                          <td className="pt-2 w-[78px]">
-                            <div className={`${cellBase} px-2 justify-end font-semibold tabular-nums whitespace-nowrap ${margem >= 0 ? "text-primary" : "text-destructive"}`}>
-                              {formatPercent(margem)}
-                            </div>
-                          </td>
-
-                          {/* Lucro */}
-                          <td className="pt-2 w-[88px]">
-                            <div className={`${cellBase} px-2 justify-end font-semibold tabular-nums whitespace-nowrap ${lucro >= 0 ? "text-green-600" : "text-destructive"}`}>
-                              {formatCurrency(lucro)}
-                            </div>
-                          </td>
-
-                          {/* Ações */}
-                          <td className="pt-2 w-[64px]">
-                            <div className={`${cellBase} rounded-r-md pl-1 pr-2 justify-end gap-0.5`}>
-                              <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => openEditAnuncio(a)}>
-                                <Pencil className="h-4 w-4" />
-                              </Button>
-                              <AlertDialog>
-                                <AlertDialogTrigger asChild>
-                                  <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive hover:text-destructive">
-                                    <Trash2 className="h-4 w-4" />
-                                  </Button>
-                                </AlertDialogTrigger>
-                                <AlertDialogContent>
-                                  <AlertDialogHeader>
-                                    <AlertDialogTitle>Excluir anúncio?</AlertDialogTitle>
-                                    <AlertDialogDescription>
-                                      Tem certeza que deseja excluir "{a.nome_anuncio}"? Esta ação não pode ser desfeita.
-                                    </AlertDialogDescription>
-                                  </AlertDialogHeader>
-                                  <AlertDialogFooter>
-                                    <AlertDialogCancel>Cancelar</AlertDialogCancel>
-                                    <AlertDialogAction onClick={() => deleteAnuncio(a.id)}>Excluir</AlertDialogAction>
-                                  </AlertDialogFooter>
-                                </AlertDialogContent>
-                              </AlertDialog>
-                            </div>
-                          </td>
-                        </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
-              </div>
+                        return (
+                          <tr key={a.id}>
+                            <td className="pt-2 min-w-[160px] whitespace-nowrap">
+                              <div className={`${cellBase} rounded-l-md pl-4 pr-3`}>
+                                <span className="font-medium">{a.nome_anuncio}</span>
+                              </div>
+                            </td>
+                            <td className="pt-2 w-[110px]">
+                              <div className={`${cellBase} px-2`}>
+                                {a.marketplace ? (
+                                  <Badge variant="outline" className="font-normal shrink-0">{a.marketplace}</Badge>
+                                ) : (
+                                  <span className="text-muted-foreground">—</span>
+                                )}
+                              </div>
+                            </td>
+                            <td className="pt-2 w-[88px]">
+                              <div className={`${cellBase} px-2 justify-end tabular-nums whitespace-nowrap`}>
+                                {formatCurrency(a.custo)}
+                              </div>
+                            </td>
+                            <td className="pt-2 w-[88px]">
+                              <div className={`${cellBase} px-2 justify-end tabular-nums whitespace-nowrap`}>
+                                {formatCurrency(a.valor_venda)}
+                              </div>
+                            </td>
+                            <td className="pt-2 w-[116px]">
+                              <div className={`${cellBase} px-2 justify-end tabular-nums whitespace-nowrap`}>
+                                {formatCurrency(comissaoTaxa)}
+                              </div>
+                            </td>
+                            <td className="pt-2 w-[100px]">
+                              <div className={`${cellBase} px-2 justify-end tabular-nums whitespace-nowrap`}>
+                                {formatCurrency(a.antecipado)}
+                              </div>
+                            </td>
+                            <td className="pt-2 w-[84px]">
+                              <div className={`${cellBase} px-2 justify-end`}>
+                                <Badge variant="secondary" className="font-normal tabular-nums">{a.afiliados}%</Badge>
+                              </div>
+                            </td>
+                            <td className="pt-2 w-[76px]">
+                              <div className={`${cellBase} px-2 justify-end`}>
+                                <Badge variant="secondary" className="font-normal tabular-nums">{a.imposto_pct}%</Badge>
+                              </div>
+                            </td>
+                            <td className="pt-2 w-[96px]">
+                              <div className={`${cellBase} px-2 justify-end tabular-nums whitespace-nowrap`}>
+                                {formatCurrency(a.custo_var)}
+                              </div>
+                            </td>
+                            <td className="pt-2 w-[78px]">
+                              <div className={`${cellBase} px-2 justify-end font-semibold tabular-nums whitespace-nowrap ${margem >= 0 ? "text-primary" : "text-destructive"}`}>
+                                {formatPercent(margem)}
+                              </div>
+                            </td>
+                            <td className="pt-2 w-[88px]">
+                              <div className={`${cellBase} px-2 justify-end font-semibold tabular-nums whitespace-nowrap ${lucro >= 0 ? "text-green-600" : "text-destructive"}`}>
+                                {formatCurrency(lucro)}
+                              </div>
+                            </td>
+                            <td className="pt-2 w-[64px]">
+                              <div className={`${cellBase} rounded-r-md pl-1 pr-2 justify-end gap-0.5`}>
+                                <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => openEditAnuncio(a)}>
+                                  <Pencil className="h-4 w-4" />
+                                </Button>
+                                <AlertDialog>
+                                  <AlertDialogTrigger asChild>
+                                    <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive hover:text-destructive">
+                                      <Trash2 className="h-4 w-4" />
+                                    </Button>
+                                  </AlertDialogTrigger>
+                                  <AlertDialogContent>
+                                    <AlertDialogHeader>
+                                      <AlertDialogTitle>Excluir anúncio?</AlertDialogTitle>
+                                      <AlertDialogDescription>
+                                        Tem certeza que deseja excluir "{a.nome_anuncio}"? Esta ação não pode ser desfeita.
+                                      </AlertDialogDescription>
+                                    </AlertDialogHeader>
+                                    <AlertDialogFooter>
+                                      <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                                      <AlertDialogAction onClick={() => deleteAnuncio(a.id)}>Excluir</AlertDialogAction>
+                                    </AlertDialogFooter>
+                                  </AlertDialogContent>
+                                </AlertDialog>
+                              </div>
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
               )}
             </CardContent>
           </Card>
