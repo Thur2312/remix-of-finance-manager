@@ -763,31 +763,31 @@ function CalculadoraPrecificacaoContent() {
               <Separator />
 
               {/* ── Resultado + Modos de Cálculo + Botão ─────────────────── */}
-              <div className="flex flex-col gap-4">
+              <div className="flex flex-col sm:flex-row items-stretch gap-3">
 
-                {/* Linha 1: Margem Real + Seletor de modos */}
-                <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4">
-
-                  {/* Chip Margem Real — agora com R$ */}
-                  <div className="flex items-center gap-2 px-4 py-2.5 bg-muted/50 rounded-lg border shrink-0">
-                    <TrendingUp className="h-4 w-4 text-muted-foreground" />
-                    <div>
-                      <p className="text-[10px] text-muted-foreground uppercase tracking-wide">Margem Real</p>
-                      <p className={`text-base font-bold leading-tight ${results.margemReal >= 0 ? "text-primary" : "text-destructive"}`}>
-                        {formatPercent(results.margemReal)}
-                      </p>
-                      <p className={`text-xs leading-tight ${results.lucro >= 0 ? "text-muted-foreground" : "text-destructive"}`}>
-                        {formatCurrency(results.lucro)}
-                      </p>
-                    </div>
+                {/* Chip Margem Real */}
+                <div className="flex items-center gap-3 px-4 py-3 bg-muted/50 rounded-lg border shrink-0">
+                  <TrendingUp className="h-4 w-4 text-muted-foreground" />
+                  <div>
+                    <p className="text-[10px] text-muted-foreground uppercase tracking-wide">Margem Real</p>
+                    <p className={`text-base font-bold leading-tight ${results.margemReal >= 0 ? "text-primary" : "text-destructive"}`}>
+                      {formatPercent(results.margemReal)}
+                    </p>
+                    <p className={`text-xs leading-tight ${results.lucro >= 0 ? "text-muted-foreground" : "text-destructive"}`}>
+                      {formatCurrency(results.lucro)}
+                    </p>
                   </div>
+                </div>
 
-                  {/* Seletor de modos */}
-                  <div className="flex gap-2 flex-wrap">
+                {/* Centro: tabs + conteúdo do modo */}
+                <div className="flex-1 flex flex-col gap-2 p-4 bg-muted/30 rounded-lg border">
+
+                  {/* Tabs */}
+                  <div className="flex gap-2">
                     {(["preco", "margem", "lucro"] as const).map(modo => (
                       <button key={modo} type="button"
                         onClick={() => setModoCalculo(modo)}
-                        className={`px-3 py-1.5 rounded-lg border text-xs font-medium transition-all ${
+                        className={`px-3 py-1 rounded-md border text-xs font-medium transition-all ${
                           modoCalculo === modo
                             ? "bg-primary text-primary-foreground border-primary"
                             : "border-border bg-background text-muted-foreground hover:bg-muted"
@@ -796,88 +796,64 @@ function CalculadoraPrecificacaoContent() {
                       </button>
                     ))}
                   </div>
-                </div>
 
-                {/* Linha 2: Conteúdo do modo + Botão Cadastrar */}
-                <div className="flex flex-col sm:flex-row items-start sm:items-end gap-4">
-
-                  {/* Modo: Por Preço */}
+                  {/* Conteúdo do modo selecionado */}
                   {modoCalculo === "preco" && (
-                    <div className="flex items-center gap-2 px-4 py-3 bg-muted/30 border border-border rounded-lg text-sm text-muted-foreground flex-1">
-                      <Info className="h-4 w-4 flex-shrink-0" />
-                      <span>Informe o preço no campo "Preço Promocional" acima e veja a margem calculada automaticamente.</span>
-                    </div>
+                    <p className="text-xs text-muted-foreground">
+                      Informe o preço no campo "Preço Promocional" acima para ver a margem calculada.
+                    </p>
                   )}
 
-                  {/* Modo: Por Margem */}
                   {modoCalculo === "margem" && (
-                    <div className="flex-1 space-y-2">
-                      <Label className="text-sm">
-                        Margem desejada: <span className="text-primary font-bold">{margemDesejadaSlider}%</span>
-                      </Label>
-                      <input
-                        type="range" min="1" max="90" step="1"
+                    <div className="space-y-1">
+                      <div className="flex items-center justify-between">
+                        <span className="text-xs text-muted-foreground">Margem desejada</span>
+                        <span className="text-xs font-bold text-primary">{margemDesejadaSlider}%</span>
+                      </div>
+                      <input type="range" min="1" max="90" step="1"
                         value={margemDesejadaSlider}
                         onChange={e => setMargemDesejadaSlider(e.target.value)}
-                        className="w-full accent-primary"
-                      />
-                      <div className="flex justify-between text-[10px] text-muted-foreground">
-                        <span>1%</span><span>90%</span>
-                      </div>
+                        className="w-full accent-primary" />
                       {precoSugerido > 0 && (
-                        <div className="flex items-center gap-2 px-4 py-2.5 bg-primary/5 border border-primary/20 rounded-lg">
-                          <Lightbulb className="h-4 w-4 text-primary flex-shrink-0" />
-                          <div>
-                            <p className="text-[10px] text-muted-foreground uppercase tracking-wide">
-                              Preço para {margemDesejadaSlider}% de margem
-                            </p>
-                            <p className="text-base font-bold text-primary">{formatCurrency(precoSugerido)}</p>
-                          </div>
-                        </div>
+                        <p className="text-xs text-muted-foreground">
+                          Preço sugerido: <span className="font-bold text-primary">{formatCurrency(precoSugerido)}</span>
+                        </p>
                       )}
                     </div>
                   )}
 
-                  {/* Modo: Por Lucro Desejado */}
                   {modoCalculo === "lucro" && (
-                    <div className="flex-1 space-y-2">
-                      <Label htmlFor="lucroDesejado" className="text-sm">Lucro desejado por venda (R$)</Label>
+                    <div className="flex items-center gap-3">
                       <Input
                         id="lucroDesejado" type="text" inputMode="decimal"
                         value={lucroDesejado}
                         onChange={e => handleDecimalInput(e.target.value, setLucroDesejado)}
-                        placeholder="Ex: 6,00" className="h-10 max-w-[200px]"
+                        placeholder="Lucro desejado (R$)" className="h-8 text-sm max-w-[180px]"
                       />
                       {precoSugerido > 0 && parseInput(lucroDesejado) > 0 && (
-                        <div className="flex items-center gap-2 px-4 py-2.5 bg-primary/5 border border-primary/20 rounded-lg">
-                          <Lightbulb className="h-4 w-4 text-primary flex-shrink-0" />
-                          <div>
-                            <p className="text-[10px] text-muted-foreground uppercase tracking-wide">
-                              Preço para lucrar {formatCurrency(parseInput(lucroDesejado))}
-                            </p>
-                            <p className="text-base font-bold text-primary">{formatCurrency(precoSugerido)}</p>
-                          </div>
-                        </div>
+                        <p className="text-xs text-muted-foreground">
+                          Preço sugerido: <span className="font-bold text-primary">{formatCurrency(precoSugerido)}</span>
+                        </p>
                       )}
                     </div>
                   )}
-
-                  {/* Botão Cadastrar — sempre visível */}
-                  <Dialog open={isDialogOpen} onOpenChange={open => { setIsDialogOpen(open); if (!open) resetForm(); }}>
-                    <DialogTrigger asChild>
-                      <Button onClick={openNovoAnuncio} className="gap-2 shrink-0">
-                        <ShoppingBag className="h-4 w-4" />
-                        Cadastrar Anúncio
-                        {plataformaSelecionada && (
-                          <Badge variant="secondary" className="ml-1 text-xs font-normal">
-                            {plataformaSelecionada}
-                          </Badge>
-                        )}
-                      </Button>
-                    </DialogTrigger>
-                    {dialogContent}
-                  </Dialog>
                 </div>
+
+                {/* Botão Cadastrar */}
+                <Dialog open={isDialogOpen} onOpenChange={open => { setIsDialogOpen(open); if (!open) resetForm(); }}>
+                  <DialogTrigger asChild>
+                    <Button onClick={openNovoAnuncio} className="gap-2 shrink-0 self-stretch">
+                      <ShoppingBag className="h-4 w-4" />
+                      Cadastrar Anúncio
+                      {plataformaSelecionada && (
+                        <Badge variant="secondary" className="ml-1 text-xs font-normal">
+                          {plataformaSelecionada}
+                        </Badge>
+                      )}
+                    </Button>
+                  </DialogTrigger>
+                  {dialogContent}
+                </Dialog>
               </div>
             </CardContent>
           </Card>
