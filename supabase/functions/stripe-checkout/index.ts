@@ -102,7 +102,6 @@ Deno.serve(async (req) => {
                 },
               },
             }),
-        proration_behavior: "none",
         metadata: { userId, plan: selectedPlan },
       },
 
@@ -116,7 +115,7 @@ Deno.serve(async (req) => {
 
       metadata: { userId, plan: selectedPlan },
       success_url: `${req.headers.get("origin")}/dashboard?trial=success`,
-      cancel_url: `${req.headers.get("origin")}/setup-payment?canceled=true`,
+      cancel_url: `${req.headers.get("origin")}/planos?canceled=true`,
     });
 
     return new Response(JSON.stringify({ url: session.url }), {

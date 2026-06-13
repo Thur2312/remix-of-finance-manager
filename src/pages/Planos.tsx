@@ -1,4 +1,4 @@
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -15,6 +15,7 @@ import {
   Loader2,
   XCircle,
   Clock,
+  AlertCircle,
 } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
@@ -51,20 +52,20 @@ const sharedFeatures = [
 
 const plans = [
   {
-  id: 'free' as const,
-  name: 'Starter',
-  price: 'Free',
-  priceSuffix: '/mês',
-  billingNote: null as string | null,
-  description: 'Ideal para vendedores iniciantes',
-  icon: Zap,
-  features: [
-    'Lucro real por venda',
-    'Dashboard básico',
-    'Suporte por e-mail',
-  ],
-  popular: false,
-},
+    id: 'free' as const,
+    name: 'Starter',
+    price: 'Free',
+    priceSuffix: '/mês',
+    billingNote: null as string | null,
+    description: 'Ideal para vendedores iniciantes',
+    icon: Zap,
+    features: [
+      'Lucro real por venda',
+      'Dashboard básico',
+      'Suporte por e-mail',
+    ],
+    popular: false,
+  },
   {
     id: 'mensal' as const,
     name: 'Mensal',
@@ -135,15 +136,17 @@ function trialDaysLeft(trialEndsAt: string | null): number | null {
 
 export function PlanosContent() {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const canceledFromCheckout = searchParams.get('canceled') === 'true';
+
   const { user } = useAuth();
 
-  const { handleCheckout, handleCancel: cancelSubscription, loadingCancel, loadingCheckout } = useStripeCheckout();
+const { handleCheckout, handleCancel: cancelSubscription, loadingCancel, loadingPlanId } = useStripeCheckout();
 
   const [profile, setProfile] = useState<ProfileData | null>(null);
   const [loadingProfile, setLoadingProfile] = useState(true);
   const [cancelSuccess, setCancelSuccess] = useState(false);
 
-  // Fetch current plan from Supabase
   useEffect(() => {
     if (!user) return;
     supabase
@@ -160,7 +163,7 @@ export function PlanosContent() {
   const userPlan: UserPlan = profile?.plan ?? 'free';
   const isPaid = userPlan === 'mensal' || userPlan === 'semestral' || userPlan === 'anual';
   const isTrial = userPlan === 'trial';
-  const isActive = isPaid || isTrial; // tem assinatura ativa (mesmo em trial)
+  const isActive = isPaid || isTrial;
   const daysLeft = trialDaysLeft(profile?.trial_ends_at ?? null);
 
   const currentPriceLabel =
@@ -175,7 +178,7 @@ export function PlanosContent() {
     'Mensal';
 
   const handleSelectPlan = (planId: PaidPlanId) => {
-    if (isActive) return; // já tem assinatura, botão fica desabilitado/oculto
+    if (isActive) return;
     if (user) {
       handleCheckout(planId);
     } else {
@@ -195,7 +198,6 @@ export function PlanosContent() {
     }
   };
 
-  // CTA de cada card
   const renderPaidCta = (planId: PaidPlanId, label: string) => {
     if (loadingProfile) {
       return (
@@ -215,7 +217,6 @@ export function PlanosContent() {
       );
     }
 
-    // Usuário ativo (pago ou trial) neste plano específico
     if (userPlan === planId) {
       return (
         <Button
@@ -233,7 +234,6 @@ export function PlanosContent() {
       );
     }
 
-    // Usuário ativo em outro plano (ou trial de outro plano)
     if (isActive) {
       return (
         <Button className="w-full mt-4" variant="outline" disabled>
@@ -241,15 +241,14 @@ export function PlanosContent() {
         </Button>
       );
     }
-
-    return (
+      return (
       <Button
         className="w-full mt-4"
         variant={planId === 'anual' ? 'default' : 'outline'}
         onClick={() => handleSelectPlan(planId)}
-        disabled={loadingCheckout}
+        disabled={loadingPlanId !== null} // desabilita todos enquanto um está carregando
       >
-        {loadingCheckout ? (
+        {loadingPlanId === planId ? (
           <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Redirecionando...</>
         ) : (
           <>{label} <ArrowRight className="ml-2 h-4 w-4" /></>
@@ -268,6 +267,14 @@ export function PlanosContent() {
         </div>
         <p className="text-muted-foreground">Escolha o plano ideal para o seu negócio</p>
       </div>
+
+      {/* Aviso de checkout cancelado */}
+      {canceledFromCheckout && (
+        <div className="flex items-center gap-3 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800 dark:border-amber-800 dark:bg-amber-950/30 dark:text-amber-400">
+          <AlertCircle className="h-4 w-4 flex-shrink-0" />
+          <span>Assinatura não concluída. Você pode tentar novamente quando quiser.</span>
+        </div>
+      )}
 
       {/* Active plan banner */}
       {!loadingProfile && isActive && (
@@ -307,7 +314,7 @@ export function PlanosContent() {
 
       {/* Plans Grid */}
       <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6 max-w-6xl mx-auto w-full">
-          {plans.map((plan) => {
+        {plans.map((plan) => {
           const Icon = plan.icon;
           const isCurrentPlan = plan.id === userPlan;
 
@@ -321,11 +328,10 @@ export function PlanosContent() {
                 </div>
               )}
 
-              {/* "Seu plano atual" badge */}
               {!loadingProfile && isCurrentPlan && (
                 <div className="absolute top-3 right-3">
                   <Badge variant="secondary" className="text-xs">
-                    {isTrial ? 'Em trial' : 'Seu plano atual'}
+                    {isTrial && plan.id !== 'free' ? 'Em trial' : 'Seu plano atual'}
                   </Badge>
                 </div>
               )}
@@ -348,10 +354,10 @@ export function PlanosContent() {
                   <p className="text-xs text-muted-foreground mt-1">{plan.billingNote}</p>
                 )}
                 {plan.id !== 'free' && !isActive && (
-                <p className="text-xs text-muted-foreground mt-1">
-                  🎉 5 dias grátis — cancele antes de ser cobrado
-                </p>
-              )}
+                  <p className="text-xs text-muted-foreground mt-1">
+                    🎉 5 dias grátis — cancele antes de ser cobrado
+                  </p>
+                )}
               </CardHeader>
 
               <CardContent className="flex flex-col flex-1">
@@ -433,7 +439,7 @@ export function PlanosContent() {
         </CardContent>
       </Card>
 
-      {/* Bottom CTA — hide when already subscribed */}
+      {/* Bottom CTA */}
       {!isActive && (
         <Card className="border-primary/20 bg-primary/5">
           <CardContent className="py-8 text-center">
@@ -441,13 +447,13 @@ export function PlanosContent() {
             <p className="text-sm text-muted-foreground mb-4 max-w-md mx-auto">
               Junte-se a vendedores que já usam o Seller Finance para maximizar seus lucros.
             </p>
-            <Button onClick={() => handleSelectPlan('anual')} disabled={loadingCheckout}>
-              {loadingCheckout ? (
-                <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Redirecionando...</>
-              ) : (
-                <>Começar 5 dias grátis <ArrowRight className="ml-2 h-4 w-4" /></>
-              )}
-            </Button>
+            tsx<Button onClick={() => handleSelectPlan('anual')} disabled={loadingPlanId !== null}>
+            {loadingPlanId === 'anual' ? (
+              <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Redirecionando...</>
+            ) : (
+              <>Começar 5 dias grátis <ArrowRight className="ml-2 h-4 w-4" /></>
+            )}
+          </Button>
           </CardContent>
         </Card>
       )}

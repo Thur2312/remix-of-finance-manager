@@ -2,12 +2,11 @@ import { useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 
 export function useStripeCheckout() {
-  const [loadingCheckout, setLoadingCheckout] = useState(false);
-  const [loadingCancel, setLoadingCancel]     = useState(false);
+  const [loadingPlanId, setLoadingPlanId] = useState<string | null>(null);
+  const [loadingCancel, setLoadingCancel] = useState(false);
 
-  // ── Iniciar checkout (com trial) ──────────────────────────────────
   const handleCheckout = async (planId: 'mensal' | 'semestral' | 'anual' = 'mensal') => {
-    setLoadingCheckout(true);
+    setLoadingPlanId(planId);
     try {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
@@ -15,12 +14,6 @@ export function useStripeCheckout() {
       const { data, error } = await supabase.functions.invoke("stripe-checkout", {
         body: { userId: user.id, email: user.email, planId },
       });
-      
-      if (error) {
-      const errorBody = await error.context?.json?.();
-      console.error("Erro detalhado:", errorBody);
-      return;
-    }
 
       if (error) {
         console.error("Erro ao iniciar checkout:", error);
@@ -29,11 +22,10 @@ export function useStripeCheckout() {
 
       window.location.href = data.url;
     } finally {
-      setLoadingCheckout(false);
+      setLoadingPlanId(null);
     }
   };
 
-  // ── Cancelar assinatura ───────────────────────────────────────────
   const handleCancel = async (): Promise<{ success: boolean; error?: string }> => {
     setLoadingCancel(true);
     try {
@@ -55,5 +47,5 @@ export function useStripeCheckout() {
     }
   };
 
-  return { handleCheckout, handleCancel, loadingCheckout, loadingCancel };
+  return { handleCheckout, handleCancel, loadingPlanId, loadingCancel };
 }
