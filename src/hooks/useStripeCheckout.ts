@@ -15,6 +15,12 @@ export function useStripeCheckout() {
       const { data, error } = await supabase.functions.invoke("stripe-checkout", {
         body: { userId: user.id, email: user.email, planId },
       });
+      
+      if (error) {
+      const errorBody = await error.context?.json?.();
+      console.error("Erro detalhado:", errorBody);
+      return;
+    }
 
       if (error) {
         console.error("Erro ao iniciar checkout:", error);
