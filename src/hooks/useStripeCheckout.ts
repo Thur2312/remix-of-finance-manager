@@ -6,14 +6,14 @@ export function useStripeCheckout() {
   const [loadingCancel, setLoadingCancel]     = useState(false);
 
   // ── Iniciar checkout (com trial) ──────────────────────────────────
-  const handleCheckout = async () => {
+  const handleCheckout = async (planId: 'mensal' | 'semestral' | 'anual' = 'mensal') => {
     setLoadingCheckout(true);
     try {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
 
       const { data, error } = await supabase.functions.invoke("stripe-checkout", {
-        body: { userId: user.id, email: user.email },
+        body: { userId: user.id, email: user.email, planId },
       });
 
       if (error) {

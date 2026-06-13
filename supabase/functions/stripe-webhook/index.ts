@@ -10,8 +10,14 @@ const supabase = createClient(
   Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
 );
 
+// Mapa price_id -> nome do plano
+const PLAN_BY_PRICE_ID: Record<string, string> = {
+  "price_1TWhxh2E4GCWvClvbQrPxqy9": "mensal",
+  "price_1Thw3m2E4GCWvClvH7VhYD8N": "semestral",
+  "price_1Thw0Q2E4GCWvClvEIMF4mCy": "anual",
+};
+
 // ── Helper: resolve userId com fallbacks ──────────────────────────────────────
-// Ordem: 1) metadata da subscription  2) metadata do checkout  3) tabela subscriptions
 async function resolveUserId(
   subId?: string,
   metaUserId?: string,
@@ -32,22 +38,36 @@ async function resolveUserId(
   return null;
 }
 
+// ── Helper: resolve o nome do plano pago a partir da subscription ────────────
+function resolvePaidPlan(sub: Stripe.Subscription): string {
+  if (sub.metadata?.plan && Object.values(PLAN_BY_PRICE_ID).includes(sub.metadata.plan)) {
+    return sub.metadata.plan;
+  }
+
+  const priceId = sub.items.data[0]?.price?.id;
+  if (priceId && PLAN_BY_PRICE_ID[priceId]) {
+    return PLAN_BY_PRICE_ID[priceId];
+  }
+
+  return "mensal";
+}
+
 Deno.serve(async (req) => {
   const signature = req.headers.get("stripe-signature")!;
   const body = await req.text();
 
   let event: Stripe.Event;
 
-try {
-  event = await stripe.webhooks.constructEventAsync(
-    body,
-    signature,
-    Deno.env.get("STRIPE_WEBHOOK_SECRET")!
-  );
-} catch (err) {
-  console.error("Erro na assinatura:", err.message);
-  return new Response("Webhook signature inválida", { status: 400 });
-}
+  try {
+    event = await stripe.webhooks.constructEventAsync(
+      body,
+      signature,
+      Deno.env.get("STRIPE_WEBHOOK_SECRET")!
+    );
+  } catch (err) {
+    console.error("Erro na assinatura:", err.message);
+    return new Response("Webhook signature inválida", { status: 400 });
+  }
 
   // ──────────────────────────────────────────────────────────────────
   // checkout.session.completed
@@ -57,18 +77,20 @@ try {
 
     if (session.subscription) {
       const sub = await stripe.subscriptions.retrieve(
-        session.subscription as string
+        session.subscription as string,
+        { expand: ["items.data.price"] }
       );
 
       const userId = await resolveUserId(
         sub.id,
         sub.metadata?.userId,
-        session.metadata?.userId   // fallback: metadata do checkout
+        session.metadata?.userId
       );
 
       if (userId) {
-        const emTrial    = sub.status === "trialing";
-        const plano      = emTrial ? "trial" : "profissional";
+        const emTrial = sub.status === "trialing";
+        const planoPago = resolvePaidPlan(sub);
+        const plano = emTrial ? "trial" : planoPago;
         const trialEndsAt = emTrial && sub.trial_end
           ? new Date(sub.trial_end * 1000).toISOString()
           : null;
@@ -91,7 +113,7 @@ try {
   }
 
   // ──────────────────────────────────────────────────────────────────
-  // invoice.payment_succeeded — trial converteu OU renovação mensal
+  // invoice.payment_succeeded — trial converteu OU renovação
   // ──────────────────────────────────────────────────────────────────
   if (event.type === "invoice.payment_succeeded") {
     const invoice = event.data.object as Stripe.Invoice;
@@ -103,20 +125,23 @@ try {
     }
 
     const sub = await stripe.subscriptions.retrieve(
-      invoice.subscription as string
+      invoice.subscription as string,
+      { expand: ["items.data.price"] }
     );
 
     const userId = await resolveUserId(sub.id, sub.metadata?.userId);
 
     if (userId) {
+      const planoPago = resolvePaidPlan(sub);
+
       await supabase
         .from("profiles")
-        .update({ plan: "profissional", trial_ends_at: null })
+        .update({ plan: planoPago, trial_ends_at: null })
         .eq("id", userId);
 
       await supabase
         .from("subscriptions")
-        .update({ plan: "profissional", status: "active", user_plan: "profissional" })
+        .update({ plan: planoPago, status: "active", user_plan: planoPago })
         .eq("user_id", userId);
     }
   }
@@ -130,8 +155,9 @@ try {
     const userId = await resolveUserId(sub.id, sub.metadata?.userId);
 
     if (userId) {
-      const emTrial     = sub.status === "trialing";
-      const plano       = emTrial ? "trial" : "profissional";
+      const emTrial = sub.status === "trialing";
+      const planoPago = resolvePaidPlan(sub);
+      const plano = emTrial ? "trial" : planoPago;
       const trialEndsAt = emTrial && sub.trial_end
         ? new Date(sub.trial_end * 1000).toISOString()
         : null;

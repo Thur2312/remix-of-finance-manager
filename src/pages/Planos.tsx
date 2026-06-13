@@ -1,7 +1,6 @@
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import {
   CheckCircle2,
@@ -9,8 +8,6 @@ import {
   Sparkles,
   Crown,
   Zap,
-  Check,
-  X,
   HelpCircle,
   Users,
   TrendingUp,
@@ -29,7 +26,8 @@ import { supabase } from '@/integrations/supabase/client';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
-type UserPlan = 'free' | 'trial' | 'profissional';
+type UserPlan = 'free' | 'trial' | 'mensal' | 'semestral' | 'anual' | 'cancelado' | string;
+type PaidPlanId = 'mensal' | 'semestral' | 'anual';
 
 interface ProfileData {
   plan: UserPlan;
@@ -38,56 +36,68 @@ interface ProfileData {
 
 // ─── Static data ──────────────────────────────────────────────────────────────
 
+const sharedFeatures = [
+  'Lucro real por venda',
+  'Dashboard avançado',
+  'Integrações ilimitadas',
+  'Análise inteligente por produto',
+  'DRE automatizado',
+  'Precificação otimizada',
+  'Suporte prioritário',
+  'Fluxo de caixa avançado',
+  'Relatórios customizados',
+  'Consultoria dedicada',
+];
+
 const plans = [
   {
-    name: 'Starter',
-    price: 'Free',
-    period: '/mês',
-    description: 'Ideal para vendedores iniciantes',
+  id: 'free' as const,
+  name: 'Starter',
+  price: 'Free',
+  priceSuffix: '/mês',
+  billingNote: null as string | null,
+  description: 'Ideal para vendedores iniciantes',
+  icon: Zap,
+  features: [
+    'Lucro real por venda',
+    'Dashboard básico',
+    'Suporte por e-mail',
+  ],
+  popular: false,
+},
+  {
+    id: 'mensal' as const,
+    name: 'Mensal',
+    price: 'R$ 74,99',
+    priceSuffix: '/mês',
+    billingNote: null as string | null,
+    description: 'Flexibilidade sem compromisso',
     icon: Zap,
-    features: [
-      'Lucro real por venda',
-      'Dashboard básico',
-      'Suporte por e-mail',
-    ],
-    cta: 'Plano Atual',
+    features: sharedFeatures,
     popular: false,
   },
   {
-    name: 'Profissional',
-    price: 'R$ 74,99',
-    period: '/mês',
-    description: 'Para vendedores em crescimento',
+    id: 'semestral' as const,
+    name: 'Semestral',
+    price: 'R$ 57,90',
+    priceSuffix: '/mês',
+    billingNote: '6x de R$ 57,90 — total R$ 347,40',
+    description: 'Economize pagando por 6 meses',
+    icon: Sparkles,
+    features: sharedFeatures,
+    popular: false,
+  },
+  {
+    id: 'anual' as const,
+    name: 'Anual',
+    price: 'R$ 37,90',
+    priceSuffix: '/mês',
+    billingNote: '12x de R$ 37,90 — total R$ 454,80',
+    description: 'O melhor custo-benefício',
     icon: Crown,
-    features: [
-      'Lucro real por venda',
-      'Dashboard avançado',
-      'Integrações ilimitadas',
-      'Análise inteligente por produto',
-      'DRE automatizado',
-      'Precificação otimizada',
-      'Suporte prioritário',
-      'Fluxo de caixa avançado',
-      'Relatórios customizados',
-      'Consultoria dedicada',
-    ],
-    cta: 'Assinar Profissional',
+    features: sharedFeatures,
     popular: true,
   },
-];
-
-const comparisonFeatures = [
-  { feature: 'Lucro real por venda', basico: true, profissional: true },
-  { feature: 'Dashboard básico', basico: true, profissional: true },
-  { feature: 'Dashboard avançado', basico: false, profissional: true },
-  { feature: 'Integração com marketplaces', basico: 'ilimitada', profissional: 'ilimitada' },
-  { feature: 'Análise inteligente por produto', basico: false, profissional: true },
-  { feature: 'DRE automatizado', basico: false, profissional: true },
-  { feature: 'Precificação otimizada', basico: false, profissional: true },
-  { feature: 'Suporte prioritário', basico: false, profissional: true },
-  { feature: 'Fluxo de caixa avançado', basico: false, profissional: true },
-  { feature: 'Relatórios customizados', basico: false, profissional: true },
-  { feature: 'Consultoria dedicada', basico: false, profissional: true },
 ];
 
 const faqs = [
@@ -97,11 +107,15 @@ const faqs = [
   },
   {
     question: 'Como funciona o período de teste?',
-    answer: 'Ao assinar o plano Profissional você tem 5 dias grátis. O cartão é solicitado no cadastro, mas a cobrança só acontece após o período de teste — e somente se você não cancelar.',
+    answer: 'Ao assinar qualquer plano você tem 5 dias grátis. O cartão é solicitado no cadastro, mas a cobrança só acontece após o período de teste — e somente se você não cancelar.',
   },
   {
     question: 'Preciso de cartão de crédito para testar?',
     answer: 'Sim, pedimos o cartão no início para garantir a continuidade caso você queira manter o plano. Mas não cobramos nada nos primeiros 5 dias.',
+  },
+  {
+    question: 'Qual a diferença entre os planos Mensal, Semestral e Anual?',
+    answer: 'Todos liberam exatamente os mesmos recursos. A diferença é só o ciclo de cobrança: Mensal é cobrado todo mês (R$ 74,99), Semestral a cada 6 meses (R$ 347,40, equivalente a R$ 57,90/mês) e Anual a cada 12 meses (R$ 454,80, equivalente a R$ 37,90/mês).',
   },
   {
     question: 'Quais marketplaces são suportados?',
@@ -123,7 +137,7 @@ export function PlanosContent() {
   const navigate = useNavigate();
   const { user } = useAuth();
 
-  const { handleCheckout, handleCancel: cancelSubscription, loadingCancel } = useStripeCheckout();
+  const { handleCheckout, handleCancel: cancelSubscription, loadingCancel, loadingCheckout } = useStripeCheckout();
 
   const [profile, setProfile] = useState<ProfileData | null>(null);
   const [loadingProfile, setLoadingProfile] = useState(true);
@@ -144,30 +158,36 @@ export function PlanosContent() {
   }, [user]);
 
   const userPlan: UserPlan = profile?.plan ?? 'free';
-  const isPro = userPlan === 'profissional';
+  const isPaid = userPlan === 'mensal' || userPlan === 'semestral' || userPlan === 'anual';
   const isTrial = userPlan === 'trial';
-  const isActive = isPro || isTrial; // has a paid subscription (even in trial)
+  const isActive = isPaid || isTrial; // tem assinatura ativa (mesmo em trial)
   const daysLeft = trialDaysLeft(profile?.trial_ends_at ?? null);
 
-  const handleSelectPlan = (plan: typeof plans[0]) => {
-    if (plan.name === 'Starter') {
-      navigate('/fluxo-caixa');
-      return;
-    }
-    if (isActive) return; // already subscribed, button is hidden
+  const currentPriceLabel =
+    userPlan === 'anual' ? 'R$ 37,90/mês (cobrança anual)' :
+    userPlan === 'semestral' ? 'R$ 57,90/mês (cobrança semestral)' :
+    userPlan === 'mensal' ? 'R$ 74,99/mês' :
+    null;
+
+  const currentPlanName =
+    userPlan === 'anual' ? 'Anual' :
+    userPlan === 'semestral' ? 'Semestral' :
+    'Mensal';
+
+  const handleSelectPlan = (planId: PaidPlanId) => {
+    if (isActive) return; // já tem assinatura, botão fica desabilitado/oculto
     if (user) {
-      handleCheckout();
+      handleCheckout(planId);
     } else {
       navigate('/user/auth?redirect=/planos');
     }
   };
 
   const handleCancel = async () => {
-    if (!window.confirm('Tem certeza que quer cancelar sua assinatura? Você perderá o acesso ao plano Profissional.')) return;
+    if (!window.confirm('Tem certeza que quer cancelar sua assinatura? Você perderá o acesso aos recursos avançados.')) return;
     const result = await cancelSubscription();
     if (result.success) {
       setCancelSuccess(true);
-      // Refresh profile
       if (user) {
         const { data } = await supabase.from('profiles').select('plan, trial_ends_at').eq('id', user.id).single();
         if (data) setProfile(data as unknown as ProfileData);
@@ -175,8 +195,8 @@ export function PlanosContent() {
     }
   };
 
-  // Decide what to render in the Profissional card CTA
-  const renderProCta = () => {
+  // CTA de cada card
+  const renderPaidCta = (planId: PaidPlanId, label: string) => {
     if (loadingProfile) {
       return (
         <Button className="w-full mt-4" disabled>
@@ -195,7 +215,8 @@ export function PlanosContent() {
       );
     }
 
-    if (isActive) {
+    // Usuário ativo (pago ou trial) neste plano específico
+    if (userPlan === planId) {
       return (
         <Button
           className="w-full mt-4"
@@ -212,10 +233,27 @@ export function PlanosContent() {
       );
     }
 
+    // Usuário ativo em outro plano (ou trial de outro plano)
+    if (isActive) {
+      return (
+        <Button className="w-full mt-4" variant="outline" disabled>
+          Plano indisponível
+        </Button>
+      );
+    }
+
     return (
-      <Button className="w-full mt-4" variant="default" onClick={() => handleSelectPlan(plans[1])}>
-        Assinar Profissional
-        <ArrowRight className="ml-2 h-4 w-4" />
+      <Button
+        className="w-full mt-4"
+        variant={planId === 'anual' ? 'default' : 'outline'}
+        onClick={() => handleSelectPlan(planId)}
+        disabled={loadingCheckout}
+      >
+        {loadingCheckout ? (
+          <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Redirecionando...</>
+        ) : (
+          <>{label} <ArrowRight className="ml-2 h-4 w-4" /></>
+        )}
       </Button>
     );
   };
@@ -248,13 +286,18 @@ export function PlanosContent() {
                     {daysLeft !== null && ` — ${daysLeft} dia${daysLeft !== 1 ? 's' : ''} restante${daysLeft !== 1 ? 's' : ''}`}
                   </p>
                   <p className="text-xs text-muted-foreground">
-                    Após o trial, você será cobrado R$ 74,99/mês automaticamente. Cancele a qualquer momento.
+                    Após o trial, a cobrança será feita automaticamente conforme o plano escolhido. Cancele a qualquer momento.
                   </p>
                 </>
               ) : (
                 <>
-                  <p className="text-sm font-semibold text-primary">Você está no plano Profissional</p>
-                  <p className="text-xs text-muted-foreground">Acesso completo a todas as funcionalidades.</p>
+                  <p className="text-sm font-semibold text-primary">
+                    Você está no plano {currentPlanName}
+                  </p>
+                  <p className="text-xs text-muted-foreground">
+                    Acesso completo a todas as funcionalidades.
+                    {currentPriceLabel && ` ${currentPriceLabel}.`}
+                  </p>
                 </>
               )}
             </div>
@@ -263,12 +306,10 @@ export function PlanosContent() {
       )}
 
       {/* Plans Grid */}
-      <div className="grid md:grid-cols-2 gap-6 max-w-2xl mx-auto w-full">
-        {plans.map((plan) => {
+      <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6 max-w-6xl mx-auto w-full">
+          {plans.map((plan) => {
           const Icon = plan.icon;
-          const isCurrentPlan =
-            (plan.name === 'Starter' && userPlan === 'free') ||
-            (plan.name === 'Profissional' && isActive);
+          const isCurrentPlan = plan.id === userPlan;
 
           return (
             <Card key={plan.name} className={`relative flex flex-col ${plan.popular ? 'border-primary shadow-md' : ''}`}>
@@ -284,7 +325,7 @@ export function PlanosContent() {
               {!loadingProfile && isCurrentPlan && (
                 <div className="absolute top-3 right-3">
                   <Badge variant="secondary" className="text-xs">
-                    {isTrial && plan.name === 'Profissional' ? 'Em trial' : 'Seu plano atual'}
+                    {isTrial ? 'Em trial' : 'Seu plano atual'}
                   </Badge>
                 </div>
               )}
@@ -301,13 +342,16 @@ export function PlanosContent() {
                 </div>
                 <div className="flex items-end gap-1 mt-2">
                   <span className="text-3xl font-bold">{plan.price}</span>
-                  {plan.period && <span className="text-muted-foreground text-sm mb-1">{plan.period}</span>}
+                  <span className="text-muted-foreground text-sm mb-1">{plan.priceSuffix}</span>
                 </div>
-                {plan.name === 'Profissional' && !isActive && (
-                  <p className="text-xs text-muted-foreground mt-1">
-                    🎉 5 dias grátis — cancele antes de ser cobrado
-                  </p>
+                {plan.billingNote && (
+                  <p className="text-xs text-muted-foreground mt-1">{plan.billingNote}</p>
                 )}
+                {plan.id !== 'free' && !isActive && (
+                <p className="text-xs text-muted-foreground mt-1">
+                  🎉 5 dias grátis — cancele antes de ser cobrado
+                </p>
+              )}
               </CardHeader>
 
               <CardContent className="flex flex-col flex-1">
@@ -322,68 +366,24 @@ export function PlanosContent() {
                   </ul>
                 </div>
 
-                {plan.name === 'Profissional' ? (
-                  renderProCta()
-                ) : (
+                {plan.id === 'free' ? (
                   <Button
                     className="w-full mt-4"
                     variant="outline"
-                    onClick={() => handleSelectPlan(plan)}
+                    onClick={() => navigate('/fluxo-caixa')}
                     disabled={userPlan === 'free' && !isActive}
                   >
                     {userPlan === 'free' ? 'Plano Atual' : 'Ver Starter'}
                     <ArrowRight className="ml-2 h-4 w-4" />
                   </Button>
+                ) : (
+                  renderPaidCta(plan.id as PaidPlanId, `Assinar ${plan.name}`)
                 )}
               </CardContent>
             </Card>
           );
         })}
       </div>
-
-      {/* Comparison Table */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-base">Compare os Planos</CardTitle>
-          <CardDescription>Veja detalhadamente as diferenças entre os planos</CardDescription>
-        </CardHeader>
-        <CardContent className="p-0">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Funcionalidades</TableHead>
-                <TableHead className="text-center">Starter</TableHead>
-                <TableHead className="text-center">Profissional</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {comparisonFeatures.map((item, index) => (
-                <TableRow key={index}>
-                  <TableCell className="font-medium">{item.feature}</TableCell>
-                  <TableCell className="text-center">
-                    {typeof item.basico === 'boolean' ? (
-                      item.basico
-                        ? <Check className="h-4 w-4 text-primary mx-auto" />
-                        : <X className="h-4 w-4 text-muted-foreground mx-auto" />
-                    ) : (
-                      <Badge variant="outline">{item.basico}</Badge>
-                    )}
-                  </TableCell>
-                  <TableCell className="text-center">
-                    {typeof item.profissional === 'boolean' ? (
-                      item.profissional
-                        ? <Check className="h-4 w-4 text-primary mx-auto" />
-                        : <X className="h-4 w-4 text-muted-foreground mx-auto" />
-                    ) : (
-                      <Badge variant="outline">{item.profissional}</Badge>
-                    )}
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        </CardContent>
-      </Card>
 
       {/* Why choose */}
       <div>
@@ -441,9 +441,12 @@ export function PlanosContent() {
             <p className="text-sm text-muted-foreground mb-4 max-w-md mx-auto">
               Junte-se a vendedores que já usam o Seller Finance para maximizar seus lucros.
             </p>
-            <Button onClick={() => handleSelectPlan(plans[1])}>
-              Começar 5 dias grátis
-              <ArrowRight className="ml-2 h-4 w-4" />
+            <Button onClick={() => handleSelectPlan('anual')} disabled={loadingCheckout}>
+              {loadingCheckout ? (
+                <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Redirecionando...</>
+              ) : (
+                <>Começar 5 dias grátis <ArrowRight className="ml-2 h-4 w-4" /></>
+              )}
             </Button>
           </CardContent>
         </Card>
