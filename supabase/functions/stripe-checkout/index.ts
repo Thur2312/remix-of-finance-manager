@@ -115,7 +115,7 @@ Deno.serve(async (req) => {
 
       metadata: { userId, plan: selectedPlan },
       success_url: `${req.headers.get("origin")}/dashboard?trial=success`,
-      cancel_url: `${req.headers.get("origin")}/planos?canceled=true`,
+      cancel_url: `${req.headers.get("origin")}/planos`,
     });
 
     return new Response(JSON.stringify({ url: session.url }), {
