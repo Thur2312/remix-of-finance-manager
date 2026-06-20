@@ -28,7 +28,8 @@ function SetupPaymentContent() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const canceled = searchParams.get('canceled') === 'true';
-  const { handleCheckout, loadingCheckout } = useStripeCheckout();
+  const { handleCheckout, loadingPlanId } = useStripeCheckout();
+  const loadingCheckout = loadingPlanId !== null;
   const { plan, isLoading } = useTrialStatus();
 
   // Se o usuário já tem plano ativo, redirecionar para o dashboard
@@ -83,7 +84,10 @@ function SetupPaymentContent() {
             <div className="bg-muted rounded-lg px-4 py-3 flex items-center justify-between">
               <div>
                 <p className="text-xs text-muted-foreground">Após os 5 dias</p>
-                <p className="font-semibold text-sm">R$ 74,99 / mês</p>
+                <p className="font-semibold text-sm">R$ 37,90 / mês</p>
+                <p className="text-[11px] text-muted-foreground">
+                  Plano anual — 12x de R$ 37,90 (total R$ 454,80/ano)
+                </p>
               </div>
               <Badge variant="secondary" className="text-xs">
                 Cancele quando quiser
@@ -94,7 +98,7 @@ function SetupPaymentContent() {
             <Button
               className="w-full"
               size="lg"
-              onClick={handleCheckout}
+              onClick={() => handleCheckout("anual")}
               disabled={loadingCheckout}
             >
               {loadingCheckout ? (

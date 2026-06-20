@@ -28,10 +28,10 @@ export function TrialBanner() {
         size="sm"
         className={`text-xs bg-white hover:bg-white/90 font-semibold gap-1.5 shrink-0
           ${isUrgent ? "text-red-600" : "text-amber-600"}`}
-        onClick={handleCheckout}
+        onClick={() => handleCheckout("anual")}
       >
         <Zap size={13} />
-        Assinar por R$ 74,99/mês
+        Assinar anual por R$ 37,90/mês
       </Button>
 
     </div>

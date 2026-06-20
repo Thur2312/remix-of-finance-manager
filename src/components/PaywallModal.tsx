@@ -23,7 +23,9 @@ export function PaywallModal() {
   const { isBlocked, isLoading } = useTrialStatus();
   const navigate = useNavigate();
   const { pathname } = useLocation();
-  const { handleCheckout, loadingCheckout } = useStripeCheckout();
+  const { handleCheckout, loadingPlanId } = useStripeCheckout();
+
+  const loadingAnual = loadingPlanId === "anual";
 
   // Não mostrar nas rotas excluídas
   const isExcluded = PAYWALL_EXCLUDED.some((r) => pathname.startsWith(r));
@@ -50,24 +52,37 @@ export function PaywallModal() {
             Continue gerenciando sua loja
           </h2>
           <p className="text-sm text-muted-foreground leading-relaxed">
-            Seu período de teste terminou. Assine o plano Profissional para
-            continuar com acesso completo.
+            Seu período de teste terminou. Garanta o plano{" "}
+            <span className="font-semibold text-foreground">Anual</span> e
+            continue com acesso completo pagando menos por mês.
           </p>
         </div>
 
-        {/* Card do plano */}
+        {/* Card do plano anual */}
         <div className="border-2 border-primary rounded-xl p-4 mb-5">
           <div className="flex items-center justify-between mb-3">
             <div className="flex items-center gap-2">
               <Crown size={18} className="text-orange-500" />
-              <span className="font-medium">Profissional</span>
-              <Badge className="text-xs px-2 py-0">Mais popular</Badge>
+              <span className="font-medium">Anual</span>
+              <Badge className="text-xs px-2 py-0">Melhor oferta</Badge>
             </div>
             <div className="text-right">
-              <span className="text-xl font-semibold">R$ 74,99</span>
-              <span className="text-xs text-muted-foreground">/mês</span>
+              <div className="flex items-center justify-end gap-1.5">
+                <span className="text-xs text-muted-foreground line-through">
+                  R$ 74,99
+                </span>
+                <span className="text-xl font-semibold">R$ 37,90</span>
+                <span className="text-xs text-muted-foreground">/mês</span>
+              </div>
+              <span className="text-[11px] text-muted-foreground">
+                12x de R$ 37,90 — total R$ 454,80/ano
+              </span>
             </div>
           </div>
+
+          <Badge className="bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400 mb-3 text-xs">
+            Economize 49% em relação ao mensal
+          </Badge>
 
           <div className="grid grid-cols-2 gap-1.5">
             {PAYWALL_FEATURES.map((feat) => (
@@ -86,12 +101,14 @@ export function PaywallModal() {
         <Button
           className="w-full bg-orange-500 hover:bg-orange-600 text-white font-medium mb-2"
           size="lg"
-          onClick={handleCheckout}
-          disabled={loadingCheckout}
+          onClick={() => handleCheckout("anual")}
+          disabled={loadingPlanId !== null}
         >
           <CreditCard size={16} className="mr-2" />
-          {loadingCheckout ? "Redirecionando..." : "Assinar agora — R$ 74,99/mês"}
-          {!loadingCheckout && <ArrowRight size={16} className="ml-2" />}
+          {loadingAnual
+            ? "Redirecionando..."
+            : "Assinar plano anual — R$ 37,90/mês"}
+          {!loadingAnual && <ArrowRight size={16} className="ml-2" />}
         </Button>
 
         <Button

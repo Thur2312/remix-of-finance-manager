@@ -447,7 +447,7 @@ const { handleCheckout, handleCancel: cancelSubscription, loadingCancel, loading
             <p className="text-sm text-muted-foreground mb-4 max-w-md mx-auto">
               Junte-se a vendedores que já usam o Seller Finance para maximizar seus lucros.
             </p>
-            tsx<Button onClick={() => handleSelectPlan('anual')} disabled={loadingPlanId !== null}>
+            <Button onClick={() => handleSelectPlan('anual')} disabled={loadingPlanId !== null}>
             {loadingPlanId === 'anual' ? (
               <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Redirecionando...</>
             ) : (
