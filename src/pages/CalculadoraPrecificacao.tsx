@@ -62,8 +62,62 @@ function calcShopeeComissaoReais(valorVenda: number): number {
   return valorVenda * (comissao / 100) + taxaFixa;
 }
 
+// ─── Tabela de taxas TikTok Shop ──────────────────────────────────────────────
+// < R$50: comissão 10% (regra para produtos baratos), sem taxa fixa
+// ≥ R$50: comissão 6% + taxa fixa R$6,00 por unidade
+function getTiktokRates(preco: number): { comissao: number; taxaFixa: number } {
+  if (preco < 50) return { comissao: 10, taxaFixa: 0 };
+  return { comissao: 6, taxaFixa: 6 };
+}
+
+// ─── Tabela de taxas Mercado Livre ────────────────────────────────────────────
+// Tipo de anúncio define a comissão (varia por categoria — usamos a média típica):
+//   Clássico (Simples): ~12% (faixa 10%–14%)
+//   Premium:            ~17% (faixa 15%–19%)
+type MLTipoAnuncio = "classico" | "premium";
+const ML_COMISSAO: Record<MLTipoAnuncio, number> = { classico: 12, premium: 17 };
+
+// Taxa fixa por unidade: cobrada apenas em produtos abaixo de R$79.
+// O valor escala conforme o preço do anúncio (faixa R$5,50 a R$10,00);
+// a partir de R$79 não há taxa fixa (frete grátis obrigatório).
+function getMercadoLivreTaxaFixa(preco: number): number {
+  if (preco <= 0 || preco >= 79) return 0;
+  if (preco < 30) return 5.5;
+  if (preco < 50) return 6.5;
+  if (preco < 65) return 8;
+  return 10; // R$65 a R$78,99
+}
+
+function getMercadoLivreRates(preco: number, tipo: MLTipoAnuncio): { comissao: number; taxaFixa: number } {
+  return { comissao: ML_COMISSAO[tipo], taxaFixa: getMercadoLivreTaxaFixa(preco) };
+}
+
 // ─── Plataforma selector ─────────────────────────────────────────────────────
 type Plataforma = "Shopee" | "TiktokShop" | "MercadoLivre";
+
+// ─── Comissão + taxa fixa (em R$) automática por plataforma ───────────────────
+function calcComissaoTaxaReais(
+  plataforma: Plataforma | "",
+  preco: number,
+  mlTipo: MLTipoAnuncio,
+): number {
+  if (preco <= 0) return 0;
+  if (plataforma === "Shopee") return calcShopeeComissaoReais(preco);
+  if (plataforma === "TiktokShop") {
+    const { comissao, taxaFixa } = getTiktokRates(preco);
+    return preco * (comissao / 100) + taxaFixa;
+  }
+  if (plataforma === "MercadoLivre") {
+    const { comissao, taxaFixa } = getMercadoLivreRates(preco, mlTipo);
+    return preco * (comissao / 100) + taxaFixa;
+  }
+  return 0;
+}
+
+// Plataformas que preenchem comissão/taxa automaticamente
+const AUTO_PLATAFORMAS: Plataforma[] = ["Shopee", "TiktokShop", "MercadoLivre"];
+const isAutoPlataforma = (p: Plataforma | ""): p is Plataforma =>
+  AUTO_PLATAFORMAS.includes(p as Plataforma);
 
 const PLATAFORMA_OPTIONS: { value: Plataforma; label: string; color: string; bg: string }[] = [
   { value: "Shopee",       label: "Shopee",        color: "text-orange-600", bg: "bg-orange-500/10 border-orange-500/30 hover:bg-orange-500/20" },
@@ -102,6 +156,7 @@ function CalculadoraPrecificacaoContent() {
   const [volumeEsperadoProduto, setVolumeEsperadoProduto] = useState<number>(50);
   const [faturamentoTotal,      setFaturamentoTotal]      = useState("");
   const [plataformaSelecionada, setPlataformaSelecionada] = useState<Plataforma | "">("");
+  const [mlTipoAnuncio,         setMlTipoAnuncio]         = useState<MLTipoAnuncio>("classico");
 
   // ── Modo de cálculo ───────────────────────────────────────────────────────
   const [modoCalculo,        setModoCalculo]        = useState<ModoCalculo>("preco");
@@ -134,25 +189,34 @@ function CalculadoraPrecificacaoContent() {
     return soma / margens.length;
   }, [anuncios]);
 
-  // ── Auto-fill Shopee (calculadora principal) ──────────────────────────────
+  // ── Auto-fill comissão/taxa por plataforma (calculadora principal) ────────
   useEffect(() => {
-    if (plataformaSelecionada !== "Shopee") return;
     const preco = parseInput(precoPromocional);
-    const { comissao, taxaFixa: taxa } = getShopeeRates(preco);
-    setComissaoPlataforma(String(comissao));
-    setTaxaFixa(String(taxa));
-  }, [plataformaSelecionada, precoPromocional]);
+    if (plataformaSelecionada === "Shopee") {
+      const { comissao, taxaFixa: taxa } = getShopeeRates(preco);
+      setComissaoPlataforma(String(comissao));
+      setTaxaFixa(String(taxa));
+    } else if (plataformaSelecionada === "TiktokShop") {
+      const { comissao, taxaFixa: taxa } = getTiktokRates(preco);
+      setComissaoPlataforma(String(comissao));
+      setTaxaFixa(taxa.toFixed(2));
+    } else if (plataformaSelecionada === "MercadoLivre") {
+      const { comissao, taxaFixa: taxa } = getMercadoLivreRates(preco, mlTipoAnuncio);
+      setComissaoPlataforma(String(comissao));
+      setTaxaFixa(taxa.toFixed(2));
+    }
+  }, [plataformaSelecionada, precoPromocional, mlTipoAnuncio]);
 
-  // ── Auto-fill comissão no dialog quando Shopee + valor_venda muda ─────────
+  // ── Auto-fill comissão no dialog conforme marketplace + valor_venda ───────
   useEffect(() => {
-    if (anuncioForm.marketplace !== "Shopee") return;
+    if (!isAutoPlataforma(anuncioForm.marketplace)) return;
     const venda = parseInput(anuncioForm.valor_venda);
-    const comissaoReais = calcShopeeComissaoReais(venda);
+    const comissaoReais = calcComissaoTaxaReais(anuncioForm.marketplace, venda, mlTipoAnuncio);
     setAnuncioForm(prev => ({
       ...prev,
       comissao_taxa: comissaoReais > 0 ? comissaoReais.toFixed(2) : "",
     }));
-  }, [anuncioForm.valor_venda, anuncioForm.marketplace]);
+  }, [anuncioForm.valor_venda, anuncioForm.marketplace, mlTipoAnuncio]);
 
   const handleDecimalInput = (value: string, setter: (v: string) => void) => {
     if (value === "" || /^[0-9]*[,.]?[0-9]*$/.test(value)) setter(value);
@@ -282,8 +346,8 @@ function CalculadoraPrecificacaoContent() {
     const marketplace = plataformaSelecionada;
 
     let comissaoTaxaInicial = "";
-    if (marketplace === "Shopee" && valorVenda > 0) {
-      comissaoTaxaInicial = calcShopeeComissaoReais(valorVenda).toFixed(2);
+    if (isAutoPlataforma(marketplace) && valorVenda > 0) {
+      comissaoTaxaInicial = calcComissaoTaxaReais(marketplace, valorVenda, mlTipoAnuncio).toFixed(2);
     } else {
       const comissaoReais = valorVenda * (parseInput(comissaoPlataforma) / 100);
       const taxaFixaReais = parseInput(taxaFixa);
@@ -343,12 +407,17 @@ function CalculadoraPrecificacaoContent() {
 
   // ── Helper: label do campo comissão no dialog ─────────────────────────────
   const comissaoTaxaLabel = useMemo(() => {
-    if (anuncioForm.marketplace !== "Shopee") return "Comissão + Taxa (R$)";
+    const mp = anuncioForm.marketplace;
+    if (!isAutoPlataforma(mp)) return "Comissão + Taxa (R$)";
+    const nome = mp === "Shopee" ? "Shopee" : mp === "TiktokShop" ? "TikTok" : "Mercado Livre";
     const venda = parseInput(anuncioForm.valor_venda);
-    if (venda <= 0) return "Comissão + Taxa (R$) — Shopee";
-    const { comissao, taxaFixa: taxa } = getShopeeRates(venda);
-    return `Comissão + Taxa (R$) — Shopee ${comissao}% + R$${taxa}`;
-  }, [anuncioForm.marketplace, anuncioForm.valor_venda]);
+    if (venda <= 0) return `Comissão + Taxa (R$) — ${nome}`;
+    const { comissao, taxaFixa: taxa } =
+      mp === "Shopee"     ? getShopeeRates(venda) :
+      mp === "TiktokShop" ? getTiktokRates(venda) :
+                            getMercadoLivreRates(venda, mlTipoAnuncio);
+    return `Comissão + Taxa (R$) — ${nome} ${comissao}% + R$${taxa}`;
+  }, [anuncioForm.marketplace, anuncioForm.valor_venda, mlTipoAnuncio]);
 
   // ── Dialog content (reutilizado) ──────────────────────────────────────────
   const dialogContent = (
@@ -386,6 +455,24 @@ function CalculadoraPrecificacaoContent() {
                 <SelectItem value="MercadoLivre">Mercado Livre</SelectItem>
               </SelectContent>
             </Select>
+            {anuncioForm.marketplace === "MercadoLivre" && (
+              <div className="flex gap-2 pt-1">
+                {([
+                  { value: "classico", label: "Clássico (Simples)" },
+                  { value: "premium",  label: "Premium" },
+                ] as { value: MLTipoAnuncio; label: string }[]).map(opt => (
+                  <button key={opt.value} type="button"
+                    onClick={() => setMlTipoAnuncio(opt.value)}
+                    className={`flex-1 px-2 py-1 rounded-md border text-xs font-medium transition-all ${
+                      mlTipoAnuncio === opt.value
+                        ? "bg-blue-500/10 border-blue-500/40 text-blue-700 dark:text-blue-300"
+                        : "border-border bg-background text-muted-foreground hover:bg-muted"
+                    }`}>
+                    {opt.label}
+                  </button>
+                ))}
+              </div>
+            )}
           </div>
         </div>
 
@@ -408,17 +495,17 @@ function CalculadoraPrecificacaoContent() {
           <div className="space-y-2">
             <Label className="text-sm flex items-center gap-1.5">
               {comissaoTaxaLabel}
-              {anuncioForm.marketplace === "Shopee" && (
-                <Badge variant="outline" className="text-[10px] px-1 py-0 text-orange-600 border-orange-400">Auto</Badge>
+              {isAutoPlataforma(anuncioForm.marketplace) && (
+                <Badge variant="outline" className="text-[10px] px-1 py-0 text-primary border-primary/50">Auto</Badge>
               )}
             </Label>
             <Input
               type="text" inputMode="decimal" value={anuncioForm.comissao_taxa}
               onChange={setFormField("comissao_taxa")} placeholder="0,00"
-              className={anuncioForm.marketplace === "Shopee" ? "border-orange-400/60 focus-visible:ring-orange-400/40" : ""}
+              className={isAutoPlataforma(anuncioForm.marketplace) ? "border-primary/40 focus-visible:ring-primary/30" : ""}
             />
-            {anuncioForm.marketplace === "Shopee" && parseInput(anuncioForm.valor_venda) > 0 && (
-              <p className="text-[10px] text-orange-600 dark:text-orange-400">
+            {isAutoPlataforma(anuncioForm.marketplace) && parseInput(anuncioForm.valor_venda) > 0 && (
+              <p className="text-[10px] text-primary">
                 Calculado automaticamente — você pode editar se necessário
               </p>
             )}
@@ -660,10 +747,44 @@ function CalculadoraPrecificacaoContent() {
                     </button>
                   ))}
                 </div>
-                {plataformaSelecionada === "Shopee" && (
-                  <p className="text-xs text-orange-600 dark:text-orange-400 flex items-center gap-1.5 mt-1">
-                    <Info className="h-3.5 w-3.5 flex-shrink-0" />
-                    Comissão e taxa fixa preenchidas automaticamente conforme a tabela da Shopee
+                {/* Mercado Livre: escolha do tipo de anúncio */}
+                {plataformaSelecionada === "MercadoLivre" && (
+                  <div className="flex flex-col gap-2 mt-2">
+                    <span className="text-xs font-medium text-muted-foreground">Tipo de anúncio</span>
+                    <div className="flex gap-2 flex-wrap">
+                      {([
+                        { value: "classico", label: "Anúncio Clássico (Simples)", hint: "~12% de comissão" },
+                        { value: "premium",  label: "Anúncio Premium",            hint: "~17% de comissão" },
+                      ] as { value: MLTipoAnuncio; label: string; hint: string }[]).map(opt => (
+                        <button key={opt.value} type="button"
+                          onClick={() => setMlTipoAnuncio(opt.value)}
+                          className={`flex flex-col items-start px-3 py-1.5 rounded-lg border text-xs font-medium transition-all ${
+                            mlTipoAnuncio === opt.value
+                              ? "bg-blue-500/10 border-blue-500/40 text-blue-700 dark:text-blue-300 ring-1 ring-blue-500/40"
+                              : "border-border bg-background text-muted-foreground hover:bg-muted"
+                          }`}>
+                          <span className="flex items-center gap-1.5">
+                            {opt.label}
+                            {mlTipoAnuncio === opt.value && <CheckCircle2 className="h-3 w-3" />}
+                          </span>
+                          <span className="text-[10px] opacity-80">{opt.hint}</span>
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {isAutoPlataforma(plataformaSelecionada) && (
+                  <p className="text-xs text-muted-foreground flex items-start gap-1.5 mt-1">
+                    <Info className="h-3.5 w-3.5 flex-shrink-0 mt-0.5" />
+                    <span>
+                      {plataformaSelecionada === "Shopee" &&
+                        "Comissão e taxa fixa preenchidas automaticamente conforme a tabela da Shopee."}
+                      {plataformaSelecionada === "TiktokShop" &&
+                        "Comissão e taxa fixa preenchidas automaticamente: 10% abaixo de R$50, e 6% + R$6,00 a partir de R$50."}
+                      {plataformaSelecionada === "MercadoLivre" &&
+                        "Comissão e taxa fixa preenchidas automaticamente conforme o tipo de anúncio. A comissão real varia por categoria — usamos a média típica. A taxa fixa por unidade só é cobrada em produtos abaixo de R$79."}
+                    </span>
                   </p>
                 )}
               </div>
@@ -728,24 +849,24 @@ function CalculadoraPrecificacaoContent() {
                   <div className="space-y-1.5">
                     <Label htmlFor="comissaoPlataforma" className="text-sm flex items-center gap-1">
                       Comissão Plataforma (%)
-                      {plataformaSelecionada === "Shopee" && (
-                        <Badge variant="outline" className="text-[10px] px-1 py-0 text-orange-600 border-orange-400">Auto</Badge>
+                      {isAutoPlataforma(plataformaSelecionada) && (
+                        <Badge variant="outline" className="text-[10px] px-1 py-0 text-primary border-primary/50">Auto</Badge>
                       )}
                     </Label>
                     <Input id="comissaoPlataforma" type="text" inputMode="decimal" value={comissaoPlataforma}
                       onChange={e => handleDecimalInput(e.target.value, setComissaoPlataforma)} placeholder="20" className="h-10"
-                      readOnly={plataformaSelecionada === "Shopee"} />
+                      readOnly={isAutoPlataforma(plataformaSelecionada)} />
                   </div>
                   <div className="space-y-1.5">
                     <Label htmlFor="taxaFixa" className="text-sm flex items-center gap-1">
                       Taxa Fixa por Venda (R$)
-                      {plataformaSelecionada === "Shopee" && (
-                        <Badge variant="outline" className="text-[10px] px-1 py-0 text-orange-600 border-orange-400">Auto</Badge>
+                      {isAutoPlataforma(plataformaSelecionada) && (
+                        <Badge variant="outline" className="text-[10px] px-1 py-0 text-primary border-primary/50">Auto</Badge>
                       )}
                     </Label>
                     <Input id="taxaFixa" type="text" inputMode="decimal" value={taxaFixa}
                       onChange={e => handleDecimalInput(e.target.value, setTaxaFixa)} placeholder="4,00" className="h-10"
-                      readOnly={plataformaSelecionada === "Shopee"} />
+                      readOnly={isAutoPlataforma(plataformaSelecionada)} />
                   </div>
                   <div className="space-y-1.5">
                     <Label htmlFor="aliquotaImposto" className="text-sm">Imposto (%)</Label>
