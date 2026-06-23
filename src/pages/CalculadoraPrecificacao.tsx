@@ -303,6 +303,18 @@ function CalculadoraPrecificacaoContent() {
     return 0;
   }, [modoCalculo, margemDesejadaSlider, lucroDesejado, custoProduto, embalagemEtiqueta, taxaFixa, comissaoPlataforma, aliquotaImposto, comissaoAfiliados]);
 
+  // ── Espelho: nos modos "margem" e "lucro" o preço sugerido vira o Preço ────
+  //    Promocional, fazendo Margem Real, Lucro e demais análises recalcularem.
+  useEffect(() => {
+    if (precoSugerido <= 0) return;
+    const aplicar =
+      modoCalculo === "margem" ||
+      (modoCalculo === "lucro" && parseInput(lucroDesejado) > 0);
+    if (!aplicar) return;
+    const novoPreco = precoSugerido.toFixed(2).replace(".", ",");
+    setPrecoPromocional(prev => (prev === novoPreco ? prev : novoPreco));
+  }, [precoSugerido, modoCalculo, lucroDesejado]);
+
   // ── Panorama / Break-even ─────────────────────────────────────────────────
   const panorama = useMemo(() => {
     const fat = parseInput(faturamentoTotal);
