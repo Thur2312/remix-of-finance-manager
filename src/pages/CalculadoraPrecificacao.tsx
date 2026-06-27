@@ -12,7 +12,7 @@ import {
   AlertTriangle, Calculator, ExternalLink, Info, Target,
   ShoppingBag, Lightbulb, TrendingUp, CheckCircle2, XCircle,
   HelpCircle, AlertCircle, BarChart3, DollarSign, Tag,
-  Percent, Package, Trash2, Pencil,
+  Percent, Package, Trash2, Pencil, Plus, X, ChevronRight, ChevronDown,
 } from "lucide-react";
 import { Separator } from "@/components/ui/separator";
 import { Badge } from "@/components/ui/badge";
@@ -30,7 +30,10 @@ import {
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
-import { useAnuncios, AnuncioInput } from "@/hooks/useProdutos";
+import {
+  Popover, PopoverContent, PopoverTrigger,
+} from "@/components/ui/popover";
+import { useAnuncios, AnuncioInput, CustoAdicionalDB } from "@/hooks/useProdutos";
 import { toast } from "sonner";
 
 // ─── Helpers ────────────────────────────────────────────────────────────────
@@ -63,10 +66,12 @@ function calcShopeeComissaoReais(valorVenda: number): number {
 }
 
 // ─── Tabela de taxas TikTok Shop ──────────────────────────────────────────────
-// < R$50: comissão 10% (regra para produtos baratos), sem taxa fixa
-// ≥ R$50: comissão 6% + taxa fixa R$6,00 por unidade
+// Estrutura por faixa de preço vigente em 2026:
+//   < R$50:  comissão 10% + taxa fixa R$4,00 por item
+//   ≥ R$50:  comissão  6% + taxa fixa R$6,00 por item
+// Pode variar conforme campanhas/promoções — confirmar na Central do Vendedor.
 function getTiktokRates(preco: number): { comissao: number; taxaFixa: number } {
-  if (preco < 50) return { comissao: 10, taxaFixa: 0 };
+  if (preco < 50) return { comissao: 10, taxaFixa: 4 };
   return { comissao: 6, taxaFixa: 6 };
 }
 
@@ -132,17 +137,141 @@ type PapelProduto = "novo" | "complementar" | "principal" | "avancado";
 // ─── Modo de cálculo ─────────────────────────────────────────────────────────
 type ModoCalculo = "margem" | "preco" | "lucro";
 
+// ─── Custos adicionais ───────────────────────────────────────────────────────
+// Custos extras que compõem o custo do produto (ex: frete de compra, imposto de
+// importação, despachante, comissão de compra). Somam ao Custo do Produto em
+// todos os cálculos da calculadora. O valor pode ser em R$ (fixo) ou em %
+// (percentual sobre o custo base do produto).
+type CustoAdicionalTipo = "valor" | "percent";
+type CustoAdicional = { id: string; nome: string; valor: string; tipo: CustoAdicionalTipo };
+
+// Converte um custo adicional em R$, dado o custo base do produto.
+const custoAdicionalEmReais = (c: CustoAdicional, custoBase: number): number =>
+  c.tipo === "percent" ? custoBase * (parseInput(c.valor) / 100) : parseInput(c.valor);
+
+// Soma de uma lista de custos adicionais (forma de UI) em R$.
+const somaCustosAdicionais = (lista: CustoAdicional[], custoBase: number): number =>
+  lista.reduce((acc, c) => acc + custoAdicionalEmReais(c, custoBase), 0);
+
+// Soma de custos adicionais já persistidos (forma do banco) em R$.
+const somaCustosAdicionaisDB = (lista: CustoAdicionalDB[] | null | undefined, custoBase: number): number =>
+  (lista ?? []).reduce((acc, c) => acc + (c.tipo === "percent" ? custoBase * (c.valor / 100) : c.valor), 0);
+
+// ── Conversão UI ⇄ banco ─────────────────────────────────────────────────────
+const serializeCustos = (lista: CustoAdicional[]): CustoAdicionalDB[] =>
+  lista
+    .filter(c => c.nome.trim() !== "" || parseInput(c.valor) > 0)
+    .map(c => ({ nome: c.nome.trim() || "Custo adicional", valor: parseInput(c.valor), tipo: c.tipo }));
+
+const deserializeCustos = (lista: CustoAdicionalDB[] | null | undefined): CustoAdicional[] =>
+  (lista ?? []).map(c => ({
+    id: crypto.randomUUID(),
+    nome: c.nome,
+    valor: String(c.valor).replace(".", ","),
+    tipo: c.tipo,
+  }));
+
 // ─── Form anúncio ────────────────────────────────────────────────────────────
 const EMPTY_FORM = {
   nome_anuncio: "", custo: "", valor_venda: "", comissao_taxa: "",
   antecipado: "", afiliados: "", imposto_pct: "", custo_var: "",
   marketplace: "" as Plataforma | "",
+  custos_adicionais: [] as CustoAdicional[],
 };
 type AnuncioForm = typeof EMPTY_FORM;
+
+// ─── Editor reutilizável de custos adicionais ────────────────────────────────
+function CustosAdicionaisEditor({
+  items, custoBase, onAdd, onUpdate, onSetTipo, onRemove,
+}: {
+  items: CustoAdicional[];
+  custoBase: number;
+  onAdd: () => void;
+  onUpdate: (id: string, field: "nome" | "valor", value: string) => void;
+  onSetTipo: (id: string, tipo: CustoAdicionalTipo) => void;
+  onRemove: (id: string) => void;
+}) {
+  const total = somaCustosAdicionais(items, custoBase);
+  return (
+    <div className="space-y-3">
+      {items.length > 0 && (
+        <div className="space-y-2.5">
+          {items.map(c => (
+            <div key={c.id} className="space-y-1">
+              <div className="flex items-center gap-2">
+                <Input
+                  value={c.nome}
+                  onChange={e => onUpdate(c.id, "nome", e.target.value)}
+                  placeholder="Descrição" className="h-8 text-sm flex-1" maxLength={60}
+                />
+                {/* Toggle R$ / % */}
+                <div className="flex h-8 shrink-0 overflow-hidden rounded-md border">
+                  {(["valor", "percent"] as CustoAdicionalTipo[]).map(t => (
+                    <button
+                      key={t} type="button"
+                      onClick={() => onSetTipo(c.id, t)}
+                      className={`w-7 text-xs font-medium transition-colors ${
+                        c.tipo === t
+                          ? "bg-primary text-primary-foreground"
+                          : "bg-background text-muted-foreground hover:bg-muted"
+                      }`}
+                    >
+                      {t === "valor" ? "R$" : "%"}
+                    </button>
+                  ))}
+                </div>
+                <div className="relative w-20 shrink-0">
+                  <Input
+                    type="text" inputMode="decimal" value={c.valor}
+                    onChange={e => { if (e.target.value === "" || /^[0-9]*[,.]?[0-9]*$/.test(e.target.value)) onUpdate(c.id, "valor", e.target.value); }}
+                    placeholder={c.tipo === "percent" ? "0" : "0,00"} className="h-8 text-sm pr-6 text-right"
+                  />
+                  <span className="absolute right-2 top-1/2 -translate-y-1/2 text-xs text-muted-foreground">
+                    {c.tipo === "percent" ? "%" : ""}
+                  </span>
+                </div>
+                <Button
+                  type="button" variant="ghost" size="icon"
+                  className="h-8 w-8 shrink-0 text-muted-foreground hover:text-destructive"
+                  onClick={() => onRemove(c.id)}
+                >
+                  <X className="h-4 w-4" />
+                </Button>
+              </div>
+              {c.tipo === "percent" && parseInput(c.valor) > 0 && (
+                <p className="pl-1 text-[11px] text-muted-foreground">
+                  {parseInput(c.valor)}% do custo base ={" "}
+                  <span className="font-medium text-foreground">
+                    {formatCurrency(custoAdicionalEmReais(c, custoBase))}
+                  </span>
+                </p>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
+
+      <Button
+        type="button" variant="outline" size="sm"
+        className="w-full gap-1.5" onClick={onAdd}
+      >
+        <Plus className="h-3.5 w-3.5" /> Adicionar custo
+      </Button>
+
+      {total > 0 && (
+        <div className="flex items-center justify-between border-t pt-2 text-sm">
+          <span className="text-muted-foreground">Total adicional</span>
+          <span className="font-semibold text-primary">{formatCurrency(total)}</span>
+        </div>
+      )}
+    </div>
+  );
+}
 
 // ════════════════════════════════════════════════════════════════════════════
 function CalculadoraPrecificacaoContent() {
   const [custoProduto,          setCustoProduto]          = useState("");
+  const [custosAdicionais,      setCustosAdicionais]      = useState<CustoAdicional[]>([]);
   const [embalagemEtiqueta,     setEmbalagemEtiqueta]     = useState("");
   const [precoPromocional,      setPrecoPromocional]      = useState("");
   const [desconto,              setDesconto]              = useState("");
@@ -167,6 +296,7 @@ function CalculadoraPrecificacaoContent() {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingId,    setEditingId]    = useState<string | null>(null);
   const [anuncioForm,  setAnuncioForm]  = useState<AnuncioForm>(EMPTY_FORM);
+  const [expandedAnuncioId, setExpandedAnuncioId] = useState<string | null>(null);
 
   // ── Hooks ─────────────────────────────────────────────────────────────────
   const { totalRecurringCosts, isLoading: isLoadingCosts, settings: fixedCostsSettings, costs } = useFixedCosts();
@@ -180,7 +310,8 @@ function CalculadoraPrecificacaoContent() {
       const comissaoTaxa = parseFloat(String(a.comissao_taxa) || "0"); // já inclui taxa fixa
       const impostoVal   = a.valor_venda * (a.imposto_pct / 100);
       const afiliadosVal = a.valor_venda * (a.afiliados / 100);
-      const totalCustos  = a.custo + a.custo_var + comissaoTaxa + a.antecipado + afiliadosVal + impostoVal;
+      const adicionais   = somaCustosAdicionaisDB(a.custos_adicionais, a.custo);
+      const totalCustos  = a.custo + adicionais + a.custo_var + comissaoTaxa + a.antecipado + afiliadosVal + impostoVal;
       const margem       = a.valor_venda > 0 ? ((a.valor_venda - totalCustos) / a.valor_venda) * 100 : 0;
       return margem;
     });
@@ -228,13 +359,39 @@ function CalculadoraPrecificacaoContent() {
 
   const resetForm = () => { setAnuncioForm(EMPTY_FORM); setEditingId(null); };
 
+  // ── Custos adicionais do formulário (dialog) ───────────────────────────────
+  const addFormCusto = () =>
+    setAnuncioForm(prev => ({ ...prev, custos_adicionais: [...prev.custos_adicionais, { id: crypto.randomUUID(), nome: "", valor: "", tipo: "valor" }] }));
+  const updateFormCusto = (id: string, field: "nome" | "valor", value: string) =>
+    setAnuncioForm(prev => ({ ...prev, custos_adicionais: prev.custos_adicionais.map(c => (c.id === id ? { ...c, [field]: value } : c)) }));
+  const setFormCustoTipo = (id: string, tipo: CustoAdicionalTipo) =>
+    setAnuncioForm(prev => ({ ...prev, custos_adicionais: prev.custos_adicionais.map(c => (c.id === id ? { ...c, tipo } : c)) }));
+  const removeFormCusto = (id: string) =>
+    setAnuncioForm(prev => ({ ...prev, custos_adicionais: prev.custos_adicionais.filter(c => c.id !== id) }));
+
+  // ── Custos adicionais ──────────────────────────────────────────────────────
+  // Percentuais incidem sobre o custo base do produto.
+  const totalCustosAdicionais = useMemo(() => {
+    const custoBase = parseInput(custoProduto);
+    return custosAdicionais.reduce((acc, c) => acc + custoAdicionalEmReais(c, custoBase), 0);
+  }, [custosAdicionais, custoProduto]);
+  const addCustoAdicional = () =>
+    setCustosAdicionais(prev => [...prev, { id: crypto.randomUUID(), nome: "", valor: "", tipo: "valor" }]);
+  const updateCustoAdicional = (id: string, field: "nome" | "valor", value: string) =>
+    setCustosAdicionais(prev => prev.map(c => (c.id === id ? { ...c, [field]: value } : c)));
+  const setCustoAdicionalTipo = (id: string, tipo: CustoAdicionalTipo) =>
+    setCustosAdicionais(prev => prev.map(c => (c.id === id ? { ...c, tipo } : c)));
+  const removeCustoAdicional = (id: string) =>
+    setCustosAdicionais(prev => prev.filter(c => c.id !== id));
+
   const percentualAbsorcao = useMemo(() =>
     papelProduto === "avancado" ? absorpcaoManual : ABSORCAO_PADRAO[papelProduto],
   [papelProduto, absorpcaoManual]);
 
   // ── Cálculos do produto atual ─────────────────────────────────────────────
   const results = useMemo(() => {
-    const _custo     = parseInput(custoProduto);
+    const _custoBase = parseInput(custoProduto);
+    const _custo     = _custoBase + totalCustosAdicionais;
     const _custoVar  = parseInput(embalagemEtiqueta);
     const _preco     = parseInput(precoPromocional);
     const _desc      = parseInput(desconto);
@@ -273,13 +430,13 @@ function CalculadoraPrecificacaoContent() {
       custoFixoAlocado, custoFixoPorItem, lucroLiquido, margemRealAbsorcao: margemAbsorcao,
       custoFixo100Percent: custoFixo100, precoNecessario100Percent: precoNecessario100,
       precoIdeal, margemInviavel: denom <= 0,
-      custosVariaveis: { produto: _custo, variavel: _custoVar, comissao: comissaoVal, imposto: impostoVal, afiliados: afiliadosVal, taxaFixa: _taxaFixa },
+      custosVariaveis: { produto: _custoBase, custosAdicionais: totalCustosAdicionais, variavel: _custoVar, comissao: comissaoVal, imposto: impostoVal, afiliados: afiliadosVal, taxaFixa: _taxaFixa },
     };
-  }, [custoProduto, embalagemEtiqueta, precoPromocional, desconto, comissaoPlataforma, taxaFixa, aliquotaImposto, comissaoAfiliados, margemDesejada, totalRecurringCosts, volumeMensal, volumeEsperadoProduto, percentualAbsorcao]);
+  }, [custoProduto, totalCustosAdicionais, embalagemEtiqueta, precoPromocional, desconto, comissaoPlataforma, taxaFixa, aliquotaImposto, comissaoAfiliados, margemDesejada, totalRecurringCosts, volumeMensal, volumeEsperadoProduto, percentualAbsorcao]);
 
   // ── Preço sugerido conforme modo de cálculo ───────────────────────────────
   const precoSugerido = useMemo(() => {
-    const _custo     = parseInput(custoProduto);
+    const _custo     = parseInput(custoProduto) + totalCustosAdicionais;
     const _custoVar  = parseInput(embalagemEtiqueta);
     const _taxaFixa  = parseInput(taxaFixa);
     const _comissao  = parseInput(comissaoPlataforma);
@@ -301,7 +458,7 @@ function CalculadoraPrecificacaoContent() {
     }
 
     return 0;
-  }, [modoCalculo, margemDesejadaSlider, lucroDesejado, custoProduto, embalagemEtiqueta, taxaFixa, comissaoPlataforma, aliquotaImposto, comissaoAfiliados]);
+  }, [modoCalculo, margemDesejadaSlider, lucroDesejado, custoProduto, totalCustosAdicionais, embalagemEtiqueta, taxaFixa, comissaoPlataforma, aliquotaImposto, comissaoAfiliados]);
 
   // ── Espelho: nos modos "margem" e "lucro" o preço sugerido vira o Preço ────
   //    Promocional, fazendo Margem Real, Lucro e demais análises recalcularem.
@@ -377,6 +534,8 @@ function CalculadoraPrecificacaoContent() {
       imposto_pct:   aliquotaImposto,
       custo_var:     embalagemEtiqueta,
       marketplace:   marketplace,
+      // leva os custos adicionais montados na calculadora (clonando os ids)
+      custos_adicionais: custosAdicionais.map(c => ({ ...c, id: crypto.randomUUID() })),
     });
     setEditingId(null);
     setIsDialogOpen(true);
@@ -394,6 +553,7 @@ function CalculadoraPrecificacaoContent() {
       imposto_pct:   String(a.imposto_pct),
       custo_var:     String(a.custo_var),
       marketplace:   (a.marketplace ?? "") as Plataforma,
+      custos_adicionais: deserializeCustos(a.custos_adicionais),
     });
     setIsDialogOpen(true);
   };
@@ -410,6 +570,7 @@ function CalculadoraPrecificacaoContent() {
       imposto_pct:   parseInput(anuncioForm.imposto_pct),
       custo_var:     parseInput(anuncioForm.custo_var),
       marketplace:   anuncioForm.marketplace,
+      custos_adicionais: serializeCustos(anuncioForm.custos_adicionais),
     };
     const ok = editingId
       ? await updateAnuncio(editingId, payload)
@@ -545,6 +706,41 @@ function CalculadoraPrecificacaoContent() {
               <span className="absolute right-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">%</span>
             </div>
           </div>
+        </div>
+
+        <Separator />
+
+        {/* ── Custos adicionais ──────────────────────────────────────────── */}
+        <div className="space-y-2">
+          <div className="flex items-center justify-between">
+            <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+              Custos Adicionais
+              {anuncioForm.custos_adicionais.length > 0 && (
+                <Badge variant="secondary" className="ml-2 h-4 px-1.5 text-[10px] tabular-nums align-middle">
+                  {anuncioForm.custos_adicionais.length}
+                </Badge>
+              )}
+            </p>
+            {somaCustosAdicionais(anuncioForm.custos_adicionais, parseInput(anuncioForm.custo)) > 0 && (
+              <span className="text-xs text-muted-foreground">
+                Custo total:{" "}
+                <span className="font-semibold text-foreground">
+                  {formatCurrency(parseInput(anuncioForm.custo) + somaCustosAdicionais(anuncioForm.custos_adicionais, parseInput(anuncioForm.custo)))}
+                </span>
+              </span>
+            )}
+          </div>
+          <p className="text-[11px] text-muted-foreground">
+            Frete de compra, importação, despachante etc. Em R$ ou % do custo base. Somam ao custo do produto.
+          </p>
+          <CustosAdicionaisEditor
+            items={anuncioForm.custos_adicionais}
+            custoBase={parseInput(anuncioForm.custo)}
+            onAdd={addFormCusto}
+            onUpdate={updateFormCusto}
+            onSetTipo={setFormCustoTipo}
+            onRemove={removeFormCusto}
+          />
         </div>
       </div>
 
@@ -793,7 +989,7 @@ function CalculadoraPrecificacaoContent() {
                       {plataformaSelecionada === "Shopee" &&
                         "Comissão e taxa fixa preenchidas automaticamente conforme a tabela da Shopee."}
                       {plataformaSelecionada === "TiktokShop" &&
-                        "Comissão e taxa fixa preenchidas automaticamente: 10% abaixo de R$50, e 6% + R$6,00 a partir de R$50."}
+                        "Comissão e taxa fixa preenchidas automaticamente: abaixo de R$50, 10% + R$4,00 por item; a partir de R$50, 6% + R$6,00 por item (pode variar em campanhas)."}
                       {plataformaSelecionada === "MercadoLivre" &&
                         "Comissão e taxa fixa preenchidas automaticamente conforme o tipo de anúncio. A comissão real varia por categoria — usamos a média típica. A taxa fixa por unidade só é cobrada em produtos abaixo de R$79."}
                     </span>
@@ -810,9 +1006,54 @@ function CalculadoraPrecificacaoContent() {
                 </p>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div className="space-y-1.5">
-                    <Label htmlFor="custoProduto" className="text-sm">Custo do Produto (R$)</Label>
+                    <div className="flex items-center justify-between gap-2">
+                      <Label htmlFor="custoProduto" className="text-sm">Custo do Produto (R$)</Label>
+                      <Popover>
+                        <PopoverTrigger asChild>
+                          <Button
+                            type="button" variant="outline" size="sm"
+                            className="h-6 gap-1 px-2 text-xs text-primary border-primary/40 hover:bg-primary/10"
+                          >
+                            <Plus className="h-3 w-3" />
+                            Custos adicionais
+                            {custosAdicionais.length > 0 && (
+                              <Badge variant="secondary" className="ml-0.5 h-4 px-1 text-[10px] tabular-nums">
+                                {custosAdicionais.length}
+                              </Badge>
+                            )}
+                          </Button>
+                        </PopoverTrigger>
+                        <PopoverContent align="end" className="w-80 space-y-3">
+                          <div className="space-y-0.5">
+                            <p className="text-sm font-semibold">Custos adicionais do produto</p>
+                            <p className="text-xs text-muted-foreground">
+                              Frete de compra, importação, despachante etc. Em R$ ou % do custo base.
+                              Somam ao custo do produto.
+                            </p>
+                          </div>
+
+                          <CustosAdicionaisEditor
+                            items={custosAdicionais}
+                            custoBase={parseInput(custoProduto)}
+                            onAdd={addCustoAdicional}
+                            onUpdate={updateCustoAdicional}
+                            onSetTipo={setCustoAdicionalTipo}
+                            onRemove={removeCustoAdicional}
+                          />
+                        </PopoverContent>
+                      </Popover>
+                    </div>
                     <Input id="custoProduto" type="text" inputMode="decimal" value={custoProduto}
                       onChange={e => handleDecimalInput(e.target.value, setCustoProduto)} placeholder="0,00" className="h-10" />
+                    {totalCustosAdicionais > 0 && (
+                      <p className="text-xs text-muted-foreground">
+                        + {formatCurrency(totalCustosAdicionais)} em custos adicionais ={" "}
+                        <span className="font-semibold text-foreground">
+                          {formatCurrency(parseInput(custoProduto) + totalCustosAdicionais)}
+                        </span>{" "}
+                        de custo total
+                      </p>
+                    )}
                   </div>
                   <div className="space-y-1.5">
                     <Label htmlFor="embalagemEtiqueta" className="text-sm">Custo Variável — Embalagem/Etiqueta (R$)</Label>
@@ -1151,6 +1392,7 @@ function CalculadoraPrecificacaoContent() {
               <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                 {[
                   { label: "Custo do Produto",                                        value: results.custosVariaveis.produto,  negative: false },
+                  ...(results.custosVariaveis.custosAdicionais > 0 ? [{ label: "Custos Adicionais", value: results.custosVariaveis.custosAdicionais, negative: false }] : []),
                   { label: "Custos Variáveis (embalagem etc.)",                        value: results.custosVariaveis.variavel, negative: false },
                   { label: `Comissão Plataforma (${parseInput(comissaoPlataforma)}%)`, value: results.custosVariaveis.comissao, negative: true  },
                   { label: "Taxa Fixa por Venda",                                      value: results.custosVariaveis.taxaFixa, negative: true  },
@@ -1223,16 +1465,31 @@ function CalculadoraPrecificacaoContent() {
                         const comissaoTaxa = parseFloat(String(a.comissao_taxa) || "0"); // já inclui taxa fixa
                         const impostoVal   = a.valor_venda * (a.imposto_pct / 100);
                         const afiliadosVal = a.valor_venda * (a.afiliados / 100);
-                        const totalCustos  = a.custo + a.custo_var + comissaoTaxa + a.antecipado + afiliadosVal + impostoVal;
+                        const adicionaisList = a.custos_adicionais ?? [];
+                        const adicionais   = somaCustosAdicionaisDB(adicionaisList, a.custo);
+                        const totalCustos  = a.custo + adicionais + a.custo_var + comissaoTaxa + a.antecipado + afiliadosVal + impostoVal;
                         const lucro        = a.valor_venda - totalCustos;
                         const margem       = a.valor_venda > 0 ? (lucro / a.valor_venda) * 100 : 0;
 
+                        const temAdicionais = adicionaisList.length > 0;
+                        const expanded      = expandedAnuncioId === a.id;
                         const cellBase = "bg-muted/50 py-3 flex items-center h-full";
 
                         return (
-                          <tr key={a.id}>
+                          <React.Fragment key={a.id}>
+                          <tr>
                             <td className="pt-2 min-w-[160px] whitespace-nowrap">
-                              <div className={`${cellBase} rounded-l-md pl-4 pr-3`}>
+                              <div className={`${cellBase} rounded-l-md pl-2 pr-3 gap-1`}>
+                                {temAdicionais ? (
+                                  <button type="button"
+                                    onClick={() => setExpandedAnuncioId(expanded ? null : a.id)}
+                                    className="flex h-5 w-5 shrink-0 items-center justify-center rounded text-muted-foreground hover:bg-muted hover:text-foreground"
+                                    aria-label={expanded ? "Recolher custos adicionais" : "Detalhar custos adicionais"}>
+                                    {expanded ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
+                                  </button>
+                                ) : (
+                                  <span className="w-5 shrink-0" />
+                                )}
                                 <span className="font-medium">{a.nome_anuncio}</span>
                               </div>
                             </td>
@@ -1246,8 +1503,15 @@ function CalculadoraPrecificacaoContent() {
                               </div>
                             </td>
                             <td className="pt-2 w-[88px]">
-                              <div className={`${cellBase} px-2 justify-end tabular-nums whitespace-nowrap`}>
-                                {formatCurrency(a.custo)}
+                              <div className={`${cellBase} px-2 justify-end tabular-nums whitespace-nowrap flex-col !items-end gap-0`}>
+                                <span>{formatCurrency(a.custo)}</span>
+                                {temAdicionais && (
+                                  <button type="button"
+                                    onClick={() => setExpandedAnuncioId(expanded ? null : a.id)}
+                                    className="text-[10px] font-normal text-primary hover:underline">
+                                    + {formatCurrency(adicionais)}
+                                  </button>
+                                )}
                               </div>
                             </td>
                             <td className="pt-2 w-[88px]">
@@ -1317,6 +1581,47 @@ function CalculadoraPrecificacaoContent() {
                               </div>
                             </td>
                           </tr>
+
+                          {/* Linha de detalhe: custos adicionais */}
+                          {temAdicionais && expanded && (
+                            <tr>
+                              <td colSpan={12} className="pt-1">
+                                <div className="rounded-md border border-dashed border-primary/30 bg-primary/5 px-4 py-3">
+                                  <div className="mb-2 flex items-center gap-1.5 text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+                                    <Package className="h-3.5 w-3.5" />
+                                    Custos adicionais ({adicionaisList.length})
+                                  </div>
+                                  <div className="grid grid-cols-1 gap-1.5 sm:grid-cols-2 lg:grid-cols-3">
+                                    {adicionaisList.map((c, i) => {
+                                      const emReais = c.tipo === "percent" ? a.custo * (c.valor / 100) : c.valor;
+                                      return (
+                                        <div key={i} className="flex items-center justify-between gap-2 rounded bg-background/60 px-2.5 py-1.5 text-sm">
+                                          <span className="truncate">{c.nome}</span>
+                                          <span className="shrink-0 tabular-nums">
+                                            {c.tipo === "percent" ? (
+                                              <>
+                                                <Badge variant="secondary" className="mr-1.5 h-4 px-1 text-[10px] font-normal align-middle">{c.valor}%</Badge>
+                                                <span className="font-medium">{formatCurrency(emReais)}</span>
+                                              </>
+                                            ) : (
+                                              <span className="font-medium">{formatCurrency(emReais)}</span>
+                                            )}
+                                          </span>
+                                        </div>
+                                      );
+                                    })}
+                                  </div>
+                                  <div className="mt-2 flex items-center justify-between border-t border-primary/20 pt-2 text-sm">
+                                    <span className="text-muted-foreground">Custo base + adicionais</span>
+                                    <span className="font-semibold text-primary tabular-nums">
+                                      {formatCurrency(a.custo)} + {formatCurrency(adicionais)} = {formatCurrency(a.custo + adicionais)}
+                                    </span>
+                                  </div>
+                                </div>
+                              </td>
+                            </tr>
+                          )}
+                          </React.Fragment>
                         );
                       })}
                     </tbody>

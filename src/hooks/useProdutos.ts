@@ -5,6 +5,15 @@ import { toast } from 'sonner';
 
 // ─── Tipos baseados no database.types.ts ────────────────────────────────────
 
+// Custo adicional que compõe o custo do produto. Persistido em jsonb na coluna
+// custos_adicionais. "valor" = R$ fixo; "percent" = % sobre o custo base (custo).
+export type CustoAdicionalTipo = 'valor' | 'percent';
+export interface CustoAdicionalDB {
+  nome: string;
+  valor: number;
+  tipo: CustoAdicionalTipo;
+}
+
 export interface Anuncio {
   id: string;
   user_id: string | null;
@@ -17,6 +26,7 @@ export interface Anuncio {
   afiliados: number;
   imposto_pct: number;
   custo_var: number;
+  custos_adicionais: CustoAdicionalDB[];
   taxafixa: number | null;
   criado_em: string;
   atualizado_em: string;
@@ -32,6 +42,7 @@ export interface AnuncioInput {
   afiliados: number;
   imposto_pct: number;
   custo_var: number;
+  custos_adicionais: CustoAdicionalDB[];
   taxafixa?: number | null;
 }
 
