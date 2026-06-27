@@ -13,6 +13,7 @@ import {
   ShoppingBag, Lightbulb, TrendingUp, CheckCircle2, XCircle,
   HelpCircle, AlertCircle, BarChart3, DollarSign, Tag,
   Percent, Package, Trash2, Pencil, Plus, X, ChevronRight, ChevronDown,
+  Trophy, Crown,
 } from "lucide-react";
 import { Separator } from "@/components/ui/separator";
 import { Badge } from "@/components/ui/badge";
@@ -508,6 +509,43 @@ function CalculadoraPrecificacaoContent() {
       lista.push({ tipo: "info", mensagem: "O produto contribui para os custos fixos, mas não gera lucro líquido no cenário atual." });
     return lista;
   }, [results, papelProduto, percentualAbsorcao]);
+
+  // ── Simulador de cenários: mesmo produto/preço nos 3 marketplaces ──────────
+  const cenarios = useMemo(() => {
+    const _custo     = parseInput(custoProduto) + totalCustosAdicionais;
+    const _custoVar  = parseInput(embalagemEtiqueta);
+    const _preco     = parseInput(precoPromocional);
+    const _imposto   = parseInput(aliquotaImposto);
+    const _afiliados = parseInput(comissaoAfiliados);
+
+    const defs: { key: string; label: string; plataforma: Plataforma; mlTipo?: MLTipoAnuncio; color: string; bar: string }[] = [
+      { key: "shopee",      label: "Shopee",       plataforma: "Shopee",       color: "text-orange-600", bar: "bg-orange-500" },
+      { key: "tiktok",      label: "TikTok Shop",  plataforma: "TiktokShop",   color: "text-pink-600",   bar: "bg-pink-500"   },
+      { key: "ml_classico", label: "ML Clássico",  plataforma: "MercadoLivre", mlTipo: "classico", color: "text-blue-600", bar: "bg-blue-500" },
+      { key: "ml_premium",  label: "ML Premium",   plataforma: "MercadoLivre", mlTipo: "premium",  color: "text-blue-600", bar: "bg-blue-600" },
+    ];
+
+    const linhas = defs.map(d => {
+      const mlTipo = d.mlTipo ?? "classico";
+      const rates =
+        d.plataforma === "Shopee"     ? getShopeeRates(_preco) :
+        d.plataforma === "TiktokShop" ? getTiktokRates(_preco) :
+                                        getMercadoLivreRates(_preco, mlTipo);
+      const comissaoTaxa = calcComissaoTaxaReais(d.plataforma, _preco, mlTipo);
+      const impostoVal   = _preco * (_imposto / 100);
+      const afiliadosVal = _preco * (_afiliados / 100);
+      const totalCustos  = _custo + _custoVar + comissaoTaxa + impostoVal + afiliadosVal;
+      const lucro        = _preco - totalCustos;
+      const margem       = _preco > 0 ? (lucro / _preco) * 100 : 0;
+      const detalhe      = `${rates.comissao}% + ${formatCurrency(rates.taxaFixa)}`;
+      return { ...d, comissaoTaxa, lucro, margem, viavel: lucro > 0, detalhe };
+    });
+
+    const ordenadas = [...linhas].sort((a, b) => b.lucro - a.lucro);
+    const melhor    = _preco > 0 ? ordenadas[0] : null;
+    const lucroMax  = Math.max(...linhas.map(l => Math.abs(l.lucro)), 1);
+    return { linhas: ordenadas, melhor, preco: _preco, lucroMax };
+  }, [custoProduto, totalCustosAdicionais, embalagemEtiqueta, precoPromocional, aliquotaImposto, comissaoAfiliados]);
 
   // ── Abrir dialog para novo anúncio pré-preenchido ─────────────────────────
   const openNovoAnuncio = () => {
@@ -1258,6 +1296,92 @@ function CalculadoraPrecificacaoContent() {
               ))}
             </div>
           )}
+
+          {/* ── Simulador de Cenários ─────────────────────────────────────── */}
+          <Card className="border-primary/20">
+            <CardHeader className="pb-3">
+              <div className="flex items-center gap-2">
+                <Trophy className="h-5 w-5 text-primary" />
+                <CardTitle className="text-lg">Simulador de Cenários</CardTitle>
+              </div>
+              <CardDescription>
+                O mesmo produto comparado nos marketplaces — descubra onde ele rende mais.
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              {cenarios.preco <= 0 ? (
+                <div className="flex items-center gap-2 rounded-lg border border-dashed bg-muted/30 px-4 py-6 text-sm text-muted-foreground">
+                  <Info className="h-4 w-4 shrink-0" />
+                  Informe o <strong className="mx-1 text-foreground">Preço Promocional</strong> e os custos acima para comparar os marketplaces.
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  {/* Destaque do melhor cenário */}
+                  {cenarios.melhor && (
+                    <div className={`flex flex-wrap items-center justify-between gap-3 rounded-lg border p-4 ${
+                      cenarios.melhor.viavel
+                        ? "border-green-500/30 bg-green-500/5"
+                        : "border-destructive/30 bg-destructive/5"
+                    }`}>
+                      <div className="flex items-center gap-3">
+                        <Crown className={`h-6 w-6 ${cenarios.melhor.viavel ? "text-green-600" : "text-destructive"}`} />
+                        <div>
+                          <p className="text-xs text-muted-foreground uppercase tracking-wide">Melhor cenário</p>
+                          <p className={`text-lg font-bold leading-tight ${cenarios.melhor.color}`}>{cenarios.melhor.label}</p>
+                        </div>
+                      </div>
+                      <div className="text-right">
+                        <p className={`text-2xl font-bold leading-tight ${cenarios.melhor.viavel ? "text-green-600" : "text-destructive"}`}>
+                          {formatCurrency(cenarios.melhor.lucro)}
+                        </p>
+                        <p className="text-xs text-muted-foreground">
+                          margem <span className="font-semibold">{formatPercent(cenarios.melhor.margem)}</span> · a {formatCurrency(cenarios.preco)}
+                        </p>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Comparativo */}
+                  <div className="space-y-2">
+                    {cenarios.linhas.map((c, i) => {
+                      const isMelhor = cenarios.melhor?.key === c.key;
+                      const barW = `${Math.max((Math.abs(c.lucro) / cenarios.lucroMax) * 100, 4)}%`;
+                      return (
+                        <div key={c.key}
+                          className={`rounded-lg border p-3 transition-colors ${isMelhor ? "border-primary/40 bg-primary/5" : "border-border"}`}>
+                          <div className="flex items-center justify-between gap-3">
+                            <div className="flex items-center gap-2 min-w-0">
+                              <span className="text-xs text-muted-foreground tabular-nums w-4">{i + 1}º</span>
+                              <span className={`font-semibold truncate ${c.color}`}>{c.label}</span>
+                              {isMelhor && <Crown className="h-3.5 w-3.5 text-primary shrink-0" />}
+                              <Badge variant="outline" className="font-normal text-[10px] shrink-0">{c.detalhe}</Badge>
+                            </div>
+                            <div className="flex items-center gap-4 shrink-0">
+                              <span className={`text-sm font-bold tabular-nums ${c.lucro >= 0 ? "text-green-600" : "text-destructive"}`}>
+                                {formatCurrency(c.lucro)}
+                              </span>
+                              <span className={`text-sm font-semibold tabular-nums w-16 text-right ${c.margem >= 0 ? "text-primary" : "text-destructive"}`}>
+                                {formatPercent(c.margem)}
+                              </span>
+                            </div>
+                          </div>
+                          <div className="mt-2 h-1.5 w-full overflow-hidden rounded-full bg-muted">
+                            <div className={`h-full rounded-full ${c.lucro >= 0 ? c.bar : "bg-destructive"}`} style={{ width: barW }} />
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+
+                  <p className="text-[11px] text-muted-foreground">
+                    Considerando custo total {formatCurrency(parseInput(custoProduto) + totalCustosAdicionais)}, embalagem {formatCurrency(parseInput(embalagemEtiqueta))},
+                    imposto {formatPercent(parseInput(aliquotaImposto))} e afiliados {formatPercent(parseInput(comissaoAfiliados))}.
+                    Comissão e taxa fixa de cada marketplace são calculadas automaticamente pelo preço.
+                  </p>
+                </div>
+              )}
+            </CardContent>
+          </Card>
 
           {/* ── Três análises ─────────────────────────────────────────────── */}
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
