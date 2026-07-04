@@ -15,10 +15,14 @@ import {
   X,
   MessageCircle,
   Zap,
+  Sparkles,
+  Crown,
+  Building2,
 } from "lucide-react";
 import logo from "@/assets/logo-new.svg";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
+import { EnterpriseLeadDialog } from "@/components/EnterpriseLeadDialog";
 
 // ─── Brand color (logo blue) ──────────────────────────────────────────────────
 // Extracted from logo: #318EF1
@@ -497,19 +501,56 @@ function StatsSection() {
 }
 
 // ─── Pricing Section ──────────────────────────────────────────────────────────
+const pricingFeatures = [
+  "Cálculo de lucro por pedido",
+  "Calculadora de precificação",
+  "DRE automático",
+  "Integração com Shopee",
+  "Integração com TikTok Shop",
+  "Histórico financeiro completo",
+  "Análise de margem por produto",
+  "Suporte por e-mail",
+];
+
+const pricingPlans = [
+  {
+    id: "mensal",
+    name: "Mensal",
+    tag: "FLEXÍVEL",
+    icon: Zap,
+    price: "74",
+    cents: "99",
+    priceSuffix: "por mês",
+    billingNote: null as string | null,
+    popular: false,
+  },
+  {
+    id: "semestral",
+    name: "Semestral",
+    tag: "ECONOMIZE",
+    icon: Sparkles,
+    price: "57",
+    cents: "90",
+    priceSuffix: "por mês",
+    billingNote: "6x de R$ 57,90 — total R$ 347,40",
+    popular: false,
+  },
+  {
+    id: "anual",
+    name: "Anual",
+    tag: "MELHOR OFERTA",
+    icon: Crown,
+    price: "37",
+    cents: "90",
+    priceSuffix: "por mês",
+    billingNote: "12x de R$ 37,90 — total R$ 454,80",
+    popular: true,
+  },
+];
+
 function PricingSection() {
   const navigate = useNavigate();
-
-  const features = [
-    "Cálculo de lucro por pedido",
-    "Calculadora de precificação",
-    "DRE automático",
-    "Integração com Shopee",
-    "Integração com TikTok Shop",
-    "Histórico financeiro completo",
-    "Análise de margem por produto",
-    "Suporte por e-mail",
-  ];
+  const [leadDialogOpen, setLeadDialogOpen] = useState(false);
 
   return (
     <section id="planos" className="section-dark relative py-20 md:py-28 overflow-hidden">
@@ -521,66 +562,130 @@ function PricingSection() {
           </h2>
         </div>
 
-        <div className="max-w-md mx-auto animate-fade-up">
-          <div className="bg-white rounded-3xl overflow-hidden shadow-2xl">
-            {/* Header */}
-            <div className="px-8 pt-8 pb-6" style={{ backgroundColor: "#318EF1" }}>
-              <div className="inline-block bg-white/20 rounded-full px-3 py-1 text-white text-xs font-semibold mb-3">
-                PLANO ÚNICO
+        <div className="grid md:grid-cols-2 xl:grid-cols-4 gap-6 max-w-6xl mx-auto animate-fade-up">
+          {pricingPlans.map((plan) => (
+            <div
+              key={plan.id}
+              className={`relative bg-white rounded-3xl overflow-hidden shadow-2xl flex flex-col ${
+                plan.popular ? "ring-4 ring-[#318EF1]" : ""
+              }`}
+            >
+              {plan.popular && (
+                <div className="absolute top-4 right-4 bg-[#0A1628] text-white text-[10px] font-bold uppercase tracking-wider px-3 py-1 rounded-full">
+                  Mais popular
+                </div>
+              )}
+
+              {/* Header */}
+              <div className="px-6 pt-8 pb-6" style={{ backgroundColor: "#318EF1" }}>
+                <div className="inline-flex items-center gap-1.5 bg-white/20 rounded-full px-3 py-1 text-white text-xs font-semibold mb-3">
+                  <plan.icon className="w-3.5 h-3.5" />
+                  {plan.tag}
+                </div>
+                <h3 className="text-white font-bold text-2xl mb-1">{plan.name}</h3>
+                <p className="text-white/80 text-sm">Seller Finance</p>
               </div>
-              <h3 className="text-white font-bold text-2xl mb-1">Seller Finance</h3>
-              <p className="text-white/80 text-sm">Tudo que você precisa para gerir suas finanças nos marketplaces</p>
+
+              {/* Price */}
+              <div className="px-6 py-6 border-b border-gray-100">
+                <div className="flex items-end gap-1">
+                  <span className="text-gray-500 text-base font-medium">R$</span>
+                  <span className="text-4xl font-bold text-[#0A1628]">{plan.price}</span>
+                  <span className="text-gray-500 text-base mb-1">,{plan.cents}</span>
+                </div>
+                <p className="text-gray-500 text-xs mt-1">{plan.priceSuffix}</p>
+                {plan.billingNote && (
+                  <p className="text-gray-400 text-[11px] mt-1">{plan.billingNote}</p>
+                )}
+              </div>
+
+              {/* CTA */}
+              <div className="px-6 py-4">
+                <button onClick={() => navigate("/user/auth?redirect=planos")} className="btn-cta">
+                  ASSINE AGORA →
+                </button>
+              </div>
+
+              {/* Features */}
+              <div className="px-6 pb-8 flex-1">
+                <p className="text-gray-500 text-xs font-semibold uppercase tracking-wider mb-4">
+                  Funcionalidades incluídas:
+                </p>
+                <div className="space-y-2.5">
+                  {pricingFeatures.map((f, i) => (
+                    <div key={i} className="flex items-center gap-2.5">
+                      <CheckCircle2 className="w-4 h-4 text-[#318EF1] flex-shrink-0" />
+                      <span className="text-gray-700 text-sm">{f}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          ))}
+
+          {/* Plano Empresarial */}
+          <div className="relative bg-[#0A1628] rounded-3xl overflow-hidden shadow-2xl flex flex-col border border-white/10">
+            <div className="px-6 pt-8 pb-6">
+              <div className="inline-flex items-center gap-1.5 bg-white/10 rounded-full px-3 py-1 text-white text-xs font-semibold mb-3">
+                <Building2 className="w-3.5 h-3.5" />
+                SOB MEDIDA
+              </div>
+              <h3 className="text-white font-bold text-2xl mb-1">Empresarial</h3>
+              <p className="text-white/60 text-sm">Para operações com múltiplas lojas ou grandes volumes</p>
             </div>
 
-            {/* Price */}
-            <div className="px-8 py-6 border-b border-gray-100">
-              <div className="flex items-end gap-1">
-                <span className="text-gray-500 text-lg font-medium">R$</span>
-                <span className="text-5xl font-bold text-[#0A1628]">74</span>
-                <span className="text-gray-500 text-lg mb-1">,99</span>
-              </div>
-              <p className="text-gray-500 text-sm mt-1">por mês · cancele quando quiser</p>
+            <div className="px-6 py-6 border-b border-white/10">
+              <span className="text-3xl font-bold text-white">Vamos conversar</span>
+              <p className="text-white/50 text-xs mt-1">Proposta personalizada para o seu negócio</p>
             </div>
 
-            {/* CTA */}
-            <div className="px-8 py-4">
-              <button onClick={() => navigate("/user/auth?redirect=planos")} className="btn-cta">
-                ASSINE AGORA →
+            <div className="px-6 py-4">
+              <button
+                onClick={() => setLeadDialogOpen(true)}
+                className="btn-cta bg-white !text-[#0A1628] hover:opacity-90"
+              >
+                FALE COM NOSSO TIME →
               </button>
             </div>
 
-            {/* Features */}
-            <div className="px-8 pb-8">
-              <p className="text-gray-500 text-xs font-semibold uppercase tracking-wider mb-4">
-                Funcionalidades incluídas:
+            <div className="px-6 pb-8 flex-1">
+              <p className="text-white/50 text-xs font-semibold uppercase tracking-wider mb-4">
+                Além de tudo do plano padrão:
               </p>
-              <div className="space-y-3">
-                {features.map((f, i) => (
-                  <div key={i} className="flex items-center gap-3">
-                    <CheckCircle2 className="w-5 h-5 text-[#318EF1] flex-shrink-0" />
-                    <span className="text-gray-700 text-sm">{f}</span>
+              <div className="space-y-2.5">
+                {[
+                  "Múltiplas lojas e CNPJs",
+                  "Onboarding assistido",
+                  "Suporte prioritário via WhatsApp",
+                  "Relatórios e integrações sob medida",
+                ].map((f, i) => (
+                  <div key={i} className="flex items-center gap-2.5">
+                    <CheckCircle2 className="w-4 h-4 text-[#318EF1] flex-shrink-0" />
+                    <span className="text-white/80 text-sm">{f}</span>
                   </div>
                 ))}
               </div>
             </div>
           </div>
+        </div>
 
-          {/* Bonus banner */}
-          <div className="mt-4 bg-white/10 rounded-2xl p-4 flex items-center gap-3 border border-white/20">
-            <div className="w-10 h-10 rounded-xl bg-[#318EF1]/20 flex items-center justify-center flex-shrink-0">
-              <Zap className="w-5 h-5 text-[#318EF1]" />
-            </div>
-            <p className="text-white/80 text-sm">
-              Assine agora e tenha acesso imediato a todas as funcionalidades,
-              incluindo integrações com Shopee e TikTok Shop.
-            </p>
+        {/* Bonus banner */}
+        <div className="max-w-6xl mx-auto mt-6 bg-white/10 rounded-2xl p-4 flex items-center gap-3 border border-white/20 animate-fade-up">
+          <div className="w-10 h-10 rounded-xl bg-[#318EF1]/20 flex items-center justify-center flex-shrink-0">
+            <Zap className="w-5 h-5 text-[#318EF1]" />
           </div>
+          <p className="text-white/80 text-sm">
+            Assine agora e tenha acesso imediato a todas as funcionalidades,
+            incluindo integrações com Shopee e TikTok Shop.
+          </p>
         </div>
       </div>
 
       <svg className="absolute -bottom-1 left-0 w-full" viewBox="0 0 1440 170" preserveAspectRatio="none">
         <path d="M0,120 C300,40 900,180 1440,80 L1440,170 L0,170 Z" fill="#318EF1" />
       </svg>
+
+      <EnterpriseLeadDialog open={leadDialogOpen} onOpenChange={setLeadDialogOpen} />
     </section>
   );
 }

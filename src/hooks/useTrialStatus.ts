@@ -23,7 +23,8 @@ type ProfileRow = {
 
 // Planos que significam acesso pago ativo (incluindo cancel_at_period_end
 // pois o usuário ainda tem acesso até o fim do período)
-const PAID_PLANS = ["profissional", "cancel_at_period_end"];
+// Valores devem bater com os gravados pelo webhook do Stripe (supabase/functions/stripe-webhook)
+const PAID_PLANS = ["mensal", "semestral", "anual", "cancel_at_period_end"];
 
 // Planos que significam cancelamento efetivo (sem acesso)
 const CANCELED_PLANS = ["cancelado"];
@@ -120,7 +121,19 @@ export function useTrialStatus(): TrialStatus {
 
     fetchStatus();
 
-    // Re-fetch quando volta do Stripe (?trial=success na URL)
+    // Re-fetch quando volta do Stripe (?trial=success na URL) ou navega dentro do app
+    // Sem isso, quem fica parado numa página vê o card de "trial expirado" travado
+    // mesmo depois que o webhook do Stripe confirma o pagamento e libera o plano pago.
+    const interval = setInterval(fetchStatus, 60_000);
+    const onFocus = () => fetchStatus();
+    window.addEventListener("focus", onFocus);
+    document.addEventListener("visibilitychange", onFocus);
+
+    return () => {
+      clearInterval(interval);
+      window.removeEventListener("focus", onFocus);
+      document.removeEventListener("visibilitychange", onFocus);
+    };
   }, [pathname, search]);
 
   return status;

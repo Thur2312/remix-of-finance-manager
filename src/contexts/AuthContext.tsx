@@ -3,7 +3,6 @@ import { User, Session } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
 import axios from 'axios';
 import { set } from 'date-fns';
-import { differenceInDays } from 'date-fns';
 
 
 export interface Profile {
@@ -13,6 +12,7 @@ export interface Profile {
   phone: string | null;
   avatar_url: string | null;
   plan: string | null;
+  trial_ends_at: string | null;
   created_at: string; // Data de criação do perfil
   data: any; // Campo para armazenar dados adicionais, como permissões do plano, etc.
 }
@@ -54,16 +54,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [trialDaysRemaining, setTrialDaysRemaining] = useState(0);
 
   /**
-   * Calcula se o trial expirou e quantos dias restam
-   * Trial válido por 7 dias a partir da criação do perfil
-   * quem sabe sabe po 
+   * Calcula se o trial expirou e quantos dias restam, com base em
+   * profiles.trial_ends_at (data real definida pelo Stripe no checkout).
+   * Fonte única de verdade, compartilhada com useTrialStatus.
    */
-  const calculateTrialStatus = (createdAt: string): { isExpired: boolean; daysRemaining: number } => {
-    const createdDate = new Date(createdAt);
-    const today = new Date();
-    const daysPassed = differenceInDays(today, createdDate);
-    const daysRemaining = Math.max(0, 7 - daysPassed);
-    const isExpired = daysPassed >= 7;
+  const calculateTrialStatus = (trialEndsAt: string | null): { isExpired: boolean; daysRemaining: number } => {
+    if (!trialEndsAt) {
+      return { isExpired: true, daysRemaining: 0 };
+    }
+
+    const diffMs = new Date(trialEndsAt).getTime() - new Date().getTime();
+    const daysRemaining = Math.max(0, Math.ceil(diffMs / (1000 * 60 * 60 * 24)));
+    const isExpired = diffMs <= 0;
 
     return { isExpired, daysRemaining };
   };
@@ -73,7 +75,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     try {
       const { data, error } = await supabase
         .from('profiles')
-        .select('id, full_name, email, phone, avatar_url, plan, created_at')
+        .select('id, full_name, email, phone, avatar_url, plan, trial_ends_at, created_at')
         .eq('id', userId)
         .single();
 
@@ -84,27 +86,30 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
       if (data) {
         setProfile(data as unknown as Profile);
-        
-        // Determinar o plano efetivo
-        let effectivePlan = (data as any).plan || 'trial';
-        
-        // Se o plano é trial, verificar se expirou
+
+        // Determinar o plano efetivo. Sem plano definido = nunca completou o
+        // checkout no Stripe, então não tem trial nem acesso pago.
+        let effectivePlan = (data as any).plan || 'sem_plano';
+
+        // Se o plano é trial, verificar se expirou (com base na data real do Stripe)
         if (effectivePlan === 'trial') {
-          const { isExpired, daysRemaining } = calculateTrialStatus((data as any).created_at);
+          const { isExpired, daysRemaining } = calculateTrialStatus((data as any).trial_ends_at);
           setIsTrialExpired(isExpired);
           setTrialDaysRemaining(daysRemaining);
-          
+
           // Se trial expirou, mudar para basico
           if (isExpired) {
             effectivePlan = 'basico';
           }
         } else {
+          // sem_plano = nunca passou pelo checkout, não é trial expirado
+          // (mesma regra de useTrialStatus.ts)
           setIsTrialExpired(false);
           setTrialDaysRemaining(0);
         }
-        
+
         setPlan(effectivePlan);
-        
+
         // Buscar as permissões do plano
         await fetchPlanPermissions(effectivePlan);
       }
