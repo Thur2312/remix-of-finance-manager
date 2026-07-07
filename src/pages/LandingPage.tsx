@@ -773,7 +773,7 @@ function FAQSection() {
     { q: "Prazo de reembolso", a: "Se você assinar e, durante os primeiros 7 dias, perceber que o Seller Finance não é para você, basta solicitar o reembolso. Sem complicações." },
     { q: "Forma de pagamento", a: "Aceitamos cartão de crédito como forma de pagamento. Assim, você nunca será pego de surpresa e seu acesso sempre ficará ativo." },
     { q: "A integração com Shopee e TikTok Shop é segura?", a: "Sim. Nossa integração utiliza as APIs oficiais dos marketplaces, garantindo segurança e fidelidade nos dados. Seus dados financeiros são protegidos com criptografia." },
-    { q: "Funciona com outros marketplaces?", a: "No momento, o Seller Finance é integrado com Shopee e TikTok Shop. Estamos trabalhando para adicionar Mercado Livre e Amazon em breve." },
+    { q: "Funciona com outros marketplaces?", a: "Sim. O Seller Finance é integrado com Shopee, TikTok Shop e Mercado Livre. Estamos trabalhando para adicionar Amazon em breve." },
     { q: "Posso cancelar a qualquer momento?", a: "Sim. Você pode cancelar sua assinatura a qualquer momento, sem multas ou burocracia. O acesso continua ativo até o fim do período pago." },
   ];
 
@@ -810,12 +810,12 @@ function FAQSection() {
 // ─── SEO Dialog ───────────────────────────────────────────────────────────────
 const seoSections = [
   {
-    title: "Gestão financeira para vendedores de Shopee e TikTok Shop",
-    text: "O Seller Finance é a plataforma de gestão financeira criada para quem vende na Shopee e no TikTok Shop e quer saber, com precisão, o lucro real de cada pedido. Diferente das planilhas manuais, o sistema calcula automaticamente taxas de marketplace, custo do produto e demais despesas, entregando uma visão clara da lucratividade da sua loja.",
+    title: "Gestão financeira para vendedores de Shopee, TikTok Shop e Mercado Livre",
+    text: "O Seller Finance é a plataforma de gestão financeira criada para quem vende na Shopee, no TikTok Shop e no Mercado Livre e quer saber, com precisão, o lucro real de cada pedido. Diferente das planilhas manuais, o sistema calcula automaticamente taxas de marketplace, custo do produto e demais despesas, entregando uma visão clara da lucratividade da sua loja.",
   },
   {
     title: "Calculadora de precificação para marketplace",
-    text: "Defina o preço ideal de venda antes de anunciar. A calculadora de precificação do Seller Finance considera custo do produto, comissões da Shopee e do TikTok Shop e a margem de lucro desejada, evitando que o vendedor precifique no prejuízo.",
+    text: "Defina o preço ideal de venda antes de anunciar. A calculadora de precificação do Seller Finance considera custo do produto, comissões da Shopee, TikTok Shop e Mercado Livre e a margem de lucro desejada, evitando que o vendedor precifique no prejuízo.",
   },
   {
     title: "DRE automático e controle financeiro de loja online",
@@ -824,6 +824,22 @@ const seoSections = [
   {
     title: "Cálculo de lucro real por pedido",
     text: "Saiba exatamente quanto sobra de cada venda depois de descontar taxas, frete, impostos e custo do produto. Essa clareza financeira é o que diferencia vendedores que crescem de forma estratégica nos marketplaces.",
+  },
+  {
+    title: "Simulador de cenários de venda por marketplace",
+    text: "Compare o mesmo produto e preço na Shopee, no TikTok Shop e no Mercado Livre antes de anunciar. O simulador de cenários do Seller Finance mostra qual canal entrega a melhor margem de lucro para cada produto do seu catálogo.",
+  },
+  {
+    title: "Assistente de anúncio com inteligência artificial",
+    text: "Gere títulos e descrições de anúncio otimizados para Shopee, TikTok Shop e Mercado Livre em segundos. O assistente de anúncio com IA do Seller Finance ajuda o vendedor a criar listagens mais atrativas e converter mais vendas.",
+  },
+  {
+    title: "Fluxo de caixa e histórico financeiro para e-commerce",
+    text: "Controle entradas e saídas do seu fluxo de caixa, acompanhe o histórico financeiro completo da loja e analise a margem por produto ao longo do tempo, tudo sincronizado automaticamente com seus marketplaces.",
+  },
+  {
+    title: "Integração automática com Shopee, TikTok Shop e Mercado Livre",
+    text: "Conecte suas contas de vendedor e sincronize pedidos, produtos, pagamentos e taxas automaticamente. A integração do Seller Finance com Shopee, TikTok Shop e Mercado Livre elimina o trabalho manual de conciliar planilhas.",
   },
 ];
 
@@ -834,7 +850,7 @@ function SEODialog({ open, onOpenChange }: { open: boolean; onOpenChange: (open:
         <DialogHeader>
           <DialogTitle>Seller Finance: gestão financeira completa para vendedores de marketplace</DialogTitle>
           <DialogDescription>
-            Cálculo de lucro, precificação inteligente e DRE automático para quem vende na Shopee e no TikTok Shop.
+            Cálculo de lucro, precificação inteligente, simulador de cenários, assistente de anúncio com IA e DRE automático para quem vende na Shopee, no TikTok Shop e no Mercado Livre.
           </DialogDescription>
         </DialogHeader>
         <div className="space-y-6 text-sm leading-6">
