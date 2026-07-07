@@ -23,6 +23,14 @@ import logo from "@/assets/logo-new.svg";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { EnterpriseLeadDialog } from "@/components/EnterpriseLeadDialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+} from "@/components/ui/dialog";
+import { Separator } from "@/components/ui/separator";
 
 // ─── Brand color (logo blue) ──────────────────────────────────────────────────
 // Extracted from logo: #318EF1
@@ -799,8 +807,54 @@ function FAQSection() {
   );
 }
 
+// ─── SEO Dialog ───────────────────────────────────────────────────────────────
+const seoSections = [
+  {
+    title: "Gestão financeira para vendedores de Shopee e TikTok Shop",
+    text: "O Seller Finance é a plataforma de gestão financeira criada para quem vende na Shopee e no TikTok Shop e quer saber, com precisão, o lucro real de cada pedido. Diferente das planilhas manuais, o sistema calcula automaticamente taxas de marketplace, custo do produto e demais despesas, entregando uma visão clara da lucratividade da sua loja.",
+  },
+  {
+    title: "Calculadora de precificação para marketplace",
+    text: "Defina o preço ideal de venda antes de anunciar. A calculadora de precificação do Seller Finance considera custo do produto, comissões da Shopee e do TikTok Shop e a margem de lucro desejada, evitando que o vendedor precifique no prejuízo.",
+  },
+  {
+    title: "DRE automático e controle financeiro de loja online",
+    text: "Tenha o Demonstrativo de Resultado do Exercício (DRE) da sua operação gerado automaticamente, sem depender de contador ou planilhas. Acompanhe receitas, custos e margem de contribuição por produto, e entenda a evolução financeira da sua loja ao longo do tempo.",
+  },
+  {
+    title: "Cálculo de lucro real por pedido",
+    text: "Saiba exatamente quanto sobra de cada venda depois de descontar taxas, frete, impostos e custo do produto. Essa clareza financeira é o que diferencia vendedores que crescem de forma estratégica nos marketplaces.",
+  },
+];
+
+function SEODialog({ open, onOpenChange }: { open: boolean; onOpenChange: (open: boolean) => void }) {
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="max-w-2xl w-[95vw] max-h-[85vh] overflow-y-auto">
+        <DialogHeader>
+          <DialogTitle>Seller Finance: gestão financeira completa para vendedores de marketplace</DialogTitle>
+          <DialogDescription>
+            Cálculo de lucro, precificação inteligente e DRE automático para quem vende na Shopee e no TikTok Shop.
+          </DialogDescription>
+        </DialogHeader>
+        <div className="space-y-6 text-sm leading-6">
+          {seoSections.map((section, i) => (
+            <div key={section.title}>
+              {i > 0 && <Separator className="mb-6" />}
+              <h3 className="text-base font-semibold text-[#0A1628] mb-2">{section.title}</h3>
+              <p className="text-gray-600">{section.text}</p>
+            </div>
+          ))}
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
 // ─── Footer ───────────────────────────────────────────────────────────────────
 function Footer() {
+  const [seoOpen, setSeoOpen] = useState(false);
+
   return (
     <footer className="section-dark pt-16 pb-8">
       <div className="container">
@@ -827,6 +881,10 @@ function Footer() {
                   {link.label}
                 </a>
               ))}
+              <button onClick={() => setSeoOpen(true)}
+                className="block text-white/50 hover:text-white text-sm transition-colors text-left">
+                SEO
+              </button>
             </div>
           </div>
 
@@ -868,6 +926,8 @@ function Footer() {
           </p>
         </div>
       </div>
+
+      <SEODialog open={seoOpen} onOpenChange={setSeoOpen} />
     </footer>
   );
 }
