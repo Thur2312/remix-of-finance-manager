@@ -1,5 +1,5 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
-import { planIdByCycle } from "../_shared/plans.ts";
+import { PlanId, planIdByCycle } from "../_shared/plans.ts";
 
 const ASAAS_API_KEY = Deno.env.get("ASAAS_API_KEY")!;
 const ASAAS_API_BASE_URL = Deno.env.get("ASAAS_API_BASE_URL")!;
@@ -16,6 +16,20 @@ async function fetchSubscription(subscriptionId: string) {
   });
   if (!response.ok) return null;
   return await response.json();
+}
+
+// ── Helper: o checkout codifica "userId:planId" no externalReference, já que
+// planos semestral/anual (INSTALLMENT) não têm subscription/cycle pra inferir o plano ──
+const PLAN_IDS: PlanId[] = ["mensal", "semestral", "anual"];
+
+function parseRef(ref?: string | null): { userId: string | null; planId: PlanId | null } {
+  if (!ref) return { userId: null, planId: null };
+  const idx = ref.indexOf(":");
+  if (idx === -1) return { userId: ref, planId: null };
+  const userId = ref.slice(0, idx);
+  const rawPlanId = ref.slice(idx + 1);
+  const planId = PLAN_IDS.includes(rawPlanId as PlanId) ? (rawPlanId as PlanId) : null;
+  return { userId, planId };
 }
 
 // ── Helper: resolve userId com fallbacks (equivalente ao resolveUserId do antigo stripe-webhook) ──
@@ -57,35 +71,21 @@ Deno.serve(async (req) => {
   const eventType = body.event as string;
 
   // ──────────────────────────────────────────────────────────────────
-  // CHECKOUT_PAID — comprador concluiu o checkout (equivalente ao
-  // checkout.session.completed do Stripe). A cobrança real só acontece
-  // em subscription.nextDueDate, então aqui só liberamos o "trial".
+  // CHECKOUT_PAID — comprador concluiu o checkout (cartão capturado).
+  // Só guarda a referência do checkout; a ativação do plano de verdade
+  // acontece em PAYMENT_CONFIRMED/PAYMENT_RECEIVED (dinheiro confirmado),
+  // seja cobrança recorrente (mensal) ou parcelada única (semestral/anual).
   // ──────────────────────────────────────────────────────────────────
   if (eventType === "CHECKOUT_PAID") {
     const checkout = body.checkout;
+    const { userId: refUserId } = parseRef(checkout?.externalReference);
 
-    const userId = await resolveUserId(
-      checkout?.externalReference,
-      undefined,
-      checkout?.customer,
-    );
+    const userId = await resolveUserId(refUserId, undefined, checkout?.customer);
 
     if (userId) {
-      const trialEndsAt = checkout?.subscription?.nextDueDate
-        ? new Date(checkout.subscription.nextDueDate).toISOString()
-        : null;
-
-      await supabase
-        .from("profiles")
-        .update({ plan: "trial", trial_ends_at: trialEndsAt })
-        .eq("id", userId);
-
       await supabase.from("subscriptions").upsert(
         {
           user_id: userId,
-          plan: "trial",
-          status: "trialing",
-          user_plan: "trial",
           asaas_customer_id: checkout?.customer ?? null,
           asaas_checkout_id: checkout?.id ?? null,
         },
@@ -100,12 +100,9 @@ Deno.serve(async (req) => {
   // ──────────────────────────────────────────────────────────────────
   if (eventType === "SUBSCRIPTION_CREATED") {
     const subscription = body.subscription;
+    const { userId: refUserId } = parseRef(subscription?.externalReference);
 
-    const userId = await resolveUserId(
-      subscription?.externalReference,
-      undefined,
-      subscription?.customer,
-    );
+    const userId = await resolveUserId(refUserId, undefined, subscription?.customer);
 
     if (userId) {
       await supabase.from("subscriptions").upsert(
@@ -120,8 +117,10 @@ Deno.serve(async (req) => {
   }
 
   // ──────────────────────────────────────────────────────────────────
-  // PAYMENT_CONFIRMED / PAYMENT_RECEIVED — trial convertido em pago
-  // OU renovação de um ciclo já pago.
+  // PAYMENT_CONFIRMED / PAYMENT_RECEIVED — dinheiro confirmado: ativa o
+  // plano pago. Cobre tanto a assinatura recorrente (mensal, tem
+  // subscription/cycle) quanto a parcela única (semestral/anual,
+  // INSTALLMENT, sem subscription — o plano vem do externalReference).
   // ──────────────────────────────────────────────────────────────────
   if (eventType === "PAYMENT_CONFIRMED" || eventType === "PAYMENT_RECEIVED") {
     const payment = body.payment;
@@ -131,16 +130,21 @@ Deno.serve(async (req) => {
       ? await fetchSubscription(asaasSubscriptionId)
       : null;
 
+    const refFromSubscription = parseRef(subscription?.externalReference);
+    const refFromPayment = parseRef(payment?.externalReference);
+
     const userId = await resolveUserId(
-      subscription?.externalReference ?? payment?.externalReference,
+      refFromSubscription.userId ?? refFromPayment.userId,
       asaasSubscriptionId,
       payment?.customer,
     );
 
     if (userId) {
-      const planoPago = subscription?.cycle
-        ? planIdByCycle(subscription.cycle) ?? "mensal"
-        : "mensal";
+      const planoPago =
+        refFromSubscription.planId ??
+        refFromPayment.planId ??
+        (subscription?.cycle ? planIdByCycle(subscription.cycle) : null) ??
+        "mensal";
 
       await supabase
         .from("profiles")
@@ -167,12 +171,9 @@ Deno.serve(async (req) => {
   // ──────────────────────────────────────────────────────────────────
   if (eventType === "SUBSCRIPTION_DELETED" || eventType === "SUBSCRIPTION_INACTIVATED") {
     const subscription = body.subscription;
+    const { userId: refUserId } = parseRef(subscription?.externalReference);
 
-    const userId = await resolveUserId(
-      subscription?.externalReference,
-      subscription?.id,
-      subscription?.customer,
-    );
+    const userId = await resolveUserId(refUserId, subscription?.id, subscription?.customer);
 
     if (userId) {
       await supabase

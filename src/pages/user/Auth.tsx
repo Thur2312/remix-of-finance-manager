@@ -111,9 +111,8 @@ export default function Auth() {
           : error.message
       );
     } else {
-      toast.success('Conta criada! Cadastre seu cartão para começar o período grátis.');
-      // Novo usuário → sempre vai para setup-payment
-      navigate('/setup-payment', { replace: true });
+      toast.success('Conta criada! Você tem 5 dias grátis para testar tudo.');
+      navigate(redirectPath, { replace: true });
     }
 
     setIsLoading(false);

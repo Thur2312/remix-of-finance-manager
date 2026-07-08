@@ -7,12 +7,14 @@ export interface PlanConfig {
   value: number;
   cycle: "MONTHLY" | "SEMIANNUALLY" | "YEARLY";
   label: string;
+  /** Parcelas máximas no cartão. Só se aplica a planos cobrados como INSTALLMENT (não recorrente). */
+  maxInstallmentCount?: number;
 }
 
 export const PLANS: Record<PlanId, PlanConfig> = {
   mensal: { value: 74.99, cycle: "MONTHLY", label: "Mensal" },
-  semestral: { value: 347.40, cycle: "SEMIANNUALLY", label: "Semestral" },
-  anual: { value: 454.80, cycle: "YEARLY", label: "Anual" },
+  semestral: { value: 347.40, cycle: "SEMIANNUALLY", label: "Semestral", maxInstallmentCount: 6 },
+  anual: { value: 454.80, cycle: "YEARLY", label: "Anual", maxInstallmentCount: 12 },
 };
 
 export function resolvePlanId(planId?: string): PlanId {

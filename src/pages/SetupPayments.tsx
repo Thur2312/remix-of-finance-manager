@@ -18,7 +18,7 @@ import { useEffect } from 'react';
 import { PLANS as PLAN_PRICING } from '@/config/plans';
 
 const beneficios = [
-  'Acesso completo a todos os recursos por 5 dias',
+  'Acesso completo a todos os recursos',
   'Dashboard avançado e análise por produto',
   'DRE automatizado e fluxo de caixa',
   'Precificação otimizada com IA',
@@ -49,7 +49,7 @@ function SetupPaymentContent() {
           <div className="flex items-center gap-2 text-sm text-muted-foreground bg-muted rounded-lg px-4 py-3">
             <AlertCircle className="h-4 w-4 flex-shrink-0" />
             <span>
-              Você cancelou o cadastro do cartão. Conclua para liberar seu acesso.
+              Você cancelou a assinatura. Conclua para liberar seu acesso.
             </span>
           </div>
         )}
@@ -63,11 +63,9 @@ function SetupPaymentContent() {
               <div className="h-14 w-14 rounded-2xl bg-primary/10 flex items-center justify-center mx-auto">
                 <Crown className="h-7 w-7 text-primary" />
               </div>
-              <h1 className="text-xl font-bold">Comece seu período grátis</h1>
+              <h1 className="text-xl font-bold">Assine o plano Profissional</h1>
               <p className="text-sm text-muted-foreground">
-                Experimente o plano Profissional por{' '}
-                <span className="font-semibold text-foreground">5 dias grátis</span>.
-                Cancele antes e não será cobrado nada.
+                Continue com acesso completo ao Seller Finance.
               </p>
             </div>
 
@@ -84,10 +82,10 @@ function SetupPaymentContent() {
             {/* Preço */}
             <div className="bg-muted rounded-lg px-4 py-3 flex items-center justify-between">
               <div>
-                <p className="text-xs text-muted-foreground">Após os 5 dias</p>
+                <p className="text-xs text-muted-foreground">Plano anual</p>
                 <p className="font-semibold text-sm">R$ {PLAN_PRICING.anual.monthlyEquivalent.toFixed(2).replace('.', ',')} / mês</p>
                 <p className="text-[11px] text-muted-foreground">
-                  Plano anual — {PLAN_PRICING.anual.billingNote}
+                  {PLAN_PRICING.anual.billingNote}
                 </p>
               </div>
               <Badge variant="secondary" className="text-xs">
@@ -107,7 +105,7 @@ function SetupPaymentContent() {
               ) : (
                 <>
                   <CreditCard className="mr-2 h-4 w-4" />
-                  Cadastrar cartão e começar grátis
+                  Assinar agora
                   <ArrowRight className="ml-2 h-4 w-4" />
                 </>
               )}
@@ -125,8 +123,7 @@ function SetupPaymentContent() {
 
         {/* Nota de transparência — sem botão de escape */}
         <p className="text-center text-xs text-muted-foreground px-4">
-          O cartão é necessário para iniciar o teste. Nenhum valor será cobrado
-          durante os 5 dias. Cancele a qualquer momento antes do vencimento.
+          Cancele a qualquer momento antes do próximo vencimento.
         </p>
       </div>
     </div>

@@ -34,34 +34,50 @@ Deno.serve(async (req) => {
     const selectedPlan = resolvePlanId(planId);
     const plan = PLANS[selectedPlan];
 
+    // Mensal é assinatura recorrente de verdade (cobra todo mês).
+    // Semestral/anual são cobrança única parcelada no cartão (INSTALLMENT) —
+    // o cliente paga o valor total dividido em até N parcelas e não há
+    // renovação automática ao final do período.
+    const isInstallment = plan.maxInstallmentCount !== undefined;
+
+    const checkoutBody: Record<string, unknown> = {
+      billingTypes: ["CREDIT_CARD"],
+      // A Asaas exige DETACHED junto de INSTALLMENT (parcela única parcelada).
+      chargeTypes: isInstallment ? ["DETACHED", "INSTALLMENT"] : ["RECURRENT"],
+      minutesToExpire: 60,
+      // Codifica o plano junto do userId — sem "subscription", o webhook não
+      // tem mais como descobrir qual plano foi comprado a partir do ciclo.
+      externalReference: `${userId}:${selectedPlan}`,
+      callback: {
+        successUrl: `${req.headers.get("origin")}/dashboard?trial=success`,
+        cancelUrl: `${req.headers.get("origin")}/planos?canceled=true`,
+      },
+      items: [
+        {
+          // Limite da Asaas: no máximo 30 caracteres.
+          name: `Seller Finance ${plan.label}`,
+          description: isInstallment
+            ? `Plano ${plan.label} — pagamento único parcelado`
+            : `Assinatura ${plan.label}`,
+          quantity: 1,
+          value: plan.value,
+        },
+      ],
+    };
+
+    if (isInstallment) {
+      checkoutBody.installment = { maxInstallmentCount: plan.maxInstallmentCount };
+    } else {
+      checkoutBody.subscription = { cycle: plan.cycle, nextDueDate: firstDueDate() };
+    }
+
     const response = await fetch(`${ASAAS_API_BASE_URL}/checkouts`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
         access_token: ASAAS_API_KEY,
       },
-      body: JSON.stringify({
-        billingTypes: ["CREDIT_CARD"],
-        chargeTypes: ["RECURRENT"],
-        minutesToExpire: 60,
-        externalReference: userId,
-        callback: {
-          successUrl: `${req.headers.get("origin")}/dashboard?trial=success`,
-          cancelUrl: `${req.headers.get("origin")}/planos?canceled=true`,
-        },
-        items: [
-          {
-            name: `Seller Finance — Plano ${plan.label}`,
-            description: `Assinatura ${plan.label}`,
-            quantity: 1,
-            value: plan.value,
-          },
-        ],
-        subscription: {
-          cycle: plan.cycle,
-          nextDueDate: firstDueDate(),
-        },
-      }),
+      body: JSON.stringify(checkoutBody),
     });
 
     const data = await response.json();

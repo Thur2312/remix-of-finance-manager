@@ -109,11 +109,11 @@ const faqs = [
   },
   {
     question: 'Como funciona o período de teste?',
-    answer: 'Ao assinar qualquer plano você tem 5 dias grátis. O cartão é solicitado no cadastro, mas a cobrança só acontece após o período de teste — e somente se você não cancelar.',
+    answer: 'Todo cadastro já vem com 5 dias grátis, liberados automaticamente. Ao final do período, escolha um plano para continuar com acesso completo.',
   },
   {
     question: 'Preciso de cartão de crédito para testar?',
-    answer: 'Sim, pedimos o cartão no início para garantir a continuidade caso você queira manter o plano. Mas não cobramos nada nos primeiros 5 dias.',
+    answer: 'Não. O cartão só é pedido quando você decide assinar um plano, seja durante o trial ou depois que ele terminar.',
   },
   {
     question: 'Qual a diferença entre os planos Mensal, Semestral e Anual?',
