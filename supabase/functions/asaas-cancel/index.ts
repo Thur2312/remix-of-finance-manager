@@ -29,23 +29,29 @@ Deno.serve(async (req) => {
       .in("status", ["active", "trialing"])
       .single();
 
-    if (error || !subscription?.asaas_subscription_id) {
+    if (error || !subscription) {
       throw new Error("Nenhuma assinatura ativa encontrada.");
     }
 
-    // Cancelamento é imediato na Asaas — não existe "cancelar no fim do período".
-    const response = await fetch(
-      `${ASAAS_API_BASE_URL}/subscriptions/${subscription.asaas_subscription_id}`,
-      {
-        method: "DELETE",
-        headers: { access_token: ASAAS_API_KEY },
+    // Mensal é assinatura recorrente na Asaas — cancelamento é imediato e
+    // interrompe as próximas cobranças (não existe "cancelar no fim do período").
+    // Semestral/anual são parcela única já paga no cartão (INSTALLMENT): não
+    // existe assinatura pra cancelar na Asaas, então só desativamos o acesso
+    // aqui — as parcelas restantes continuam sendo cobradas normalmente.
+    if (subscription.asaas_subscription_id) {
+      const response = await fetch(
+        `${ASAAS_API_BASE_URL}/subscriptions/${subscription.asaas_subscription_id}`,
+        {
+          method: "DELETE",
+          headers: { access_token: ASAAS_API_KEY },
+        }
+      );
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data?.errors?.[0]?.description ?? "Erro ao cancelar assinatura na Asaas.");
       }
-    );
-
-    const data = await response.json();
-
-    if (!response.ok) {
-      throw new Error(data?.errors?.[0]?.description ?? "Erro ao cancelar assinatura na Asaas.");
     }
 
     await supabase

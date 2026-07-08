@@ -187,8 +187,16 @@ const { handleCheckout, handleCancel: cancelSubscription, loadingCancel, loading
     }
   };
 
+  // Mensal é assinatura recorrente (cancelar = para as próximas cobranças).
+  // Semestral/anual já foram pagos à vista, parcelados no cartão — não tem
+  // "assinatura" pra cancelar na Asaas, só dá pra desativar o acesso aqui.
+  const isRecurringPlan = userPlan === 'mensal';
+
   const handleCancel = async () => {
-    if (!window.confirm('Tem certeza que quer cancelar sua assinatura? O cancelamento é imediato e você perderá o acesso aos recursos avançados agora.')) return;
+    const confirmMessage = isRecurringPlan
+      ? 'Tem certeza que quer cancelar sua assinatura? O cancelamento é imediato e você perderá o acesso aos recursos avançados agora.'
+      : 'Tem certeza que quer desativar sua conta? Você perde o acesso aos recursos avançados agora. Como o plano já foi pago (parcelado no cartão), as parcelas restantes continuam sendo cobradas normalmente — desativar não cancela nem estorna os pagamentos.';
+    if (!window.confirm(confirmMessage)) return;
     const result = await cancelSubscription();
     if (result.success) {
       setCancelSuccess(true);
@@ -213,7 +221,7 @@ const { handleCheckout, handleCancel: cancelSubscription, loadingCancel, loading
       return (
         <Button className="w-full mt-4" variant="outline" disabled>
           <XCircle className="mr-2 h-4 w-4" />
-          Assinatura cancelada
+          {isRecurringPlan ? 'Assinatura cancelada' : 'Conta desativada'}
         </Button>
       );
     }
@@ -227,9 +235,9 @@ const { handleCheckout, handleCancel: cancelSubscription, loadingCancel, loading
           disabled={loadingCancel}
         >
           {loadingCancel ? (
-            <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Cancelando...</>
+            <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> {isRecurringPlan ? 'Cancelando...' : 'Desativando...'}</>
           ) : (
-            <><XCircle className="mr-2 h-4 w-4" /> Cancelar assinatura</>
+            <><XCircle className="mr-2 h-4 w-4" /> {isRecurringPlan ? 'Cancelar assinatura' : 'Desativar conta'}</>
           )}
         </Button>
       );
