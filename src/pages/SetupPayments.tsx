@@ -10,11 +10,12 @@ import {
   Crown,
   AlertCircle,
 } from 'lucide-react';
-import { useStripeCheckout } from '@/hooks/useStripeCheckout';
+import { usePaymentCheckout } from '@/hooks/usePaymentCheckout';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { ProtectedRoute } from '@/components/layout/ProtectedRoute';
 import { useTrialStatus } from '@/hooks/useTrialStatus';
 import { useEffect } from 'react';
+import { PLANS as PLAN_PRICING } from '@/config/plans';
 
 const beneficios = [
   'Acesso completo a todos os recursos por 5 dias',
@@ -28,7 +29,7 @@ function SetupPaymentContent() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const canceled = searchParams.get('canceled') === 'true';
-  const { handleCheckout, loadingPlanId } = useStripeCheckout();
+  const { handleCheckout, loadingPlanId } = usePaymentCheckout();
   const loadingCheckout = loadingPlanId !== null;
   const { plan, isLoading } = useTrialStatus();
 
@@ -84,9 +85,9 @@ function SetupPaymentContent() {
             <div className="bg-muted rounded-lg px-4 py-3 flex items-center justify-between">
               <div>
                 <p className="text-xs text-muted-foreground">Após os 5 dias</p>
-                <p className="font-semibold text-sm">R$ 37,90 / mês</p>
+                <p className="font-semibold text-sm">R$ {PLAN_PRICING.anual.monthlyEquivalent.toFixed(2).replace('.', ',')} / mês</p>
                 <p className="text-[11px] text-muted-foreground">
-                  Plano anual — 12x de R$ 37,90 (total R$ 454,80/ano)
+                  Plano anual — {PLAN_PRICING.anual.billingNote}
                 </p>
               </div>
               <Badge variant="secondary" className="text-xs">
@@ -116,7 +117,7 @@ function SetupPaymentContent() {
             <div className="flex items-center justify-center gap-1.5 text-xs text-muted-foreground">
               <Shield className="h-3.5 w-3.5" />
               <span>
-                Pagamento seguro via Stripe. Seus dados são criptografados.
+                Pagamento seguro via Asaas. Seus dados são criptografados.
               </span>
             </div>
           </CardContent>

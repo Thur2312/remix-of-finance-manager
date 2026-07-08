@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 
-export function useStripeCheckout() {
+export function usePaymentCheckout() {
   const [loadingPlanId, setLoadingPlanId] = useState<string | null>(null);
   const [loadingCancel, setLoadingCancel] = useState(false);
 
@@ -11,7 +11,7 @@ export function useStripeCheckout() {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
 
-      const { data, error } = await supabase.functions.invoke("stripe-checkout", {
+      const { data, error } = await supabase.functions.invoke("asaas-checkout", {
         body: { userId: user.id, email: user.email, planId },
       });
 
@@ -32,7 +32,7 @@ export function useStripeCheckout() {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return { success: false, error: "Usuário não autenticado." };
 
-      const { data, error } = await supabase.functions.invoke("stripe-cancel", {
+      const { data, error } = await supabase.functions.invoke("asaas-cancel", {
         body: { userId: user.id },
       });
 

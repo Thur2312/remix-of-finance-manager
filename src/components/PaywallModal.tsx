@@ -3,7 +3,8 @@ import { useNavigate, useLocation } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Lock, Crown, Check, ArrowRight, CreditCard } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
-import { useStripeCheckout } from "@/hooks/useStripeCheckout";
+import { usePaymentCheckout } from "@/hooks/usePaymentCheckout";
+import { PLANS as PLAN_PRICING } from "@/config/plans";
 
 // Rotas onde o paywall NUNCA deve aparecer
 const PAYWALL_EXCLUDED = ["/setup-payment", "/planos", "/auth", "/login"];
@@ -23,7 +24,7 @@ export function PaywallModal() {
   const { isBlocked, isLoading } = useTrialStatus();
   const navigate = useNavigate();
   const { pathname } = useLocation();
-  const { handleCheckout, loadingPlanId } = useStripeCheckout();
+  const { handleCheckout, loadingPlanId } = usePaymentCheckout();
 
   const loadingAnual = loadingPlanId === "anual";
 
@@ -69,13 +70,13 @@ export function PaywallModal() {
             <div className="text-right">
               <div className="flex items-center justify-end gap-1.5">
                 <span className="text-xs text-muted-foreground line-through">
-                  R$ 74,99
+                  R$ {PLAN_PRICING.mensal.monthlyEquivalent.toFixed(2).replace('.', ',')}
                 </span>
-                <span className="text-xl font-semibold">R$ 37,90</span>
+                <span className="text-xl font-semibold">R$ {PLAN_PRICING.anual.monthlyEquivalent.toFixed(2).replace('.', ',')}</span>
                 <span className="text-xs text-muted-foreground">/mês</span>
               </div>
               <span className="text-[11px] text-muted-foreground">
-                12x de R$ 37,90 — total R$ 454,80/ano
+                {PLAN_PRICING.anual.billingNote}
               </span>
             </div>
           </div>
@@ -107,7 +108,7 @@ export function PaywallModal() {
           <CreditCard size={16} className="mr-2" />
           {loadingAnual
             ? "Redirecionando..."
-            : "Assinar plano anual — R$ 37,90/mês"}
+            : `Assinar plano anual — R$ ${PLAN_PRICING.anual.monthlyEquivalent.toFixed(2).replace('.', ',')}/mês`}
           {!loadingAnual && <ArrowRight size={16} className="ml-2" />}
         </Button>
 

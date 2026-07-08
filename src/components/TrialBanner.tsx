@@ -1,11 +1,12 @@
 import { useTrialStatus } from "@/hooks/useTrialStatus";
 import { Button } from "@/components/ui/button";
 import { AlertCircle, Clock, Zap } from "lucide-react";
-import { useStripeCheckout } from "@/hooks/useStripeCheckout";
+import { usePaymentCheckout } from "@/hooks/usePaymentCheckout";
+import { PLANS as PLAN_PRICING } from "@/config/plans";
 
 export function TrialBanner() {
   const { isTrialActive, daysRemaining, isPaid, isLoading } = useTrialStatus();
-  const { handleCheckout } = useStripeCheckout();
+  const { handleCheckout } = usePaymentCheckout();
 
   if (isLoading || isPaid || !isTrialActive) return null;
 
@@ -31,7 +32,7 @@ export function TrialBanner() {
         onClick={() => handleCheckout("anual")}
       >
         <Zap size={13} />
-        Assinar anual por R$ 37,90/mês
+        Assinar anual por R$ {PLAN_PRICING.anual.monthlyEquivalent.toFixed(2).replace('.', ',')}/mês
       </Button>
 
     </div>

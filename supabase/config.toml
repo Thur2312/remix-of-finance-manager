@@ -14,24 +14,17 @@ verify_jwt = false
 [functions.send-password-reset]
 verify_jwt = false
 
-[functions.stripe-checkout]
+[functions.asaas-checkout]
 enabled = true
 verify_jwt = true
-import_map = "./functions/stripe-checkout/deno.json"
-# Uncomment to specify a custom file path to the entrypoint.
-# Supported file extensions are: .ts, .js, .mjs, .jsx, .tsx
-entrypoint = "./functions/stripe-checkout/index.ts"
-# Specifies static files to be bundled with the function. Supports glob patterns.
-# For example, if you want to serve static HTML pages in your function:
-# static_files = [ "./functions/stripe-checkout/*.html" ]
+entrypoint = "./functions/asaas-checkout/index.ts"
 
-[functions.stripe-webhook]
+[functions.asaas-webhook]
 enabled = true
 verify_jwt = false
-import_map = "./functions/stripe-webhook/deno.json"
-# Uncomment to specify a custom file path to the entrypoint.
-# Supported file extensions are: .ts, .js, .mjs, .jsx, .tsx
-entrypoint = "./functions/stripe-webhook/index.ts"
-# Specifies static files to be bundled with the function. Supports glob patterns.
-# For example, if you want to serve static HTML pages in your function:
-# static_files = [ "./functions/stripe-webhook/*.html" ]
+entrypoint = "./functions/asaas-webhook/index.ts"
+
+[functions.asaas-cancel]
+enabled = true
+verify_jwt = true
+entrypoint = "./functions/asaas-cancel/index.ts"

@@ -21,9 +21,10 @@ import { useAuth } from '@/contexts/AuthContext';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { ProtectedRoute } from '@/components/layout/ProtectedRoute';
-import { useStripeCheckout } from "@/hooks/useStripeCheckout";
+import { usePaymentCheckout } from "@/hooks/usePaymentCheckout";
 import { useEffect, useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
+import { PLANS as PLAN_PRICING } from '@/config/plans';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -69,9 +70,9 @@ const plans = [
   {
     id: 'mensal' as const,
     name: 'Mensal',
-    price: 'R$ 74,99',
+    price: `R$ ${PLAN_PRICING.mensal.monthlyEquivalent.toFixed(2).replace('.', ',')}`,
     priceSuffix: '/mês',
-    billingNote: null as string | null,
+    billingNote: PLAN_PRICING.mensal.billingNote,
     description: 'Flexibilidade sem compromisso',
     icon: Zap,
     features: sharedFeatures,
@@ -80,9 +81,9 @@ const plans = [
   {
     id: 'semestral' as const,
     name: 'Semestral',
-    price: 'R$ 57,90',
+    price: `R$ ${PLAN_PRICING.semestral.monthlyEquivalent.toFixed(2).replace('.', ',')}`,
     priceSuffix: '/mês',
-    billingNote: '6x de R$ 57,90 — total R$ 347,40',
+    billingNote: PLAN_PRICING.semestral.billingNote,
     description: 'Economize pagando por 6 meses',
     icon: Sparkles,
     features: sharedFeatures,
@@ -91,9 +92,9 @@ const plans = [
   {
     id: 'anual' as const,
     name: 'Anual',
-    price: 'R$ 37,90',
+    price: `R$ ${PLAN_PRICING.anual.monthlyEquivalent.toFixed(2).replace('.', ',')}`,
     priceSuffix: '/mês',
-    billingNote: '12x de R$ 37,90 — total R$ 454,80',
+    billingNote: PLAN_PRICING.anual.billingNote,
     description: 'O melhor custo-benefício',
     icon: Crown,
     features: sharedFeatures,
@@ -141,7 +142,7 @@ export function PlanosContent() {
 
   const { user } = useAuth();
 
-const { handleCheckout, handleCancel: cancelSubscription, loadingCancel, loadingPlanId } = useStripeCheckout();
+const { handleCheckout, handleCancel: cancelSubscription, loadingCancel, loadingPlanId } = usePaymentCheckout();
 
   const [profile, setProfile] = useState<ProfileData | null>(null);
   const [loadingProfile, setLoadingProfile] = useState(true);
@@ -167,9 +168,9 @@ const { handleCheckout, handleCancel: cancelSubscription, loadingCancel, loading
   const daysLeft = trialDaysLeft(profile?.trial_ends_at ?? null);
 
   const currentPriceLabel =
-    userPlan === 'anual' ? 'R$ 37,90/mês (cobrança anual)' :
-    userPlan === 'semestral' ? 'R$ 57,90/mês (cobrança semestral)' :
-    userPlan === 'mensal' ? 'R$ 74,99/mês' :
+    userPlan === 'anual' ? `R$ ${PLAN_PRICING.anual.monthlyEquivalent.toFixed(2).replace('.', ',')}/mês (cobrança anual)` :
+    userPlan === 'semestral' ? `R$ ${PLAN_PRICING.semestral.monthlyEquivalent.toFixed(2).replace('.', ',')}/mês (cobrança semestral)` :
+    userPlan === 'mensal' ? `R$ ${PLAN_PRICING.mensal.monthlyEquivalent.toFixed(2).replace('.', ',')}/mês` :
     null;
 
   const currentPlanName =
@@ -187,7 +188,7 @@ const { handleCheckout, handleCancel: cancelSubscription, loadingCancel, loading
   };
 
   const handleCancel = async () => {
-    if (!window.confirm('Tem certeza que quer cancelar sua assinatura? Você perderá o acesso aos recursos avançados.')) return;
+    if (!window.confirm('Tem certeza que quer cancelar sua assinatura? O cancelamento é imediato e você perderá o acesso aos recursos avançados agora.')) return;
     const result = await cancelSubscription();
     if (result.success) {
       setCancelSuccess(true);
