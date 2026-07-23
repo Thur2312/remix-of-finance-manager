@@ -19,7 +19,7 @@ import {
 } from 'recharts';
 import { format, subMonths, startOfMonth, endOfMonth, parseISO } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import type { CashFlowEntry, CashFlowCategory } from '@/hooks/useCashFlow';
+import { expandRecurringEntries, type CashFlowEntry, type CashFlowCategory } from '@/hooks/useCashFlow';
 
 
 interface CashFlowChartsProps {
@@ -51,6 +51,8 @@ export function CashFlowCharts({ entries, categories, isLoading }: CashFlowChart
   const monthlyData = useMemo(() => {
     const now = new Date();
     const months: { month: string; income: number; expense: number; balance: number }[] = [];
+    // Expand recurring (single-row) entries so they count in every month they cover.
+    const expanded = expandRecurringEntries(entries, startOfMonth(subMonths(now, 5)), endOfMonth(now));
 
     for (let i = 5; i >= 0; i--) {
       const monthDate = subMonths(now, i);
@@ -58,9 +60,9 @@ export function CashFlowCharts({ entries, categories, isLoading }: CashFlowChart
       const monthEnd = endOfMonth(monthDate);
       const monthLabel = format(monthDate, 'MMM', { locale: ptBR });
 
-      const monthEntries = entries.filter(entry => {
+      const monthEntries = expanded.filter(entry => {
         const entryDate = parseISO(entry.date);
-        return entryDate >= monthStart && entryDate <= monthEnd && 
+        return entryDate >= monthStart && entryDate <= monthEnd &&
                (entry.status === 'paid' || entry.status === 'received');
       });
 
@@ -100,8 +102,9 @@ export function CashFlowCharts({ entries, categories, isLoading }: CashFlowChart
     const now = new Date();
     const monthStart = startOfMonth(now);
     const monthEnd = endOfMonth(now);
+    const expanded = expandRecurringEntries(entries, monthStart, monthEnd);
 
-    const currentMonthExpenses = entries.filter(entry => {
+    const currentMonthExpenses = expanded.filter(entry => {
       const entryDate = parseISO(entry.date);
       return entry.type === 'expense' && 
              entry.status === 'paid' &&

@@ -82,6 +82,7 @@ export default function CashFlowEntryDialog({
 
   const isRecurring = form.watch('is_recurring');
   const type = form.watch('type');
+  const status = form.watch('status');
 
   useEffect(() => {
     if (entry) {
@@ -121,7 +122,15 @@ export default function CashFlowEntryDialog({
 
   useEffect(() => {
     setSelectedType(type);
-  }, [type]);
+    // Expense entries can only be "pending"/"paid"; income entries only "pending"/"received".
+    // Without this, an entry could end up e.g. type=expense + status=received, which then
+    // silently drops out of both the income and expense totals.
+    if (type === 'income' && status === 'paid') {
+      form.setValue('status', 'pending');
+    } else if (type === 'expense' && status === 'received') {
+      form.setValue('status', 'pending');
+    }
+  }, [type, status, form]);
 
   const filteredCategories = categories.filter(c => c.type === selectedType);
 
@@ -281,8 +290,8 @@ export default function CashFlowEntryDialog({
                       </FormControl>
                       <SelectContent>
                         <SelectItem value="pending">Pendente</SelectItem>
-                        <SelectItem value="paid">Pago</SelectItem>
-                        <SelectItem value="received">Recebido</SelectItem>
+                        {type === 'expense' && <SelectItem value="paid">Pago</SelectItem>}
+                        {type === 'income' && <SelectItem value="received">Recebido</SelectItem>}
                       </SelectContent>
                     </Select>
                     <FormMessage />

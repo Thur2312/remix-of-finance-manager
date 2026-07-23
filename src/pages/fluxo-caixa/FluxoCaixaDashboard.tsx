@@ -5,11 +5,11 @@ import { ProtectedRoute } from '@/components/layout/ProtectedRoute';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
-import { useCashFlowCategories, useCashFlowEntries } from '@/hooks/useCashFlow';
+import { useCashFlowCategories, useCashFlowEntries, expandRecurringEntries } from '@/hooks/useCashFlow';
 import { CashFlowCharts } from '@/components/fluxo-caixa/CashFlowCharts';
 import { Plus, ArrowRight } from 'lucide-react';
 import { InPageNav, fluxoCaixaNavTabs } from '@/components/layout/InPageNav';
-import { format, startOfMonth, endOfMonth, isAfter, isBefore, parseISO } from 'date-fns';
+import { format, startOfMonth, endOfMonth, isAfter, isBefore, parseISO, subYears, addYears } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 function FluxoCaixaDashboardContent() {
   const navigate = useNavigate();
@@ -35,7 +35,12 @@ function FluxoCaixaDashboardContent() {
   const now = new Date();
   const monthStart = startOfMonth(now);
   const monthEnd = endOfMonth(now);
-  const currentMonthEntries = entries.filter((entry) => {
+
+  // Recurring entries are stored as a single row; expand them in-memory so they count
+  // every period they cover instead of only on the one date they were created with.
+  const expandedEntries = expandRecurringEntries(entries, subYears(now, 2), addYears(now, 1));
+
+  const currentMonthEntries = expandedEntries.filter((entry) => {
     const entryDate = parseISO(entry.date);
     return entryDate >= monthStart && entryDate <= monthEnd;
   });
@@ -43,19 +48,23 @@ function FluxoCaixaDashboardContent() {
   // Calculate totals
   const totalIncome = currentMonthEntries.filter((e) => e.type === 'income' && (e.status === 'received' || e.status === 'paid')).reduce((sum, e) => sum + Number(e.amount), 0);
   const totalExpense = currentMonthEntries.filter((e) => e.type === 'expense' && e.status === 'paid').reduce((sum, e) => sum + Number(e.amount), 0);
-  const currentBalance = totalIncome - totalExpense;
-  const pendingReceivables = entries.filter((e) => e.type === 'income' && e.status === 'pending').reduce((sum, e) => sum + Number(e.amount), 0);
-  const overduePayables = entries.filter((e) => {
+  // Saldo atual da conta: acumulado de todas as entradas e saídas já efetivadas até hoje (não reseta a cada mês)
+  const currentBalance = expandedEntries
+    .filter((e) => parseISO(e.date) <= now && (e.status === 'received' || e.status === 'paid'))
+    .reduce((sum, e) => sum + (e.type === 'income' ? Number(e.amount) : -Number(e.amount)), 0);
+  const pendingReceivables = expandedEntries.filter((e) => e.type === 'income' && e.status === 'pending').reduce((sum, e) => sum + Number(e.amount), 0);
+  const overduePayables = expandedEntries.filter((e) => {
     if (e.type !== 'expense' || e.status === 'paid') return false;
     if (!e.due_date) return false;
     return isBefore(parseISO(e.due_date), now);
   });
   const overdueTotal = overduePayables.reduce((sum, e) => sum + Number(e.amount), 0);
-  const upcomingEntries = entries.filter((e) => {
+  const upcomingEntries = expandedEntries.filter((e) => {
     if (e.status === 'paid' || e.status === 'received') return false;
     const dueDate = e.due_date ? parseISO(e.due_date) : null;
     return dueDate && isAfter(dueDate, now);
-  }).slice(0, 5);
+  }).sort((a, b) => parseISO(a.due_date!).getTime() - parseISO(b.due_date!).getTime()).slice(0, 5);
+  // "Últimos Lançamentos" mostra apenas os registros reais criados pelo usuário, nunca ocorrências virtuais.
   const recentEntries = entries.slice(0, 5);
   const formatCurrency = (value: number) => {
     return new Intl.NumberFormat('pt-BR', {
@@ -93,7 +102,7 @@ function FluxoCaixaDashboardContent() {
               {isLoading ? <Skeleton className="h-8 w-24" /> : <div className={`text-2xl font-bold ${currentBalance >= 0 ? 'text-green-600' : 'text-red-600'}`}>
                   {formatCurrency(currentBalance)}
                 </div>}
-              <p className="text-xs text-muted-foreground">Este mês</p>
+              <p className="text-xs text-muted-foreground">Acumulado</p>
             </CardContent>
           </Card>
 

@@ -14,6 +14,16 @@ export interface CustoAdicionalDB {
   tipo: CustoAdicionalTipo;
 }
 
+// Tipo de produto do anúncio: "individual" (custo digitado manualmente) ou
+// "kit" (custo somado automaticamente a partir dos itens que compõem o kit,
+// ex: "Kit Top Academia 3 Uni" = 3x o mesmo produto ou produtos diferentes).
+export type TipoProduto = 'individual' | 'kit';
+export interface KitItemDB {
+  nome: string;
+  custo_unitario: number;
+  quantidade: number;
+}
+
 export interface Anuncio {
   id: string;
   user_id: string | null;
@@ -27,6 +37,8 @@ export interface Anuncio {
   imposto_pct: number;
   custo_var: number;
   custos_adicionais: CustoAdicionalDB[];
+  tipo_produto: TipoProduto;
+  kit_itens: KitItemDB[];
   taxafixa: number | null;
   criado_em: string;
   atualizado_em: string;
@@ -43,6 +55,8 @@ export interface AnuncioInput {
   imposto_pct: number;
   custo_var: number;
   custos_adicionais: CustoAdicionalDB[];
+  tipo_produto: TipoProduto;
+  kit_itens: KitItemDB[];
   taxafixa?: number | null;
 }
 

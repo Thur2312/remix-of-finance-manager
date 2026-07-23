@@ -2,6 +2,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
+import { addWeeks, addMonths, addYears, addDays, differenceInCalendarDays, format, parseISO, isWithinInterval } from 'date-fns';
 
 export interface CashFlowCategory {
   id: string;
@@ -187,6 +188,70 @@ export function useCashFlowCategories() {
     updateCategory,
     deleteCategory,
   };
+}
+
+const RECURRENCE_STEP = {
+  weekly: addWeeks,
+  monthly: addMonths,
+  yearly: addYears,
+} as const;
+
+// Safety cap so a recurring entry with no end date can't expand into an unbounded number
+// of virtual occurrences (e.g. someone viewing a 50-year range).
+const MAX_RECURRENCE_OCCURRENCES = 240;
+
+/**
+ * A recurring cash flow entry is stored as a SINGLE row. This expands it, in memory only
+ * (nothing is written back to the database), into the occurrences that fall inside
+ * [rangeStart, rangeEnd] so dashboards/charts can reflect it every period without the
+ * "Lançamentos" list ever showing more than the one real row the user created.
+ */
+export function expandRecurringEntries(
+  entries: CashFlowEntry[],
+  rangeStart: Date,
+  rangeEnd: Date
+): CashFlowEntry[] {
+  const result: CashFlowEntry[] = [];
+
+  for (const entry of entries) {
+    const entryDate = parseISO(entry.date);
+
+    if (!entry.is_recurring || !entry.recurrence_type) {
+      if (isWithinInterval(entryDate, { start: rangeStart, end: rangeEnd })) {
+        result.push(entry);
+      }
+      continue;
+    }
+
+    const step = RECURRENCE_STEP[entry.recurrence_type];
+    const seriesEnd = entry.recurrence_end_date
+      ? parseISO(entry.recurrence_end_date)
+      : rangeEnd;
+    const windowEnd = seriesEnd < rangeEnd ? seriesEnd : rangeEnd;
+    const dueDateOffset = entry.due_date
+      ? differenceInCalendarDays(parseISO(entry.due_date), entryDate)
+      : null;
+
+    let occurrenceDate = entryDate;
+    let count = 0;
+    while (occurrenceDate <= windowEnd && count < MAX_RECURRENCE_OCCURRENCES) {
+      if (occurrenceDate >= rangeStart) {
+        const isOriginal = occurrenceDate.getTime() === entryDate.getTime();
+        result.push({
+          ...entry,
+          id: isOriginal ? entry.id : `${entry.id}::${format(occurrenceDate, 'yyyy-MM-dd')}`,
+          date: format(occurrenceDate, 'yyyy-MM-dd'),
+          due_date: dueDateOffset !== null
+            ? format(addDays(occurrenceDate, dueDateOffset), 'yyyy-MM-dd')
+            : entry.due_date,
+        });
+      }
+      occurrenceDate = step(occurrenceDate, 1);
+      count++;
+    }
+  }
+
+  return result;
 }
 
 export function useCashFlowEntries(filters?: {

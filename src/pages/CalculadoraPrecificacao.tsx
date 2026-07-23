@@ -34,7 +34,7 @@ import {
 import {
   Popover, PopoverContent, PopoverTrigger,
 } from "@/components/ui/popover";
-import { useAnuncios, AnuncioInput, CustoAdicionalDB } from "@/hooks/useProdutos";
+import { useAnuncios, AnuncioInput, CustoAdicionalDB, TipoProduto, KitItemDB } from "@/hooks/useProdutos";
 import { toast } from "sonner";
 
 // ─── Helpers ────────────────────────────────────────────────────────────────
@@ -172,12 +172,46 @@ const deserializeCustos = (lista: CustoAdicionalDB[] | null | undefined): CustoA
     tipo: c.tipo,
   }));
 
+// ─── Itens de kit ────────────────────────────────────────────────────────────
+// Produtos que compõem um kit/combo (ex: "Kit Top Academia 3 Uni"). O custo do
+// anúncio, quando tipo_produto === "kit", é a soma de quantidade × custo
+// unitário de cada item — substitui o campo Custo digitado manualmente.
+type KitItem = { id: string; nome: string; custo_unitario: string; quantidade: string };
+
+const custoKitItemEmReais = (k: KitItem): number =>
+  parseInput(k.custo_unitario) * (parseInput(k.quantidade) || 0);
+
+const somaKitItens = (lista: KitItem[]): number =>
+  lista.reduce((acc, k) => acc + custoKitItemEmReais(k), 0);
+
+const somaKitItensDB = (lista: KitItemDB[] | null | undefined): number =>
+  (lista ?? []).reduce((acc, k) => acc + k.custo_unitario * k.quantidade, 0);
+
+const serializeKitItens = (lista: KitItem[]): KitItemDB[] =>
+  lista
+    .filter(k => k.nome.trim() !== "" || parseInput(k.custo_unitario) > 0)
+    .map(k => ({
+      nome: k.nome.trim() || "Item do kit",
+      custo_unitario: parseInput(k.custo_unitario),
+      quantidade: parseInput(k.quantidade) || 1,
+    }));
+
+const deserializeKitItens = (lista: KitItemDB[] | null | undefined): KitItem[] =>
+  (lista ?? []).map(k => ({
+    id: crypto.randomUUID(),
+    nome: k.nome,
+    custo_unitario: String(k.custo_unitario).replace(".", ","),
+    quantidade: String(k.quantidade),
+  }));
+
 // ─── Form anúncio ────────────────────────────────────────────────────────────
 const EMPTY_FORM = {
   nome_anuncio: "", custo: "", valor_venda: "", comissao_taxa: "",
   antecipado: "", afiliados: "", imposto_pct: "", custo_var: "",
   marketplace: "" as Plataforma | "",
   custos_adicionais: [] as CustoAdicional[],
+  tipo_produto: "individual" as TipoProduto,
+  kit_itens: [] as KitItem[],
 };
 type AnuncioForm = typeof EMPTY_FORM;
 
@@ -262,6 +296,82 @@ function CustosAdicionaisEditor({
       {total > 0 && (
         <div className="flex items-center justify-between border-t pt-2 text-sm">
           <span className="text-muted-foreground">Total adicional</span>
+          <span className="font-semibold text-primary">{formatCurrency(total)}</span>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ─── Editor reutilizável de itens do kit ─────────────────────────────────────
+function KitItensEditor({
+  items, onAdd, onUpdate, onRemove,
+}: {
+  items: KitItem[];
+  onAdd: () => void;
+  onUpdate: (id: string, field: "nome" | "custo_unitario" | "quantidade", value: string) => void;
+  onRemove: (id: string) => void;
+}) {
+  const total = somaKitItens(items);
+  return (
+    <div className="space-y-3">
+      {items.length > 0 && (
+        <div className="space-y-2.5">
+          {items.map(k => {
+            const subtotal = custoKitItemEmReais(k);
+            return (
+              <div key={k.id} className="space-y-1">
+                <div className="flex items-center gap-2">
+                  <Input
+                    value={k.nome}
+                    onChange={e => onUpdate(k.id, "nome", e.target.value)}
+                    placeholder="Ex: Top Academia" className="h-8 text-sm flex-1" maxLength={80}
+                  />
+                  <div className="w-14 shrink-0">
+                    <Input
+                      type="text" inputMode="numeric" value={k.quantidade}
+                      onChange={e => { if (e.target.value === "" || /^[0-9]*$/.test(e.target.value)) onUpdate(k.id, "quantidade", e.target.value); }}
+                      placeholder="1" className="h-8 text-sm text-center"
+                    />
+                  </div>
+                  <span className="shrink-0 text-xs text-muted-foreground">×</span>
+                  <div className="w-24 shrink-0">
+                    <Input
+                      type="text" inputMode="decimal" value={k.custo_unitario}
+                      onChange={e => { if (e.target.value === "" || /^[0-9]*[,.]?[0-9]*$/.test(e.target.value)) onUpdate(k.id, "custo_unitario", e.target.value); }}
+                      placeholder="0,00" className="h-8 text-sm text-right"
+                    />
+                  </div>
+                  <Button
+                    type="button" variant="ghost" size="icon"
+                    className="h-8 w-8 shrink-0 text-muted-foreground hover:text-destructive"
+                    onClick={() => onRemove(k.id)}
+                  >
+                    <X className="h-4 w-4" />
+                  </Button>
+                </div>
+                {subtotal > 0 && (
+                  <p className="pl-1 text-[11px] text-muted-foreground">
+                    {parseInput(k.quantidade) || 1} un × {formatCurrency(parseInput(k.custo_unitario))} ={" "}
+                    <span className="font-medium text-foreground">{formatCurrency(subtotal)}</span>
+                  </p>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      )}
+
+      <Button
+        type="button" variant="outline" size="sm"
+        className="w-full gap-1.5" onClick={onAdd}
+      >
+        <Plus className="h-3.5 w-3.5" /> Adicionar item do kit
+      </Button>
+
+      {total > 0 && (
+        <div className="flex items-center justify-between border-t pt-2 text-sm">
+          <span className="text-muted-foreground">Custo total do kit</span>
           <span className="font-semibold text-primary">{formatCurrency(total)}</span>
         </div>
       )}
@@ -369,6 +479,22 @@ function CalculadoraPrecificacaoContent() {
     setAnuncioForm(prev => ({ ...prev, custos_adicionais: prev.custos_adicionais.map(c => (c.id === id ? { ...c, tipo } : c)) }));
   const removeFormCusto = (id: string) =>
     setAnuncioForm(prev => ({ ...prev, custos_adicionais: prev.custos_adicionais.filter(c => c.id !== id) }));
+
+  // ── Itens do kit do formulário (dialog) ────────────────────────────────────
+  const addKitItem = () =>
+    setAnuncioForm(prev => ({ ...prev, kit_itens: [...prev.kit_itens, { id: crypto.randomUUID(), nome: "", custo_unitario: "", quantidade: "1" }] }));
+  const updateKitItem = (id: string, field: "nome" | "custo_unitario" | "quantidade", value: string) =>
+    setAnuncioForm(prev => ({ ...prev, kit_itens: prev.kit_itens.map(k => (k.id === id ? { ...k, [field]: value } : k)) }));
+  const removeKitItem = (id: string) =>
+    setAnuncioForm(prev => ({ ...prev, kit_itens: prev.kit_itens.filter(k => k.id !== id) }));
+  const setTipoProduto = (tipo: TipoProduto) =>
+    setAnuncioForm(prev => ({
+      ...prev,
+      tipo_produto: tipo,
+      kit_itens: tipo === "kit" && prev.kit_itens.length === 0
+        ? [{ id: crypto.randomUUID(), nome: "", custo_unitario: "", quantidade: "1" }]
+        : prev.kit_itens,
+    }));
 
   // ── Custos adicionais ──────────────────────────────────────────────────────
   // Percentuais incidem sobre o custo base do produto.
@@ -574,6 +700,8 @@ function CalculadoraPrecificacaoContent() {
       marketplace:   marketplace,
       // leva os custos adicionais montados na calculadora (clonando os ids)
       custos_adicionais: custosAdicionais.map(c => ({ ...c, id: crypto.randomUUID() })),
+      tipo_produto: "individual",
+      kit_itens: [],
     });
     setEditingId(null);
     setIsDialogOpen(true);
@@ -592,15 +720,25 @@ function CalculadoraPrecificacaoContent() {
       custo_var:     String(a.custo_var),
       marketplace:   (a.marketplace ?? "") as Plataforma,
       custos_adicionais: deserializeCustos(a.custos_adicionais),
+      tipo_produto: a.tipo_produto ?? "individual",
+      kit_itens: deserializeKitItens(a.kit_itens),
     });
     setIsDialogOpen(true);
   };
 
+  const isKitProduto = anuncioForm.tipo_produto === "kit";
+  const kitCustoTotal = useMemo(() => somaKitItens(anuncioForm.kit_itens), [anuncioForm.kit_itens]);
+  const custoBaseEfetivo = isKitProduto ? kitCustoTotal : parseInput(anuncioForm.custo);
+
   const handleSubmit = async () => {
     if (!anuncioForm.nome_anuncio.trim()) { toast.error("Nome do anúncio é obrigatório"); return; }
+    const kitItensSerializados = serializeKitItens(anuncioForm.kit_itens);
+    if (isKitProduto && kitItensSerializados.length === 0) {
+      toast.error("Adicione ao menos um item do kit"); return;
+    }
     const payload: AnuncioInput = {
       nome_anuncio:  anuncioForm.nome_anuncio.trim(),
-      custo:         parseInput(anuncioForm.custo),
+      custo:         isKitProduto ? kitCustoTotal : parseInput(anuncioForm.custo),
       valor_venda:   parseInput(anuncioForm.valor_venda),
       comissao_taxa: anuncioForm.comissao_taxa,
       antecipado:    parseInput(anuncioForm.antecipado),
@@ -609,6 +747,8 @@ function CalculadoraPrecificacaoContent() {
       custo_var:     parseInput(anuncioForm.custo_var),
       marketplace:   anuncioForm.marketplace,
       custos_adicionais: serializeCustos(anuncioForm.custos_adicionais),
+      tipo_produto:  anuncioForm.tipo_produto,
+      kit_itens:     isKitProduto ? kitItensSerializados : [],
     };
     const ok = editingId
       ? await updateAnuncio(editingId, payload)
@@ -643,6 +783,35 @@ function CalculadoraPrecificacaoContent() {
       </DialogHeader>
 
       <div className="space-y-4 py-2">
+        <div className="space-y-2">
+          <Label className="font-medium">Tipo de Produto</Label>
+          <div className="flex gap-2">
+            {([
+              { value: "individual", label: "Individual", icon: Tag },
+              { value: "kit",        label: "Kit (combo)", icon: Package },
+            ] as { value: TipoProduto; label: string; icon: typeof Tag }[]).map(opt => {
+              const Icon = opt.icon;
+              return (
+                <button key={opt.value} type="button"
+                  onClick={() => setTipoProduto(opt.value)}
+                  className={`flex-1 flex items-center justify-center gap-1.5 px-3 py-2 rounded-md border text-sm font-medium transition-all ${
+                    anuncioForm.tipo_produto === opt.value
+                      ? "bg-primary/10 border-primary/40 text-primary"
+                      : "border-border bg-background text-muted-foreground hover:bg-muted"
+                  }`}>
+                  <Icon className="h-4 w-4" />
+                  {opt.label}
+                </button>
+              );
+            })}
+          </div>
+          {isKitProduto && (
+            <p className="text-[11px] text-muted-foreground">
+              Ex: "Kit Top Academia 3 Uni" — cadastre os produtos que compõem o kit abaixo; o Custo é somado automaticamente.
+            </p>
+          )}
+        </div>
+
         <div className="grid grid-cols-2 gap-4">
           <div className="space-y-2">
             <Label htmlFor="nome_anuncio" className="font-medium">
@@ -694,9 +863,18 @@ function CalculadoraPrecificacaoContent() {
 
         <div className="grid grid-cols-4 gap-4">
           <div className="space-y-2">
-            <Label className="text-sm">Custo</Label>
-            <Input type="text" inputMode="decimal" value={anuncioForm.custo}
-              onChange={setFormField("custo")} placeholder="0,00" />
+            <Label className="text-sm flex items-center gap-1.5">
+              Custo
+              {isKitProduto && (
+                <Badge variant="outline" className="text-[10px] px-1 py-0 text-primary border-primary/50">Auto (kit)</Badge>
+              )}
+            </Label>
+            <Input type="text" inputMode="decimal"
+              value={isKitProduto ? kitCustoTotal.toFixed(2).replace(".", ",") : anuncioForm.custo}
+              onChange={setFormField("custo")} placeholder="0,00"
+              readOnly={isKitProduto}
+              className={isKitProduto ? "bg-muted/50 cursor-not-allowed" : ""}
+            />
           </div>
           <div className="space-y-2">
             <Label className="text-sm">Valor de Venda</Label>
@@ -746,6 +924,25 @@ function CalculadoraPrecificacaoContent() {
           </div>
         </div>
 
+        {isKitProduto && (
+          <div className="space-y-2 rounded-md border border-primary/20 bg-primary/5 p-3">
+            <p className="flex items-center gap-1.5 text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+              <Package className="h-3.5 w-3.5" /> Itens do Kit
+              {anuncioForm.kit_itens.length > 0 && (
+                <Badge variant="secondary" className="h-4 px-1.5 text-[10px] tabular-nums align-middle">
+                  {anuncioForm.kit_itens.length}
+                </Badge>
+              )}
+            </p>
+            <KitItensEditor
+              items={anuncioForm.kit_itens}
+              onAdd={addKitItem}
+              onUpdate={updateKitItem}
+              onRemove={removeKitItem}
+            />
+          </div>
+        )}
+
         <Separator />
 
         {/* ── Custos adicionais ──────────────────────────────────────────── */}
@@ -759,11 +956,11 @@ function CalculadoraPrecificacaoContent() {
                 </Badge>
               )}
             </p>
-            {somaCustosAdicionais(anuncioForm.custos_adicionais, parseInput(anuncioForm.custo)) > 0 && (
+            {somaCustosAdicionais(anuncioForm.custos_adicionais, custoBaseEfetivo) > 0 && (
               <span className="text-xs text-muted-foreground">
                 Custo total:{" "}
                 <span className="font-semibold text-foreground">
-                  {formatCurrency(parseInput(anuncioForm.custo) + somaCustosAdicionais(anuncioForm.custos_adicionais, parseInput(anuncioForm.custo)))}
+                  {formatCurrency(custoBaseEfetivo + somaCustosAdicionais(anuncioForm.custos_adicionais, custoBaseEfetivo))}
                 </span>
               </span>
             )}
@@ -773,7 +970,7 @@ function CalculadoraPrecificacaoContent() {
           </p>
           <CustosAdicionaisEditor
             items={anuncioForm.custos_adicionais}
-            custoBase={parseInput(anuncioForm.custo)}
+            custoBase={custoBaseEfetivo}
             onAdd={addFormCusto}
             onUpdate={updateFormCusto}
             onSetTipo={setFormCustoTipo}
@@ -1595,7 +1792,9 @@ function CalculadoraPrecificacaoContent() {
                         const lucro        = a.valor_venda - totalCustos;
                         const margem       = a.valor_venda > 0 ? (lucro / a.valor_venda) * 100 : 0;
 
+                        const kitItensList  = a.tipo_produto === "kit" ? (a.kit_itens ?? []) : [];
                         const temAdicionais = adicionaisList.length > 0;
+                        const temKit        = kitItensList.length > 0;
                         const expanded      = expandedAnuncioId === a.id;
                         const cellBase = "bg-muted/50 py-3 flex items-center h-full";
 
@@ -1604,17 +1803,22 @@ function CalculadoraPrecificacaoContent() {
                           <tr>
                             <td className="pt-2 min-w-[160px] whitespace-nowrap">
                               <div className={`${cellBase} rounded-l-md pl-2 pr-3 gap-1`}>
-                                {temAdicionais ? (
+                                {(temAdicionais || temKit) ? (
                                   <button type="button"
                                     onClick={() => setExpandedAnuncioId(expanded ? null : a.id)}
                                     className="flex h-5 w-5 shrink-0 items-center justify-center rounded text-muted-foreground hover:bg-muted hover:text-foreground"
-                                    aria-label={expanded ? "Recolher custos adicionais" : "Detalhar custos adicionais"}>
+                                    aria-label={expanded ? "Recolher detalhes" : "Detalhar custos"}>
                                     {expanded ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
                                   </button>
                                 ) : (
                                   <span className="w-5 shrink-0" />
                                 )}
                                 <span className="font-medium">{a.nome_anuncio}</span>
+                                {a.tipo_produto === "kit" && (
+                                  <Badge variant="outline" className="h-4 shrink-0 gap-0.5 px-1 text-[10px] font-normal text-primary border-primary/40">
+                                    <Package className="h-2.5 w-2.5" /> Kit
+                                  </Badge>
+                                )}
                               </div>
                             </td>
                             <td className="pt-2 w-[110px]">
@@ -1706,41 +1910,68 @@ function CalculadoraPrecificacaoContent() {
                             </td>
                           </tr>
 
-                          {/* Linha de detalhe: custos adicionais */}
-                          {temAdicionais && expanded && (
+                          {/* Linha de detalhe: itens do kit + custos adicionais */}
+                          {(temAdicionais || temKit) && expanded && (
                             <tr>
                               <td colSpan={12} className="pt-1">
-                                <div className="rounded-md border border-dashed border-primary/30 bg-primary/5 px-4 py-3">
-                                  <div className="mb-2 flex items-center gap-1.5 text-xs font-semibold text-muted-foreground uppercase tracking-wider">
-                                    <Package className="h-3.5 w-3.5" />
-                                    Custos adicionais ({adicionaisList.length})
-                                  </div>
-                                  <div className="grid grid-cols-1 gap-1.5 sm:grid-cols-2 lg:grid-cols-3">
-                                    {adicionaisList.map((c, i) => {
-                                      const emReais = c.tipo === "percent" ? a.custo * (c.valor / 100) : c.valor;
-                                      return (
-                                        <div key={i} className="flex items-center justify-between gap-2 rounded bg-background/60 px-2.5 py-1.5 text-sm">
-                                          <span className="truncate">{c.nome}</span>
-                                          <span className="shrink-0 tabular-nums">
-                                            {c.tipo === "percent" ? (
-                                              <>
-                                                <Badge variant="secondary" className="mr-1.5 h-4 px-1 text-[10px] font-normal align-middle">{c.valor}%</Badge>
-                                                <span className="font-medium">{formatCurrency(emReais)}</span>
-                                              </>
-                                            ) : (
-                                              <span className="font-medium">{formatCurrency(emReais)}</span>
-                                            )}
-                                          </span>
-                                        </div>
-                                      );
-                                    })}
-                                  </div>
-                                  <div className="mt-2 flex items-center justify-between border-t border-primary/20 pt-2 text-sm">
-                                    <span className="text-muted-foreground">Custo base + adicionais</span>
-                                    <span className="font-semibold text-primary tabular-nums">
-                                      {formatCurrency(a.custo)} + {formatCurrency(adicionais)} = {formatCurrency(a.custo + adicionais)}
-                                    </span>
-                                  </div>
+                                <div className="space-y-2">
+                                  {temKit && (
+                                    <div className="rounded-md border border-dashed border-primary/30 bg-primary/5 px-4 py-3">
+                                      <div className="mb-2 flex items-center gap-1.5 text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+                                        <Package className="h-3.5 w-3.5" />
+                                        Itens do kit ({kitItensList.length})
+                                      </div>
+                                      <div className="grid grid-cols-1 gap-1.5 sm:grid-cols-2 lg:grid-cols-3">
+                                        {kitItensList.map((k, i) => (
+                                          <div key={i} className="flex items-center justify-between gap-2 rounded bg-background/60 px-2.5 py-1.5 text-sm">
+                                            <span className="truncate">{k.nome}</span>
+                                            <span className="shrink-0 tabular-nums">
+                                              <Badge variant="secondary" className="mr-1.5 h-4 px-1 text-[10px] font-normal align-middle">{k.quantidade}×</Badge>
+                                              <span className="font-medium">{formatCurrency(k.custo_unitario * k.quantidade)}</span>
+                                            </span>
+                                          </div>
+                                        ))}
+                                      </div>
+                                      <div className="mt-2 flex items-center justify-between border-t border-primary/20 pt-2 text-sm">
+                                        <span className="text-muted-foreground">Custo total do kit</span>
+                                        <span className="font-semibold text-primary tabular-nums">{formatCurrency(a.custo)}</span>
+                                      </div>
+                                    </div>
+                                  )}
+                                  {temAdicionais && (
+                                    <div className="rounded-md border border-dashed border-primary/30 bg-primary/5 px-4 py-3">
+                                      <div className="mb-2 flex items-center gap-1.5 text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+                                        <Package className="h-3.5 w-3.5" />
+                                        Custos adicionais ({adicionaisList.length})
+                                      </div>
+                                      <div className="grid grid-cols-1 gap-1.5 sm:grid-cols-2 lg:grid-cols-3">
+                                        {adicionaisList.map((c, i) => {
+                                          const emReais = c.tipo === "percent" ? a.custo * (c.valor / 100) : c.valor;
+                                          return (
+                                            <div key={i} className="flex items-center justify-between gap-2 rounded bg-background/60 px-2.5 py-1.5 text-sm">
+                                              <span className="truncate">{c.nome}</span>
+                                              <span className="shrink-0 tabular-nums">
+                                                {c.tipo === "percent" ? (
+                                                  <>
+                                                    <Badge variant="secondary" className="mr-1.5 h-4 px-1 text-[10px] font-normal align-middle">{c.valor}%</Badge>
+                                                    <span className="font-medium">{formatCurrency(emReais)}</span>
+                                                  </>
+                                                ) : (
+                                                  <span className="font-medium">{formatCurrency(emReais)}</span>
+                                                )}
+                                              </span>
+                                            </div>
+                                          );
+                                        })}
+                                      </div>
+                                      <div className="mt-2 flex items-center justify-between border-t border-primary/20 pt-2 text-sm">
+                                        <span className="text-muted-foreground">Custo base + adicionais</span>
+                                        <span className="font-semibold text-primary tabular-nums">
+                                          {formatCurrency(a.custo)} + {formatCurrency(adicionais)} = {formatCurrency(a.custo + adicionais)}
+                                        </span>
+                                      </div>
+                                    </div>
+                                  )}
                                 </div>
                               </td>
                             </tr>
