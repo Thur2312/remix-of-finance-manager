@@ -410,6 +410,7 @@ function CalculadoraPrecificacaoContent() {
   const [editingId,    setEditingId]    = useState<string | null>(null);
   const [anuncioForm,  setAnuncioForm]  = useState<AnuncioForm>(EMPTY_FORM);
   const [expandedAnuncioId, setExpandedAnuncioId] = useState<string | null>(null);
+  const [filtroMarketplace, setFiltroMarketplace] = useState<Plataforma | "todos">("todos");
 
   // ── Hooks ─────────────────────────────────────────────────────────────────
   const { totalRecurringCosts, isLoading: isLoadingCosts, settings: fixedCostsSettings, costs } = useFixedCosts();
@@ -757,6 +758,11 @@ function CalculadoraPrecificacaoContent() {
     });
     setIsDialogOpen(true);
   };
+
+  const anunciosFiltrados = useMemo(
+    () => filtroMarketplace === "todos" ? anuncios : anuncios.filter(a => a.marketplace === filtroMarketplace),
+    [anuncios, filtroMarketplace],
+  );
 
   const isKitProduto = anuncioForm.tipo_produto === "kit";
   const kitCustoTotal = useMemo(() => somaKitItens(anuncioForm.kit_itens), [anuncioForm.kit_itens]);
@@ -1298,7 +1304,7 @@ function CalculadoraPrecificacaoContent() {
                               )}
                             </Button>
                           </PopoverTrigger>
-                          <PopoverContent align="end" className="w-80 space-y-3">
+                          <PopoverContent align="end" className="w-[28rem] max-w-[95vw] max-h-[80vh] overflow-y-auto space-y-3">
                             <div className="space-y-0.5">
                               <p className="text-sm font-semibold">Kit de produtos (combo)</p>
                               <p className="text-xs text-muted-foreground">
@@ -1842,7 +1848,8 @@ function CalculadoraPrecificacaoContent() {
                 <div>
                   <CardTitle className="text-lg">Anúncios Cadastrados</CardTitle>
                   <CardDescription>
-                    {anuncios.length} anúncio{anuncios.length !== 1 ? "s" : ""} cadastrado{anuncios.length !== 1 ? "s" : ""}
+                    {anunciosFiltrados.length} anúncio{anunciosFiltrados.length !== 1 ? "s" : ""} cadastrado{anunciosFiltrados.length !== 1 ? "s" : ""}
+                    {filtroMarketplace !== "todos" && ` (de ${anuncios.length} no total)`}
                     {panorama.usandoPortfolio && (
                       <span className="ml-2 text-primary font-medium">
                         · Margem média: {formatPercent(panorama.margemPct)}
@@ -1852,6 +1859,28 @@ function CalculadoraPrecificacaoContent() {
                 </div>
                 <ShoppingBag className="h-5 w-5 text-muted-foreground" />
               </div>
+              {anuncios.length > 0 && (
+                <div className="flex flex-wrap items-center gap-1.5 pt-1">
+                  {([
+                    { value: "todos" as const, label: "Todos" },
+                    ...PLATAFORMA_OPTIONS,
+                  ]).map(opt => {
+                    const active = filtroMarketplace === opt.value;
+                    const chipStyle = opt.value === "todos"
+                      ? "bg-primary/10 border-primary/40 text-primary"
+                      : `${(opt as typeof PLATAFORMA_OPTIONS[number]).bg} ${(opt as typeof PLATAFORMA_OPTIONS[number]).color} ring-1 ring-current`;
+                    return (
+                      <button key={opt.value} type="button"
+                        onClick={() => setFiltroMarketplace(opt.value)}
+                        className={`px-2.5 py-1 rounded-full border text-xs font-medium transition-all ${
+                          active ? chipStyle : "border-border bg-background text-muted-foreground hover:bg-muted"
+                        }`}>
+                        {opt.label}
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
             </CardHeader>
             <CardContent>
               {isLoadingAnuncios ? (
@@ -1861,6 +1890,11 @@ function CalculadoraPrecificacaoContent() {
                   <ShoppingBag className="h-12 w-12 mx-auto mb-4 opacity-50" />
                   <p>Nenhum anúncio cadastrado ainda.</p>
                   <p className="text-sm">Preencha os dados acima e clique em "Cadastrar Anúncio".</p>
+                </div>
+              ) : anunciosFiltrados.length === 0 ? (
+                <div className="text-center py-8 text-muted-foreground">
+                  <ShoppingBag className="h-12 w-12 mx-auto mb-4 opacity-50" />
+                  <p>Nenhum anúncio para esse marketplace.</p>
                 </div>
               ) : (
                 <div className="overflow-x-auto">
@@ -1882,7 +1916,7 @@ function CalculadoraPrecificacaoContent() {
                       </tr>
                     </thead>
                     <tbody>
-                      {anuncios.map(a => {
+                      {anunciosFiltrados.map(a => {
                         const comissaoTaxa = parseFloat(String(a.comissao_taxa) || "0"); // já inclui taxa fixa
                         const impostoVal   = a.valor_venda * (a.imposto_pct / 100);
                         const afiliadosVal = a.valor_venda * (a.afiliados / 100);
