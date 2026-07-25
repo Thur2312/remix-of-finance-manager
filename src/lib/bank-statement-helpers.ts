@@ -308,7 +308,17 @@ export const parseXLSXFile = async (file: File, bankType: string = 'generic'): P
             : `20${parts[2]}-${parts[1].padStart(2, '0')}-${parts[0].padStart(2, '0')}`;
         }
       } else if (dateRaw.includes('-')) {
-        dateStr = dateRaw;
+        // Diferente do CSV (que já detectava YYYY-MM-DD vs DD-MM-YYYY), aqui
+        // qualquer data com "-" era aceita cegamente como YYYY-MM-DD — uma
+        // data brasileira comum tipo "25-07-2026" virava uma string inválida
+        // (parseISO gerava Invalid Date, quebrando o preview ou gravando uma
+        // data que nenhum filtro de período no DRE reconhecia depois).
+        const parts = dateRaw.split('-');
+        if (parts.length === 3 && parts[0].length === 4) {
+          dateStr = dateRaw;
+        } else if (parts.length === 3) {
+          dateStr = `${parts[2]}-${parts[1].padStart(2, '0')}-${parts[0].padStart(2, '0')}`;
+        }
       }
     }
 

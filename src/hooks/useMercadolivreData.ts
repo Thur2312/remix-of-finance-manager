@@ -74,9 +74,11 @@ export function useMercadolivreData() {
       };
     }
 
-    const paidOrders = orders.filter(o =>
-      ['paid', 'delivered', 'payment_done'].includes(o.status_pedido)
-    );
+    // status_pedido vem direto de order.status da API do ML — valores reais são
+    // confirmed/payment_required/payment_in_process/paid/partially_paid/
+    // cancelled/invalid. 'delivered' e 'payment_done' nunca existiram nessa
+    // API; só 'paid' batia de fato (comportamento não muda, só remove o morto).
+    const paidOrders = orders.filter(o => o.status_pedido === 'paid');
 
     if (paidOrders.length === 0) {
       return {

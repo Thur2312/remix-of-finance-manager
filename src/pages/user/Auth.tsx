@@ -7,8 +7,9 @@ import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { toast } from 'sonner';
-import { ShoppingBag, TrendingUp, DollarSign, BarChart3, ArrowLeft } from 'lucide-react';
+import { ShoppingBag, TrendingUp, DollarSign, BarChart3, ArrowLeft, Eye, EyeOff } from 'lucide-react';
 import { z } from 'zod';
+import { validateName } from '@/lib/validations';
 
 const emailSchema = z.string().email('Email inválido');
 const passwordSchema = z.string()
@@ -22,6 +23,8 @@ export default function Auth() {
   const [fullName, setFullName]     = useState('');
   const [isLoading, setIsLoading]   = useState(false);
   const [rememberMe, setRememberMe] = useState(false);
+  const [showLoginPassword, setShowLoginPassword]     = useState(false);
+  const [showRegisterPassword, setShowRegisterPassword] = useState(false);
 
   const { signIn, signUp, user, loading } = useAuth();
   const navigate  = useNavigate();
@@ -67,7 +70,7 @@ export default function Auth() {
       toast.error(
         error.message.includes('Invalid login credentials')
           ? 'Email ou senha incorretos'
-          : error.message
+          : 'Não foi possível entrar. Tente novamente em instantes.'
       );
     } else {
       toast.success('Login realizado com sucesso!');
@@ -103,12 +106,18 @@ export default function Auth() {
       return;
     }
 
+    if (!validateName(fullName)) {
+      toast.error('Nome completo deve ter pelo menos 4 caracteres');
+      setIsLoading(false);
+      return;
+    }
+
     const { error } = await signUp(email, password, fullName);
     if (error) {
       toast.error(
         error.message.includes('already registered')
           ? 'Este email já está cadastrado'
-          : error.message
+          : 'Não foi possível criar sua conta. Tente novamente em instantes.'
       );
     } else {
       toast.success('Conta criada! Você tem 5 dias grátis para testar tudo.');
@@ -195,14 +204,24 @@ export default function Auth() {
                     </div>
                     <div className="space-y-2">
                       <Label htmlFor="password-login">Senha</Label>
-                      <Input
-                        id="password-login"
-                        type="password"
-                        placeholder="••••••••"
-                        value={password}
-                        onChange={e => setPassword(e.target.value)}
-                        required
-                      />
+                      <div className="relative">
+                        <Input
+                          id="password-login"
+                          type={showLoginPassword ? 'text' : 'password'}
+                          placeholder="••••••••"
+                          value={password}
+                          onChange={e => setPassword(e.target.value)}
+                          required
+                          className="pr-10"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => setShowLoginPassword(!showLoginPassword)}
+                          className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                        >
+                          {showLoginPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                        </button>
+                      </div>
                     </div>
                     <Button type="submit" className="w-full" disabled={isLoading}>
                       {isLoading ? 'Entrando...' : 'Entrar'}
@@ -263,15 +282,25 @@ export default function Auth() {
                     </div>
                     <div className="space-y-2">
                       <Label htmlFor="password-register">Senha</Label>
-                      <Input
-                        id="password-register"
-                        type="password"
-                        placeholder="Mínimo 8 caracteres"
-                        value={password}
-                        onChange={e => setPassword(e.target.value)}
-                        required
-                        minLength={8}
-                      />
+                      <div className="relative">
+                        <Input
+                          id="password-register"
+                          type={showRegisterPassword ? 'text' : 'password'}
+                          placeholder="Mínimo 8 caracteres, 1 maiúscula e 1 número"
+                          value={password}
+                          onChange={e => setPassword(e.target.value)}
+                          required
+                          minLength={8}
+                          className="pr-10"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => setShowRegisterPassword(!showRegisterPassword)}
+                          className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                        >
+                          {showRegisterPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                        </button>
+                      </div>
                     </div>
                     <Button type="submit" className="w-full" disabled={isLoading}>
                       {isLoading ? 'Criando conta...' : 'Criar conta'}

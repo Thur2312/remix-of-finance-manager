@@ -1,12 +1,12 @@
 import { useTrialStatus } from "@/hooks/useTrialStatus";
 import { Button } from "@/components/ui/button";
-import { AlertCircle, Clock, Zap } from "lucide-react";
+import { AlertCircle, Clock, Loader2, Zap } from "lucide-react";
 import { usePaymentCheckout } from "@/hooks/usePaymentCheckout";
 import { PLANS as PLAN_PRICING } from "@/config/plans";
 
 export function TrialBanner() {
   const { isTrialActive, daysRemaining, isPaid, isLoading } = useTrialStatus();
-  const { handleCheckout } = usePaymentCheckout();
+  const { handleCheckout, loadingPlanId } = usePaymentCheckout();
 
   if (isLoading || isPaid || !isTrialActive) return null;
 
@@ -30,9 +30,13 @@ export function TrialBanner() {
         className={`text-xs bg-white hover:bg-white/90 font-semibold gap-1.5 shrink-0
           ${isUrgent ? "text-red-600" : "text-amber-600"}`}
         onClick={() => handleCheckout("anual")}
+        disabled={loadingPlanId !== null}
       >
-        <Zap size={13} />
-        Assinar anual por R$ {PLAN_PRICING.anual.monthlyEquivalent.toFixed(2).replace('.', ',')}/mês
+        {loadingPlanId === "anual" ? (
+          <><Loader2 size={13} className="animate-spin" /> Redirecionando...</>
+        ) : (
+          <><Zap size={13} /> Assinar anual por R$ {PLAN_PRICING.anual.monthlyEquivalent.toFixed(2).replace('.', ',')}/mês</>
+        )}
       </Button>
 
     </div>

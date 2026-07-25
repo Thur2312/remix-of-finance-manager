@@ -67,7 +67,7 @@ Deno.serve(async (req) => {
 
     await supabase
       .from("subscriptions")
-      .update({ status: "canceled" })
+      .update({ status: "canceled", canceled_at: new Date().toISOString() })
       .eq("user_id", userId);
 
     await supabase

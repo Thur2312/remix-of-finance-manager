@@ -149,7 +149,7 @@ function PagamentosContent() {
     const cards = [
       {
         title: 'Total Recebido',
-        value: formatCurrency(stats.netRevenue),
+        value: loading ? '...' : formatCurrency(stats.netRevenue),
         description: 'Após taxas e descontos ML',
         icon: Wallet,
         color: 'text-green-500',
@@ -157,7 +157,7 @@ function PagamentosContent() {
       },
       {
         title: 'Faturamento Bruto',
-        value: formatCurrency(stats.grossRevenue),
+        value: loading ? '...' : formatCurrency(stats.grossRevenue),
         description: 'Antes das taxas',
         icon: DollarSign,
         color: 'text-blue-500',
@@ -165,7 +165,7 @@ function PagamentosContent() {
       },
       {
         title: 'Total de Taxas',
-        value: formatCurrency(totalTaxa),
+        value: loading ? '...' : formatCurrency(totalTaxa),
         description: 'Comissão + frete ML',
         icon: CreditCard,
         color: 'text-orange-500',
@@ -173,7 +173,7 @@ function PagamentosContent() {
       },
       {
         title: 'Pedidos',
-        value: stats.totalOrders.toString(),
+        value: loading ? '...' : stats.totalOrders.toString(),
         description: 'Pagos e entregues',
         icon: CheckCircle2,
         color: 'text-primary',

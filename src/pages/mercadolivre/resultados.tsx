@@ -143,28 +143,28 @@ function ResultadosContent() {
     const cards = [
       {
         title: 'Total Faturado',
-        value: formatCurrency(stats.grossRevenue),
+        value: loading ? '...' : formatCurrency(stats.grossRevenue),
         icon: DollarSign,
         color: 'text-blue-500',
         bg: 'bg-blue-500/10',
       },
       {
         title: 'Valor Líquido',
-        value: formatCurrency(stats.netRevenue),
+        value: loading ? '...' : formatCurrency(stats.netRevenue),
         icon: DollarSign,
         color: 'text-green-500',
         bg: 'bg-green-500/10',
       },
       {
         title: 'Taxas ML',
-        value: formatCurrency(stats.fees),
+        value: loading ? '...' : formatCurrency(stats.fees),
         icon: stats.fees > 0 ? TrendingDown : TrendingUp,
         color: 'text-orange-500',
         bg: 'bg-orange-500/10',
       },
       {
         title: 'Produtos',
-        value: groups.length.toString(),
+        value: loading ? '...' : groups.length.toString(),
         icon: Package,
         color: 'text-primary',
         bg: 'bg-primary/10',

@@ -2,6 +2,7 @@ import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from '@supabase/supabase-js';
 import { getCorsHeaders, handleCorsPreflightRequest } from '../_shared/cors.ts';
 import { parseBankStatementSchema, createValidationErrorResponse } from '../_shared/validation.ts';
+import { hasActivePlanAccess } from '../_shared/plan-guard.ts';
 
 serve(async (req : Request ) => {
   // Handle CORS preflight
@@ -41,6 +42,20 @@ serve(async (req : Request ) => {
     const userId = claimsData.claims.sub;
     console.log(`Request authenticated for user: ${userId}`);
     // ========== FIM AUTENTICAÇÃO ==========
+
+    // ========== PLANO ATIVO (paywall aplicado no servidor) ==========
+    const hasAccess = await hasActivePlanAccess(
+      Deno.env.get('SUPABASE_URL')!,
+      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!,
+      userId
+    );
+    if (!hasAccess) {
+      return new Response(
+        JSON.stringify({ error: 'Recurso disponível apenas para contas com plano ativo.' }),
+        { status: 402, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+    // ========== FIM PLANO ATIVO ==========
 
     // ========== INPUT VALIDATION ==========
     const rawBody = await req.json();

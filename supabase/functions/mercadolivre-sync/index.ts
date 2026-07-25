@@ -1,18 +1,25 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
-
-const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
-  "Access-Control-Allow-Methods": "POST, OPTIONS",
-};
+import { getCorsHeaders, handleCorsPreflightRequest } from "../_shared/cors.ts";
 
 const ML_API = "https://api.mercadolibre.com";
 
+// Comparação em tempo constante para evitar timing attack no cron_secret.
+function timingSafeEqual(a: string, b: string): boolean {
+  const enc = new TextEncoder();
+  const aBytes = enc.encode(a);
+  const bBytes = enc.encode(b);
+  if (aBytes.length !== bBytes.length) return false;
+  let diff = 0;
+  for (let i = 0; i < aBytes.length; i++) diff |= aBytes[i] ^ bBytes[i];
+  return diff === 0;
+}
+
 serve(async (req) => {
-  if (req.method === "OPTIONS") {
-    return new Response(null, { status: 200, headers: corsHeaders });
-  }
+  const preflight = handleCorsPreflightRequest(req);
+  if (preflight) return preflight;
+
+  const corsHeaders = getCorsHeaders(req);
 
   try {
     const supabase = createClient(
@@ -20,24 +27,52 @@ serve(async (req) => {
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
     );
 
+    let requestBody: { connection_id?: string; cron_secret?: string } = {};
+    try {
+      requestBody = await req.json();
+    } catch {
+      // body vazio é aceitável (chamada só com Authorization header)
+    }
+
+    const CRON_SECRET = Deno.env.get("MERCADOLIVRE_SYNC_CRON_SECRET") ?? "";
+    const isCronCall = Boolean(CRON_SECRET) &&
+      typeof requestBody?.cron_secret === "string" &&
+      timingSafeEqual(requestBody.cron_secret, CRON_SECRET);
+
     const authHeader = req.headers.get("Authorization") ?? "";
     const userToken = authHeader.replace("Bearer ", "");
 
     let userId: string | null = null;
 
-    if (userToken) {
-      const { data: { user } } = await supabase.auth.getUser(userToken);
-      userId = user?.id ?? null;
+    // Antes, se o token estivesse ausente/inválido, a busca simplesmente
+    // deixava de filtrar por usuário e sincronizava TODAS as integrações ML
+    // da plataforma. Agora, fora do caminho de cron, autenticação é obrigatória.
+    if (!isCronCall) {
+      if (!userToken) {
+        return new Response(
+          JSON.stringify({ error: "Não autorizado" }),
+          { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+      const { data: { user }, error: userError } = await supabase.auth.getUser(userToken);
+      if (userError || !user) {
+        return new Response(
+          JSON.stringify({ error: "Não autorizado" }),
+          { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+      userId = user.id;
     }
 
     // ✅ Fix: status 'connected' em vez de 'active'
-    const query = supabase
+    let query = supabase
       .from("integration_connections")
       .select("*")
       .eq("provider", "mercadolivre")
       .eq("status", "connected");
 
-    if (userId) query.eq("user_id", userId);
+    if (userId) query = query.eq("user_id", userId);
+    if (requestBody.connection_id) query = query.eq("id", requestBody.connection_id);
 
     const { data: connections, error } = await query;
 

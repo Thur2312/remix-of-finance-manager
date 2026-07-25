@@ -545,8 +545,8 @@ function TikTokResultadosContent() {
                   <TableCell className="text-right font-bold">{formatCurrency(totals.total_a_receber)}</TableCell>
                   <TableCell className="text-right text-muted-foreground">{formatCurrency(totals.total_gasto_produtos)}</TableCell>
                   <TableCell className="text-right text-muted-foreground">{formatCurrency(totals.imposto)}</TableCell>
-                  <TableCell className={cn('text-right font-bold', totals.lucro_bruto >= 0 ? 'text-success' : 'text-destructive')}>
-                    {formatCurrency(totals.lucro_bruto)}
+                  <TableCell className={cn('text-right font-bold', totals.lucro_reais >= 0 ? 'text-success' : 'text-destructive')}>
+                    {formatCurrency(totals.lucro_reais)}
                   </TableCell>
                   <TableCell className={cn('text-right font-bold', totals.lucro_percentual_medio >= 0 ? 'text-success' : 'text-destructive')}>
                     {formatPercent(totals.lucro_percentual_medio)}

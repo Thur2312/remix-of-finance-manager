@@ -2,7 +2,9 @@ import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
 import { createHmac } from "https://deno.land/std@0.168.0/node/crypto.ts"
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2"
 
-const FRONTEND_URL = "https://www.sellerfinance.com.br"
+// Permite sobrescrever via env var (ex: testar OAuth contra um preview
+// deploy) sem alterar o comportamento padrão de produção.
+const FRONTEND_URL = Deno.env.get("FRONTEND_URL")?.trim() || "https://www.sellerfinance.com.br"
 
 serve(async (req) => {
   const url = new URL(req.url)
@@ -91,11 +93,32 @@ serve(async (req) => {
       expire_in,
       refresh_token_expire_in,
       shop_id: responseShopId,
-      shope_name,
     } = tokenData
 
     const resolvedShopId = String(responseShopId?.[0] ?? shopId ?? "")
     const now = new Date()
+
+    // A resposta de /api/v2/auth/token/get não traz o nome da loja (o campo
+    // "shope_name" que existia aqui era um typo apontando para algo que a API
+    // nunca retorna) — precisa de uma segunda chamada, já autenticada, a
+    // /api/v2/shop/get_shop_info. Falha aqui não deve derrubar a conexão.
+    let shopName = ""
+    try {
+      const shopInfoPath = "/api/v2/shop/get_shop_info"
+      const shopInfoTimestamp = Math.floor(Date.now() / 1000)
+      const shopIdNum = Number(resolvedShopId)
+      const shopInfoSign = createHmac("sha256", PARTNER_KEY)
+        .update(`${partnerIdNum}${shopInfoPath}${shopInfoTimestamp}${access_token}${shopIdNum}`)
+        .digest("hex")
+
+      const shopInfoRes = await fetch(
+        `${BASE_URL}${shopInfoPath}?partner_id=${partnerIdNum}&timestamp=${shopInfoTimestamp}&sign=${shopInfoSign}&access_token=${access_token}&shop_id=${shopIdNum}`
+      )
+      const shopInfoData = await shopInfoRes.json()
+      shopName = shopInfoData?.shop_name ?? ""
+    } catch (shopInfoError) {
+      console.error("Erro ao buscar shop_name da Shopee:", shopInfoError)
+    }
 
     // ✅ FIX: Função segura para datas Shopee
     const safeTokenExpiresAt = (expireSeconds: number | undefined | null): string | null => {
@@ -112,7 +135,7 @@ serve(async (req) => {
         provider: "shopee",
         status: "connected",
         external_shop_id: resolvedShopId,
-        shop_name: shope_name ?? "",
+        shop_name: shopName,
         access_token,
         refresh_token,
         token_expires_at: safeTokenExpiresAt(expire_in),

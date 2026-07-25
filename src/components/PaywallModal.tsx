@@ -7,7 +7,7 @@ import { usePaymentCheckout } from "@/hooks/usePaymentCheckout";
 import { PLANS as PLAN_PRICING } from "@/config/plans";
 
 // Rotas onde o paywall NUNCA deve aparecer
-const PAYWALL_EXCLUDED = ["/setup-payment", "/planos", "/auth", "/login"];
+const PAYWALL_EXCLUDED = ["/setup-payment", "/planos", "/user/auth"];
 
 const PAYWALL_FEATURES = [
   "Dashboard avançado",

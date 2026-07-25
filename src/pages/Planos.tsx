@@ -25,6 +25,10 @@ import { usePaymentCheckout } from "@/hooks/usePaymentCheckout";
 import { useEffect, useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { PLANS as PLAN_PRICING } from '@/config/plans';
+import { useToast } from '@/hooks/use-toast';
+
+// Mesma lista usada em useTrialStatus.ts — mantém as duas em sincronia.
+const PAID_PLANS = ['mensal', 'semestral', 'anual', 'cancel_at_period_end'];
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -141,12 +145,12 @@ export function PlanosContent() {
   const canceledFromCheckout = searchParams.get('canceled') === 'true';
 
   const { user } = useAuth();
+  const { toast } = useToast();
 
 const { handleCheckout, handleCancel: cancelSubscription, loadingCancel, loadingPlanId } = usePaymentCheckout();
 
   const [profile, setProfile] = useState<ProfileData | null>(null);
   const [loadingProfile, setLoadingProfile] = useState(true);
-  const [cancelSuccess, setCancelSuccess] = useState(false);
 
   useEffect(() => {
     if (!user) return;
@@ -162,10 +166,14 @@ const { handleCheckout, handleCancel: cancelSubscription, loadingCancel, loading
   }, [user]);
 
   const userPlan: UserPlan = profile?.plan ?? 'free';
-  const isPaid = userPlan === 'mensal' || userPlan === 'semestral' || userPlan === 'anual';
-  const isTrial = userPlan === 'trial';
-  const isActive = isPaid || isTrial;
+  const isPaid = PAID_PLANS.includes(userPlan);
   const daysLeft = trialDaysLeft(profile?.trial_ends_at ?? null);
+  // Antes isso não olhava daysLeft — um trial já EXPIRADO também contava como
+  // "ativo", travando os 3 botões de assinatura pagos com "Plano indisponível"
+  // justo para quem mais precisa poder assinar. Só um trial com dias restantes
+  // conta como ativo agora.
+  const isTrial = userPlan === 'trial' && daysLeft !== null && daysLeft > 0;
+  const isActive = isPaid || isTrial;
 
   const currentPriceLabel =
     userPlan === 'anual' ? `R$ ${PLAN_PRICING.anual.monthlyEquivalent.toFixed(2).replace('.', ',')}/mês (cobrança anual)` :
@@ -199,7 +207,14 @@ const { handleCheckout, handleCancel: cancelSubscription, loadingCancel, loading
     if (!window.confirm(confirmMessage)) return;
     const result = await cancelSubscription();
     if (result.success) {
-      setCancelSuccess(true);
+      // Antes isso travava os 3 cards de plano com "Assinatura cancelada"
+      // até um F5 manual — mesmo que o usuário quisesse assinar outro plano
+      // na mesma hora. O refetch do profile abaixo já faz isActive/isPaid
+      // caírem para false, reabilitando os CTAs normalmente.
+      toast({
+        title: isRecurringPlan ? 'Assinatura cancelada' : 'Conta desativada',
+        description: 'Você já pode escolher outro plano quando quiser.',
+      });
       if (user) {
         const { data } = await supabase.from('profiles').select('plan, trial_ends_at').eq('id', user.id).single();
         if (data) setProfile(data as unknown as ProfileData);
@@ -213,15 +228,6 @@ const { handleCheckout, handleCancel: cancelSubscription, loadingCancel, loading
         <Button className="w-full mt-4" disabled>
           <Loader2 className="mr-2 h-4 w-4 animate-spin" />
           Carregando...
-        </Button>
-      );
-    }
-
-    if (cancelSuccess) {
-      return (
-        <Button className="w-full mt-4" variant="outline" disabled>
-          <XCircle className="mr-2 h-4 w-4" />
-          {isRecurringPlan ? 'Assinatura cancelada' : 'Conta desativada'}
         </Button>
       );
     }
@@ -243,7 +249,9 @@ const { handleCheckout, handleCancel: cancelSubscription, loadingCancel, loading
       );
     }
 
-    if (isActive) {
+    // Só bloqueia quando o usuário já tem outro plano PAGO ativo — trial ativo
+    // não deve travar a escolha de plano, é justamente a janela de conversão.
+    if (isPaid) {
       return (
         <Button className="w-full mt-4" variant="outline" disabled>
           Plano indisponível
@@ -362,7 +370,7 @@ const { handleCheckout, handleCancel: cancelSubscription, loadingCancel, loading
                 {plan.billingNote && (
                   <p className="text-xs text-muted-foreground mt-1">{plan.billingNote}</p>
                 )}
-                {plan.id !== 'free' && !isActive && (
+                {plan.id !== 'free' && !isActive && userPlan === 'free' && (
                   <p className="text-xs text-muted-foreground mt-1">
                     🎉 5 dias grátis — cancele antes de ser cobrado
                   </p>
@@ -459,8 +467,13 @@ const { handleCheckout, handleCancel: cancelSubscription, loadingCancel, loading
             <Button onClick={() => handleSelectPlan('anual')} disabled={loadingPlanId !== null}>
             {loadingPlanId === 'anual' ? (
               <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Redirecionando...</>
-            ) : (
+            ) : userPlan === 'free' ? (
+              // "5 dias grátis" só é uma promessa real pra quem nunca passou
+              // pelo trial — pra quem já cancelou, o clique vai direto pro
+              // checkout pago, então o texto precisa dizer isso.
               <>Começar 5 dias grátis <ArrowRight className="ml-2 h-4 w-4" /></>
+            ) : (
+              <>Assinar plano Anual <ArrowRight className="ml-2 h-4 w-4" /></>
             )}
           </Button>
           </CardContent>

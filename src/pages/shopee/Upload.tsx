@@ -17,6 +17,7 @@ import {
   AlertCircle,
 } from 'lucide-react';
 import * as XLSX from 'xlsx';
+import { formatCurrency } from '@/lib/calculations';
 import {
   Table,
   TableBody,
@@ -512,8 +513,8 @@ function UploadContent() {
                     <TableCell className="max-w-[200px] truncate">{row.nome_produto}</TableCell>
                     <TableCell>{row.variacao || '-'}</TableCell>
                     <TableCell className="text-right">{row.quantidade}</TableCell>
-                    <TableCell className="text-right">{row.total_faturado.toFixed(2)}</TableCell>
-                    <TableCell className="text-right">{row.rebate_shopee.toFixed(2)}</TableCell>
+                    <TableCell className="text-right">{formatCurrency(row.total_faturado)}</TableCell>
+                    <TableCell className="text-right">{formatCurrency(row.rebate_shopee)}</TableCell>
                     <TableCell className="text-xs">
                       {row.data_pedido ? new Date(row.data_pedido).toLocaleDateString('pt-BR') : '-'}
                     </TableCell>

@@ -55,15 +55,14 @@ export function validatePhone(phone: string): boolean {
   return cleanPhone.length === 11;
 }
 
-// Validate email with common domains
+// Validate email format. Aceita qualquer domínio (incluindo e-mails
+// corporativos/próprios) — não faz sentido restringir a uma lista fixa de
+// provedores pessoais num SaaS B2B.
 export function validateEmail(email: string): boolean {
   const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
   if (!emailRegex.test(email)) return false;
-  
+
   const domain = email.split('@')[1]?.toLowerCase();
-  const validDomains = ['gmail.com', 'hotmail.com', 'outlook.com', 'yahoo.com', 'icloud.com', 'live.com', 'msn.com', 'uol.com.br', 'bol.com.br', 'terra.com.br'];
-  
-  // Allow any domain that has at least a dot (e.g., company domains)
   return domain?.includes('.') ?? false;
 }
 

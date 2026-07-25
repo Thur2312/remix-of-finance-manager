@@ -38,6 +38,8 @@ export function ProductCosts() {
   const [costs, setCosts] = useState<ProductCost[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState<string | null>(null);
+  const [isAdding, setIsAdding] = useState(false);
+  const [isDeleting, setIsDeleting] = useState<string | null>(null);
   const [search, setSearch] = useState('');
   const [showAddForm, setShowAddForm] = useState(false);
   const [newCost, setNewCost] = useState({
@@ -117,6 +119,7 @@ export function ProductCosts() {
   };
 
   const handleDelete = async (id: string) => {
+    setIsDeleting(id);
     const { error } = await supabase
       .from('product_costs')
       .delete()
@@ -126,6 +129,7 @@ export function ProductCosts() {
       toast.success('Removido!');
       setCosts(prev => prev.filter(c => c.id !== id));
     }
+    setIsDeleting(null);
   };
 
   const handleAdd = async () => {
@@ -134,6 +138,10 @@ export function ProductCosts() {
       toast.error('Informe o nome ou SKU do produto');
       return;
     }
+    // Sem trava de loading, um duplo clique disparava dois inserts e criava
+    // o mesmo produto duas vezes.
+    if (isAdding) return;
+    setIsAdding(true);
     const { data, error } = await supabase
       .from('product_costs')
       .insert({
@@ -156,6 +164,7 @@ export function ProductCosts() {
       setShowAddForm(false);
       setNewCost({ external_item_id: '', item_name: '', sku: '', cost: '', packaging_cost: '', other_costs: '', tax_percent: '', notes: '' });
     }
+    setIsAdding(false);
   };
 
   const handleSelectProduct = (product: ProductOption) => {
@@ -312,8 +321,10 @@ export function ProductCosts() {
               </div>
 
               <div className="flex gap-2 justify-end">
-                <Button size="sm" variant="outline" onClick={() => setShowAddForm(false)}>Cancelar</Button>
-                <Button size="sm" onClick={handleAdd}>Adicionar</Button>
+                <Button size="sm" variant="outline" onClick={() => setShowAddForm(false)} disabled={isAdding}>Cancelar</Button>
+                <Button size="sm" onClick={handleAdd} disabled={isAdding}>
+                  {isAdding ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : 'Adicionar'}
+                </Button>
               </div>
             </CardContent>
           </Card>
@@ -371,8 +382,11 @@ export function ProductCosts() {
                         variant="outline"
                         className="h-7 px-2 text-destructive hover:text-destructive"
                         onClick={() => handleDelete(cost.id)}
+                        disabled={isDeleting === cost.id}
                       >
-                        <Trash2 className="h-3 w-3" />
+                        {isDeleting === cost.id
+                          ? <Loader2 className="h-3 w-3 animate-spin" />
+                          : <Trash2 className="h-3 w-3" />}
                       </Button>
                     </div>
                   </div>

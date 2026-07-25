@@ -25,13 +25,18 @@ export function getCorsHeaders(req: Request): Record<string, string> {
                      origin.match(/http:\/\/172\.\d+\.\d+\.\d+/) ||
                      origin.match(/http:\/\/10\.\d+\.\d+\.\d+/);
   
-  const isAllowed = allowedOrigins.some(allowed => 
-    origin === allowed || origin.endsWith('.lovable.app')
-  ) || isLocalDev;
+  // A URL de preview específica do Lovable já está na allowlist acima —
+  // aceitar QUALQUER subdomínio de ".lovable.app" (plataforma pública de
+  // app builder) tratava qualquer app hospedado lá como origem confiável.
+  const isAllowed = allowedOrigins.some(allowed => origin === allowed) || isLocalDev;
   
   return {
     'Access-Control-Allow-Origin': isAllowed ? origin : '',
-    'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+    // Inclui os headers de telemetria que o supabase-js client mais recente
+    // manda automaticamente (financial-assistant precisava deles à parte
+    // antes de migrar pra esse helper compartilhado).
+    'Access-Control-Allow-Headers':
+      'authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version',
     'Access-Control-Allow-Methods': 'POST, OPTIONS',
   };
 }

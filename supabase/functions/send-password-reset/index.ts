@@ -3,12 +3,27 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 import { getCorsHeaders, handleCorsPreflightRequest } from '../_shared/cors.ts';
 import { passwordResetSchema, createValidationErrorResponse } from '../_shared/validation.ts';
 
+// O caminho "email não existe" respondia quase instantaneamente (só a busca
+// em profiles), enquanto "email existe" fazia generateLink + chamada HTTP ao
+// Resend antes de responder — a diferença de tempo permitia enumerar contas
+// cadastradas por timing attack. Todo retorno é nivelado a esse piso mínimo.
+const MIN_RESPONSE_TIME_MS = 1200;
+
+async function withMinDelay<T>(startTime: number, response: T): Promise<T> {
+  const elapsed = Date.now() - startTime;
+  if (elapsed < MIN_RESPONSE_TIME_MS) {
+    await new Promise((resolve) => setTimeout(resolve, MIN_RESPONSE_TIME_MS - elapsed));
+  }
+  return response;
+}
+
 const handler = async (req: Request): Promise<Response> => {
   // Handle CORS preflight
   const corsResponse = handleCorsPreflightRequest(req);
   if (corsResponse) return corsResponse;
 
   const corsHeaders = getCorsHeaders(req);
+  const startTime = Date.now();
 
   try {
     // ========== INPUT VALIDATION ==========
@@ -38,10 +53,10 @@ const handler = async (req: Request): Promise<Response> => {
     if (profileError || !profile) {
       console.log("Email not found in profiles:", email);
       // Return success even if email doesn't exist (security best practice)
-      return new Response(
+      return await withMinDelay(startTime, new Response(
         JSON.stringify({ success: true, message: "Se o email existir, você receberá um link de recuperação." }),
         { status: 200, headers: { "Content-Type": "application/json", ...corsHeaders } }
-      );
+      ));
     }
 
     // Generate password reset link using Supabase Auth
@@ -157,18 +172,18 @@ const handler = async (req: Request): Promise<Response> => {
 
     console.log("Email sent successfully:", emailResult);
 
-    return new Response(
+    return await withMinDelay(startTime, new Response(
       JSON.stringify({ success: true, message: "Email de recuperação enviado com sucesso!" }),
       { status: 200, headers: { "Content-Type": "application/json", ...corsHeaders } }
-    );
+    ));
   } catch (error: Error) {
     console.error("Error in send-password-reset function:", error);
     const corsHeaders = getCorsHeaders(req);
     const errorMessage = error instanceof Error ? error.message : "Erro ao processar solicitação";
-    return new Response(
+    return await withMinDelay(startTime, new Response(
       JSON.stringify({ error: errorMessage }),
       { status: 500, headers: { "Content-Type": "application/json", ...corsHeaders } }
-    );
+    ));
   }
 };
 

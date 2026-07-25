@@ -8,6 +8,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { toast } from 'sonner';
 import { ArrowLeft, Mail, Loader2, CheckCircle2, AlertCircle } from 'lucide-react';
 import { motion } from 'framer-motion';
+import { validateEmail as isValidEmailFormat } from '@/lib/validations';
 
 
 const fadeInUp = {
@@ -23,30 +24,13 @@ const staggerContainer = {
   },
 };
 
-const VALID_EMAIL_DOMAINS = [
-  'gmail.com', 'hotmail.com', 'outlook.com', 'yahoo.com', 'icloud.com',
-  'live.com', 'msn.com', 'aol.com', 'protonmail.com', 'zoho.com',
-  'uol.com.br', 'bol.com.br', 'terra.com.br', 'ig.com.br', 'globo.com'
-];
-
+// Antes havia uma whitelist fixa de domínios pessoais (gmail/hotmail/...) que
+// bloqueava e-mails corporativos/próprios de recuperar senha — inaceitável
+// num SaaS B2B. Reusa a mesma validação de src/lib/validations.ts usada no
+// resto do app (aceita qualquer domínio bem formado).
 const validateEmail = (email: string): string | null => {
   if (!email) return 'Email é obrigatório';
-  if (!email.includes('@')) return 'Email deve conter @';
-
-  const [, domain] = email.split('@');
-  if (!domain) return 'Email inválido';
-
-  const isValidDomain = VALID_EMAIL_DOMAINS.some(d =>
-    domain.toLowerCase() === d || domain.toLowerCase().endsWith('.' + d)
-  );
-
-  if (!isValidDomain) {
-    return 'Use um email válido (Gmail, Hotmail, Outlook, etc.)';
-  }
-
-  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-  if (!emailRegex.test(email)) return 'Formato de email inválido';
-
+  if (!isValidEmailFormat(email)) return 'Formato de email inválido';
   return null;
 };
 

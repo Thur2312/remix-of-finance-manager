@@ -17,6 +17,7 @@ import {
   Loader2,
   FileText,
 } from 'lucide-react';
+import { formatCurrency } from '@/lib/tiktok-calculations';
 import {
   Table,
   TableBody,
@@ -365,7 +366,7 @@ function TikTokUploadContent() {
                   <TableCell className="max-w-[200px] truncate">{row.nome_produto?.slice(0, 40)}...</TableCell>
                   <TableCell>{row.variacao?.slice(0, 20) || '-'}</TableCell>
                   <TableCell className="text-right">{row.quantidade}</TableCell>
-                  <TableCell className="text-right">R$ {row.total_faturado.toFixed(2)}</TableCell>
+                  <TableCell className="text-right">{formatCurrency(row.total_faturado)}</TableCell>
                 </TableRow>
               ))}
             </TableBody>

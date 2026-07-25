@@ -22,6 +22,7 @@ export function CompanyModal({
 }: CompanyModalProps) {
   const [form, setForm] = useState<CompanyFormData>({ name: '', cnpj: '', tax_rate: 0 });
   const [errors, setErrors] = useState<Partial<Record<keyof CompanyFormData, string>>>({});
+  const [formError, setFormError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
 
@@ -32,10 +33,18 @@ export function CompanyModal({
       setForm({ name: '', cnpj: '', tax_rate: 0 });
     }
     setErrors({});
+    setFormError(null);
     setSaved(false);
   }, [initialData, open]);
 
   if (!open) return null;
+
+  const handleClose = () => {
+    // Fechar (backdrop/X/Cancelar) enquanto salva descartava a submissão em
+    // andamento sem avisar nada.
+    if (saving) return;
+    onClose();
+  };
 
   const validate = (): boolean => {
     const newErrors: Partial<Record<keyof CompanyFormData, string>> = {};
@@ -55,6 +64,7 @@ export function CompanyModal({
   const handleSubmit = async () => {
     if (!validate()) return;
     setSaving(true);
+    setFormError(null);
     try {
       const result = await onSave(form);
       setSaved(true);
@@ -64,8 +74,10 @@ export function CompanyModal({
         onClose();
       }, 900);
     } catch (e: unknown) {
+      // Antes isso era sempre atribuído ao campo "Nome", mesmo quando o
+      // problema real era CNPJ duplicado ou falha de rede.
       const msg = e instanceof Error ? e.message : 'Erro ao salvar';
-      setErrors({ name: msg });
+      setFormError(msg);
     } finally {
       setSaving(false);
     }
@@ -74,7 +86,7 @@ export function CompanyModal({
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
       {/* Backdrop */}
-      <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={onClose} />
+      <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={handleClose} />
 
       {/* Modal */}
       <div className="relative w-full max-w-md bg-white dark:bg-gray-900 rounded-2xl shadow-2xl border border-gray-100 dark:border-gray-800 overflow-hidden">
@@ -95,8 +107,9 @@ export function CompanyModal({
             </div>
           </div>
           <button
-            onClick={onClose}
-            className="w-8 h-8 rounded-lg flex items-center justify-center text-gray-400 hover:text-gray-600 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
+            onClick={handleClose}
+            disabled={saving}
+            className="w-8 h-8 rounded-lg flex items-center justify-center text-gray-400 hover:text-gray-600 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors disabled:opacity-50"
           >
             <X className="w-4 h-4" />
           </button>
@@ -104,14 +117,21 @@ export function CompanyModal({
 
         {/* Body */}
         <div className="px-6 py-5 space-y-4">
+          {formError && (
+            <p className="text-xs text-red-500 bg-red-50 dark:bg-red-950/40 px-3 py-2 rounded-lg flex items-center gap-1.5">
+              <AlertCircle className="w-3.5 h-3.5 shrink-0" /> {formError}
+            </p>
+          )}
+
           {/* Nome */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">
+            <label htmlFor="company-name" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">
               Nome da Empresa
             </label>
             <div className="relative">
               <Building2 className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
               <input
+                id="company-name"
                 type="text"
                 placeholder="Ex: Minha Loja LTDA"
                 value={form.name}
@@ -130,12 +150,13 @@ export function CompanyModal({
 
           {/* CNPJ */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">
+            <label htmlFor="company-cnpj" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">
               CNPJ
             </label>
             <div className="relative">
               <FileText className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
               <input
+                id="company-cnpj"
                 type="text"
                 placeholder="00.000.000/0000-00"
                 value={form.cnpj}
@@ -154,12 +175,13 @@ export function CompanyModal({
 
           {/* Alíquota */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">
+            <label htmlFor="company-tax-rate" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">
               Alíquota de Imposto
             </label>
             <div className="relative">
               <Percent className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
               <input
+                id="company-tax-rate"
                 type="number"
                 min={0}
                 max={100}
@@ -188,8 +210,9 @@ export function CompanyModal({
         {/* Footer */}
         <div className="px-6 py-4 bg-gray-50 dark:bg-gray-800/50 border-t border-gray-100 dark:border-gray-800 flex gap-3 justify-end">
           <button
-            onClick={onClose}
-            className="px-4 py-2 text-sm font-medium text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-gray-700 rounded-xl transition-colors"
+            onClick={handleClose}
+            disabled={saving}
+            className="px-4 py-2 text-sm font-medium text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-gray-700 rounded-xl transition-colors disabled:opacity-50"
           >
             Cancelar
           </button>

@@ -363,8 +363,8 @@ export default function IntegrationManage() {
             <CardContent>
               <DisconnectDialog
                 providerName={name}
-                onConfirm={() => {
-                  disconnect.mutate(connection.id);
+                onConfirm={async () => {
+                  await disconnect.mutateAsync(connection.id);
                   navigate('/integrations');
                 }}
                 isLoading={disconnect.isPending}

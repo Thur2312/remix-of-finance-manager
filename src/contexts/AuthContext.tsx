@@ -56,8 +56,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   /**
    * Calcula se o trial expirou e quantos dias restam, com base em
-   * profiles.trial_ends_at (data real definida pelo Stripe no checkout).
-   * Fonte única de verdade, compartilhada com useTrialStatus.
+   * profiles.trial_ends_at (preenchido pelo trigger de cadastro / webhook
+   * do Asaas). Fonte única de verdade, compartilhada com useTrialStatus.
    */
   const calculateTrialStatus = (trialEndsAt: string | null): { isExpired: boolean; daysRemaining: number } => {
     if (!trialEndsAt) {
@@ -89,10 +89,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setProfile(data as unknown as Profile);
 
         // Determinar o plano efetivo. Sem plano definido = nunca completou o
-        // checkout no Stripe, então não tem trial nem acesso pago.
+        // checkout, então não tem trial nem acesso pago.
         let effectivePlan = (data as any).plan || 'sem_plano';
 
-        // Se o plano é trial, verificar se expirou (com base na data real do Stripe)
+        // Se o plano é trial, verificar se expirou
         if (effectivePlan === 'trial') {
           const { isExpired, daysRemaining } = calculateTrialStatus((data as any).trial_ends_at);
           setIsTrialExpired(isExpired);

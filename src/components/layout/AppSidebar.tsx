@@ -29,9 +29,11 @@ const sectionRoutes: Record<string, string[]> = {
     '/gestao',
     '/shopee/dashboard', '/shopee/resultados', '/shopee/variacoes', '/shopee/upload', '/shopee/configuracoes',
     '/tiktok/dashboard', '/tiktok/resultados', '/tiktok/variacoes', '/tiktok/upload', '/tiktok/pagamentos', '/tiktok/pagamentos/upload', '/tiktok/configuracoes',
+    // Faltavam as rotas do Mercado Livre — o item "Gestão" nunca ficava
+    // destacado como ativo em nenhuma dessas páginas.
+    '/mercadolivre/resultados', '/mercadolivre/variacoes', '/mercadolivre/pagamentos', '/mercadolivre/configuracoes',
   ],
   '/fluxo-caixa': ['/fluxo-caixa', '/fluxo-caixa/lancamentos', '/fluxo-caixa/categorias'],
-  '/integrations': ['/integrations', '/integrations/shopee', '/integrations/tiktok', '/integrations/callback'],
 };
 
 export function AppSidebar() {
@@ -44,6 +46,11 @@ export function AppSidebar() {
   const getInitials = (email: string) => email.slice(0, 2).toUpperCase();
 
   const isItemActive = (url: string) => {
+    // /integrations/:provider é dinâmica (shopee/tiktok/mercadolivre) — uma
+    // lista fixa de strings sempre ficava desatualizada (faltava
+    // mercadolivre, e "/integrations/callback" sem :provider nunca batia
+    // com a rota real "/integrations/callback/:provider").
+    if (url === '/integrations') return location.pathname.startsWith('/integrations');
     const routes = sectionRoutes[url];
     if (routes) return routes.includes(location.pathname);
     return location.pathname === url;

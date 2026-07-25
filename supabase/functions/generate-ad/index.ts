@@ -1,13 +1,8 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 import { z } from 'https://deno.land/x/zod@v3.22.4/mod.ts';
-
-// ============= CORS HEADERS =============
-const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version',
-  'Access-Control-Allow-Methods': 'POST, OPTIONS',
-};
+import { getCorsHeaders, handleCorsPreflightRequest } from '../_shared/cors.ts';
+import { hasActivePlanAccess } from '../_shared/plan-guard.ts';
 
 // ============= VALIDATION =============
 const generateAdSchema = z.object({
@@ -25,10 +20,10 @@ const generateAdSchema = z.object({
   }).optional().nullable(),
 });
 
-function createValidationErrorResponse(error: z.ZodError): Response {
+function createValidationErrorResponse(error: z.ZodError, corsHeaders: Record<string, string>): Response {
   const issues = error.issues.map(i => `${i.path.join('.')}: ${i.message}`).join(', ');
   console.error('Validation error:', issues);
-  
+
   return new Response(
     JSON.stringify({ error: 'Dados inválidos', details: issues }),
     { status: 400, headers: { 'Content-Type': 'application/json', ...corsHeaders } }
@@ -110,10 +105,10 @@ FORMATO DE RESPOSTA:
 
 // ============= MAIN FUNCTION =============
 serve(async (req: Request) => {
-  // Handle CORS preflight
-  if (req.method === 'OPTIONS') {
-    return new Response('ok', { headers: corsHeaders });
-  }
+  const preflight = handleCorsPreflightRequest(req);
+  if (preflight) return preflight;
+
+  const corsHeaders = getCorsHeaders(req);
 
   try {
     // ========== AUTENTICAÇÃO JWT ==========
@@ -145,12 +140,24 @@ serve(async (req: Request) => {
       const userId = user.id
       console.log(`Request authenticated for user: ${userId}`)
 
+    const hasAccess = await hasActivePlanAccess(
+      Deno.env.get('SUPABASE_URL')!,
+      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!,
+      userId
+    );
+    if (!hasAccess) {
+      return new Response(
+        JSON.stringify({ error: 'Recurso disponível apenas para contas com plano ativo.' }),
+        { status: 402, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
     // ========== INPUT VALIDATION ==========
     const rawBody = await req.json();
     const validationResult = generateAdSchema.safeParse(rawBody);
-    
+
     if (!validationResult.success) {
-      return createValidationErrorResponse(validationResult.error);
+      return createValidationErrorResponse(validationResult.error, corsHeaders);
     }
     
     const { nomeProduto, categoria, marca, faixaPreco, publicoAlvo, materiais, coresDisponiveis, images, medidas } = validationResult.data;

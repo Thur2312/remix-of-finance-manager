@@ -32,6 +32,17 @@ function parseRef(ref?: string | null): { userId: string | null; planId: PlanId 
   return { userId, planId };
 }
 
+// Comparação em tempo constante para evitar timing attack no token do webhook.
+function timingSafeEqual(a: string, b: string): boolean {
+  const enc = new TextEncoder();
+  const aBytes = enc.encode(a);
+  const bBytes = enc.encode(b);
+  if (aBytes.length !== bBytes.length) return false;
+  let diff = 0;
+  for (let i = 0; i < aBytes.length; i++) diff |= aBytes[i] ^ bBytes[i];
+  return diff === 0;
+}
+
 // ── Helper: resolve userId com fallbacks (equivalente ao resolveUserId do antigo stripe-webhook) ──
 async function resolveUserId(
   externalReference?: string | null,
@@ -62,8 +73,8 @@ async function resolveUserId(
 }
 
 Deno.serve(async (req) => {
-  const token = req.headers.get("asaas-access-token");
-  if (token !== ASAAS_WEBHOOK_TOKEN) {
+  const token = req.headers.get("asaas-access-token") ?? "";
+  if (!timingSafeEqual(token, ASAAS_WEBHOOK_TOKEN)) {
     return new Response("Token inválido", { status: 401 });
   }
 
@@ -140,28 +151,49 @@ Deno.serve(async (req) => {
     );
 
     if (userId) {
-      const planoPago =
-        refFromSubscription.planId ??
-        refFromPayment.planId ??
-        (subscription?.cycle ? planIdByCycle(subscription.cycle) : null) ??
-        "mensal";
+      // Se o usuário já cancelou DEPOIS que esse pagamento foi feito, esse
+      // PAYMENT_CONFIRMED só chegou atrasado (cobrança que já estava em voo
+      // antes do cancelamento) — não deve reativar o plano. Um pagamento
+      // genuinamente novo, feito depois do cancelamento, deve reativar
+      // normalmente.
+      const { data: existingSub } = await supabase
+        .from("subscriptions")
+        .select("canceled_at")
+        .eq("user_id", userId)
+        .maybeSingle();
 
-      await supabase
-        .from("profiles")
-        .update({ plan: planoPago, trial_ends_at: null })
-        .eq("id", userId);
+      const paymentDate = payment?.confirmedDate ?? payment?.paymentDate ?? payment?.clientPaymentDate ?? null;
 
-      await supabase.from("subscriptions").upsert(
-        {
-          user_id: userId,
-          plan: planoPago,
-          status: "active",
-          user_plan: planoPago,
-          asaas_customer_id: payment?.customer ?? null,
-          asaas_subscription_id: asaasSubscriptionId ?? null,
-        },
-        { onConflict: "user_id" }
-      );
+      const isStalePaymentAfterCancel =
+        existingSub?.canceled_at && paymentDate
+          ? new Date(paymentDate).getTime() < new Date(existingSub.canceled_at).getTime()
+          : false;
+
+      if (!isStalePaymentAfterCancel) {
+        const planoPago =
+          refFromSubscription.planId ??
+          refFromPayment.planId ??
+          (subscription?.cycle ? planIdByCycle(subscription.cycle) : null) ??
+          "mensal";
+
+        await supabase
+          .from("profiles")
+          .update({ plan: planoPago, trial_ends_at: null })
+          .eq("id", userId);
+
+        await supabase.from("subscriptions").upsert(
+          {
+            user_id: userId,
+            plan: planoPago,
+            status: "active",
+            user_plan: planoPago,
+            asaas_customer_id: payment?.customer ?? null,
+            asaas_subscription_id: asaasSubscriptionId ?? null,
+            canceled_at: null,
+          },
+          { onConflict: "user_id" }
+        );
+      }
     }
   }
 

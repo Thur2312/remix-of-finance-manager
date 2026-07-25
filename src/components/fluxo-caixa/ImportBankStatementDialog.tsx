@@ -38,6 +38,7 @@ type FileFormat = 'ofx' | 'csv' | 'xlsx' | 'pdf' | 'unknown';
 interface TransactionWithSelection extends BankTransaction {
   selected: boolean;
   categoryId: string | null;
+  isDuplicate: boolean;
 }
 
 interface ImportBankStatementDialogProps {
@@ -48,7 +49,20 @@ interface ImportBankStatementDialogProps {
 export default function ImportBankStatementDialog({ open, onOpenChange }: ImportBankStatementDialogProps) {
   const { toast } = useToast();
   const { categories } = useCashFlowCategories();
-  const { createEntry } = useCashFlowEntries();
+  const { createEntry, entries: existingEntries } = useCashFlowEntries();
+
+  // Nada aqui checava duplicidade antes de inserir — reimportar um período já
+  // importado (ex: baixar o extrato de novo, que inclui meses anteriores)
+  // duplicava cada lançamento. fitid (OFX) não cobre CSV/XLSX/PDF, que sempre
+  // vêm com fitid null — por isso o match é por data+valor+tipo, que funciona
+  // pra qualquer formato.
+  const isLikelyDuplicate = useCallback((t: BankTransaction): boolean => {
+    return existingEntries.some(e =>
+      e.date === t.date &&
+      e.type === t.type &&
+      Math.abs(e.amount - t.amount) < 0.01
+    );
+  }, [existingEntries]);
 
   const [isDragging, setIsDragging] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
@@ -77,6 +91,10 @@ export default function ImportBankStatementDialog({ open, onOpenChange }: Import
   };
 
   const handleOpenChange = (newOpen: boolean) => {
+    // Fechar durante a importação (Esc/clique fora/X) não cancelava o loop de
+    // criação de lançamentos — ele continuava rodando em background mesmo com
+    // a UI já resetada, então bloqueamos o fechamento até terminar.
+    if (!newOpen && isImporting) return;
     if (!newOpen) {
       resetState();
     }
@@ -179,16 +197,27 @@ export default function ImportBankStatementDialog({ open, onOpenChange }: Import
 
       setParseResult(result);
 
-      const transactionsWithSelection: TransactionWithSelection[] = result.transactions.map(t => ({
-        ...t,
-        selected: true,
-        categoryId: suggestCategory(t),
-      }));
+      const transactionsWithSelection: TransactionWithSelection[] = result.transactions.map(t => {
+        const duplicate = isLikelyDuplicate(t);
+        return {
+          ...t,
+          selected: !duplicate,
+          categoryId: suggestCategory(t),
+          isDuplicate: duplicate,
+        };
+      });
 
       setTransactions(transactionsWithSelection);
 
+      const duplicateCount = transactionsWithSelection.filter(t => t.isDuplicate).length;
+
       if (result.transactions.length === 0) {
         setError('Nenhuma transação encontrada no arquivo. Verifique se o formato está correto.');
+      } else if (duplicateCount > 0) {
+        toast({
+          title: 'Arquivo processado!',
+          description: `${result.transactions.length} transações encontradas. ${duplicateCount} parecem já ter sido importadas (mesma data/valor/tipo) e vieram desmarcadas — revise antes de importar.`,
+        });
       } else {
         toast({
           title: 'Arquivo processado!',
@@ -458,7 +487,14 @@ export default function ImportBankStatementDialog({ open, onOpenChange }: Import
                           {format(parseISO(t.date), 'dd/MM/yyyy')}
                         </TableCell>
                         <TableCell className="max-w-[200px] truncate" title={t.description}>
-                          {t.description}
+                          <div className="flex items-center gap-1.5">
+                            <span className="truncate">{t.description}</span>
+                            {t.isDuplicate && (
+                              <Badge variant="outline" className="shrink-0 text-[10px] px-1.5 py-0 border-amber-400 text-amber-600 dark:text-amber-400">
+                                Possível duplicata
+                              </Badge>
+                            )}
+                          </div>
                         </TableCell>
                         <TableCell>
                           <div className="flex items-center gap-1">

@@ -22,7 +22,7 @@ serve(async (req) => {
     console.log("ML Webhook recebido:", JSON.stringify(body));
 
     // O ML envia: { resource, user_id, topic, application_id, attempts, sent, received }
-    const { resource, user_id: mlUserId, topic } = body;
+    const { resource, user_id: mlUserId, topic, application_id: notificationAppId } = body;
 
     if (!resource || !topic) {
       return new Response(JSON.stringify({ error: "Payload inválido" }), {
@@ -31,13 +31,30 @@ serve(async (req) => {
       });
     }
 
+    // A API de notificações do Mercado Livre (diferente do Mercado Pago) não
+    // tem assinatura HMAC — a validação de origem recomendada pela própria ML
+    // é conferir que o application_id da notificação é o do seu app antes de
+    // processar. Isso é combinado com o que já era feito: nunca confiar em
+    // valores financeiros vindos do webhook, sempre rebuscar via API autenticada.
+    const ML_CLIENT_ID = Deno.env.get("ML_CLIENT_ID");
+    if (ML_CLIENT_ID && String(notificationAppId) !== String(ML_CLIENT_ID)) {
+      console.warn("ML Webhook com application_id inesperado:", notificationAppId);
+      return new Response(JSON.stringify({ ok: true }), {
+        status: 200,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
     // Busca a integração do usuário ML correspondente
-    // O ml_user_id é salvo no shop_id da integration_connections
+    // O ml_user_id é salvo no external_shop_id da integration_connections
+    // (esta query usava "shop_id"/"expires_at" — colunas que não existem nessa
+    // tabela — então nunca encontrava a conexão e o webhook sempre no-opava
+    // silenciosamente; mesma classe de bug já corrigida em mercadolivre-sync).
     const { data: connection, error: connError } = await supabase
       .from("integration_connections")
-      .select("id, user_id, access_token, refresh_token, expires_at, metadata")
+      .select("id, user_id, access_token, refresh_token, token_expires_at")
       .eq("provider", "mercadolivre")
-      .eq("shop_id", String(mlUserId))
+      .eq("external_shop_id", String(mlUserId))
       .maybeSingle();
 
     if (connError || !connection) {
@@ -83,7 +100,7 @@ serve(async (req) => {
 
 async function getValidToken(supabase, connection): Promise<string> {
   const now = new Date();
-  const expiresAt = new Date(connection.expires_at);
+  const expiresAt = new Date(connection.token_expires_at);
   const fiveMinutes = 5 * 60 * 1000;
 
   if (expiresAt.getTime() - now.getTime() > fiveMinutes) {
@@ -119,7 +136,7 @@ async function getValidToken(supabase, connection): Promise<string> {
     .update({
       access_token: tokenData.access_token,
       refresh_token: tokenData.refresh_token,
-      expires_at: new Date(Date.now() + tokenData.expires_in * 1000).toISOString(),
+      token_expires_at: new Date(Date.now() + tokenData.expires_in * 1000).toISOString(),
     })
     .eq("id", connection.id);
 
@@ -226,7 +243,7 @@ async function upsertOrder(supabase, connection, order) {
     status_pedido: order.status,
     data_pedido: order.date_created,
     updated_at: now,
-  }, { onConflict: "user_id,order_id" });
+  }, { onConflict: "user_id,order_id,sku" });
 
   // 3. Upsert itens do pedido
   if (order.order_items?.length > 0 && orderRow?.id) {
@@ -237,7 +254,7 @@ async function upsertOrder(supabase, connection, order) {
       sku: oi.item?.seller_sku ?? null,
       quantity: oi.quantity,
       unit_price: oi.unit_price,
-      total_price: oi.full_unit_price * oi.quantity,
+      total_price: (oi.full_unit_price ?? oi.unit_price) * oi.quantity,
     }));
 
     await supabase
@@ -252,7 +269,7 @@ async function upsertOrder(supabase, connection, order) {
 
 async function upsertPayment(supabase, connection, payment) {
   const now = new Date().toISOString();
-  const col = payment.collection;
+  const col = payment.collection ?? payment;
 
   // Busca o order_id interno pelo external_order_id
   const { data: orderRow } = await supabase

@@ -21,9 +21,11 @@ type ProfileRow = {
   trial_ends_at: string | null;
 };
 
-// Planos que significam acesso pago ativo (incluindo cancel_at_period_end
-// pois o usuário ainda tem acesso até o fim do período)
-// Valores devem bater com os gravados pelo webhook do Stripe (supabase/functions/stripe-webhook)
+// Planos que significam acesso pago ativo. "cancel_at_period_end" é resíduo
+// do modelo antigo (Stripe, removido do projeto) — o Asaas cancela na hora,
+// sem período de carência (ver supabase/functions/asaas-cancel), então esse
+// valor não é mais escrito por nenhum webhook hoje. Mantido no allowlist só
+// por segurança, caso ainda exista alguma linha antiga com esse valor.
 const PAID_PLANS = ["mensal", "semestral", "anual", "cancel_at_period_end"];
 
 // Planos que significam cancelamento efetivo (sem acesso)

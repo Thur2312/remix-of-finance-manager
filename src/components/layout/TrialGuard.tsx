@@ -1,12 +1,13 @@
 import { PaywallModal } from "@/components/PaywallModal";
-import { useTrialStatus } from "@/hooks/useTrialStatus";
 import { isCalculadoraAllowed } from "@/lib/allowlist";
 import { supabase } from "@/integrations/supabase/client";
 import { useEffect, useState } from "react";
 import { useLocation } from "react-router-dom";
 
 export function TrialGuard({ children }: { children: React.ReactNode }) {
-  const { isTrialExpired, isLoading } = useTrialStatus();
+  // PaywallModal (abaixo) já chama useTrialStatus() e decide tudo sozinho —
+  // esta tela não usava isTrialExpired/isLoading pra nada, só duplicava a
+  // consulta a profiles e o setInterval(60s) de useTrialStatus à toa.
   const [userEmail, setUserEmail] = useState<string | undefined>();
   const location = useLocation();
 

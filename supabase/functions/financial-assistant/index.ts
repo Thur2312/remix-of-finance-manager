@@ -1,12 +1,8 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 import { z } from 'https://deno.land/x/zod@v3.22.4/mod.ts';
-
-const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version',
-  'Access-Control-Allow-Methods': 'POST, OPTIONS',
-};
+import { getCorsHeaders, handleCorsPreflightRequest } from '../_shared/cors.ts';
+import { hasActivePlanAccess } from '../_shared/plan-guard.ts';
 
 const assistantSchema = z.object({
   pergunta: z.string().min(1).max(1000),
@@ -470,9 +466,10 @@ async function callGeminiWithRetry(
 // ─────────────────────────────────────────────────────────────────────────────
 
 serve(async (req: Request) => {
-  if (req.method === 'OPTIONS') {
-    return new Response('ok', { headers: corsHeaders });
-  }
+  const preflight = handleCorsPreflightRequest(req);
+  if (preflight) return preflight;
+
+  const corsHeaders = getCorsHeaders(req);
 
   try {
     const authHeader = req.headers.get('Authorization');
@@ -498,6 +495,19 @@ serve(async (req: Request) => {
     }
 
     const userId = user.id;
+
+    const hasAccess = await hasActivePlanAccess(
+      Deno.env.get('SUPABASE_URL')!,
+      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!,
+      userId
+    );
+    if (!hasAccess) {
+      return new Response(
+        JSON.stringify({ error: 'Recurso disponível apenas para contas com plano ativo.' }),
+        { status: 402, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
     const rawBody = await req.json();
 
     if (rawBody.action === 'clear') {

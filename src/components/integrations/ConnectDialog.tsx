@@ -47,6 +47,9 @@ export function ConnectDialog({
   const Icon = info.icon;
 
   const handleClose = () => {
+    // Fechava incondicionalmente mesmo com uma autorização em andamento
+    // (isLoading/isManualLoading), resetando o step no meio da operação.
+    if (isLoading || isManualLoading) return;
     setStep(1);
     setShopId('');
     setAccessToken('');
@@ -109,7 +112,7 @@ export function ConnectDialog({
             </div>
             <DialogFooter className="flex-col gap-2 sm:flex-col">
               <div className="flex gap-2 w-full justify-end mr-7">
-                <Button variant="outline" onClick={() => setStep(1)}>Voltar</Button>
+                <Button variant="outline" onClick={() => setStep(1)} disabled={isLoading}>Voltar</Button>
                 <Button onClick={onConfirm} disabled={isLoading}>
                   {isLoading ? (
                     <><RefreshCw className="mr-2 h-4 w-4 animate-spin" /> Redirecionando...</>
@@ -155,7 +158,7 @@ export function ConnectDialog({
               </div>
             </div>
             <DialogFooter>
-              <Button variant="outline" onClick={() => setStep(2)}>Voltar</Button>
+              <Button variant="outline" onClick={() => setStep(2)} disabled={isManualLoading}>Voltar</Button>
               <Button
                 onClick={() => onManualAuth?.({ shopId, accessToken, refreshToken })}
                 disabled={isManualLoading || !accessToken.trim() || !shopId.trim()}

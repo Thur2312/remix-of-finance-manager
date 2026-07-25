@@ -2,13 +2,7 @@ import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
 import { createHmac } from "https://deno.land/std@0.168.0/node/crypto.ts"
 import { z } from "https://deno.land/x/zod@v3.22.2/mod.ts"
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2"
-
-// ✅ CORS
-const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
-  "Access-Control-Allow-Methods": "POST, OPTIONS",
-}
+import { getCorsHeaders, handleCorsPreflightRequest } from "../_shared/cors.ts"
 
 // ✅ validação
 const bodySchema = z.object({
@@ -16,9 +10,10 @@ const bodySchema = z.object({
 })
 
 serve(async (req) => {
-  if (req.method === "OPTIONS") {
-    return new Response("ok", { headers: corsHeaders })
-  }
+  const preflight = handleCorsPreflightRequest(req)
+  if (preflight) return preflight
+
+  const corsHeaders = getCorsHeaders(req)
 
   try {
     if (req.method !== "POST") {

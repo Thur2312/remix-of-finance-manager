@@ -1,12 +1,7 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2"
 import { createHmac } from "https://deno.land/std@0.168.0/node/crypto.ts"
-
-const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
-  "Access-Control-Allow-Methods": "POST, OPTIONS",
-}
+import { getCorsHeaders, handleCorsPreflightRequest } from "../_shared/cors.ts"
 
 function safeShopeeDate(timestamp: number | null): string | null {
   if (!timestamp || timestamp <= 0) return null
@@ -89,9 +84,10 @@ async function shopeeGet<T>(baseUrl: string, path: string, params: Record<string
 }
 
 serve(async (req) => {
-  if (req.method === "OPTIONS") {
-    return new Response(null, { status: 200, headers: corsHeaders })
-  }
+  const preflight = handleCorsPreflightRequest(req)
+  if (preflight) return preflight
+
+  const corsHeaders = getCorsHeaders(req)
 
   try {
     const authHeader = req.headers.get("Authorization")
@@ -187,6 +183,21 @@ serve(async (req) => {
 
     if (connection.status !== "connected") {
       return new Response(JSON.stringify({ error: "Integração não está conectada" }), {
+        status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" }
+      })
+    }
+
+    // Esta function só implementa a assinatura/API da Shopee. Antes, uma
+    // conexão TikTok chegava até aqui (useIntegrations.ts roteia "sync now"
+    // pra cá pra qualquer provider que não seja Mercado Livre) e tentava
+    // assinar/chamar endpoints da Shopee com token/shop_id do TikTok — na
+    // melhor hipótese dava "Shop ID inválido", na pior retornava sucesso com
+    // contadores zerados sem nenhum erro real. Falhar explicitamente aqui é
+    // melhor do que fingir que sincronizou.
+    if (connection.provider !== "shopee") {
+      return new Response(JSON.stringify({
+        error: `Sincronização automática ainda não está disponível para ${connection.provider}. Use o upload manual de arquivos.`
+      }), {
         status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" }
       })
     }
