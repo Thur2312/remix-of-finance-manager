@@ -25,6 +25,17 @@ function ts(): number {
   return Math.floor(Date.now() / 1000)
 }
 
+// Comparação em tempo constante para evitar timing attack no cron_secret.
+function timingSafeEqual(a: string, b: string): boolean {
+  const enc = new TextEncoder()
+  const aBytes = enc.encode(a)
+  const bBytes = enc.encode(b)
+  if (aBytes.length !== bBytes.length) return false
+  let diff = 0
+  for (let i = 0; i < aBytes.length; i++) diff |= aBytes[i] ^ bBytes[i]
+  return diff === 0
+}
+
 async function refreshShopeeToken(baseUrl: string, partnerId: number, partnerKey: string, refreshToken: string, shopId: number): Promise<{ access_token: string; refresh_token: string; expire_in: number; refresh_token_expire_in: number } | null> {
   try {
     const timestamp = ts()
@@ -124,7 +135,14 @@ serve(async (req) => {
       })
     }
 
-    const isCronCall = requestBody?.cron_secret === "sellerfinance-cron-2026"
+    // O segredo de cron nunca deve ficar hardcoded no código versionado — quem
+    // ler o repositório (público ou não) ganha privilégio de service_role sobre
+    // esta function. Agora vem de uma variável de ambiente definida no projeto
+    // Supabase (supabase secrets set INTEGRATION_SYNC_CRON_SECRET=...).
+    const CRON_SECRET = Deno.env.get("INTEGRATION_SYNC_CRON_SECRET") ?? ""
+    const isCronCall = Boolean(CRON_SECRET) &&
+      typeof requestBody?.cron_secret === "string" &&
+      timingSafeEqual(requestBody.cron_secret, CRON_SECRET)
     let userId: string
 
     if (isCronCall) {
@@ -147,11 +165,19 @@ serve(async (req) => {
       })
     }
 
-    const { data: connection, error: connError } = await supabaseAdmin
+    // Fora do caminho de cron, a conexão precisa pertencer ao usuário autenticado
+    // — sem isso, qualquer usuário logado podia passar o connection_id de outra
+    // pessoa e forçar sync/refresh de token na integração alheia (IDOR).
+    let connectionQuery = supabaseAdmin
       .from("integration_connections")
       .select("*, user_id")
       .eq("id", connection_id)
-      .single()
+
+    if (!isCronCall) {
+      connectionQuery = connectionQuery.eq("user_id", userId)
+    }
+
+    const { data: connection, error: connError } = await connectionQuery.single()
 
     if (connError || !connection) {
       return new Response(JSON.stringify({ error: "Conexão não encontrada" }), {

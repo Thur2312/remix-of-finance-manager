@@ -1,6 +1,7 @@
 import { createContext, useContext, useEffect, useState, ReactNode } from 'react';
 import { User, Session } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
+import { queryClient } from '@/lib/queryClient';
 import axios from 'axios';
 import { set } from 'date-fns';
 
@@ -174,6 +175,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           setPermissions([]);
           setIsTrialExpired(false);
           setTrialDaysRemaining(0);
+          // Sem isso, o cache do React Query (persistido em localStorage por até
+          // 24h) podia sobreviver ao logout e vazar dados da conta anterior para
+          // a próxima pessoa que logasse no mesmo navegador.
+          queryClient.clear();
         }
       }
     );

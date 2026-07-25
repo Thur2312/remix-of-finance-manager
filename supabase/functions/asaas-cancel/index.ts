@@ -16,11 +16,22 @@ Deno.serve(async (req) => {
   const corsHeaders = getCorsHeaders(req);
 
   try {
-    const { userId } = await req.json();
+    // Mesma correção de asaas-checkout: nunca confiar em userId vindo do corpo
+    // da requisição (permitiria cancelar a assinatura de outra pessoa). O
+    // usuário é resolvido a partir do JWT já validado pelo gateway.
+    const authHeader = req.headers.get("Authorization") ?? "";
+    const supabaseAuth = createClient(
+      Deno.env.get("SUPABASE_URL")!,
+      Deno.env.get("SUPABASE_ANON_KEY")!,
+      { global: { headers: { Authorization: authHeader } } }
+    );
+    const { data: { user }, error: authError } = await supabaseAuth.auth.getUser();
 
-    if (!userId) {
-      throw new Error("userId é obrigatório.");
+    if (authError || !user) {
+      throw new Error("Não autorizado.");
     }
+
+    const userId = user.id;
 
     const { data: subscription, error } = await supabase
       .from("subscriptions")

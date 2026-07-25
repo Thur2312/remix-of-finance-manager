@@ -2,6 +2,7 @@ import { useState, useCallback } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
+import { useAuth } from '@/contexts/AuthContext';
 
 interface IntegrationConnection {
   id: string;
@@ -35,9 +36,13 @@ interface SyncLog {
 export function useIntegrations() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const { user } = useAuth();
 
   const { data, isLoading, error, refetch } = useQuery({
-    queryKey: ['integrations'],
+    // Sem user.id na key, o cache persistido em localStorage podia mostrar as
+    // integrações de uma conta anterior logo após a troca de usuário no mesmo navegador.
+    queryKey: ['integrations', user?.id],
+    enabled: !!user,
     queryFn: async () => {
       const { data, error } = await supabase.functions.invoke('integration-list');
       if (error) throw error;

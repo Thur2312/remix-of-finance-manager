@@ -1,5 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from '@/contexts/AuthContext';
 
 export interface ProductCost {
   id: string;
@@ -13,8 +14,13 @@ export interface ProductCost {
 }
 
 export function useProductCosts() {
+  const { user } = useAuth();
+
   return useQuery({
-    queryKey: ['product-costs'],
+    // A key sem user.id fazia o cache (persistido em localStorage por até 24h)
+    // vazar entre contas diferentes no mesmo navegador após um logout/login.
+    queryKey: ['product-costs', user?.id],
+    enabled: !!user,
     queryFn: async () => {
       const { data, error } = await supabase
         .from('product_costs')

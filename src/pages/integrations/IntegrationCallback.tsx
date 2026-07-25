@@ -73,27 +73,25 @@ export default function IntegrationCallback() {
         return;
       }
 
-      const token = session.access_token;
-
       if (finalShopId) {
         setStatus('Conectando com a Shopee...');
-        const params = new URLSearchParams({ code: finalCode, token, shop_id: finalShopId });
+        // A Shopee devolve o "state" opaco gerado por shopee-auth — o callback
+        // resolve o usuário a partir dele, não mais de um token na URL.
+        const params = new URLSearchParams({ code: finalCode, shop_id: finalShopId, state: finalState ?? '' });
         window.location.href =
           `https://opzsrqdvotozawuqpapo.functions.supabase.co/integration-callback?${params.toString()}`;
 
       } else if (isMercadoLivre || finalProvider === 'mercadolivre') {
         setStatus('Conectando com o Mercado Livre...');
-        const params = new URLSearchParams({
-          code: finalCode,
-          token,
-          state: finalState ?? '', // ✅ repassa o state para a Edge Function
-        });
+        // O state opaco gerado por mercadolivre-auth já identifica o usuário
+        // no backend — não precisa mais levar o token de sessão na URL.
+        const params = new URLSearchParams({ code: finalCode, state: finalState ?? '' });
         window.location.href =
           `https://opzsrqdvotozawuqpapo.functions.supabase.co/mercadolivre-callback?${params.toString()}`;
 
       } else {
         setStatus('Conectando com o TikTok...');
-        const params = new URLSearchParams({ code: finalCode, token });
+        const params = new URLSearchParams({ code: finalCode, state: finalState ?? '' });
         window.location.href =
           `https://opzsrqdvotozawuqpapo.functions.supabase.co/tiktok-callback?${params.toString()}`;
       }

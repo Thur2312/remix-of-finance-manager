@@ -29,22 +29,41 @@ serve(async (req) => {
     const authHeader = req.headers.get("Authorization") ?? "";
     const userToken = authHeader.replace("Bearer ", "");
 
-    // Gera um state curto e salva o token no Supabase temporariamente
-    const stateId = crypto.randomUUID();
-
-    // Salva o mapeamento state -> token no banco
     const supabase = createClient(
       Deno.env.get("SUPABASE_URL")!,
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
     );
 
-    await supabase.from("integration_connections").upsert({
-      user_id: stateId, // temporário
-      provider: "mercadolivre_pending",
-      access_token: userToken, // guarda o JWT aqui temporariamente
-      status: "pending",
-      updated_at: new Date().toISOString(),
-    }, { onConflict: "user_id,provider" });
+    const { data: { user }, error: userError } = await supabase.auth.getUser(userToken);
+    if (userError || !user) {
+      return new Response(
+        JSON.stringify({ error: "Não autorizado" }),
+        { status: 401, headers: { "Access-Control-Allow-Origin": "*", "Content-Type": "application/json" } }
+      );
+    }
+
+    // Gera um state opaco de uso único, mapeado para o usuário no banco —
+    // antes essa linha guardava o JWT completo do usuário em texto puro numa
+    // linha "pending" que nunca era lida de volta (código morto e um vazamento
+    // de token gratuito). Agora só um UUID sem valor nenhum fora de contexto
+    // trafega pela URL, e o mapeamento real fica em oauth_state.
+    const stateId = crypto.randomUUID();
+
+    await supabase
+      .from("oauth_state")
+      .delete()
+      .lt("created_at", new Date(Date.now() - 30 * 60 * 1000).toISOString());
+
+    const { error: stateError } = await supabase
+      .from("oauth_state")
+      .insert({ state: stateId, user_id: user.id, provider: "mercadolivre" });
+
+    if (stateError) {
+      return new Response(
+        JSON.stringify({ error: "Erro interno na ML Auth" }),
+        { status: 500, headers: { "Access-Control-Allow-Origin": "*", "Content-Type": "application/json" } }
+      );
+    }
 
     const authorization_url =
       `https://auth.mercadolivre.com.br/authorization?response_type=code` +

@@ -8,11 +8,15 @@ serve(async (req) => {
   const url = new URL(req.url)
   const code = url.searchParams.get("code")
   const shopId = url.searchParams.get("shop_id")
-  const userToken = url.searchParams.get("token") ?? ""
+  const state = url.searchParams.get("state") ?? ""
 
   try {
     if (!code) {
       return Response.redirect(`${FRONTEND_URL}/integrations?error=missing_code`, 302)
+    }
+
+    if (!state) {
+      return Response.redirect(`${FRONTEND_URL}/integrations?error=missing_state`, 302)
     }
 
     const PARTNER_ID = Deno.env.get("SHOPEE_PARTNER_ID")?.trim()
@@ -25,6 +29,31 @@ serve(async (req) => {
     if (!PARTNER_ID || !PARTNER_KEY || !REDIRECT_URI || !BASE_URL) {
       return Response.redirect(`${FRONTEND_URL}/integrations?error=missing_env`, 302)
     }
+
+    const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_KEY)
+
+    // Resolve o usuário a partir do state opaco gerado por shopee-auth (nunca
+    // mais confiamos num JWT trafegando pela URL). Uso único: apagamos a
+    // entrada assim que lida, o que também barra replay do mesmo state.
+    const { data: stateRow, error: stateError } = await supabase
+      .from("oauth_state")
+      .select("user_id, created_at")
+      .eq("state", state)
+      .eq("provider", "shopee")
+      .maybeSingle()
+
+    if (stateRow) {
+      await supabase.from("oauth_state").delete().eq("state", state)
+    }
+
+    const stateIsExpired = stateRow &&
+      Date.now() - new Date(stateRow.created_at).getTime() > 30 * 60 * 1000
+
+    if (stateError || !stateRow || stateIsExpired) {
+      return Response.redirect(`${FRONTEND_URL}/integrations?error=invalid_state`, 302)
+    }
+
+    const userId = stateRow.user_id
 
     const partnerIdNum = parseInt(PARTNER_ID, 10)
     const timestamp = Math.floor(Date.now() / 1000)
@@ -48,7 +77,6 @@ serve(async (req) => {
     )
 
     const tokenData = await tokenRes.json()
-    console.log("Shopee token response:", tokenData)
 
     if (tokenData.error && tokenData.error !== "") {
       return Response.redirect(
@@ -66,12 +94,6 @@ serve(async (req) => {
       shope_name,
     } = tokenData
 
-    const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_KEY)
-    const { data: { user }, error: userError } = await supabase.auth.getUser(userToken)
-    if (userError || !user) {
-      return Response.redirect(`${FRONTEND_URL}/integrations?error=unauthorized`, 302)
-    }
-
     const resolvedShopId = String(responseShopId?.[0] ?? shopId ?? "")
     const now = new Date()
 
@@ -86,7 +108,7 @@ serve(async (req) => {
     const { error: dbError } = await supabase
       .from("integration_connections")
       .upsert({
-        user_id: user.id,
+        user_id: userId,
         provider: "shopee",
         status: "connected",
         external_shop_id: resolvedShopId,

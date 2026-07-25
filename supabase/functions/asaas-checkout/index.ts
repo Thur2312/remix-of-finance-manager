@@ -25,11 +25,26 @@ Deno.serve(async (req) => {
   const corsHeaders = getCorsHeaders(req);
 
   try {
-    const { userId, email, planId } = await req.json();
+    // O userId nunca deve vir do corpo da requisição: qualquer usuário autenticado
+    // poderia trocá-lo e criar/associar um checkout à conta de outra pessoa (IDOR).
+    // O JWT já é validado pelo gateway (verify_jwt=true); aqui extraímos o usuário
+    // real a partir dele.
+    const authHeader = req.headers.get("Authorization") ?? "";
+    const supabaseAuth = createClient(
+      Deno.env.get("SUPABASE_URL")!,
+      Deno.env.get("SUPABASE_ANON_KEY")!,
+      { global: { headers: { Authorization: authHeader } } }
+    );
+    const { data: { user }, error: authError } = await supabaseAuth.auth.getUser();
 
-    if (!userId || !email) {
-      throw new Error("userId e email são obrigatórios.");
+    if (authError || !user || !user.email) {
+      throw new Error("Não autorizado.");
     }
+
+    const userId = user.id;
+    const email = user.email;
+
+    const { planId } = await req.json();
 
     const selectedPlan = resolvePlanId(planId);
     const plan = PLANS[selectedPlan];

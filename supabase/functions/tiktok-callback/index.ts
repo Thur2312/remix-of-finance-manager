@@ -6,11 +6,15 @@ const FRONTEND_URL = "https://www.sellerfinance.com.br"
 serve(async (req) => {
   const url = new URL(req.url)
   const code = url.searchParams.get("code")
-  const userToken = url.searchParams.get("token") ?? ""
+  const state = url.searchParams.get("state") ?? ""
 
   try {
     if (!code) {
       return Response.redirect(`${FRONTEND_URL}/integrations?error=missing_code`, 302)
+    }
+
+    if (!state) {
+      return Response.redirect(`${FRONTEND_URL}/integrations?error=missing_state`, 302)
     }
 
     const CLIENT_KEY = Deno.env.get("TIKTOK_CLIENT_KEY")?.trim()
@@ -22,6 +26,31 @@ serve(async (req) => {
     if (!CLIENT_KEY || !CLIENT_SECRET || !REDIRECT_URI) {
       return Response.redirect(`${FRONTEND_URL}/integrations?error=missing_env`, 302)
     }
+
+    const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_KEY)
+
+    // Resolve o usuário a partir do state salvo por integration-auth-start —
+    // sem isso, um "code" de OAuth de outra pessoa podia ser vinculado à
+    // conta de quem clicasse num link malicioso (CSRF/autorização cruzada).
+    const { data: stateRow, error: stateError } = await supabase
+      .from("oauth_state")
+      .select("user_id, created_at")
+      .eq("state", state)
+      .eq("provider", "tiktok")
+      .maybeSingle()
+
+    if (stateRow) {
+      await supabase.from("oauth_state").delete().eq("state", state)
+    }
+
+    const stateIsExpired = stateRow &&
+      Date.now() - new Date(stateRow.created_at).getTime() > 30 * 60 * 1000
+
+    if (stateError || !stateRow || stateIsExpired) {
+      return Response.redirect(`${FRONTEND_URL}/integrations?error=invalid_state`, 302)
+    }
+
+    const userId = stateRow.user_id
 
     // Troca o code pelo access_token
     const tokenRes = await fetch("https://auth.tiktok-shops.com/api/v2/token/get", {
@@ -36,7 +65,6 @@ serve(async (req) => {
     })
 
     const tokenData = await tokenRes.json()
-    console.log("TikTok token response:", tokenData)
 
     if (tokenData.code !== 0) {
       return Response.redirect(
@@ -54,20 +82,13 @@ serve(async (req) => {
       seller_name,
     } = tokenData.data
 
-    const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_KEY)
-
-    const { data: { user }, error: userError } = await supabase.auth.getUser(userToken)
-    if (userError || !user) {
-      return Response.redirect(`${FRONTEND_URL}/integrations?error=unauthorized`, 302)
-    }
-
     const now = new Date()
 
     // Salva na tabela integration_connections
     const { error: dbError } = await supabase
       .from("integration_connections")
       .upsert({
-        user_id: user.id,
+        user_id: userId,
         provider: "tiktok",
         status: "connected",
         external_shop_id: open_id ?? "",

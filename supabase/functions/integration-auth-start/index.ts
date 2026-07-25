@@ -1,6 +1,7 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
 import { createHmac } from "https://deno.land/std@0.168.0/node/crypto.ts"
 import { z } from "https://deno.land/x/zod@v3.22.2/mod.ts"
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2"
 
 // ✅ CORS
 const corsHeaders = {
@@ -79,11 +80,46 @@ if (provider === "shopee") {
         throw new Error("TikTok env vars não configuradas")
       }
 
+      // Antes o state gerado aqui era descartado na hora — o callback não
+      // validava nada, então um "code" de OAuth de outra pessoa podia ser
+      // vinculado à conta de quem clicasse num link malicioso (CSRF). Agora o
+      // state fica salvo e é conferido em tiktok-callback antes de aceitar o code.
+      const authHeader = req.headers.get("Authorization") ?? ""
+      const userToken = authHeader.replace("Bearer ", "")
+
+      const supabaseAdmin = createClient(
+        Deno.env.get("SUPABASE_URL")!,
+        Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
+      )
+
+      const { data: { user }, error: userError } = await supabaseAdmin.auth.getUser(userToken)
+      if (userError || !user) {
+        return new Response(
+          JSON.stringify({ error: "Não autorizado" }),
+          { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        )
+      }
+
+      const state = crypto.randomUUID()
+
+      await supabaseAdmin
+        .from("oauth_state")
+        .delete()
+        .lt("created_at", new Date(Date.now() - 30 * 60 * 1000).toISOString())
+
+      const { error: stateError } = await supabaseAdmin
+        .from("oauth_state")
+        .insert({ state, user_id: user.id, provider: "tiktok" })
+
+      if (stateError) {
+        throw new Error("Erro ao salvar state do TikTok")
+      }
+
       authorization_url =
         `https://auth.tiktok-shops.com/oauth/authorize` +
         `?app_key=${CLIENT_KEY}` +
         `&redirect_uri=${encodeURIComponent(REDIRECT_URI)}` +
-        `&state=${crypto.randomUUID()}` +
+        `&state=${state}` +
         `&scope=user_info,order_read`
     }
 
