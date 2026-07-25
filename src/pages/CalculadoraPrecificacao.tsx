@@ -383,6 +383,8 @@ function KitItensEditor({
 function CalculadoraPrecificacaoContent() {
   const [custoProduto,          setCustoProduto]          = useState("");
   const [custosAdicionais,      setCustosAdicionais]      = useState<CustoAdicional[]>([]);
+  const [tipoProdutoCalc,       setTipoProdutoCalc]       = useState<TipoProduto>("individual");
+  const [kitItensCalc,          setKitItensCalc]          = useState<KitItem[]>([]);
   const [embalagemEtiqueta,     setEmbalagemEtiqueta]     = useState("");
   const [precoPromocional,      setPrecoPromocional]      = useState("");
   const [desconto,              setDesconto]              = useState("");
@@ -448,6 +450,36 @@ function CalculadoraPrecificacaoContent() {
       setTaxaFixa(taxa.toFixed(2));
     }
   }, [plataformaSelecionada, precoPromocional, mlTipoAnuncio]);
+
+  // ── Kit de produtos (calculadora principal) ────────────────────────────────
+  const kitCustoTotalCalc = useMemo(() => somaKitItens(kitItensCalc), [kitItensCalc]);
+
+  // Enquanto o tipo for "kit", o Custo do Produto é a soma automática dos itens.
+  useEffect(() => {
+    if (tipoProdutoCalc !== "kit") return;
+    const total = kitCustoTotalCalc > 0 ? kitCustoTotalCalc.toFixed(2).replace(".", ",") : "";
+    setCustoProduto(prev => (prev === total ? prev : total));
+  }, [tipoProdutoCalc, kitCustoTotalCalc]);
+
+  const setTipoProdutoCalculadora = (tipo: TipoProduto) => {
+    setTipoProdutoCalc(tipo);
+    if (tipo === "kit") {
+      // Zera o custo digitado manualmente para começar o cadastro dos itens do kit.
+      setCustoProduto("");
+      setKitItensCalc(prev => (prev.length === 0
+        ? [{ id: crypto.randomUUID(), nome: "", custo_unitario: "", quantidade: "1" }]
+        : prev));
+    } else {
+      setCustoProduto("");
+      setKitItensCalc([]);
+    }
+  };
+  const addKitItemCalc = () =>
+    setKitItensCalc(prev => [...prev, { id: crypto.randomUUID(), nome: "", custo_unitario: "", quantidade: "1" }]);
+  const updateKitItemCalc = (id: string, field: "nome" | "custo_unitario" | "quantidade", value: string) =>
+    setKitItensCalc(prev => prev.map(k => (k.id === id ? { ...k, [field]: value } : k)));
+  const removeKitItemCalc = (id: string) =>
+    setKitItensCalc(prev => prev.filter(k => k.id !== id));
 
   // ── Auto-fill comissão no dialog conforme marketplace + valor_venda ───────
   useEffect(() => {
@@ -698,10 +730,10 @@ function CalculadoraPrecificacaoContent() {
       imposto_pct:   aliquotaImposto,
       custo_var:     embalagemEtiqueta,
       marketplace:   marketplace,
-      // leva os custos adicionais montados na calculadora (clonando os ids)
+      // leva os custos adicionais e o kit montados na calculadora (clonando os ids)
       custos_adicionais: custosAdicionais.map(c => ({ ...c, id: crypto.randomUUID() })),
-      tipo_produto: "individual",
-      kit_itens: [],
+      tipo_produto: tipoProdutoCalc,
+      kit_itens: kitItensCalc.map(k => ({ ...k, id: crypto.randomUUID() })),
     });
     setEditingId(null);
     setIsDialogOpen(true);
@@ -1242,44 +1274,112 @@ function CalculadoraPrecificacaoContent() {
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div className="space-y-1.5">
                     <div className="flex items-center justify-between gap-2">
-                      <Label htmlFor="custoProduto" className="text-sm">Custo do Produto (R$)</Label>
-                      <Popover>
-                        <PopoverTrigger asChild>
-                          <Button
-                            type="button" variant="outline" size="sm"
-                            className="h-6 gap-1 px-2 text-xs text-primary border-primary/40 hover:bg-primary/10"
-                          >
-                            <Plus className="h-3 w-3" />
-                            Custos adicionais
-                            {custosAdicionais.length > 0 && (
-                              <Badge variant="secondary" className="ml-0.5 h-4 px-1 text-[10px] tabular-nums">
-                                {custosAdicionais.length}
-                              </Badge>
-                            )}
-                          </Button>
-                        </PopoverTrigger>
-                        <PopoverContent align="end" className="w-80 space-y-3">
-                          <div className="space-y-0.5">
-                            <p className="text-sm font-semibold">Custos adicionais do produto</p>
-                            <p className="text-xs text-muted-foreground">
-                              Frete de compra, importação, despachante etc. Em R$ ou % do custo base.
-                              Somam ao custo do produto.
-                            </p>
-                          </div>
+                      <Label htmlFor="custoProduto" className="text-sm flex items-center gap-1.5">
+                        Custo do Produto (R$)
+                        {tipoProdutoCalc === "kit" && (
+                          <Badge variant="outline" className="text-[10px] px-1 py-0 text-primary border-primary/50">Auto (kit)</Badge>
+                        )}
+                      </Label>
+                      <div className="flex items-center gap-1.5">
+                        <Popover>
+                          <PopoverTrigger asChild>
+                            <Button
+                              type="button" variant="outline" size="sm"
+                              className={`h-6 gap-1 px-2 text-xs text-primary border-primary/40 hover:bg-primary/10 ${
+                                tipoProdutoCalc === "kit" ? "bg-primary/10" : ""
+                              }`}
+                            >
+                              <Package className="h-3 w-3" />
+                              Kit de produtos
+                              {tipoProdutoCalc === "kit" && kitItensCalc.length > 0 && (
+                                <Badge variant="secondary" className="ml-0.5 h-4 px-1 text-[10px] tabular-nums">
+                                  {kitItensCalc.length}
+                                </Badge>
+                              )}
+                            </Button>
+                          </PopoverTrigger>
+                          <PopoverContent align="end" className="w-80 space-y-3">
+                            <div className="space-y-0.5">
+                              <p className="text-sm font-semibold">Kit de produtos (combo)</p>
+                              <p className="text-xs text-muted-foreground">
+                                Ex: "Kit Top Academia 3 Uni" — ative para cadastrar os produtos que compõem o kit;
+                                o Custo do Produto é zerado e somado automaticamente pelos itens.
+                              </p>
+                            </div>
 
-                          <CustosAdicionaisEditor
-                            items={custosAdicionais}
-                            custoBase={parseInput(custoProduto)}
-                            onAdd={addCustoAdicional}
-                            onUpdate={updateCustoAdicional}
-                            onSetTipo={setCustoAdicionalTipo}
-                            onRemove={removeCustoAdicional}
-                          />
-                        </PopoverContent>
-                      </Popover>
+                            <div className="flex gap-2">
+                              {([
+                                { value: "individual", label: "Individual", icon: Tag },
+                                { value: "kit",        label: "Kit (combo)", icon: Package },
+                              ] as { value: TipoProduto; label: string; icon: typeof Tag }[]).map(opt => {
+                                const Icon = opt.icon;
+                                return (
+                                  <button key={opt.value} type="button"
+                                    onClick={() => setTipoProdutoCalculadora(opt.value)}
+                                    className={`flex-1 flex items-center justify-center gap-1.5 px-3 py-2 rounded-md border text-sm font-medium transition-all ${
+                                      tipoProdutoCalc === opt.value
+                                        ? "bg-primary/10 border-primary/40 text-primary"
+                                        : "border-border bg-background text-muted-foreground hover:bg-muted"
+                                    }`}>
+                                    <Icon className="h-4 w-4" />
+                                    {opt.label}
+                                  </button>
+                                );
+                              })}
+                            </div>
+
+                            {tipoProdutoCalc === "kit" && (
+                              <KitItensEditor
+                                items={kitItensCalc}
+                                onAdd={addKitItemCalc}
+                                onUpdate={updateKitItemCalc}
+                                onRemove={removeKitItemCalc}
+                              />
+                            )}
+                          </PopoverContent>
+                        </Popover>
+                        <Popover>
+                          <PopoverTrigger asChild>
+                            <Button
+                              type="button" variant="outline" size="sm"
+                              className="h-6 gap-1 px-2 text-xs text-primary border-primary/40 hover:bg-primary/10"
+                            >
+                              <Plus className="h-3 w-3" />
+                              Custos adicionais
+                              {custosAdicionais.length > 0 && (
+                                <Badge variant="secondary" className="ml-0.5 h-4 px-1 text-[10px] tabular-nums">
+                                  {custosAdicionais.length}
+                                </Badge>
+                              )}
+                            </Button>
+                          </PopoverTrigger>
+                          <PopoverContent align="end" className="w-80 space-y-3">
+                            <div className="space-y-0.5">
+                              <p className="text-sm font-semibold">Custos adicionais do produto</p>
+                              <p className="text-xs text-muted-foreground">
+                                Frete de compra, importação, despachante etc. Em R$ ou % do custo base.
+                                Somam ao custo do produto.
+                              </p>
+                            </div>
+
+                            <CustosAdicionaisEditor
+                              items={custosAdicionais}
+                              custoBase={parseInput(custoProduto)}
+                              onAdd={addCustoAdicional}
+                              onUpdate={updateCustoAdicional}
+                              onSetTipo={setCustoAdicionalTipo}
+                              onRemove={removeCustoAdicional}
+                            />
+                          </PopoverContent>
+                        </Popover>
+                      </div>
                     </div>
-                    <Input id="custoProduto" type="text" inputMode="decimal" value={custoProduto}
-                      onChange={e => handleDecimalInput(e.target.value, setCustoProduto)} placeholder="0,00" className="h-10" />
+                    <Input id="custoProduto" type="text" inputMode="decimal"
+                      value={tipoProdutoCalc === "kit" ? (kitCustoTotalCalc > 0 ? kitCustoTotalCalc.toFixed(2).replace(".", ",") : "") : custoProduto}
+                      onChange={e => handleDecimalInput(e.target.value, setCustoProduto)} placeholder="0,00"
+                      readOnly={tipoProdutoCalc === "kit"}
+                      className={tipoProdutoCalc === "kit" ? "h-10 bg-muted/50 cursor-not-allowed" : "h-10"}
+                    />
                     {totalCustosAdicionais > 0 && (
                       <p className="text-xs text-muted-foreground">
                         + {formatCurrency(totalCustosAdicionais)} em custos adicionais ={" "}
