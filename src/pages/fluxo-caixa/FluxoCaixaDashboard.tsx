@@ -99,7 +99,7 @@ function FluxoCaixaDashboardContent() {
               
             </CardHeader>
             <CardContent>
-              {isLoading ? <Skeleton className="h-8 w-24" /> : <div className={`text-2xl font-bold ${currentBalance >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+              {isLoading ? <Skeleton className="h-8 w-24" /> : <div className={`text-2xl font-bold font-mono ${currentBalance >= 0 ? 'text-green-600' : 'text-red-600'}`}>
                   {formatCurrency(currentBalance)}
                 </div>}
               <p className="text-xs text-muted-foreground">Acumulado</p>
@@ -112,7 +112,7 @@ function FluxoCaixaDashboardContent() {
               
             </CardHeader>
             <CardContent>
-              {isLoading ? <Skeleton className="h-8 w-24" /> : <div className="text-2xl font-bold text-green-600">
+              {isLoading ? <Skeleton className="h-8 w-24" /> : <div className="text-2xl font-bold font-mono text-green-600">
                   {formatCurrency(totalIncome)}
                 </div>}
               <p className="text-xs text-muted-foreground">Recebido este mês</p>
@@ -125,7 +125,7 @@ function FluxoCaixaDashboardContent() {
               
             </CardHeader>
             <CardContent>
-              {isLoading ? <Skeleton className="h-8 w-24" /> : <div className="text-2xl font-bold text-red-600">
+              {isLoading ? <Skeleton className="h-8 w-24" /> : <div className="text-2xl font-bold font-mono text-red-600">
                   {formatCurrency(totalExpense)}
                 </div>}
               <p className="text-xs text-muted-foreground">Pago este mês</p>
@@ -138,7 +138,7 @@ function FluxoCaixaDashboardContent() {
               
             </CardHeader>
             <CardContent>
-              {isLoading ? <Skeleton className="h-8 w-24" /> : <div className="text-2xl font-bold text-blue-600">
+              {isLoading ? <Skeleton className="h-8 w-24" /> : <div className="text-2xl font-bold font-mono text-blue-600">
                   {formatCurrency(pendingReceivables)}
                 </div>}
               <p className="text-xs text-muted-foreground">Pendente</p>
@@ -151,7 +151,7 @@ function FluxoCaixaDashboardContent() {
               
             </CardHeader>
             <CardContent>
-              {isLoading ? <Skeleton className="h-8 w-24" /> : <div className={`text-2xl font-bold ${overdueTotal > 0 ? 'text-yellow-600' : 'text-muted-foreground'}`}>
+              {isLoading ? <Skeleton className="h-8 w-24" /> : <div className={`text-2xl font-bold font-mono ${overdueTotal > 0 ? 'text-yellow-600' : 'text-muted-foreground'}`}>
                   {formatCurrency(overdueTotal)}
                 </div>}
               <p className="text-xs text-muted-foreground">

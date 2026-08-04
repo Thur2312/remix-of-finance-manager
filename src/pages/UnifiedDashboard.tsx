@@ -133,8 +133,8 @@ function StatCard({ title, value, description, icon: Icon, iconColor, iconBg, is
         </div>
       </CardHeader>
       <CardContent className="pt-0">
-        <div className="text-2xl font-bold tracking-tight">
-          {isLoading ? <span className="text-muted-foreground text-base animate-pulse">Carregando...</span> : value}
+        <div className="text-2xl font-bold font-mono tracking-tight tabular-nums">
+          {isLoading ? <span className="text-muted-foreground text-base animate-pulse font-sans">Carregando...</span> : value}
         </div>
         <div className="flex items-center gap-2 mt-1 flex-wrap">
           <p className="text-xs text-muted-foreground">{description}</p>
@@ -315,7 +315,7 @@ function OrderStatusCard({ paid, pending, cancelled, total }: {
             { label: 'Cancelados',   value: cancelled,  textColor: 'text-destructive' },
           ].map(item => (
             <div key={item.label}>
-              <p className={`text-2xl font-bold ${item.textColor}`}>{item.value}</p>
+              <p className={`text-2xl font-bold font-mono ${item.textColor}`}>{item.value}</p>
               <p className="text-xs text-muted-foreground mt-0.5">{item.label}</p>
               <p className="text-xs font-medium text-muted-foreground">
                 {((item.value / total) * 100).toFixed(0)}%
