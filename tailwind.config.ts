@@ -28,7 +28,7 @@ export default {
   				'sans-serif'
   			],
   			serif: [
-  				'Lora',
+  				'Fraunces',
   				'ui-serif',
   				'Georgia',
   				'Cambria',
@@ -111,6 +111,14 @@ export default {
   				DEFAULT: 'hsl(var(--info))',
   				foreground: 'hsl(var(--info-foreground))',
   				muted: 'hsl(var(--info-muted))'
+  			},
+  			navy: {
+  				DEFAULT: 'hsl(var(--navy))'
+  			},
+  			gold: {
+  				DEFAULT: 'hsl(var(--gold))',
+  				light: 'hsl(var(--gold-light))',
+  				foreground: 'hsl(var(--gold-foreground))'
   			}
   		},
   		borderRadius: {
