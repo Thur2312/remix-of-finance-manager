@@ -172,8 +172,8 @@ export function IntegrationDashboard({ connectionId }: IntegrationDashboardProps
                   formatter={(value: number) => formatCurrency(value)}
                   labelFormatter={(label) => `Dia: ${label}`}
                 />
-                <Bar dataKey="vendas" name="Vendas" fill="#3b82f6" radius={[4, 4, 0, 0]} />
-                <Bar dataKey="liquido" name="Líquido" fill="#22c55e" radius={[4, 4, 0, 0]} />
+                <Bar dataKey="vendas" name="Vendas" fill="hsl(var(--primary))" radius={[4, 4, 0, 0]} />
+                <Bar dataKey="liquido" name="Líquido" fill="hsl(var(--success))" radius={[4, 4, 0, 0]} />
               </BarChart>
             </ResponsiveContainer>
           )}

@@ -42,8 +42,11 @@ interface CustomPayloadEntry {
 
 
 const CHART_COLORS = [
-  '#EF4444', '#F59E0B', '#10B981', '#3B82F6', '#8B5CF6', 
-  '#EC4899', '#14B8A6', '#6366F1', '#F97316', '#6B7280'
+  'hsl(var(--chart-1))',
+  'hsl(var(--chart-2))',
+  'hsl(var(--chart-3))',
+  'hsl(var(--chart-4))',
+  'hsl(var(--chart-5))',
 ];
 
 export function CashFlowCharts({ entries, categories, isLoading }: CashFlowChartsProps) {
@@ -226,9 +229,9 @@ export function CashFlowCharts({ entries, categories, isLoading }: CashFlowChart
                   type="monotone"
                   dataKey="cumulativeBalance"
                   name="Saldo"
-                  stroke="#3B82F6"
+                  stroke="hsl(var(--primary))"
                   strokeWidth={3}
-                  dot={{ fill: '#3B82F6', strokeWidth: 2, r: 4 }}
+                  dot={{ fill: 'hsl(var(--primary))', strokeWidth: 2, r: 4 }}
                   activeDot={{ r: 6 }}
                 />
               </LineChart>
@@ -266,8 +269,8 @@ export function CashFlowCharts({ entries, categories, isLoading }: CashFlowChart
                 <Legend 
                   formatter={(value) => <span className="text-foreground text-sm">{value}</span>}
                 />
-                <Bar dataKey="income" name="Entradas" fill="#10B981" radius={[4, 4, 0, 0]} />
-                <Bar dataKey="expense" name="Saídas" fill="#EF4444" radius={[4, 4, 0, 0]} />
+                <Bar dataKey="income" name="Entradas" fill="hsl(var(--success))" radius={[4, 4, 0, 0]} />
+                <Bar dataKey="expense" name="Saídas" fill="hsl(var(--destructive))" radius={[4, 4, 0, 0]} />
               </BarChart>
             </ResponsiveContainer>
           )}

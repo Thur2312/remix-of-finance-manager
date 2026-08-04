@@ -292,8 +292,8 @@ export default function IntegrationManage() {
                     <XAxis dataKey="date" tick={{ fontSize: 11 }} />
                     <YAxis tick={{ fontSize: 11 }} tickFormatter={(v) => `R$${v}`} />
                     <Tooltip formatter={(value: number) => formatCurrency(value)} labelFormatter={(l) => `Dia: ${l}`} />
-                    <Bar dataKey="vendas" name="Faturamento" fill="#10b981" radius={[4, 4, 0, 0]} />
-                    <Bar dataKey="liquido" name="Líquido" fill="#3b82f6" radius={[4, 4, 0, 0]} />
+                    <Bar dataKey="vendas" name="Faturamento" fill="hsl(var(--success))" radius={[4, 4, 0, 0]} />
+                    <Bar dataKey="liquido" name="Líquido" fill="hsl(var(--primary))" radius={[4, 4, 0, 0]} />
                   </BarChart>
                 </ResponsiveContainer>
               )}

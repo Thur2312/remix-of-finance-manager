@@ -10,16 +10,11 @@ interface ResultsChartsProps {
 }
 
 const COLORS = [
-  'hsl(11, 85%, 56%)',   // Primary orange
-  'hsl(142, 76%, 36%)',  // Green
-  'hsl(217, 91%, 60%)',  // Blue
-  'hsl(280, 65%, 60%)',  // Purple
-  'hsl(45, 93%, 47%)',   // Yellow
-  'hsl(340, 75%, 55%)',  // Pink
-  'hsl(180, 65%, 45%)',  // Teal
-  'hsl(30, 80%, 55%)',   // Orange
-  'hsl(260, 60%, 55%)',  // Violet
-  'hsl(160, 60%, 45%)',  // Emerald
+  'hsl(var(--chart-1))',
+  'hsl(var(--chart-2))',
+  'hsl(var(--chart-3))',
+  'hsl(var(--chart-4))',
+  'hsl(var(--chart-5))',
 ];
 
 interface CustomPayloadEntry {
@@ -130,7 +125,7 @@ export function ResultsCharts({ data, type }: ResultsChartsProps) {
                     labelLine={false}
                     outerRadius={120}
                     innerRadius={60}
-                    fill="#8884d8"
+                    fill="hsl(var(--chart-1))"
                     dataKey="value"
                     label={({ nome, percent }) => percent > 5 ? `${percent.toFixed(0)}%` : ''}
                   >

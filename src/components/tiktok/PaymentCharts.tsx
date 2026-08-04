@@ -78,7 +78,7 @@ export function PaymentCharts({ settlements }: PaymentChartsProps) {
                     {typeBreakdown.map((entry, index) => (
                       <Cell 
                         key={`cell-${index}`} 
-                        fill={entry.name === 'Vendas' ? '#10b981' : entry.name === 'Reembolsos' ? '#ef4444' : '#f59e0b'} 
+                        fill={entry.name === 'Vendas' ? 'hsl(var(--success))' : entry.name === 'Reembolsos' ? 'hsl(var(--destructive))' : 'hsl(var(--warning))'}
                       />
                     ))}
                   </Pie>

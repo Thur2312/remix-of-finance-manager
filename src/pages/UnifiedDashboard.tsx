@@ -37,7 +37,13 @@ const MP_COLORS: Record<string, string> = {
   mercadolivre: '#EAB308',
 };
 
-const CHART_COLORS = ['#3b82f6', '#10b981', '#f97316', '#8b5cf6', '#ec4899'];
+const CHART_COLORS = [
+  'hsl(var(--chart-1))',
+  'hsl(var(--chart-2))',
+  'hsl(var(--chart-3))',
+  'hsl(var(--chart-4))',
+  'hsl(var(--chart-5))',
+];
 
 // ── Types ────────────────────────────────────────────────────────────────────
 interface TooltipPayloadItem {
@@ -181,12 +187,12 @@ function RevenueAreaChart({ data }: { data: { date: string; revenue: number; net
           <AreaChart data={formatted} margin={{ top: 4, right: 8, bottom: 0, left: 0 }}>
             <defs>
               <linearGradient id="gradBruto" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.2} />
-                <stop offset="95%" stopColor="#3b82f6" stopOpacity={0} />
+                <stop offset="5%" stopColor="hsl(var(--primary))" stopOpacity={0.2} />
+                <stop offset="95%" stopColor="hsl(var(--primary))" stopOpacity={0} />
               </linearGradient>
               <linearGradient id="gradLiquido" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="5%" stopColor="#10b981" stopOpacity={0.2} />
-                <stop offset="95%" stopColor="#10b981" stopOpacity={0} />
+                <stop offset="5%" stopColor="hsl(var(--success))" stopOpacity={0.2} />
+                <stop offset="95%" stopColor="hsl(var(--success))" stopOpacity={0} />
               </linearGradient>
             </defs>
             <CartesianGrid strokeDasharray="3 3" className="stroke-border/50" />
@@ -194,8 +200,8 @@ function RevenueAreaChart({ data }: { data: { date: string; revenue: number; net
             <YAxis tickFormatter={formatK} tick={{ fontSize: 11 }} width={56} />
             <Tooltip content={<CustomTooltip />} />
             <Legend wrapperStyle={{ fontSize: 12 }} />
-            <Area type="monotone" dataKey="revenue" name="Bruto" stroke="#3b82f6" fill="url(#gradBruto)" strokeWidth={2} dot={false} />
-            <Area type="monotone" dataKey="net" name="Líquido" stroke="#10b981" fill="url(#gradLiquido)" strokeWidth={2} dot={false} />
+            <Area type="monotone" dataKey="revenue" name="Bruto" stroke="hsl(var(--primary))" fill="url(#gradBruto)" strokeWidth={2} dot={false} />
+            <Area type="monotone" dataKey="net" name="Líquido" stroke="hsl(var(--success))" fill="url(#gradLiquido)" strokeWidth={2} dot={false} />
           </AreaChart>
         </ResponsiveContainer>
       </CardContent>
