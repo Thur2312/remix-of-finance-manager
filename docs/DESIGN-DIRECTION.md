@@ -120,3 +120,50 @@ Depois da landing validada (é onde a decisão de marca se prova primeiro, barat
 ## Próximo passo
 
 Esta é só a direção — nenhuma linha de código de produto foi alterada. Validar com o usuário: (1) concordância com a dupla tipográfica (Fraunces+Inter+Space Mono) e o accent âmbar somado ao azul, (2) aprovação do escopo faseado (landing primeiro, app depois), (3) ok para instalar GSAP+Lenis como dependências novas (escopadas à landing). Após aprovação, handoff de implementação para `nexo-dev-frontend`.
+
+---
+
+## 5. Addendum — escalada de craft (pós-implementação Fase 1, revisão do estado real)
+
+> Contexto: Fase 1 da landing já implementada (branch `design/landing-redesign`, componentes `src/components/landing/{HeroProfitVisual,ProblemSection,AnimatedStat}.tsx` + scroll-scrub via GSAP ScrollTrigger/Lenis). Feedback do usuário: gostou do scroll travado (**manter exatamente como está, não mexer no mecanismo**), mas o resultado geral ainda está "muito simples" — quer nível de landing de agência (~R$50 mil), não só "correto". Esta seção propõe onde subir a ambição **só em estilização** (cor, tipografia, textura, craft gráfico) — sem adicionar mais mecânica de scroll.
+
+### 5.1 O que já está implementado (ponto de partida, não descartar)
+
+Lido direto do código atual: `HeroProfitVisual.tsx` (card vidro-fosco com breakdown pedido→taxas→lucro, contador animado via `useSpring`, mini `BarChart` Recharts), `ProblemSection.tsx` (scroll-scrub GSAP com painel sticky + 4 passos, mais 2 blocos de accordion com paineis de analytics/calculadora), tokens `--navy`/`--gold` já no `index.css`, fontes Fraunces/Inter/Space Mono carregando. A base conceitual é boa — "lucro real" já aparece como número que sobe de verdade, não é só decoração. O problema é execução: tudo usa o **vocabulário genérico do Tailwind/shadcn** por baixo (`rounded-2xl`, `shadow-2xl`, `ease-out`, `transition-all duration-300`), que é sempre a assinatura visual de "correto e datado" — nunca de "caro".
+
+Evidência concreta do que está raso hoje:
+- **Easing 100% default**: todo `motion.div` do projeto usa `ease: "easeOut"` (a curva padrão do Framer Motion) — zero curva de assinatura. `grep` confirma: única variação de easing no código inteiro é "easeOut", repetida.
+- **Sombras são literalmente o preset padrão do shadcn**: `--shadow-2xl: 0 25px 50px -12px hsl(0 0% 0% / 0.15)` (`index.css:79`) é neutro (`0 0% 0%`, preto puro) — nenhuma sombra do produto tem tingimento de cor (navy/gold), nenhuma é multi-camada de verdade além do que o Tailwind já empilha por padrão.
+- **Ícone social no rodapé ainda no padrão genérico** "círculo translúcido com ícone" (`LandingPage.tsx:727,731`) — resíduo pontual do padrão antigo que passou batido.
+- Nenhum grain/textura, nenhum cursor customizado, nenhuma peça gráfica bespoke — só cards com borda + blur + Recharts default.
+
+### 5.2 Priorização (maior retorno visual por menor esforço primeiro)
+
+**P1 — Easing de assinatura (esforço: baixo, retorno: alto, toca o código inteiro de uma vez).**
+Trocar TODAS as ocorrências de `ease: "easeOut"` por uma curva custom tipo `[0.16, 1, 0.3, 1]` ("expo-out" — a curva usada por Linear/Stripe/Vercel para transições "caras", desacelera com mais autoridade no final em vez do easeOut genérico do Framer Motion) e alinhar as transições CSS (`transition-all duration-300`) para o mesmo `cubic-bezier` via classe utilitária custom no Tailwind. É find-and-replace de escopo, mas muda a sensação de *cada* hover/reveal do site de uma vez só — é o ajuste de maior ROI possível porque não é feature nova, é qualidade da interação que já existe.
+
+**P2 — Sombras com profundidade e tingimento real (esforço: baixo).**
+Substituir os `--shadow-*` neutros (preto puro) por sombras coloridas/multi-camada usando os tokens de marca: ex. cards sobre fundo navy ganham sombra com leve tingimento azul-marinho profundo (`hsl(var(--navy) / 0.4)`), o card do `HeroProfitVisual` (hoje `shadow-2xl` genérico) ganha 2-3 camadas empilhadas (uma sombra difusa ampla + uma de contato mais próxima e escura) em vez de uma única regra do Tailwind. Custo de implementação é trivial (são só valores CSS), efeito perceptual é grande — é a diferença entre "card com Tailwind default" e "card desenhado".
+
+**P3 — Textura/grain sutil nas seções escuras (esforço: baixo).**
+Uma camada de ruído (SVG `feTurbulence` inline ou PNG base64 de ~2kb) em opacity muito baixa (2-4%) sobre `.section-dark`/`bg-navy` — recurso clássico de "não parece feito em 10 minutos" usado por produtos premium (Linear, Vercel, agências) exatamente porque cobre a platitude do flat-color sem custo de performance real (é decorativo, não interativo). Aplicar nas 3-4 seções que já usam `section-dark`/`bg-navy`.
+
+**P4 — Um momento tipográfico com ambição de verdade (esforço: médio).**
+Hoje toda seção segue a mesma fórmula (eyebrow pequeno + `font-serif text-3xl md:text-4xl`) — cria monotonia, é "sistema aplicado com disciplina" mas nunca "momento de impacto". Propor **um único ponto de quebra intencional**: no Hero, o número "R$ 70" (ou o "lucro real" do headline) ganha tratamento tipográfico fora da escala — tamanho dramaticamente maior, talvez sangrando levemente pra fora do card, cor gold em peso mais pesado da Fraunces (`opsz` alto). Não é sistema novo, é *uma exceção deliberada* à disciplina do resto — o tipo de detalhe que sinaliza direção de arte em vez de aplicação de template.
+
+**P5 — Peça gráfica bespoke no Hero (esforço: médio-alto, mas é a única peça verdadeiramente "assinatura" da proposta).**
+`HeroProfitVisual` hoje é um card de vidro + `BarChart` Recharts — funcional, mas é literalmente o que qualquer dashboard SaaS mostra. Propor evoluir para algo que **não existe em nenhum template**: um recibo/nota fiscal estilizado, com "rasgo" de perfuração desenhado em SVG entre a lista de descontos e o total, desenhado à mão (path SVG customizado, não ícone de biblioteca) — reforça literalmente o conceito "o que sobra depois dos descontos" com uma metáfora visual própria da marca, em vez de um card genérico de app. Pode ganhar um único traço de `stroke-dashoffset` desenhando-se uma vez ao entrar em view (reveal de entrada, **não** nova mecânica de scroll — dispara uma vez com `useInView`, igual ao que já existe hoje, só troca o quê anima).
+
+**P6 — Micro-interações com personalidade, sem mexer no scroll (esforço: baixo-médio).**
+- Botão CTA primário ("QUERO VER MEU LUCRO REAL →") com hover magnético leve (desloca alguns px em direção ao cursor dentro da área do botão via Framer Motion, técnica comum em landing de agência) em vez do hover flat atual.
+- Cards de pricing (`PricingSection`) com tilt 3D sutil no hover (`whileHover` com `rotateX`/`rotateY` + `perspective`, poucos graus) em vez do `y: -4` genérico atual.
+- Cursor customizado **só** sobre o `HeroProfitVisual` (um pequeno indicador "R$" ou ponto que segue o cursor dentro da área do card) — escopo contido a um único componente-assinatura, não um cursor global (que teria custo/risco de acessibilidade maior sem retorno proporcional).
+- Ícones sociais do rodapé (`LandingPage.tsx:727,731`) saem do padrão genérico "círculo translúcido" e ganham o mesmo hover magnético/tilt do resto, fechando a última ocorrência do padrão antigo.
+
+### 5.3 O que fica de fora deliberadamente
+
+Por instrução explícita do usuário (via maestro, nesta rodada): **nenhuma mecânica de scroll nova** — sem pin/scrub adicional em mais seções, sem parallax de camadas novo. O `ScrollStory` do `ProblemSection` e o Lenis smooth-scroll continuam exatamente como estão. Tudo em 5.2 é estilização pura (cor, sombra, textura, tipografia, easing, micro-interação local) sobre a estrutura de scroll já aprovada — não fica sujeito ao mesmo risco de regressão que mexer em `ScrollTrigger`/`Lenis` teria.
+
+### Próximo passo
+
+Validar com o usuário se a priorização P1→P6 faz sentido (especialmente P5, que é a única peça de esforço médio-alto e a mais "assinatura" das seis) antes do handoff pro `nexo-dev-frontend` continuar a implementação na mesma branch `design/landing-redesign`.
