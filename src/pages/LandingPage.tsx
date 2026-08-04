@@ -26,6 +26,8 @@ import { ProblemSection } from "@/components/landing/ProblemSection";
 import { HeroProfitVisual } from "@/components/landing/HeroProfitVisual";
 import { AnimatedStat } from "@/components/landing/AnimatedStat";
 import { useLenisScroll } from "@/components/landing/useLenisScroll";
+import { Magnetic } from "@/components/landing/Magnetic";
+import { TiltCard } from "@/components/landing/TiltCard";
 import {
   Dialog,
   DialogContent,
@@ -131,7 +133,7 @@ function HeroSection() {
   const navigate = useNavigate();
 
   return (
-    <section className="section-dark min-h-screen flex items-center pt-20 pb-24 relative">
+    <section className="section-dark grain min-h-screen flex items-center pt-20 pb-24 relative">
       <div className="container relative z-10">
         <div className="grid lg:grid-cols-2 gap-12 lg:gap-8 items-center">
           <div>
@@ -155,9 +157,11 @@ function HeroSection() {
             </p>
 
             <div className="flex flex-col sm:flex-row gap-4 mb-10">
-              <button onClick={() => navigate("/user/auth?redirect=planos")} className="btn-cta">
-                QUERO VER MEU LUCRO REAL →
-              </button>
+              <Magnetic className="inline-block">
+                <button onClick={() => navigate("/user/auth?redirect=planos")} className="btn-cta">
+                  QUERO VER MEU LUCRO REAL →
+                </button>
+              </Magnetic>
               <span className="text-white/50 text-sm self-center">Cancele quando quiser</span>
             </div>
 
@@ -224,7 +228,7 @@ function HowItWorksSection() {
             <motion.div
               key={item.step}
               variants={{ hidden: { opacity: 0, y: 24 }, show: { opacity: 1, y: 0 } }}
-              transition={{ duration: 0.5, ease: "easeOut" }}
+              transition={{ duration: 0.5, ease: [0.16, 1, 0.3, 1] }}
               whileHover={{ y: -4 }}
               className="relative"
             >
@@ -256,7 +260,7 @@ function HowItWorksSection() {
 // ─── Stats Section ────────────────────────────────────────────────────────────
 function StatsSection() {
   return (
-    <section className="section-dark py-16 border-b border-white/10">
+    <section className="section-dark grain py-16 border-b border-white/10">
       <div className="container">
         <div className="grid grid-cols-1 md:grid-cols-3 gap-8 text-center">
           <div>
@@ -345,7 +349,7 @@ function PricingSection() {
   const [leadDialogOpen, setLeadDialogOpen] = useState(false);
 
   return (
-    <section id="planos" className="section-dark relative py-20 md:py-28">
+    <section id="planos" className="section-dark grain relative py-20 md:py-28">
       <div className="container">
         <div className="text-center mb-12 animate-fade-up">
           <p className="section-label-white mb-3">PLANOS E PREÇOS</p>
@@ -362,13 +366,12 @@ function PricingSection() {
           variants={{ hidden: {}, show: { transition: { staggerChildren: 0.1 } } }}
         >
           {pricingPlans.map((plan) => (
-            <motion.div
+            <TiltCard
               key={plan.id}
               variants={{ hidden: { opacity: 0, y: 24 }, show: { opacity: 1, y: 0 } }}
-              transition={{ duration: 0.45, ease: "easeOut" }}
-              whileHover={{ y: -4 }}
-              className={`relative bg-white rounded-3xl overflow-hidden shadow-2xl flex flex-col ${
-                plan.popular ? "ring-4 ring-gold" : ""
+              transition={{ duration: 0.45, ease: [0.16, 1, 0.3, 1] }}
+              className={`relative bg-white rounded-3xl overflow-hidden flex flex-col ${
+                plan.popular ? "ring-4 ring-gold shadow-gold-glow" : "shadow-navy-lg"
               }`}
             >
               {plan.popular && (
@@ -421,15 +424,14 @@ function PricingSection() {
                   ))}
                 </div>
               </div>
-            </motion.div>
+            </TiltCard>
           ))}
 
           {/* Plano Empresarial */}
-          <motion.div
+          <TiltCard
             variants={{ hidden: { opacity: 0, y: 24 }, show: { opacity: 1, y: 0 } }}
-            transition={{ duration: 0.45, ease: "easeOut" }}
-            whileHover={{ y: -4 }}
-            className="relative bg-navy rounded-3xl overflow-hidden shadow-2xl flex flex-col border border-white/10"
+            transition={{ duration: 0.45, ease: [0.16, 1, 0.3, 1] }}
+            className="relative bg-navy rounded-3xl overflow-hidden shadow-navy-lg flex flex-col border border-white/10"
           >
             <div className="px-6 pt-8 pb-6">
               <div className="inline-flex items-center gap-1.5 bg-white/10 rounded-full px-3 py-1 text-white text-xs font-semibold mb-3">
@@ -472,7 +474,7 @@ function PricingSection() {
                 ))}
               </div>
             </div>
-          </motion.div>
+          </TiltCard>
         </motion.div>
 
         {/* Bonus banner */}
@@ -500,7 +502,7 @@ function CTASection() {
   const navigate = useNavigate();
 
   return (
-    <section className="relative py-20 md:py-28 section-dark">
+    <section className="relative py-20 md:py-28 section-dark grain">
       <div className="container relative z-10">
         <div className="grid lg:grid-cols-2 gap-12 items-center">
           <div className="animate-fade-up">
@@ -521,7 +523,7 @@ function CTASection() {
             initial={{ opacity: 0, y: 24 }}
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true, margin: "-80px" }}
-            transition={{ duration: 0.5, ease: "easeOut" }}
+            transition={{ duration: 0.5, ease: [0.16, 1, 0.3, 1] }}
             whileHover={{ y: -4 }}
           >
             <div className="rounded-2xl bg-white/10 backdrop-blur-sm border border-white/15 p-6">
@@ -601,7 +603,7 @@ function FAQSection() {
                     initial={{ height: 0, opacity: 0 }}
                     animate={{ height: "auto", opacity: 1 }}
                     exit={{ height: 0, opacity: 0 }}
-                    transition={{ duration: 0.25, ease: "easeOut" }}
+                    transition={{ duration: 0.25, ease: [0.16, 1, 0.3, 1] }}
                     className="overflow-hidden"
                   >
                     <div className="px-5 pb-5 text-gray-600 leading-relaxed text-sm">{faq.a}</div>
@@ -723,14 +725,18 @@ function Footer() {
               </a>
             </div>
             <div className="flex gap-3 mt-4">
-              <a href="https://www.instagram.com/qx_assessoria/"
-                className="w-9 h-9 rounded-full bg-white/10 flex items-center justify-center text-white/60 hover:text-white hover:bg-white/20 transition-all">
-                <Instagram className="w-4 h-4" />
-              </a>
-              <a href="https://wa.me/5583987999393"
-                className="w-9 h-9 rounded-full bg-white/10 flex items-center justify-center text-white/60 hover:text-white hover:bg-white/20 transition-all">
-                <MessageCircle className="w-4 h-4" />
-              </a>
+              <Magnetic strength={0.4} className="inline-block">
+                <a href="https://www.instagram.com/qx_assessoria/"
+                  className="w-9 h-9 rounded-full border border-white/15 flex items-center justify-center text-white/60 hover:text-gold hover:border-gold transition-colors">
+                  <Instagram className="w-4 h-4" />
+                </a>
+              </Magnetic>
+              <Magnetic strength={0.4} className="inline-block">
+                <a href="https://wa.me/5583987999393"
+                  className="w-9 h-9 rounded-full border border-white/15 flex items-center justify-center text-white/60 hover:text-gold hover:border-gold transition-colors">
+                  <MessageCircle className="w-4 h-4" />
+                </a>
+              </Magnetic>
             </div>
           </div>
         </div>
