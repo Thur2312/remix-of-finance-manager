@@ -18,6 +18,18 @@ async function fetchSubscription(subscriptionId: string) {
   return await response.json();
 }
 
+// Semestral/anual são parcela única parcelada (INSTALLMENT) — o "payment" de
+// cada parcela não carrega o externalReference do checkout (mesma razão pela
+// qual fetchSubscription existe pro caso recorrente). Precisa buscar o
+// recurso "installment" pra recuperar o "userId:planId" original.
+async function fetchInstallment(installmentId: string) {
+  const response = await fetch(`${ASAAS_API_BASE_URL}/installments/${installmentId}`, {
+    headers: { access_token: ASAAS_API_KEY },
+  });
+  if (!response.ok) return null;
+  return await response.json();
+}
+
 // ── Helper: o checkout codifica "userId:planId" no externalReference, já que
 // planos semestral/anual (INSTALLMENT) não têm subscription/cycle pra inferir o plano ──
 const PLAN_IDS: PlanId[] = ["mensal", "semestral", "anual"];
@@ -136,16 +148,21 @@ Deno.serve(async (req) => {
   if (eventType === "PAYMENT_CONFIRMED" || eventType === "PAYMENT_RECEIVED") {
     const payment = body.payment;
     const asaasSubscriptionId = payment?.subscription as string | undefined;
+    const asaasInstallmentId = payment?.installment as string | undefined;
 
     const subscription = asaasSubscriptionId
       ? await fetchSubscription(asaasSubscriptionId)
       : null;
+    const installment = asaasInstallmentId
+      ? await fetchInstallment(asaasInstallmentId)
+      : null;
 
     const refFromSubscription = parseRef(subscription?.externalReference);
+    const refFromInstallment = parseRef(installment?.externalReference);
     const refFromPayment = parseRef(payment?.externalReference);
 
     const userId = await resolveUserId(
-      refFromSubscription.userId ?? refFromPayment.userId,
+      refFromSubscription.userId ?? refFromInstallment.userId ?? refFromPayment.userId,
       asaasSubscriptionId,
       payment?.customer,
     );
@@ -172,6 +189,7 @@ Deno.serve(async (req) => {
       if (!isStalePaymentAfterCancel) {
         const planoPago =
           refFromSubscription.planId ??
+          refFromInstallment.planId ??
           refFromPayment.planId ??
           (subscription?.cycle ? planIdByCycle(subscription.cycle) : null) ??
           "mensal";
