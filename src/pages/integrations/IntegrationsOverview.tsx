@@ -72,12 +72,6 @@ export default function IntegrationsOverview() {
       );
       const data = await response.json();
       if (data.authorization_url) {
-        // A Shopee não devolve o "state" de volta na URL do callback (ver
-        // shopee-auth) — guardamos aqui pra IntegrationCallback ler do
-        // sessionStorage em vez de depender do provider ecoar ele.
-        if (data.state) {
-          sessionStorage.setItem('pending_oauth_state', data.state);
-        }
         window.location.href = data.authorization_url;
       } else {
         toast({ title: `Erro ao conectar ${provider}`, variant: "destructive" });
