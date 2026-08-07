@@ -75,8 +75,10 @@ export default function IntegrationCallback() {
 
       if (finalShopId) {
         setStatus('Conectando com a Shopee...');
-        // A Shopee devolve o "state" opaco gerado por shopee-auth — o callback
-        // resolve o usuário a partir dele, não mais de um token na URL.
+        // A Shopee não devolve o "state" gerado por shopee-auth de volta na URL
+        // (a API dela não tem esse parâmetro) — por isso finalState acima cai
+        // no sessionStorage, que IntegrationsOverview preencheu antes do redirect.
+        // O callback resolve o usuário a partir desse state, nunca de um token na URL.
         const params = new URLSearchParams({ code: finalCode, shop_id: finalShopId, state: finalState ?? '' });
         window.location.href =
           `https://opzsrqdvotozawuqpapo.functions.supabase.co/integration-callback?${params.toString()}`;
