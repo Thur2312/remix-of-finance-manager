@@ -4,7 +4,7 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2"
 
 // Permite sobrescrever via env var (ex: testar OAuth contra um preview
 // deploy) sem alterar o comportamento padrão de produção.
-const FRONTEND_URL = Deno.env.get("FRONTEND_URL")?.trim() || "https://www.sellerfinance.com.br"
+const FRONTEND_URL = Deno.env.get("FRONTEND_URL")?.trim() || "https://sellerfinance.com.br"
 
 serve(async (req) => {
   const url = new URL(req.url)
