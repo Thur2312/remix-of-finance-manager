@@ -1,0 +1,11 @@
+-- payouts tinha 2 policies permissivas coexistindo:
+--   - "payouts_policy" (correta): escopada por integration_id -> integration_connections.user_id = auth.uid()
+--   - "authenticated_payouts" (bug): qual = (auth.role() = 'authenticated'), sem
+--     nenhum filtro por dono do recurso
+-- Policies RLS permissivas sao combinadas com OR -- a policy ampla sozinha ja
+-- liberava SELECT/INSERT/UPDATE/DELETE em TODOS os payouts de TODOS os
+-- vendedores pra qualquer usuario logado, independente da policy correta
+-- tambem existir. Confirmado exploravel via:
+--   supabase.from('payouts').select('*')  -- retornava payouts de outros usuarios
+-- Mesma classe de bug corrigida em processed_payments (20260806231000).
+drop policy if exists "authenticated_payouts" on public.payouts;

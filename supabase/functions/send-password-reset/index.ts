@@ -173,7 +173,7 @@ const handler = async (req: Request): Promise<Response> => {
     console.log("Email sent successfully:", emailResult);
 
     return await withMinDelay(startTime, new Response(
-      JSON.stringify({ success: true, message: "Email de recuperação enviado com sucesso!" }),
+      JSON.stringify({ success: true, message: "Se o email existir, você receberá um link de recuperação." }),
       { status: 200, headers: { "Content-Type": "application/json", ...corsHeaders } }
     ));
   } catch (error: Error) {
