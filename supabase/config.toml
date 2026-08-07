@@ -17,6 +17,9 @@ verify_jwt = false
 [functions.integration-callback]
 verify_jwt = false
 
+[functions.shopee-webhook]
+verify_jwt = false
+
 [functions.asaas-checkout]
 enabled = true
 verify_jwt = true
