@@ -2,15 +2,12 @@ import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClientProvider } from "@tanstack/react-query";
-import { Routes, Route, Navigate, useLocation } from "react-router-dom";
-import { AnimatePresence, motion } from "framer-motion";
+import { Routes, Route, Navigate } from "react-router-dom";
 import { AuthProvider } from "@/contexts/AuthContext";
-import { ProtectedRoute } from "@/components/layout/ProtectedRoute";
-import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { Suspense, lazy } from "react";
 import { PageLoader } from "@/components/layout/PageLoader";
 import { queryClient } from "@/lib/queryClient";
-import { TrialGuard } from "@/components/layout/TrialGuard";
+import { InternalLayout, InternalLayoutNoGuard } from "@/components/layout/InternalLayout";
 
 
 // ── Lazy loading ────────────────────────────────────────────────────────────
@@ -53,118 +50,9 @@ const CadastroCustos            = lazy(() => import("./pages/precificacao/Cadast
 const FluxoCaixaDashboard       = lazy(() => import("./pages/fluxo-caixa/FluxoCaixaDashboard"));
 const FluxoCaixaLancamentos     = lazy(() => import("./pages/fluxo-caixa/FluxoCaixaLancamentos"));
 const FluxoCaixaCategorias      = lazy(() => import("./pages/fluxo-caixa/FluxoCaixaCategorias"));
-const FluxoCaixaImportacao      = lazy(() => import("./pages/fluxo-caixa/FluxoCaixaImportacao"));
 const AssistenteAnuncio         = lazy(() => import("./pages/AssistenteAnuncio"));
 const DRE                       = lazy(() => import("./pages/DRE"));
 const Perfil                    = lazy(() => import("./pages/Perfil"));
-
-// ── Helper: rota protegida com ErrorBoundary isolado ─────────────────────────
-const Protected = ({ children }: { children: React.ReactNode }) => (
-  <ProtectedRoute>
-    <ErrorBoundary>
-      <TrialGuard>
-        {children}
-      </TrialGuard>
-    </ErrorBoundary>
-  </ProtectedRoute>
-);
-
-// ── Helper: rota protegida SEM TrialGuard (pós-cadastro / pagamento) ──────────
-const ProtectedNoGuard = ({ children }: { children: React.ReactNode }) => (
-  <ProtectedRoute>
-    <ErrorBoundary>
-      {children}
-    </ErrorBoundary>
-  </ProtectedRoute>
-);
-
-// ── Transição leve entre rotas (fade), respeitando prefers-reduced-motion ────
-const routeTransition = {
-  initial: { opacity: 0 },
-  animate: { opacity: 1 },
-  exit: { opacity: 0 },
-  transition: { duration: 0.18, ease: [0.16, 1, 0.3, 1] as const },
-};
-
-const AnimatedRoutes = () => {
-  const location = useLocation();
-  const reducedMotion =
-    typeof window !== "undefined" && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-
-  const routes = (
-    <Routes location={location}>
-      {/* ── Rotas públicas ─────────────────────────────────────── */}
-              <Route path="/" element={<LandingPage />} />
-              <Route path="/user/auth" element={<Auth />} />
-              <Route path="/termos-de-uso" element={<TermosDeUso />} />
-              <Route path="/politica-de-privacidade" element={<PoliticaDePrivacidade />} />
-              <Route path="/user/esqueci-senha" element={<EsqueciSenha />} />
-              <Route path="/user/reset-password" element={<ResetPassword />} />
-              <Route path="/planos" element={<Planos />} />
-              <Route path="/user/auth/planos" element={<Planos />} />
-
-              {/* ── Callbacks OAuth ────────────────────────────────────── */}
-              <Route path="/callback" element={<IntegrationCallback />} />
-              <Route path="/callback/mercadolivre" element={<IntegrationCallback />} />
-              <Route path="/integrations/callback/:provider" element={<IntegrationCallback />} />
-
-              {/* ── Pós-cadastro (auth obrigatória, sem TrialGuard) ───── */}
-              <Route path="/setup-payment" element={<ProtectedNoGuard><SetupPayment /></ProtectedNoGuard>} />
-
-              {/* ── Dashboard unificado ────────────────────────────────── */}
-              <Route path="/dashboard" element={<Protected><UnifiedDashboard /></Protected>} />
-              <Route path="/gestao"    element={<Protected><Gestao /></Protected>} />
-
-              {/* ── Mercado Livre ──────────────────────────────────────── */}
-              <Route path="/mercadolivre/resultados"    element={<Protected><MercadoLivreResultados /></Protected>} />
-              <Route path="/mercadolivre/variacoes"     element={<Protected><MercadoLivreVariacoes /></Protected>} />
-              <Route path="/mercadolivre/pagamentos"    element={<Protected><MercadoLivrePagamentos /></Protected>} />
-              <Route path="/mercadolivre/configuracoes" element={<Protected><MercadoLivreConfiguracoes /></Protected>} />
-
-              {/* ── Shopee ─────────────────────────────────────────────── */}
-              <Route path="/shopee/dashboard"     element={<Protected><Navigate to="/gestao" replace /></Protected>} />
-              <Route path="/shopee/configuracoes" element={<Protected><Configuracoes /></Protected>} />
-              <Route path="/shopee/upload"        element={<Protected><Upload /></Protected>} />
-              <Route path="/shopee/resultados"    element={<Protected><Resultados /></Protected>} />
-              <Route path="/shopee/variacoes"     element={<Protected><ResultadosVariacoes /></Protected>} />
-
-              {/* ── TikTok ─────────────────────────────────────────────── */}
-              <Route path="/tiktok/dashboard"         element={<Protected><Navigate to="/gestao" replace /></Protected>} />
-              <Route path="/tiktok/configuracoes"     element={<Protected><TikTokConfiguracoes /></Protected>} />
-              <Route path="/tiktok/upload"            element={<Protected><TikTokUpload /></Protected>} />
-              <Route path="/tiktok/resultados"        element={<Protected><TikTokResultados /></Protected>} />
-              <Route path="/tiktok/variacoes"         element={<Protected><TikTokVariacoes /></Protected>} />
-              <Route path="/tiktok/pagamentos"        element={<Protected><TikTokPagamentos /></Protected>} />
-              <Route path="/tiktok/pagamentos/upload" element={<Protected><TikTokPagamentosUpload /></Protected>} />
-
-              {/* ── Demais rotas protegidas ────────────────────────────── */}
-              <Route path="/calculadora"              element={<Protected><CalculadoraPrecificacao /></Protected>} />
-              <Route path="/precificacao/custos"      element={<Protected><CadastroCustos /></Protected>} />
-              <Route path="/fluxo-caixa"              element={<Protected><FluxoCaixaDashboard /></Protected>} />
-              <Route path="/fluxo-caixa/lancamentos"  element={<Protected><FluxoCaixaLancamentos /></Protected>} />
-              <Route path="/fluxo-caixa/categorias"   element={<Protected><FluxoCaixaCategorias /></Protected>} />
-              <Route path="/fluxo-caixa/importacao"   element={<Protected><FluxoCaixaImportacao /></Protected>} />
-              <Route path="/assistente-anuncio"       element={<Protected><AssistenteAnuncio /></Protected>} />
-              <Route path="/dre"                      element={<Protected><DRE /></Protected>} />
-              <Route path="/perfil"                   element={<Protected><Perfil /></Protected>} />
-              <Route path="/integrations"             element={<Protected><IntegrationsOverview /></Protected>} />
-              <Route path="/integrations/:provider"   element={<Protected><IntegrationManage /></Protected>} />
-
-              {/* ── Catch-all ──────────────────────────────────────────── */}
-              <Route path="*" element={<NotFound />} />
-    </Routes>
-  );
-
-  if (reducedMotion) return routes;
-
-  return (
-    <AnimatePresence mode="wait" initial={false}>
-      <motion.div key={location.pathname} {...routeTransition}>
-        {routes}
-      </motion.div>
-    </AnimatePresence>
-  );
-};
 
 const App = () => {
   return (
@@ -174,7 +62,70 @@ const App = () => {
         <Sonner />
         <AuthProvider>
           <Suspense fallback={<PageLoader />}>
-            <AnimatedRoutes />
+            <Routes>
+              {/* ── Rotas públicas ─────────────────────────────────────── */}
+              <Route path="/" element={<LandingPage />} />
+              <Route path="/user/auth" element={<Auth />} />
+              <Route path="/termos-de-uso" element={<TermosDeUso />} />
+              <Route path="/politica-de-privacidade" element={<PoliticaDePrivacidade />} />
+              <Route path="/user/esqueci-senha" element={<EsqueciSenha />} />
+              <Route path="/user/reset-password" element={<ResetPassword />} />
+
+              {/* ── Callbacks OAuth ────────────────────────────────────── */}
+              <Route path="/callback" element={<IntegrationCallback />} />
+              <Route path="/callback/mercadolivre" element={<IntegrationCallback />} />
+              <Route path="/integrations/callback/:provider" element={<IntegrationCallback />} />
+
+              {/* ── Área interna — shell persistente (sidebar/topbar montam
+                 uma vez só; ver InternalLayout.tsx). Só o conteúdo de cada
+                 rota abaixo troca ao navegar. ── */}
+              <Route element={<InternalLayout />}>
+                <Route path="/dashboard" element={<UnifiedDashboard />} />
+                <Route path="/gestao" element={<Gestao />} />
+
+                <Route path="/mercadolivre/resultados" element={<MercadoLivreResultados />} />
+                <Route path="/mercadolivre/variacoes" element={<MercadoLivreVariacoes />} />
+                <Route path="/mercadolivre/pagamentos" element={<MercadoLivrePagamentos />} />
+                <Route path="/mercadolivre/configuracoes" element={<MercadoLivreConfiguracoes />} />
+
+                <Route path="/shopee/dashboard" element={<Navigate to="/gestao" replace />} />
+                <Route path="/shopee/configuracoes" element={<Configuracoes />} />
+                <Route path="/shopee/upload" element={<Upload />} />
+                <Route path="/shopee/resultados" element={<Resultados />} />
+                <Route path="/shopee/variacoes" element={<ResultadosVariacoes />} />
+
+                <Route path="/tiktok/dashboard" element={<Navigate to="/gestao" replace />} />
+                <Route path="/tiktok/configuracoes" element={<TikTokConfiguracoes />} />
+                <Route path="/tiktok/upload" element={<TikTokUpload />} />
+                <Route path="/tiktok/resultados" element={<TikTokResultados />} />
+                <Route path="/tiktok/variacoes" element={<TikTokVariacoes />} />
+                <Route path="/tiktok/pagamentos" element={<TikTokPagamentos />} />
+                <Route path="/tiktok/pagamentos/upload" element={<TikTokPagamentosUpload />} />
+
+                <Route path="/calculadora" element={<CalculadoraPrecificacao />} />
+                <Route path="/precificacao/custos" element={<CadastroCustos />} />
+                <Route path="/fluxo-caixa" element={<FluxoCaixaDashboard />} />
+                <Route path="/fluxo-caixa/lancamentos" element={<FluxoCaixaLancamentos />} />
+                <Route path="/fluxo-caixa/categorias" element={<FluxoCaixaCategorias />} />
+                <Route path="/assistente-anuncio" element={<AssistenteAnuncio />} />
+                <Route path="/dre" element={<DRE />} />
+                <Route path="/perfil" element={<Perfil />} />
+                <Route path="/integrations" element={<IntegrationsOverview />} />
+                <Route path="/integrations/:provider" element={<IntegrationManage />} />
+              </Route>
+
+              {/* ── Mesma casca, sem TrialGuard — setup pós-cadastro e a
+                 própria tela de Planos (não pode ficar bloqueada pelo
+                 paywall que ela existe pra resolver). ── */}
+              <Route element={<InternalLayoutNoGuard />}>
+                <Route path="/setup-payment" element={<SetupPayment />} />
+                <Route path="/planos" element={<Planos />} />
+                <Route path="/user/auth/planos" element={<Planos />} />
+              </Route>
+
+              {/* ── Catch-all ──────────────────────────────────────────── */}
+              <Route path="*" element={<NotFound />} />
+            </Routes>
           </Suspense>
         </AuthProvider>
       </TooltipProvider>

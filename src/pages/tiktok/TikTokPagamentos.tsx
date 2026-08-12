@@ -1,8 +1,6 @@
 import { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
-import { AppLayout } from '@/components/layout/AppLayout';
-import { ProtectedRoute } from '@/components/layout/ProtectedRoute';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import {
@@ -47,7 +45,12 @@ import { fetchAllTikTokSettlements, fetchAllTikTokStatements, fetchTikTokOrdersC
 import { SettlementDetailModal } from '@/components/tiktok/SettlementDetailModal';
 import { PaymentCharts } from '@/components/tiktok/PaymentCharts';
 import { FeatureGate } from '@/components/FeatureGate';
-import { InPageNav,tiktokNavTabs } from '@/components/layout/InPageNav';
+import { tiktokNavTabs } from '@/components/layout/InPageNav';
+import { PageHeader } from '@/components/layout/PageHeader';
+
+// Superfície de cartão da área interna — mesma família visual do .glass-card
+// da landing, calibrada pra densidade (ver .app-card em index.css).
+const CARD = 'app-card bg-card border-transparent';
 
 
 const fadeInUp = {
@@ -326,9 +329,8 @@ function TikTokPagamentosContent() {
 
   if (loading) {
     return (
-      <AppLayout title='Gestão TikTok'>
-          <InPageNav tabs={tiktokNavTabs} />
-
+      <>
+        <PageHeader title="Pagamentos TikTok Shop" tabs={tiktokNavTabs} />
         <motion.div
           className="space-y-6"
           initial="hidden"
@@ -349,43 +351,33 @@ function TikTokPagamentosContent() {
             <Skeleton className="h-96" />
           </motion.div>
         </motion.div>
-      </AppLayout>
+      </>
     );
   }
 
   if (settlements.length === 0 && statements.length === 0) {
     return (
-      <AppLayout title='Gestão TikTok'>
-
-            <InPageNav tabs={tiktokNavTabs} />
+      <>
+        <PageHeader
+          title="Pagamentos TikTok Shop"
+          subtitle="Visualize o detalhamento completo de recebimentos do TikTok Shop"
+          tabs={tiktokNavTabs}
+        />
         <motion.div
           className="space-y-6"
           initial="hidden"
           animate="visible"
           variants={staggerContainer}
         >
-          <motion.div variants={fadeInUp} className="text-center">
-           
-            <h1 className="text-2xl font-bold tracking-tight text-gray-900">
-              Pagamentos TikTok Shop
-            </h1>
-            <p className="text-gray-600 mt-1">
-              Visualize o detalhamento completo de recebimentos do TikTok Shop
-            </p>
-          </motion.div>
-
           <motion.div variants={fadeInUp}>
-            <Card className="border border-blue-200 shadow-lg bg-white">
+            <Card className={CARD}>
               <CardContent className="flex flex-col items-center justify-center py-16">
-                <FileSpreadsheet className="h-16 w-16 text-gray-400 mb-4" />
-                <h3 className="font-semibold text-lg text-gray-900">Nenhum pagamento importado</h3>
-                <p className="text-gray-600 mb-6 text-center max-w-md">
+                <FileSpreadsheet className="h-16 w-16 text-muted-foreground mb-4" />
+                <h3 className="font-semibold text-lg text-foreground">Nenhum pagamento importado</h3>
+                <p className="text-muted-foreground mb-6 text-center max-w-md">
                   Importe o relatório de pagamentos (Income) do TikTok Shop para visualizar o detalhamento completo de recebimentos por pedido
                 </p>
-                <Button
-                  asChild
-                  className="bg-gradient-to-r from-blue-600 to-blue-500 hover:from-blue-700 hover:to-blue-600 text-white"
-                >
+                <Button asChild>
                   <Link to="/tiktok/pagamentos/upload">
                     <Upload className="h-4 w-4 mr-2" />
                     Importar Pagamentos
@@ -395,81 +387,70 @@ function TikTokPagamentosContent() {
             </Card>
           </motion.div>
         </motion.div>
-    
-      </AppLayout>
+
+      </>
     );
   }
 
   const totalDiscounts = summary.totalSellerDiscounts + summary.totalPlatformDiscounts;
 
   return (
-    <AppLayout title='Gestão TikTok'>
-        <InPageNav tabs={tiktokNavTabs} />
-      <motion.div
-        className="space-y-6"
-        initial="hidden"
-        animate="visible"
-        variants={staggerContainer}
-      >
-        <motion.div variants={fadeInUp} className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-          <div>
-            <h1 className="text-2xl font-bold tracking-tight text-gray-900">
-              Pagamentos TikTok Shop
-            </h1>
-            <p className="text-gray-600 mt-1">
-              {summary.recordCount} registros • {summary.orderCount} vendas • {summary.refundCount} reembolsos
-            </p>
-          </div>
+    <>
+      <PageHeader
+        title="Pagamentos TikTok Shop"
+        subtitle={`${summary.recordCount} registros • ${summary.orderCount} vendas • ${summary.refundCount} reembolsos`}
+        action={
           <div className="flex gap-2">
-            <Button
-              variant="outline"
-              onClick={exportToCSV}
-              className="border-blue-200 text-blue-700 hover:bg-blue-50"
-            >
+            <Button variant="outline" onClick={exportToCSV}>
               <Download className="h-4 w-4 mr-2" />
               Exportar CSV
             </Button>
-            <Button
-              asChild
-              className="bg-gradient-to-r from-blue-600 to-blue-500 hover:from-blue-700 hover:to-blue-600 text-white"
-            >
+            <Button asChild>
               <Link to="/tiktok/pagamentos/upload">
                 <Upload className="h-4 w-4 mr-2" />
                 Importar
               </Link>
             </Button>
           </div>
-        </motion.div>
+        }
+        tabs={tiktokNavTabs}
+      />
+      <motion.div
+        className="space-y-6"
+        initial="hidden"
+        animate="visible"
+        variants={staggerContainer}
+      >
 
         {/* Period Summary Card */}
         {periodInfo && (
           <motion.div variants={fadeInUp}>
-            <Card className="bg-gradient-to-r from-blue-50 to-white border border-blue-200 shadow-lg">
+            <Card className="bg-primary/5 border border-primary/20">
               <CardContent className="py-4">
                 <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
                   <div className="flex items-center gap-3">
-                    <div className="p-2 bg-blue-100 rounded-lg">
-                      <Calendar className="h-5 w-5 text-blue-600" />
+                    <div className="p-2 bg-primary/10 rounded-lg">
+                      <Calendar className="h-5 w-5 text-primary" />
                     </div>
                     <div>
-                      <h3 className="font-medium text-gray-900">Período Importado</h3>
-                      <p className="text-sm text-gray-600">
+                      <h3 className="font-medium text-foreground">Período Importado</h3>
+                      <p className="text-sm text-muted-foreground">
                         {periodInfo.startDate.toLocaleDateString('pt-BR')} até {periodInfo.endDate.toLocaleDateString('pt-BR')}
                       </p>
                     </div>
                   </div>
                   <div className="flex items-center gap-6 text-sm">
                     <div className="text-center">
-                      <p className="font-semibold text-lg text-gray-900">{periodInfo.totalStatements}</p>
-                      <p className="text-gray-600">Pagamentos</p>
+                      <p className="font-semibold text-lg text-foreground">{periodInfo.totalStatements}</p>
+                      <p className="text-muted-foreground">Pagamentos</p>
                     </div>
                     <div className="text-center">
-                      <p className="font-semibold text-lg text-gray-900">{settlements.length}</p>
-                      <p className="text-gray-600">Pedidos</p>
+                      <p className="font-semibold text-lg text-foreground">{settlements.length}</p>
+                      <p className="text-muted-foreground">Pedidos</p>
                     </div>
                     <div className="text-center">
-                      <p className="font-semibold text-lg text-green-600">{formatCurrency(statementsSummary.totalReceived)}</p>
-                      <p className="text-gray-600">Total Recebido</p>
+                      <p className="font-semibold text-lg text-success">{formatCurrency(statementsSummary.totalReceived)}</p>
+                      <p className="text-muted-foreground">Total Recebido</p>
                     </div>
                   </div>
                 </div>
@@ -481,12 +462,12 @@ function TikTokPagamentosContent() {
         {/* Limited Data Warning */}
         {hasLimitedData && (
           <motion.div variants={fadeInUp}>
-            <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
-              <h4 className="font-medium mb-2 flex items-center gap-2 text-yellow-800">
+            <div className="bg-warning/10 border border-warning/30 rounded-lg p-4">
+              <h4 className="font-medium mb-2 flex items-center gap-2 text-warning">
                 <AlertTriangle className="h-4 w-4" />
                 Dados Parciais de Pedidos
               </h4>
-              <p className="text-sm text-yellow-700">
+              <p className="text-sm text-warning">
                 O relatório TikTok mostra <strong>detalhes de pedidos apenas do último pagamento</strong>. 
                 Os totais abaixo estão corretos (baseados na aba Statements), mas a tabela de pedidos mostra apenas {settlements.length} registros.
               </p>
@@ -496,61 +477,61 @@ function TikTokPagamentosContent() {
 
              {/* Summary Cards - Row 1 (using STATEMENTS data for accurate totals) */}
         <motion.div variants={fadeInUp} className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-          <Card className="border border-blue-200 shadow-lg bg-white">
+          <Card className={CARD}>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium text-gray-900">Total Recebido</CardTitle>
-              <DollarSign className="h-4 w-4 text-green-500" />
+              <CardTitle className="text-sm font-medium text-foreground">Total Recebido</CardTitle>
+              <DollarSign className="h-4 w-4 text-success" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold text-green-600">
+              <div className="text-2xl font-bold text-success">
                 {formatCurrency(statementsSummary.totalReceived)}
               </div>
-              <p className="text-xs text-gray-600">
+              <p className="text-xs text-muted-foreground">
                 {statementsSummary.statementCount} pagamentos no período
               </p>
             </CardContent>
           </Card>
 
-          <Card className="border border-blue-200 shadow-lg bg-white">
+          <Card className={CARD}>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium text-gray-900">Vendas Líquidas</CardTitle>
-              <TrendingUp className="h-4 w-4 text-blue-500" />
+              <CardTitle className="text-sm font-medium text-foreground">Vendas Líquidas</CardTitle>
+              <TrendingUp className="h-4 w-4 text-primary" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold text-blue-600">
+              <div className="text-2xl font-bold text-primary">
                 {formatCurrency(statementsSummary.netSales)}
               </div>
-              <p className="text-xs text-gray-600">
+              <p className="text-xs text-muted-foreground">
                 Net Sales (após descontos)
               </p>
             </CardContent>
           </Card>
 
-          <Card className="border border-blue-200 shadow-lg bg-white">
+          <Card className={CARD}>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium text-gray-900">Total de Taxas</CardTitle>
-              <Percent className="h-4 w-4 text-yellow-500" />
+              <CardTitle className="text-sm font-medium text-foreground">Total de Taxas</CardTitle>
+              <Percent className="h-4 w-4 text-warning" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold text-yellow-600">
+              <div className="text-2xl font-bold text-warning">
                 -{formatCurrency(statementsSummary.totalFees)}
               </div>
-              <p className="text-xs text-gray-600">
+              <p className="text-xs text-muted-foreground">
                 Comissões e taxas TikTok
               </p>
             </CardContent>
           </Card>
 
-          <Card className="border border-blue-200 shadow-lg bg-white">
+          <Card className={CARD}>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium text-gray-900">Frete</CardTitle>
-              <Truck className="h-4 w-4 text-cyan-500" />
+              <CardTitle className="text-sm font-medium text-foreground">Frete</CardTitle>
+              <Truck className="h-4 w-4 text-primary" />
             </CardHeader>
             <CardContent>
-              <div className={`text-2xl font-bold ${statementsSummary.shippingTotal >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+              <div className={`text-2xl font-bold ${statementsSummary.shippingTotal >= 0 ? 'text-success' : 'text-destructive'}`}>
                 {statementsSummary.shippingTotal >= 0 ? '+' : ''}{formatCurrency(statementsSummary.shippingTotal)}
               </div>
-              <p className="text-xs text-gray-600">
+              <p className="text-xs text-muted-foreground">
                 Saldo de frete do período
               </p>
             </CardContent>
@@ -560,61 +541,61 @@ function TikTokPagamentosContent() {
         {/* Summary Cards - Row 2 (details from Order details when available) */}
         {settlements.length > 0 && (
           <motion.div variants={fadeInUp} className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-            <Card className="border border-blue-200 shadow-lg bg-white">
+            <Card className={CARD}>
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium text-gray-900">Faturamento Bruto</CardTitle>
-                <TrendingUp className="h-4 w-4 text-blue-500" />
+                <CardTitle className="text-sm font-medium text-foreground">Faturamento Bruto</CardTitle>
+                <TrendingUp className="h-4 w-4 text-primary" />
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold text-blue-600">
+                <div className="text-2xl font-bold text-primary">
                   {formatCurrency(summary.grossSales)}
                 </div>
-                <p className="text-xs text-gray-600">
+                <p className="text-xs text-muted-foreground">
                   Antes de descontos (pedidos disponíveis)
                 </p>
               </CardContent>
             </Card>
 
-            <Card className="border border-blue-200 shadow-lg bg-white">
+            <Card className={CARD}>
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium text-gray-900">Descontos Vendedor</CardTitle>
-                <TrendingDown className="h-4 w-4 text-red-500" />
+                <CardTitle className="text-sm font-medium text-foreground">Descontos Vendedor</CardTitle>
+                <TrendingDown className="h-4 w-4 text-destructive" />
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold text-red-600">
+                <div className="text-2xl font-bold text-destructive">
                   -{formatCurrency(summary.totalSellerDiscounts)}
                 </div>
-                <p className="text-xs text-gray-600">
+                <p className="text-xs text-muted-foreground">
                   Cupons e promoções do vendedor
                 </p>
               </CardContent>
             </Card>
 
-            <Card className="border border-blue-200 shadow-lg bg-white">
+            <Card className={CARD}>
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium text-gray-900">Descontos Plataforma</CardTitle>
-                <Receipt className="h-4 w-4 text-orange-500" />
+                <CardTitle className="text-sm font-medium text-foreground">Descontos Plataforma</CardTitle>
+                <Receipt className="h-4 w-4 text-warning" />
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold text-orange-600">
+                <div className="text-2xl font-bold text-warning">
                   -{formatCurrency(summary.totalPlatformDiscounts)}
                 </div>
-                <p className="text-xs text-gray-600">
+                <p className="text-xs text-muted-foreground">
                   Cupons e promoções do TikTok
                 </p>
               </CardContent>
             </Card>
 
-            <Card className="border border-blue-200 shadow-lg bg-white">
+            <Card className={CARD}>
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium text-gray-900">Reembolsos</CardTitle>
-                <RefreshCw className="h-4 w-4 text-red-500" />
+                <CardTitle className="text-sm font-medium text-foreground">Reembolsos</CardTitle>
+                <RefreshCw className="h-4 w-4 text-destructive" />
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold text-red-600">
+                <div className="text-2xl font-bold text-destructive">
                   -{formatCurrency(summary.totalRefunds)}
                 </div>
-                <p className="text-xs text-gray-600">
+                <p className="text-xs text-muted-foreground">
                   Devoluções e cancelamentos
                 </p>
               </CardContent>
@@ -630,43 +611,43 @@ function TikTokPagamentosContent() {
         {/* Statements Summary Table (Resumo por Pagamento) */}
         {statements.length > 0 && (
           <motion.div variants={fadeInUp}>
-            <Card className="border border-blue-200 shadow-lg bg-white">
-              <CardHeader className="bg-blue-50 border-b border-blue-200">
+            <Card className={CARD}>
+              <CardHeader className="bg-muted/40 border-b border-border">
                 <div className="flex items-center gap-2">
-                  <Calendar className="h-5 w-5 text-blue-600" />
+                  <Calendar className="h-5 w-5 text-primary" />
                   <div>
-                    <CardTitle className="text-gray-900">Resumo por Pagamento</CardTitle>
-                    <CardDescription className="text-gray-600">
+                    <CardTitle className="text-foreground">Resumo por Pagamento</CardTitle>
+                    <CardDescription className="text-muted-foreground">
                       Histórico de pagamentos (aba Statements do relatório)
                     </CardDescription>
                   </div>
                 </div>
               </CardHeader>
               <CardContent>
-                <div className="rounded-lg border border-blue-200 overflow-x-auto">
+                <div className="rounded-lg border border-border overflow-x-auto">
                   <Table>
                     <TableHeader>
-                      <TableRow className="bg-blue-50">
-                        <TableHead className="text-gray-900">Data</TableHead>
-                        <TableHead className="text-gray-900">Statement ID</TableHead>
-                        <TableHead className="text-gray-900">Payment ID</TableHead>
-                        <TableHead className="text-gray-900">Status</TableHead>
-                        <TableHead className="text-right text-gray-900">Vendas Líquidas</TableHead>
-                        <TableHead className="text-right text-gray-900">Taxas</TableHead>
-                        <TableHead className="text-right text-gray-900">Frete</TableHead>
-                        <TableHead className="text-right text-gray-900">Total Recebido</TableHead>
+                      <TableRow className="bg-muted/50">
+                        <TableHead className="text-foreground">Data</TableHead>
+                        <TableHead className="text-foreground">Statement ID</TableHead>
+                        <TableHead className="text-foreground">Payment ID</TableHead>
+                        <TableHead className="text-foreground">Status</TableHead>
+                        <TableHead className="text-right text-foreground">Vendas Líquidas</TableHead>
+                        <TableHead className="text-right text-foreground">Taxas</TableHead>
+                        <TableHead className="text-right text-foreground">Frete</TableHead>
+                        <TableHead className="text-right text-foreground">Total Recebido</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
                       {statements.map((s) => (
                         <TableRow key={s.id}>
-                          <TableCell className="font-medium text-gray-900">
+                          <TableCell className="font-medium text-foreground">
                             {formatDate(s.statement_date)}
                           </TableCell>
-                          <TableCell className="text-xs text-gray-600">
+                          <TableCell className="text-xs text-muted-foreground">
                             {s.statement_id?.substring(0, 12)}...
                           </TableCell>
-                          <TableCell className="text-xs text-gray-600">
+                          <TableCell className="text-xs text-muted-foreground">
                             {s.payment_id?.substring(0, 10)}...
                           </TableCell>
                           <TableCell>
@@ -674,16 +655,16 @@ function TikTokPagamentosContent() {
                               {s.status || '-'}
                             </Badge>
                           </TableCell>
-                          <TableCell className="text-right text-gray-900">
+                          <TableCell className="text-right text-foreground">
                             {formatCurrency(s.net_sales || 0)}
                           </TableCell>
-                          <TableCell className="text-right text-yellow-600">
+                          <TableCell className="text-right text-warning">
                             -{formatCurrency(Math.abs(s.fees_total || 0))}
                           </TableCell>
-                          <TableCell className="text-right text-gray-900">
+                          <TableCell className="text-right text-foreground">
                             {formatCurrency(s.shipping_total || 0)}
                           </TableCell>
-                          <TableCell className="text-right font-bold text-green-600">
+                          <TableCell className="text-right font-bold text-success">
                             {formatCurrency(s.total_settlement_amount || 0)}
                           </TableCell>
                         </TableRow>
@@ -698,18 +679,18 @@ function TikTokPagamentosContent() {
 
         {/* Settlements Table */}
         <motion.div variants={fadeInUp}>
-          <Card className="border border-blue-200 shadow-lg bg-white">
-            <CardHeader className="bg-blue-50 border-b border-blue-200">
+          <Card className={CARD}>
+            <CardHeader className="bg-muted/40 border-b border-border">
               <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
                 <div>
-                  <CardTitle className="text-gray-900">Detalhamento por Pedido</CardTitle>
-                  <CardDescription className="text-gray-600">
+                  <CardTitle className="text-foreground">Detalhamento por Pedido</CardTitle>
+                  <CardDescription className="text-muted-foreground">
                     Clique em um pedido para ver todos os detalhes
                   </CardDescription>
                 </div>
                 <div className="flex gap-2">
                   <Select value={typeFilter} onValueChange={setTypeFilter}>
-                    <SelectTrigger className="w-[150px] border-blue-200 focus:border-blue-500">
+                    <SelectTrigger className="w-[150px] border-border focus:border-primary">
                       <SelectValue placeholder="Tipo" />
                     </SelectTrigger>
                     <SelectContent>
@@ -720,34 +701,34 @@ function TikTokPagamentosContent() {
                     </SelectContent>
                   </Select>
                   <div className="relative w-full sm:w-64">
-                    <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-600" />
+                    <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
                     <Input
                       placeholder="Buscar pedido, produto, SKU..."
                       value={searchTerm}
                       onChange={(e) => setSearchTerm(e.target.value)}
-                      className="pl-9 border-blue-200 focus:border-blue-500"
+                      className="pl-9 border-border focus:border-primary"
                     />
                   </div>
                 </div>
               </div>
             </CardHeader>
             <CardContent>
-              <div className="rounded-lg border border-blue-200 overflow-x-auto">
+              <div className="rounded-lg border border-border overflow-x-auto">
                 <Table>
                   <TableHeader>
-                    <TableRow className="bg-blue-50">
-                      <TableHead className="text-gray-900">ID do Pedido</TableHead>
-                      <TableHead className="text-gray-900">ID Pagamento</TableHead>
-                      <TableHead className="text-gray-900">Status</TableHead>
-                      <TableHead className="text-gray-900">Produto / SKU</TableHead>
-                      <TableHead className="text-center text-gray-900">Qtd</TableHead>
-                      <TableHead className="text-center text-gray-900">Data Venda</TableHead>
-                      <TableHead className="text-center text-gray-900">Data Entrega</TableHead>
-                      <TableHead className="text-center text-gray-900">Data Pagamento</TableHead>
-                      <TableHead className="text-right text-gray-900">Valor Líquido</TableHead>
-                      <TableHead className="text-right text-gray-900">Comissão Afiliado</TableHead>
-                      <TableHead className="text-right text-gray-900">Total Recebido</TableHead>
-                      <TableHead className="text-center text-gray-900">Ação</TableHead>
+                    <TableRow className="bg-muted/50">
+                      <TableHead className="text-foreground">ID do Pedido</TableHead>
+                      <TableHead className="text-foreground">ID Pagamento</TableHead>
+                      <TableHead className="text-foreground">Status</TableHead>
+                      <TableHead className="text-foreground">Produto / SKU</TableHead>
+                      <TableHead className="text-center text-foreground">Qtd</TableHead>
+                      <TableHead className="text-center text-foreground">Data Venda</TableHead>
+                      <TableHead className="text-center text-foreground">Data Entrega</TableHead>
+                      <TableHead className="text-center text-foreground">Data Pagamento</TableHead>
+                      <TableHead className="text-right text-foreground">Valor Líquido</TableHead>
+                      <TableHead className="text-right text-foreground">Comissão Afiliado</TableHead>
+                      <TableHead className="text-right text-foreground">Total Recebido</TableHead>
+                      <TableHead className="text-center text-foreground">Ação</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -755,23 +736,23 @@ function TikTokPagamentosContent() {
                       const getStatusBadge = () => {
                         const status = s.status?.toLowerCase();
                         if (status === 'paid' || status === 'settled') {
-                          return <Badge variant="outline" className="border-green-500 text-green-600 text-xs">Pago</Badge>;
+                          return <Badge variant="outline" className="border-success text-success text-xs">Pago</Badge>;
                         } else if (status === 'pending') {
-                          return <Badge variant="outline" className="border-yellow-500 text-yellow-600 text-xs">Pendente</Badge>;
+                          return <Badge variant="outline" className="border-warning text-warning text-xs">Pendente</Badge>;
                         }
-                        return <Badge variant="outline" className="text-xs text-gray-900">{s.status || '-'}</Badge>;
+                        return <Badge variant="outline" className="text-xs text-foreground">{s.status || '-'}</Badge>;
                       };
                       
                       return (
                         <TableRow 
                           key={`${s.order_id}-${idx}`} 
-                          className="cursor-pointer hover:bg-blue-25"
+                          className="cursor-pointer hover:bg-muted/50"
                           onClick={() => handleRowClick(s)}
                         >
-                          <TableCell className="font-mono text-xs text-gray-900">
+                          <TableCell className="font-mono text-xs text-foreground">
                             {s.order_id?.slice(0, 12)}...
                           </TableCell>
-                          <TableCell className="font-mono text-xs text-gray-600">
+                          <TableCell className="font-mono text-xs text-muted-foreground">
                             {s.payment_id?.slice(0, 10)}...
                           </TableCell>
                           <TableCell>
@@ -779,39 +760,39 @@ function TikTokPagamentosContent() {
                           </TableCell>
                           <TableCell>
                             <div className="max-w-[180px]">
-                              <p className="truncate text-sm font-medium text-gray-900">
+                              <p className="truncate text-sm font-medium text-foreground">
                                 {s.nome_produto || '-'}
                               </p>
                               {s.variacao && (
-                                <p className="truncate text-xs text-gray-600">
+                                <p className="truncate text-xs text-muted-foreground">
                                   {s.variacao}
                                 </p>
                               )}
                             </div>
                           </TableCell>
-                          <TableCell className="text-center text-gray-900">{s.quantidade}</TableCell>
-                          <TableCell className="text-center text-xs text-gray-600">
+                          <TableCell className="text-center text-foreground">{s.quantidade}</TableCell>
+                          <TableCell className="text-center text-xs text-muted-foreground">
                             {formatDate(s.data_criacao_pedido)}
                           </TableCell>
-                          <TableCell className="text-center text-xs text-gray-600">
+                          <TableCell className="text-center text-xs text-muted-foreground">
                             {formatDate(s.data_entrega)}
                           </TableCell>
-                          <TableCell className="text-center text-xs text-gray-600">
+                          <TableCell className="text-center text-xs text-muted-foreground">
                             {formatDate(s.statement_date)}
                           </TableCell>
-                          <TableCell className="text-right text-blue-600">
+                          <TableCell className="text-right text-primary">
                             {formatCurrency(s.net_sales || 0)}
                           </TableCell>
-                          <TableCell className="text-right text-yellow-600">
+                          <TableCell className="text-right text-warning">
                             {Math.abs(s.affiliate_commission || 0) > 0 
                               ? `-${formatCurrency(Math.abs(s.affiliate_commission || 0))}` 
                               : '-'}
                           </TableCell>
-                          <TableCell className="text-right font-medium text-green-600">
+                          <TableCell className="text-right font-medium text-success">
                             {formatCurrency(s.total_settlement_amount || 0)}
                           </TableCell>
                           <TableCell className="text-center">
-                            <Button variant="ghost" size="sm" className="text-gray-600 hover:text-gray-900">
+                            <Button variant="ghost" size="sm" className="text-muted-foreground hover:text-foreground">
                               <Eye className="h-4 w-4" />
                             </Button>
                           </TableCell>
@@ -821,7 +802,7 @@ function TikTokPagamentosContent() {
                   </TableBody>
                 </Table>
                 {filteredSettlements.length > 100 && (
-                  <p className="text-sm text-gray-600 text-center mt-4">
+                  <p className="text-sm text-muted-foreground text-center mt-4">
                     Mostrando 100 de {filteredSettlements.length} registros. Exporte para ver todos.
                   </p>
                 )}
@@ -838,14 +819,8 @@ function TikTokPagamentosContent() {
           onOpenChange={setModalOpen}
         />
       </motion.div>
-    </AppLayout>
+    </>
   );
 }
 
-export default function TikTokPagamentos() {
-  return (
-    <ProtectedRoute>
-      <TikTokPagamentosContent />
-    </ProtectedRoute>
-  );
-}
+export default TikTokPagamentosContent;

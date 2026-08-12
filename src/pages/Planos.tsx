@@ -19,8 +19,6 @@ import {
 } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
-import { AppLayout } from '@/components/layout/AppLayout';
-import { ProtectedRoute } from '@/components/layout/ProtectedRoute';
 import { usePaymentCheckout } from "@/hooks/usePaymentCheckout";
 import { useEffect, useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
@@ -487,12 +485,4 @@ const { handleCheckout, handleCancel: cancelSubscription, loadingCancel, loading
   );
 }
 
-export default function Planos() {
-  return (
-    <ProtectedRoute>
-      <AppLayout>
-        <PlanosContent />
-      </AppLayout>
-    </ProtectedRoute>
-  );
-}
+export default PlanosContent;

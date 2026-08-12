@@ -1,6 +1,4 @@
 import { useState } from 'react';
-import { AppLayout } from '@/components/layout/AppLayout';
-import { ProtectedRoute } from '@/components/layout/ProtectedRoute';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -9,7 +7,8 @@ import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useCashFlowCategories, type CashFlowCategory } from '@/hooks/useCashFlow';
 import { Plus, Trash2, Edit, TrendingUp, TrendingDown } from 'lucide-react';
-import { InPageNav, fluxoCaixaNavTabs } from '@/components/layout/InPageNav';
+import { fluxoCaixaNavTabs } from '@/components/layout/InPageNav';
+import { PageHeader } from '@/components/layout/PageHeader';
 import {
   Dialog,
   DialogContent,
@@ -34,6 +33,10 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+
+// Superfície de cartão da área interna — mesma família visual do .glass-card
+// da landing, calibrada pra densidade (ver .app-card em index.css).
+const CARD = 'app-card bg-card border-transparent';
 
 const PRESET_COLORS = [
   '#10B981', '#3B82F6', '#8B5CF6', '#EC4899', 
@@ -144,29 +147,25 @@ function FluxoCaixaCategoriasContent() {
   );
 
   return (
-    <AppLayout title="Fluxo de Caixa">
-      <InPageNav tabs={fluxoCaixaNavTabs} />
-      <div className="space-y-6">
-        {/* Header */}
-        <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-3xl font-bold text-foreground">Categorias</h1>
-            <p className="text-muted-foreground">
-              Gerencie as categorias de entradas e saídas
-            </p>
-          </div>
+    <>
+      <PageHeader
+        title="Categorias"
+        subtitle="Gerencie as categorias de entradas e saídas"
+        action={
           <Button onClick={() => handleOpenDialog()}>
             <Plus className="h-4 w-4 mr-2" />
             Nova Categoria
           </Button>
-        </div>
-
+        }
+        tabs={fluxoCaixaNavTabs}
+      />
+      <div className="space-y-6">
         <div className="grid gap-6 md:grid-cols-2">
           {/* Income Categories */}
-          <Card>
+          <Card className={CARD}>
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
-                <TrendingUp className="h-5 w-5 text-green-600" />
+                <TrendingUp className="h-5 w-5 text-success" />
                 Categorias de Entrada
               </CardTitle>
               <CardDescription>
@@ -193,10 +192,10 @@ function FluxoCaixaCategoriasContent() {
           </Card>
 
           {/* Expense Categories */}
-          <Card>
+          <Card className={CARD}>
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
-                <TrendingDown className="h-5 w-5 text-red-600" />
+                <TrendingDown className="h-5 w-5 text-destructive" />
                 Categorias de Saída
               </CardTitle>
               <CardDescription>
@@ -309,14 +308,8 @@ function FluxoCaixaCategoriasContent() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-    </AppLayout>
+    </>
   );
 }
 
-export default function FluxoCaixaCategorias() {
-  return (
-    <ProtectedRoute>
-      <FluxoCaixaCategoriasContent />
-    </ProtectedRoute>
-  );
-}
+export default FluxoCaixaCategoriasContent;

@@ -8,28 +8,34 @@
 
 @layer base {
   :root {
-    --background: 210 40% 98%;
-    --foreground: 222 47% 11%;
+    /* "Continuidade de marca" — tokens do app interno (pós-login). O canvas
+       de conteúdo continua claro (leitura de dados densos vem primeiro),
+       mas o azul de marca agora é o mesmo #318EF1 exato da landing (era um
+       azul próximo, não idêntico) e a sidebar/topbar (ver --sidebar-* logo
+       abaixo) migraram pro navy #0A1628 da landing — o "chrome" do produto
+       carrega a marca, o conteúdo continua neutro pra não atrapalhar leitura. */
+    --background: 220 22% 97%;
+    --foreground: 220 31% 11%;
 
     --card: 0 0% 100%;
-    --card-foreground: 222 47% 11%;
+    --card-foreground: 220 31% 11%;
 
     --popover: 0 0% 100%;
-    --popover-foreground: 222 47% 11%;
+    --popover-foreground: 220 31% 11%;
 
     --primary: 211 87% 57%;
     --primary-foreground: 0 0% 100%;
 
-    --secondary: 210 40% 96%;
-    --secondary-foreground: 222 47% 11%;
+    --secondary: 220 20% 96%;
+    --secondary-foreground: 220 31% 11%;
 
-    --muted: 210 40% 96%;
-    --muted-foreground: 215 16% 47%;
+    --muted: 220 20% 96%;
+    --muted-foreground: 220 9% 42%;
 
-    --accent: 210 40% 96%;
-    --accent-foreground: 222 47% 11%;
+    --accent: 217 100% 97%;
+    --accent-foreground: 217 77% 45%;
 
-    --destructive: 0 84% 60%;
+    --destructive: 0 72% 51%;
     --destructive-foreground: 0 0% 100%;
 
     --border: 214 32% 91%;
@@ -44,25 +50,33 @@
     --gold-light: 42 77% 60%;
     --gold-foreground: 216 60% 10%;
 
-    /* Sidebar */
-    --sidebar-background: 0 0% 100%;
-    --sidebar-foreground: 222 47% 11%;
-    --sidebar-primary: 217 91% 60%;
+    /* Sidebar/topbar — mesma superfície quase-branca do conteúdo, diferenciada
+       só por uma borda fina (ver AppSidebar.tsx). --sidebar-primary/-ring
+       seguem o azul de marca unificado (#318EF1) — isso é cor de conteúdo,
+       não do chrome, então fica igual ao resto do app. */
+    --sidebar-background: 220 20% 99%;
+    --sidebar-foreground: 220 9% 42%;
+    --sidebar-primary: 211 87% 57%;
     --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 210 40% 96%;
-    --sidebar-accent-foreground: 222 47% 11%;
-    --sidebar-border: 214 32% 91%;
-    --sidebar-ring: 217 91% 60%;
+    --sidebar-accent: 217 100% 97%;
+    --sidebar-accent-foreground: 217 77% 45%;
+    --sidebar-border: 220 20% 93%;
+    --sidebar-ring: 211 87% 57%;
 
     /* Semantic colors */
-    --finance-blue: 217 91% 60%;
-    --finance-blue-light: 217 92% 95%;
-    --finance-blue-dark: 224 76% 48%;
-    --success: 142 72% 29%;
+    --finance-blue: 211 87% 57%;
+    --finance-blue-light: 211 95% 95%;
+    --finance-blue-dark: 217 77% 45%;
+    --success: 160 84% 34%;
     --success-foreground: 0 0% 100%;
     --warning: 38 92% 50%;
     --warning-foreground: 0 0% 15%;
-    --info: 217 92% 76%;
+    --info: 211 95% 76%;
+
+    /* Acento dourado — reservado pro GrowthEcho e momentos de conquista
+       (marco de onboarding batido, delta positivo em destaque). Não entra
+       na rotação de --chart-* pra não perder o significado de "chegada". */
+    --accent-gold: 35 78% 62%;
 
     --chart-1: 217 91% 60%;
     --chart-2: 142 72% 29%;
@@ -139,6 +153,14 @@
     --shadow-xl: 0 20px 25px -5px hsl(0 0% 0% / 0.15), 0 8px 10px -6px hsl(0 0% 0% / 0.15);
     --shadow-2xl: 0 25px 50px -12px hsl(0 0% 0% / 0.35);
   }
+
+  /* Escopo do app interno — raio um pouco mais contido (14px) que o resto
+     do site (1rem), sem mexer no --radius global. Ponto médio deliberado:
+     mantém a densidade que telas de tabela pedem, mas sem o "quadrado
+     técnico" de antes (10px), que já não combina com o chrome de marca. */
+  .app-shell {
+    --radius: 0.875rem;
+  }
 }
 
 @layer base {
@@ -150,6 +172,15 @@
     @apply bg-background text-foreground antialiased;
     font-family: 'Inter', system-ui, -apple-system, sans-serif;
   }
+}
+
+/* App interno usa uma família só (Inter) em título e corpo — landing/auth
+   mantêm Space Grotesk nos títulos como parte da identidade própria delas.
+   Sobrescreve .font-display (Tailwind utility) só dentro do .app-shell;
+   precisa ficar fora de @layer pra vencer a utility do Tailwind pela
+   especificidade (duas classes) sem depender da ordem das camadas. */
+.app-shell .font-display {
+  font-family: 'Inter', ui-sans-serif, system-ui, -apple-system, sans-serif;
 }
 
 /* Premium icon styles */
@@ -199,7 +230,7 @@ input[type="number"] {
     }
   }
 
-  /* Section backgrounds */
+  /* Fundo navy — usado pelo shell de auth pra herdar a identidade da landing */
   .section-dark {
     background-color: hsl(var(--navy));
     color: oklch(0.97 0.005 240);
@@ -306,9 +337,32 @@ input[type="number"] {
     text-decoration: none;
   }
 
-  .btn-outline-white:hover {
-    background-color: white;
-    color: oklch(0.16 0.04 240);
+  /* ── Superfícies de vidro — landing vive num único fundo navy, então os
+     "cards" precisam de textura própria (blur + borda em gradiente) em vez
+     de depender de uma troca de cor de fundo pra se destacar. ── */
+
+  /* Painel escuro e sutil — pra conteúdo que continua com texto claro
+     (steps, accordion, FAQ) flutuando sobre o navy. */
+  .glass-panel {
+    position: relative;
+    background: rgba(255, 255, 255, 0.04);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    box-shadow: inset 0 1px 1px rgba(255, 255, 255, 0.08);
+  }
+
+  .glass-panel::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    padding: 1px;
+    background: linear-gradient(135deg, rgba(255, 255, 255, 0.18), rgba(255, 255, 255, 0) 45%, rgba(255, 255, 255, 0) 55%, rgba(255, 255, 255, 0.1));
+    -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+    mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+    -webkit-mask-composite: xor;
+    mask-composite: exclude;
+    pointer-events: none;
   }
 
   /* Animate on scroll */
@@ -318,14 +372,101 @@ input[type="number"] {
     transition: opacity 0.6s cubic-bezier(0.16, 1, 0.3, 1), transform 0.6s cubic-bezier(0.16, 1, 0.3, 1);
   }
 
-  .animate-fade-up.visible {
-    opacity: 1;
-    transform: translateY(0);
+  /* Painel claro — pra conteúdo que precisa de texto escuro legível
+     (mockups de produto, cards de preço) flutuando sobre o navy. */
+  .glass-card {
+    position: relative;
+    background: rgba(255, 255, 255, 0.96);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    box-shadow: 0 8px 10px -6px rgba(10, 22, 40, 0.25), 0 30px 60px -20px rgba(10, 22, 40, 0.5),
+      inset 0 1px 1px rgba(255, 255, 255, 0.9);
   }
 
-  /* Cyan glow effect */
-  .cyan-glow {
-    box-shadow: 0 0 40px oklch(0.65 0.18 210 / 0.3);
+  .glass-card::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    padding: 1px;
+    background: linear-gradient(135deg, rgba(255, 255, 255, 0.9), rgba(255, 255, 255, 0) 40%, rgba(255, 255, 255, 0) 60%, rgba(255, 255, 255, 0.5));
+    -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+    mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+    -webkit-mask-composite: xor;
+    mask-composite: exclude;
+    pointer-events: none;
+  }
+
+  /* Cartão da área interna (dashboards) — substitui o antigo .app-card
+     ("Fintech Precisa", borda quase invisível + sombra achatada). Sombra
+     tingida de navy (não preto puro) é a assinatura de marca discreta;
+     .panel-interactive é a única situação em que a cor "atua" no estado de
+     repouso das telas densas, via hover, pra não pintar permanentemente uma
+     tabela de resultados. .app-card/.app-card-quiet seguem funcionando como
+     alias durante a migração (páginas trocam a classe fase a fase) — ver
+     plano de redesenho, fase de limpeza remove os aliases no final. */
+  .panel,
+  .app-card {
+    position: relative;
+    border-radius: var(--radius);
+    background: hsl(var(--card));
+    box-shadow: 0 1px 2px rgba(10, 22, 40, 0.04), 0 8px 24px -14px rgba(10, 22, 40, 0.1);
+    transition: box-shadow 180ms cubic-bezier(0.16, 1, 0.3, 1),
+      border-color 180ms cubic-bezier(0.16, 1, 0.3, 1),
+      transform 180ms cubic-bezier(0.16, 1, 0.3, 1);
+  }
+
+  .panel::before,
+  .app-card::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    padding: 1px;
+    background: hsl(var(--border) / 0.7);
+    -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+    mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+    -webkit-mask-composite: xor;
+    mask-composite: exclude;
+    pointer-events: none;
+  }
+
+  /* Opt-in — só pra cards clicáveis/navegáveis (não todo .panel por padrão). */
+  .panel-interactive:hover {
+    box-shadow: 0 1px 2px rgba(10, 22, 40, 0.04), 0 16px 36px -16px rgba(49, 142, 241, 0.22);
+    transform: translateY(-1px);
+  }
+
+  .panel-interactive:hover::before {
+    background: hsl(var(--primary) / 0.28);
+  }
+
+  /* Variante "quieta" — pra conteúdo de segundo plano (detalhe, não a
+     informação principal da tela). Mesma borda fina, sem sombra nenhuma,
+     reforça a hierarquia em vez de competir com o card principal. */
+  .panel-quiet,
+  .app-card-quiet {
+    box-shadow: none;
+  }
+
+  /* Opt-in — hairline azul→dourado no topo, reservado pra momentos de
+     destaque (hero do dashboard, onboarding, empty state) — não é o padrão
+     de todo .panel, ver GrowthEcho. Funciona sozinho (não depende de
+     .panel estar na mesma classe — ex. OnboardingChecklist mantém sua
+     própria borda tracejada e só pega o hairline daqui) e usa ::after (não
+     ::before, que já é a borda em máscara do .panel) pra não conflitar
+     quando as duas classes aparecem juntas. */
+  .panel-accent {
+    position: relative;
+  }
+
+  .panel-accent::after {
+    content: "";
+    position: absolute;
+    inset: 0 0 auto 0;
+    height: 2px;
+    border-radius: var(--radius) var(--radius) 0 0;
+    background: linear-gradient(90deg, hsl(var(--primary)), hsl(var(--accent-gold)));
   }
 
   /* Label badge */

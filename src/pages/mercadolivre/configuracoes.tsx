@@ -1,8 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
-import { AppLayout } from '@/components/layout/AppLayout';
-import { ProtectedRoute } from '@/components/layout/ProtectedRoute';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -23,7 +21,8 @@ import {
   AlertDialogTrigger,
 } from '@/components/ui/alert-dialog';
 import { z } from 'zod';
-import { InPageNav, mercadolivreNavTabs } from '@/components/layout/InPageNav';
+import { mercadolivreNavTabs } from '@/components/layout/InPageNav';
+import { PageHeader } from '@/components/layout/PageHeader';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 interface MLSettingsData {
@@ -306,19 +305,18 @@ function ConfiguracoesContent() {
   // ── Render ────────────────────────────────────────────────────────────────
   return (
     <div className="space-y-6 animate-fade-in">
-      {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-        <div>
-          <h2 className="text-2xl font-bold">Configurações Financeiras</h2>
-          <p className="text-muted-foreground">
-            Defina os parâmetros de cálculo para suas vendas no Mercado Livre
-          </p>
-        </div>
-        <Button onClick={handleNewSettings}>
-          <Plus className="h-4 w-4 mr-2" />
-          Nova Configuração
-        </Button>
-      </div>
+      <PageHeader
+        icon={Settings}
+        title="Configurações Financeiras"
+        subtitle="Defina os parâmetros de cálculo para suas vendas no Mercado Livre"
+        action={
+          <Button onClick={handleNewSettings}>
+            <Plus className="h-4 w-4 mr-2" />
+            Nova Configuração
+          </Button>
+        }
+        tabs={mercadolivreNavTabs}
+      />
 
       <div className="grid gap-6 lg:grid-cols-4">
         {/* Settings List */}
@@ -530,13 +528,4 @@ function ConfiguracoesContent() {
   );
 }
 
-export default function MercadoLivreConfiguracoes() {
-  return (
-    <ProtectedRoute>
-      <AppLayout title="Gestão Mercado Livre">
-        <InPageNav tabs={mercadolivreNavTabs} />
-        <ConfiguracoesContent />
-      </AppLayout>
-    </ProtectedRoute>
-  );
-}
+export default ConfiguracoesContent;

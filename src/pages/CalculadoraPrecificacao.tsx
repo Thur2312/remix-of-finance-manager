@@ -1,7 +1,6 @@
 import React, { useState, useMemo, useEffect } from "react";
 import { Link } from "react-router-dom";
-import { ProtectedRoute } from "@/components/layout/ProtectedRoute";
-import { AppLayout } from "@/components/layout/AppLayout";
+import { PageHeader } from "@/components/layout/PageHeader";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Alert, AlertDescription } from "@/components/ui/alert";
@@ -883,7 +882,7 @@ function CalculadoraPrecificacaoContent() {
                     onClick={() => setMlTipoAnuncio(opt.value)}
                     className={`flex-1 px-2 py-1 rounded-md border text-xs font-medium transition-all ${
                       mlTipoAnuncio === opt.value
-                        ? "bg-blue-500/10 border-blue-500/40 text-blue-700 dark:text-blue-300"
+                        ? "bg-blue-500/10 border-blue-500/40 text-blue-700"
                         : "border-border bg-background text-muted-foreground hover:bg-muted"
                     }`}>
                     {opt.label}
@@ -1028,20 +1027,15 @@ function CalculadoraPrecificacaoContent() {
 
   // ══════════════════════════════════════════════════════════════════════════
   return (
-    <AppLayout>
+    <>
       <TooltipProvider>
         <div className="max-w-5xl mx-auto space-y-6">
 
-          {/* ── Header ───────────────────────────────────────────────────── */}
-          <div className="text-center">
-            <h1 className="text-2xl font-bold tracking-tight flex items-center justify-center gap-2">
-              <Calculator className="h-6 w-6 text-primary" />
-              Calculadora de Precificação
-            </h1>
-            <p className="text-muted-foreground mt-1">
-              Análise completa com Margem de Contribuição e Absorção de Custos Fixos
-            </p>
-          </div>
+          <PageHeader
+            icon={Calculator}
+            title="Calculadora de Precificação"
+            subtitle="Análise completa com Margem de Contribuição e Absorção de Custos Fixos"
+          />
 
           {/* ── Banner custos fixos ───────────────────────────────────────── */}
           {isLoadingCosts ? (
@@ -1118,10 +1112,10 @@ function CalculadoraPrecificacaoContent() {
                     onChange={e => handleDecimalInput(e.target.value, setFaturamentoTotal)} placeholder="0,00" className="h-11" />
                 </div>
                 <div className={`flex items-start gap-2 p-3 rounded-lg text-sm ${panorama.fat >= panorama.breakEven && panorama.fat > 0
-                  ? "bg-green-500/10 border border-green-500/20 text-green-700 dark:text-green-300"
+                  ? "bg-success/10 border border-success/20 text-success"
                   : "bg-muted/50 border border-border text-muted-foreground"}`}>
                   {panorama.fat >= panorama.breakEven && panorama.fat > 0
-                    ? <CheckCircle2 className="h-4 w-4 mt-0.5 flex-shrink-0 text-green-600" />
+                    ? <CheckCircle2 className="h-4 w-4 mt-0.5 flex-shrink-0 text-success" />
                     : <Info className="h-4 w-4 mt-0.5 flex-shrink-0" />}
                   <span>
                     {panorama.fat > 0
@@ -1157,7 +1151,7 @@ function CalculadoraPrecificacaoContent() {
                 </div>
                 <div className="flex items-center justify-between">
                   <span className="text-sm text-muted-foreground">Margem gerada ({formatPercent(panorama.margemPct)}):</span>
-                  <span className="text-lg font-semibold text-green-600">{formatCurrency(panorama.margemGerada)}</span>
+                  <span className="text-lg font-semibold text-success">{formatCurrency(panorama.margemGerada)}</span>
                 </div>
                 <div className="flex items-center justify-between">
                   <span className="text-sm text-muted-foreground">Custos fixos:</span>
@@ -1167,7 +1161,7 @@ function CalculadoraPrecificacaoContent() {
                 <div className="space-y-1">
                   <span className="text-sm text-muted-foreground">Resultado líquido:</span>
                   <div className="flex items-end gap-2">
-                    <span className={`text-2xl font-bold font-mono tracking-tight ${panorama.lucrativo ? "text-green-600" : "text-destructive"}`}>
+                    <span className={`text-2xl font-bold font-mono tracking-tight ${panorama.lucrativo ? "text-success" : "text-destructive"}`}>
                       {formatCurrency(panorama.resultadoLiquido)}
                     </span>
                     <span className="text-sm text-muted-foreground pb-0.5">({panorama.margemLiquidaPct.toFixed(2)}%)</span>
@@ -1176,7 +1170,7 @@ function CalculadoraPrecificacaoContent() {
                 <div className="space-y-1">
                   <div className="flex justify-between text-xs text-muted-foreground">
                     <span>Status:{" "}
-                      <span className={panorama.lucrativo ? "text-green-600 font-medium" : "text-destructive font-medium"}>
+                      <span className={panorama.lucrativo ? "text-success font-medium" : "text-destructive font-medium"}>
                         {panorama.fat === 0 ? "—" : panorama.lucrativo ? "Operação lucrativa" : "Operação deficitária"}
                       </span>
                     </span>
@@ -1186,7 +1180,7 @@ function CalculadoraPrecificacaoContent() {
                 </div>
                 {panorama.fat > 0 && (
                   <div className={`p-3 rounded-lg text-xs ${panorama.lucrativo
-                    ? "bg-green-500/10 border border-green-500/20 text-green-700 dark:text-green-300"
+                    ? "bg-success/10 border border-success/20 text-success"
                     : "bg-destructive/10 border border-destructive/20 text-destructive"}`}>
                     {panorama.lucrativo
                       ? "Sua operação cobre os custos fixos e está gerando lucro."
@@ -1241,7 +1235,7 @@ function CalculadoraPrecificacaoContent() {
                           onClick={() => setMlTipoAnuncio(opt.value)}
                           className={`flex flex-col items-start px-3 py-1.5 rounded-lg border text-xs font-medium transition-all ${
                             mlTipoAnuncio === opt.value
-                              ? "bg-blue-500/10 border-blue-500/40 text-blue-700 dark:text-blue-300 ring-1 ring-blue-500/40"
+                              ? "bg-blue-500/10 border-blue-500/40 text-blue-700 ring-1 ring-blue-500/40"
                               : "border-border bg-background text-muted-foreground hover:bg-muted"
                           }`}>
                           <span className="flex items-center gap-1.5">
@@ -1589,9 +1583,9 @@ function CalculadoraPrecificacaoContent() {
                    alerta.tipo === "aviso"    ? <AlertCircle className="h-4 w-4 text-orange-600" /> :
                    <Lightbulb className="h-4 w-4 text-blue-600" />}
                   <AlertDescription className={
-                    alerta.tipo === "alerta" ? "text-yellow-800 dark:text-yellow-200" :
-                    alerta.tipo === "aviso"  ? "text-orange-800 dark:text-orange-200" :
-                    alerta.tipo === "info"   ? "text-blue-800 dark:text-blue-200" : ""
+                    alerta.tipo === "alerta" ? "text-yellow-800" :
+                    alerta.tipo === "aviso"  ? "text-orange-800" :
+                    alerta.tipo === "info"   ? "text-blue-800" : ""
                   }>
                     {alerta.mensagem}
                   </AlertDescription>
@@ -1623,18 +1617,18 @@ function CalculadoraPrecificacaoContent() {
                   {cenarios.melhor && (
                     <div className={`flex flex-wrap items-center justify-between gap-3 rounded-lg border p-4 ${
                       cenarios.melhor.viavel
-                        ? "border-green-500/30 bg-green-500/5"
+                        ? "border-success/30 bg-success/5"
                         : "border-destructive/30 bg-destructive/5"
                     }`}>
                       <div className="flex items-center gap-3">
-                        <Crown className={`h-6 w-6 ${cenarios.melhor.viavel ? "text-green-600" : "text-destructive"}`} />
+                        <Crown className={`h-6 w-6 ${cenarios.melhor.viavel ? "text-success" : "text-destructive"}`} />
                         <div>
                           <p className="text-xs text-muted-foreground uppercase tracking-wide">Melhor cenário</p>
                           <p className={`text-lg font-bold leading-tight ${cenarios.melhor.color}`}>{cenarios.melhor.label}</p>
                         </div>
                       </div>
                       <div className="text-right">
-                        <p className={`text-2xl font-bold font-mono leading-tight ${cenarios.melhor.viavel ? "text-green-600" : "text-destructive"}`}>
+                        <p className={`text-2xl font-bold font-mono leading-tight ${cenarios.melhor.viavel ? "text-success" : "text-destructive"}`}>
                           {formatCurrency(cenarios.melhor.lucro)}
                         </p>
                         <p className="text-xs text-muted-foreground">
@@ -1660,7 +1654,7 @@ function CalculadoraPrecificacaoContent() {
                               <Badge variant="outline" className="font-normal text-[10px] shrink-0">{c.detalhe}</Badge>
                             </div>
                             <div className="flex items-center gap-4 shrink-0">
-                              <span className={`text-sm font-bold font-mono tabular-nums ${c.lucro >= 0 ? "text-green-600" : "text-destructive"}`}>
+                              <span className={`text-sm font-bold font-mono tabular-nums ${c.lucro >= 0 ? "text-success" : "text-destructive"}`}>
                                 {formatCurrency(c.lucro)}
                               </span>
                               <span className={`text-sm font-semibold font-mono tabular-nums w-16 text-right ${c.margem >= 0 ? "text-primary" : "text-destructive"}`}>
@@ -1688,10 +1682,10 @@ function CalculadoraPrecificacaoContent() {
 
           {/* ── Três análises ─────────────────────────────────────────────── */}
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-            <Card className={`border-2 ${results.produtoViavel ? "border-green-500/30 bg-green-500/5" : "border-destructive/30 bg-destructive/5"}`}>
+            <Card className={`border-2 ${results.produtoViavel ? "border-success/30 bg-success/5" : "border-destructive/30 bg-destructive/5"}`}>
               <CardHeader className="pb-3">
                 <div className="flex items-center gap-2">
-                  {results.produtoViavel ? <CheckCircle2 className="h-5 w-5 text-green-600" /> : <XCircle className="h-5 w-5 text-destructive" />}
+                  {results.produtoViavel ? <CheckCircle2 className="h-5 w-5 text-success" /> : <XCircle className="h-5 w-5 text-destructive" />}
                   <CardTitle className="text-base">Análise de Viabilidade</CardTitle>
                   <Tooltip>
                     <TooltipTrigger asChild>
@@ -1717,15 +1711,15 @@ function CalculadoraPrecificacaoContent() {
                 </div>
                 <div className="border-t pt-4 text-center">
                   <p className="text-xs text-muted-foreground mb-1">Margem de Contribuição</p>
-                  <p className={`text-2xl font-bold font-mono ${results.produtoViavel ? "text-green-600" : "text-destructive"}`}>
+                  <p className={`text-2xl font-bold font-mono ${results.produtoViavel ? "text-success" : "text-destructive"}`}>
                     {formatCurrency(results.margemContribuicao)}
                   </p>
-                  <Badge variant={results.produtoViavel ? "default" : "destructive"} className={results.produtoViavel ? "bg-green-600 hover:bg-green-700 mt-1" : "mt-1"}>
+                  <Badge variant={results.produtoViavel ? "default" : "destructive"} className={results.produtoViavel ? "bg-success hover:bg-success/90 mt-1" : "mt-1"}>
                     {formatPercent(results.margemContribuicaoPercent)}
                   </Badge>
                 </div>
-                <div className={`p-3 rounded-lg ${results.produtoViavel ? "bg-green-500/10" : "bg-destructive/10"}`}>
-                  <p className={`text-xs text-center ${results.produtoViavel ? "text-green-700 dark:text-green-300" : "text-destructive"}`}>
+                <div className={`p-3 rounded-lg ${results.produtoViavel ? "bg-success/10" : "bg-destructive/10"}`}>
+                  <p className={`text-xs text-center ${results.produtoViavel ? "text-success" : "text-destructive"}`}>
                     {results.produtoViavel ? "✅ Este produto ajuda a pagar os custos fixos da empresa." : "❌ Produto não cobre os custos variáveis. Inviável!"}
                   </p>
                 </div>
@@ -1761,7 +1755,7 @@ function CalculadoraPrecificacaoContent() {
                   </Badge>
                 </div>
                 <div className="p-3 bg-blue-500/10 rounded-lg">
-                  <p className="text-xs text-center text-blue-700 dark:text-blue-300">
+                  <p className="text-xs text-center text-blue-700">
                     💡 Cenário realista para produto {papelProduto === "novo" ? "novo/teste" : papelProduto === "complementar" ? "complementar" : "principal"}.
                   </p>
                 </div>
@@ -2012,7 +2006,7 @@ function CalculadoraPrecificacaoContent() {
                               </div>
                             </td>
                             <td className="pt-2 w-[88px]">
-                              <div className={`${cellBase} px-2 justify-end font-semibold tabular-nums whitespace-nowrap ${lucro >= 0 ? "text-green-600" : "text-destructive"}`}>
+                              <div className={`${cellBase} px-2 justify-end font-semibold tabular-nums whitespace-nowrap ${lucro >= 0 ? "text-success" : "text-destructive"}`}>
                                 {formatCurrency(lucro)}
                               </div>
                             </td>
@@ -2123,14 +2117,8 @@ function CalculadoraPrecificacaoContent() {
         </div>
         <br />
       </TooltipProvider>
-    </AppLayout>
+    </>
   );
 }
 
-export default function CalculadoraPrecificacao() {
-  return (
-    <ProtectedRoute>
-      <CalculadoraPrecificacaoContent />
-    </ProtectedRoute>
-  );
-}
+export default CalculadoraPrecificacaoContent;

@@ -1,8 +1,6 @@
 import { useState, useEffect, useMemo, useCallback } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
-import { AppLayout } from '@/components/layout/AppLayout';
-import { ProtectedRoute } from '@/components/layout/ProtectedRoute';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -21,7 +19,6 @@ import {
   DollarSign,
   Layers,
   AlertCircle,
-  Filter,
   Edit,
   X,
   Megaphone,
@@ -30,7 +27,14 @@ import { TikTokSettingsData, TikTokOrder, calculateTikTokResults, formatCurrency
 import { fetchAllTikTokOrders } from '@/lib/tiktok-helpers';
 import { EditableCostCell } from '@/components/EditableCostCell';
 import { ResultsCharts } from '@/components/charts/ResultsCharts';
-import { InPageNav, tiktokNavTabs } from '@/components/layout/InPageNav';
+import { tiktokNavTabs } from '@/components/layout/InPageNav';
+import { PageHeader } from '@/components/layout/PageHeader';
+import { FiltersCard } from '@/components/layout/FiltersCard';
+import { EmptyResultsState } from '@/components/layout/EmptyResultsState';
+
+// Superfície de cartão da área interna — mesma família visual do .glass-card
+// da landing, calibrada pra densidade (ver .app-card em index.css).
+const CARD = 'app-card bg-card border-transparent';
 
 function TikTokVariacoesContent() {
   const { user } = useAuth();
@@ -248,15 +252,15 @@ function TikTokVariacoesContent() {
         title: 'Total Faturado',
         value: formatCurrency(totals.total_faturado),
         icon: DollarSign,
-        color: 'text-blue-500',
-        bg: 'bg-blue-500/10',
+        color: 'text-primary',
+        bg: 'bg-primary/10',
       },
       {
         title: 'Total a Receber',
         value: formatCurrency(totals.total_a_receber),
         icon: DollarSign,
-        color: 'text-green-500',
-        bg: 'bg-green-500/10',
+        color: 'text-success',
+        bg: 'bg-success/10',
       },
       {
         title: 'Lucro Líquido',
@@ -280,15 +284,15 @@ function TikTokVariacoesContent() {
         title: 'Gasto com Ads',
         value: formatCurrency(totals.gasto_ads),
         icon: Megaphone,
-        color: 'text-orange-500',
-        bg: 'bg-orange-500/10',
+        color: 'text-warning',
+        bg: 'bg-warning/10',
       });
     }
 
     return (
       <div className={cn('grid gap-4', totals.gasto_ads > 0 ? 'md:grid-cols-5' : 'md:grid-cols-4')}>
         {cards.map((card) => (
-          <Card key={card.title}>
+          <Card key={card.title} className={CARD}>
             <CardContent className="pt-6">
               <div className="flex items-center justify-between">
                 <div>
@@ -310,40 +314,30 @@ function TikTokVariacoesContent() {
   };
 
   const renderFilters = () => (
-    <Card>
-      <CardHeader className="pb-4">
-        <CardTitle className="text-base flex items-center gap-2">
-          <Filter className="h-4 w-4" />
-          Filtros
-        </CardTitle>
-      </CardHeader>
-      <CardContent>
-        <div className="flex flex-wrap gap-4 items-end">
-          <div className="space-y-2">
-            <Label>Configuração</Label>
-            <Select value={selectedSettingsId} onValueChange={handleSettingsChange}>
-              <SelectTrigger className="w-[200px]">
-                <SelectValue placeholder="Selecionar configuração" />
-              </SelectTrigger>
-              <SelectContent>
-                {allSettings.map((s) => (
-                  <SelectItem key={s.id} value={s.id}>
-                    {s.name} {s.is_default && '(Padrão)'}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
+    <FiltersCard>
+      <div className="space-y-2">
+        <Label>Configuração</Label>
+        <Select value={selectedSettingsId} onValueChange={handleSettingsChange}>
+          <SelectTrigger className="w-[200px]">
+            <SelectValue placeholder="Selecionar configuração" />
+          </SelectTrigger>
+          <SelectContent>
+            {allSettings.map((s) => (
+              <SelectItem key={s.id} value={s.id}>
+                {s.name} {s.is_default && '(Padrão)'}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </div>
 
-          {calculatedResults && calculatedResults.groups.length > 0 && (
-            <Button onClick={handleExport} variant="outline">
-              <Download className="h-4 w-4 mr-2" />
-              Exportar CSV
-            </Button>
-          )}
-        </div>
-      </CardContent>
-    </Card>
+      {calculatedResults && calculatedResults.groups.length > 0 && (
+        <Button onClick={handleExport} variant="outline">
+          <Download className="h-4 w-4 mr-2" />
+          Exportar CSV
+        </Button>
+      )}
+    </FiltersCard>
   );
 
   const renderBatchActions = () => {
@@ -413,23 +407,13 @@ function TikTokVariacoesContent() {
 
   const renderResultsTable = () => {
     if (!calculatedResults || calculatedResults.groups.length === 0) {
-      return (
-        <Card>
-          <CardContent className="py-12 text-center">
-            <AlertCircle className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
-            <h3 className="font-semibold text-lg">Nenhum resultado encontrado</h3>
-            <p className="text-muted-foreground mt-2">
-              Ajuste os filtros ou faça upload de pedidos para visualizar os resultados.
-            </p>
-          </CardContent>
-        </Card>
-      );
+      return <EmptyResultsState />;
     }
 
     const { groups, totals } = calculatedResults;
 
     return (
-      <Card>
+      <Card className={CARD}>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <Layers className="h-5 w-5 text-primary" />
@@ -543,7 +527,7 @@ function TikTokVariacoesContent() {
 
   if (allSettings.length === 0) {
     return (
-      <Card className="max-w-md mx-auto">
+      <Card className={`${CARD} max-w-md mx-auto`}>
         <CardContent className="py-12 text-center">
           <AlertCircle className="h-12 w-12 mx-auto text-warning mb-4" />
           <h3 className="font-semibold text-lg">Configuração Necessária</h3>
@@ -572,11 +556,9 @@ function TikTokVariacoesContent() {
 
 export default function TikTokVariacoes() {
   return (
-    <ProtectedRoute>
-      <AppLayout title="Gestão TikTok">
-        <InPageNav tabs={tiktokNavTabs} />
-        <TikTokVariacoesContent />
-      </AppLayout>
-    </ProtectedRoute>
+    <>
+      <PageHeader tabs={tiktokNavTabs} />
+      <TikTokVariacoesContent />
+    </>
   );
 }

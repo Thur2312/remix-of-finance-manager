@@ -53,8 +53,8 @@ export function DRESummaryCards({ data }: DRESummaryCardsProps) {
     title: 'Receita Bruta',
     value: formatCurrency(data.receitaBrutaTotal),
     icon: DollarSign,
-    color: 'text-blue-600 dark:text-blue-400',
-    bgColor: 'bg-blue-50 dark:bg-blue-950/30',
+    color: 'text-blue-600',
+    bgColor: 'bg-blue-50',
     visible: true
   },
   {
@@ -66,8 +66,8 @@ export function DRESummaryCards({ data }: DRESummaryCardsProps) {
     `(-) Impostos: ${formatCurrency(data.impostosSobreVendasTotal)}` :
     undefined,
     icon: Calculator,
-    color: 'text-indigo-600 dark:text-indigo-400',
-    bgColor: 'bg-indigo-50 dark:bg-indigo-950/30',
+    color: 'text-indigo-600',
+    bgColor: 'bg-indigo-50',
     tooltip: receitasDiferencaPequena ?
     'Diferença pequena devido à baixa incidência de impostos e ajustes neste período.' :
     undefined,
@@ -78,8 +78,8 @@ export function DRESummaryCards({ data }: DRESummaryCardsProps) {
     value: formatCurrency(data.lucroBruto),
     subtitle: `Margem: ${formatPercent(data.margemBruta)}`,
     icon: Package,
-    color: data.lucroBruto >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-600 dark:text-red-400',
-    bgColor: data.lucroBruto >= 0 ? 'bg-emerald-50 dark:bg-emerald-950/30' : 'bg-red-50 dark:bg-red-950/30',
+    color: data.lucroBruto >= 0 ? 'text-emerald-600' : 'text-red-600',
+    bgColor: data.lucroBruto >= 0 ? 'bg-emerald-50' : 'bg-red-50',
     visible: true
   },
   {
@@ -87,8 +87,8 @@ export function DRESummaryCards({ data }: DRESummaryCardsProps) {
     value: formatCurrency(data.margemContribuicao),
     subtitle: `${formatPercent(data.percentualMargemContribuicao)} da receita`,
     icon: Target,
-    color: data.margemContribuicao >= 0 ? 'text-teal-600 dark:text-teal-400' : 'text-red-600 dark:text-red-400',
-    bgColor: data.margemContribuicao >= 0 ? 'bg-teal-50 dark:bg-teal-950/30' : 'bg-red-50 dark:bg-red-950/30',
+    color: data.margemContribuicao >= 0 ? 'text-teal-600' : 'text-red-600',
+    bgColor: data.margemContribuicao >= 0 ? 'bg-teal-50' : 'bg-red-50',
     highlight: !margemIgualLucroBruto, // Só destaca se for diferente do Lucro Bruto
     tooltip: margemIgualLucroBruto ?
     'Igual ao Lucro Bruto pois não há custos variáveis operacionais neste período.' :
@@ -102,8 +102,8 @@ export function DRESummaryCards({ data }: DRESummaryCardsProps) {
     `${data.diasPeriodo} dias (prorrateado)` :
     'Mensal',
     icon: Wallet,
-    color: 'text-orange-600 dark:text-orange-400',
-    bgColor: 'bg-orange-50 dark:bg-orange-950/30',
+    color: 'text-orange-600',
+    bgColor: 'bg-orange-50',
     visible: true
   },
   {
@@ -114,8 +114,8 @@ export function DRESummaryCards({ data }: DRESummaryCardsProps) {
     'Resultado final do período' :
     `Margem: ${formatPercent(data.margemOperacional)}`,
     icon: data.lucroOperacional >= 0 ? TrendingUp : TrendingDown,
-    color: data.lucroOperacional >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400',
-    bgColor: data.lucroOperacional >= 0 ? 'bg-green-50 dark:bg-green-950/30' : 'bg-red-50 dark:bg-red-950/30',
+    color: data.lucroOperacional >= 0 ? 'text-green-600' : 'text-red-600',
+    bgColor: data.lucroOperacional >= 0 ? 'bg-green-50' : 'bg-red-50',
     highlight: true,
     isPrimary: true, // Regra 3: Sempre é a métrica principal
     tooltip: lucroLiquidoIgualOperacional ?
@@ -129,8 +129,8 @@ export function DRESummaryCards({ data }: DRESummaryCardsProps) {
     value: formatCurrency(data.lucroLiquido),
     subtitle: `Margem: ${formatPercent(data.margemLiquida)}`,
     icon: data.lucroLiquido >= 0 ? TrendingUp : TrendingDown,
-    color: data.lucroLiquido >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-600 dark:text-red-400',
-    bgColor: data.lucroLiquido >= 0 ? 'bg-emerald-50 dark:bg-emerald-950/30' : 'bg-red-50 dark:bg-red-950/30',
+    color: data.lucroLiquido >= 0 ? 'text-emerald-600' : 'text-red-600',
+    bgColor: data.lucroLiquido >= 0 ? 'bg-emerald-50' : 'bg-red-50',
     highlight: true,
     visible: !lucroLiquidoIgualOperacional // Regra 1: Ocultar se igual ao Operacional
   }];

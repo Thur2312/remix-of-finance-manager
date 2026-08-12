@@ -1,16 +1,22 @@
 import { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { AppLayout } from '@/components/layout/AppLayout';
-import { ProtectedRoute } from '@/components/layout/ProtectedRoute';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useCashFlowCategories, useCashFlowEntries, expandRecurringEntries } from '@/hooks/useCashFlow';
 import { CashFlowCharts } from '@/components/fluxo-caixa/CashFlowCharts';
 import { Plus, ArrowRight } from 'lucide-react';
-import { InPageNav, fluxoCaixaNavTabs } from '@/components/layout/InPageNav';
+import { PageHeader } from '@/components/layout/PageHeader';
+import { fluxoCaixaNavTabs } from '@/components/layout/InPageNav';
 import { format, startOfMonth, endOfMonth, isAfter, isBefore, parseISO, subYears, addYears } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
+import { HandCoins } from 'lucide-react';
+
+// Superfície de cartão da área interna — mesma família visual do .glass-card
+// da landing, calibrada pra densidade (ver .app-card em index.css). bg-card
+// (não bg-white) pra herdar o navy do tema em vez de forçar branco.
+const CARD = 'app-card bg-card border-transparent';
+
 function FluxoCaixaDashboardContent() {
   const navigate = useNavigate();
   const {
@@ -72,86 +78,79 @@ function FluxoCaixaDashboardContent() {
       currency: 'BRL'
     }).format(value);
   };
-  return <AppLayout title="Fluxo de Caixa">
-      <InPageNav tabs={fluxoCaixaNavTabs} />
-      <div className="space-y-6">
-        {/* Header */}
-        <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-3xl font-bold text-foreground">Fluxo de Caixa</h1>
-            <p className="text-muted-foreground">
-              Visão geral de {format(now, 'MMMM yyyy', {
-              locale: ptBR
-            })}
-            </p>
-          </div>
-          <Button onClick={() => navigate('/fluxo-caixa/lancamentos')} className="gap-2">
+  return <>
+      <PageHeader
+        icon={HandCoins}
+        title="Fluxo de Caixa"
+        subtitle={`Visão geral de ${format(now, 'MMMM yyyy', { locale: ptBR })}`}
+        action={<Button onClick={() => navigate('/fluxo-caixa/lancamentos')} className="gap-2">
             <Plus className="h-4 w-4" />
             Novo Lançamento
-          </Button>
-        </div>
-
+          </Button>}
+        tabs={fluxoCaixaNavTabs}
+      />
+      <div className="space-y-6">
         {/* Summary Cards */}
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-5">
-          <Card>
+          <Card className={CARD}>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium">Saldo Atual</CardTitle>
               
             </CardHeader>
             <CardContent>
-              {isLoading ? <Skeleton className="h-8 w-24" /> : <div className={`text-2xl font-bold font-mono ${currentBalance >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+              {isLoading ? <Skeleton className="h-8 w-24" /> : <div className={`text-2xl font-bold font-mono ${currentBalance >= 0 ? 'text-success' : 'text-destructive'}`}>
                   {formatCurrency(currentBalance)}
                 </div>}
               <p className="text-xs text-muted-foreground">Acumulado</p>
             </CardContent>
           </Card>
 
-          <Card>
+          <Card className={CARD}>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium">Entradas</CardTitle>
               
             </CardHeader>
             <CardContent>
-              {isLoading ? <Skeleton className="h-8 w-24" /> : <div className="text-2xl font-bold font-mono text-green-600">
+              {isLoading ? <Skeleton className="h-8 w-24" /> : <div className="text-2xl font-bold font-mono text-success">
                   {formatCurrency(totalIncome)}
                 </div>}
               <p className="text-xs text-muted-foreground">Recebido este mês</p>
             </CardContent>
           </Card>
 
-          <Card>
+          <Card className={CARD}>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium">Saídas</CardTitle>
               
             </CardHeader>
             <CardContent>
-              {isLoading ? <Skeleton className="h-8 w-24" /> : <div className="text-2xl font-bold font-mono text-red-600">
+              {isLoading ? <Skeleton className="h-8 w-24" /> : <div className="text-2xl font-bold font-mono text-destructive">
                   {formatCurrency(totalExpense)}
                 </div>}
               <p className="text-xs text-muted-foreground">Pago este mês</p>
             </CardContent>
           </Card>
 
-          <Card>
+          <Card className={CARD}>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium">A Receber</CardTitle>
               
             </CardHeader>
             <CardContent>
-              {isLoading ? <Skeleton className="h-8 w-24" /> : <div className="text-2xl font-bold font-mono text-blue-600">
+              {isLoading ? <Skeleton className="h-8 w-24" /> : <div className="text-2xl font-bold font-mono text-primary">
                   {formatCurrency(pendingReceivables)}
                 </div>}
               <p className="text-xs text-muted-foreground">Pendente</p>
             </CardContent>
           </Card>
 
-          <Card className={overdueTotal > 0 ? 'border-yellow-500' : ''}>
+          <Card className={`${CARD} ${overdueTotal > 0 ? 'border-warning/40' : ''}`}>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium">A Pagar</CardTitle>
               
             </CardHeader>
             <CardContent>
-              {isLoading ? <Skeleton className="h-8 w-24" /> : <div className={`text-2xl font-bold font-mono ${overdueTotal > 0 ? 'text-yellow-600' : 'text-muted-foreground'}`}>
+              {isLoading ? <Skeleton className="h-8 w-24" /> : <div className={`text-2xl font-bold font-mono ${overdueTotal > 0 ? 'text-warning' : 'text-muted-foreground'}`}>
                   {formatCurrency(overdueTotal)}
                 </div>}
               <p className="text-xs text-muted-foreground">
@@ -167,7 +166,7 @@ function FluxoCaixaDashboardContent() {
         {/* Quick Access */}
         <div className="grid gap-6 md:grid-cols-2">
           {/* Upcoming Entries */}
-          <Card>
+          <Card className={CARD}>
             <CardHeader className="flex flex-row items-center justify-between">
               <CardTitle className="text-lg">Próximos Vencimentos</CardTitle>
               <Button variant="ghost" size="sm" onClick={() => navigate('/fluxo-caixa/lancamentos')}>
@@ -190,7 +189,7 @@ function FluxoCaixaDashboardContent() {
                           </p>
                         </div>
                       </div>
-                      <span className={`font-medium ${entry.type === 'income' ? 'text-green-600' : 'text-red-600'}`}>
+                      <span className={`font-medium ${entry.type === 'income' ? 'text-success' : 'text-destructive'}`}>
                         {entry.type === 'expense' ? '-' : '+'}{formatCurrency(Number(entry.amount))}
                       </span>
                     </div>)}
@@ -199,7 +198,7 @@ function FluxoCaixaDashboardContent() {
           </Card>
 
           {/* Recent Entries */}
-          <Card>
+          <Card className={CARD}>
             <CardHeader className="flex flex-row items-center justify-between">
               <CardTitle className="text-lg">Últimos Lançamentos</CardTitle>
               <Button variant="ghost" size="sm" onClick={() => navigate('/fluxo-caixa/lancamentos')}>
@@ -212,7 +211,7 @@ function FluxoCaixaDashboardContent() {
                 </div> : recentEntries.length === 0 ? <p className="text-sm text-muted-foreground text-center py-8">
                   Nenhum lançamento ainda
                 </p> : <div className="space-y-3">
-                  {recentEntries.map((entry) => <div key={entry.id} className="flex items-center justify-between p-3 rounded-lg bg-zinc-200">
+                  {recentEntries.map((entry) => <div key={entry.id} className="flex items-center justify-between p-3 rounded-lg bg-muted/50">
                       <div className="flex items-center gap-3">
                         <div className={`w-2 h-2 rounded-full ${entry.type === 'income' ? 'bg-green-500' : 'bg-red-500'}`} />
                         <div>
@@ -222,7 +221,7 @@ function FluxoCaixaDashboardContent() {
                           </p>
                         </div>
                       </div>
-                      <span className={`font-medium ${entry.type === 'income' ? 'text-green-600' : 'text-red-600'}`}>
+                      <span className={`font-medium ${entry.type === 'income' ? 'text-success' : 'text-destructive'}`}>
                         {entry.type === 'expense' ? '-' : '+'}{formatCurrency(Number(entry.amount))}
                       </span>
                     </div>)}
@@ -231,13 +230,7 @@ function FluxoCaixaDashboardContent() {
           </Card>
         </div>
       </div>
-    </AppLayout>;
+    </>;
 }
 
-export default function FluxoCaixaDashboard() {
-  return (
-    <ProtectedRoute>
-      <FluxoCaixaDashboardContent />
-    </ProtectedRoute>);
-
-}
+export default FluxoCaixaDashboardContent;

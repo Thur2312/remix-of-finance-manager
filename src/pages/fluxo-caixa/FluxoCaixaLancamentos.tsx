@@ -1,6 +1,4 @@
 import { useState } from 'react';
-import { AppLayout } from '@/components/layout/AppLayout';
-import { ProtectedRoute } from '@/components/layout/ProtectedRoute';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -24,7 +22,13 @@ import {
   Dialog, DialogContent, DialogHeader, DialogTitle,
   DialogDescription, DialogFooter,
 } from '@/components/ui/dialog';
-import { InPageNav, fluxoCaixaNavTabs } from '@/components/layout/InPageNav';
+import { fluxoCaixaNavTabs } from '@/components/layout/InPageNav';
+import { PageHeader } from '@/components/layout/PageHeader';
+import { FiltersCard } from '@/components/layout/FiltersCard';
+
+// Superfície de cartão da área interna — mesma família visual do .glass-card
+// da landing, calibrada pra densidade (ver .app-card em index.css).
+const CARD = 'app-card bg-card border-transparent';
 
 // ── Paleta de cores para categorias ─────────────────────────────────────────
 const COLOR_OPTIONS = [
@@ -110,13 +114,13 @@ function NewCategoryDialog({ open, onOpenChange, onSuccess }: NewCategoryDialogP
               >
                 <div className="flex items-center gap-2">
                   <RadioGroupItem value="income" id="type-income" />
-                  <Label htmlFor="type-income" className="cursor-pointer font-normal text-green-600">
+                  <Label htmlFor="type-income" className="cursor-pointer font-normal text-success">
                     Entrada
                   </Label>
                 </div>
                 <div className="flex items-center gap-2">
                   <RadioGroupItem value="expense" id="type-expense" />
-                  <Label htmlFor="type-expense" className="cursor-pointer font-normal text-red-600">
+                  <Label htmlFor="type-expense" className="cursor-pointer font-normal text-destructive">
                     Saída
                   </Label>
                 </div>
@@ -149,7 +153,7 @@ function NewCategoryDialog({ open, onOpenChange, onSuccess }: NewCategoryDialogP
               <div className="w-3 h-3 rounded-full" style={{ backgroundColor: color }} />
               <span className="text-sm text-muted-foreground">
                 {name.trim() || 'Nome da categoria'} —{' '}
-                <span className={type === 'income' ? 'text-green-600' : 'text-red-600'}>
+                <span className={type === 'income' ? 'text-success' : 'text-destructive'}>
                   {type === 'income' ? 'Entrada' : 'Saída'}
                 </span>
               </span>
@@ -242,18 +246,11 @@ function FluxoCaixaLancamentosContent() {
   };
 
   return (
-    <AppLayout title="Fluxo de Caixa">
-      <InPageNav tabs={fluxoCaixaNavTabs} />
-      <div className="space-y-6">
-
-        {/* ── Header ───────────────────────────────────────────────────── */}
-        <div className="flex items-center justify-between flex-wrap gap-3">
-          <div>
-            <h1 className="text-3xl font-bold text-foreground">Lançamentos</h1>
-            <p className="text-muted-foreground">
-              Gerencie todas as entradas e saídas do seu fluxo de caixa
-            </p>
-          </div>
+    <>
+      <PageHeader
+        title="Lançamentos"
+        subtitle="Gerencie todas as entradas e saídas do seu fluxo de caixa"
+        action={
           <div className="flex flex-wrap gap-2">
             <Button variant="outline" onClick={() => setIsCategoryDialogOpen(true)}>
               <Tag className="h-4 w-4 mr-2" />
@@ -272,64 +269,60 @@ function FluxoCaixaLancamentosContent() {
               Novo Lançamento
             </Button>
           </div>
-        </div>
+        }
+        tabs={fluxoCaixaNavTabs}
+      />
+      <div className="space-y-6">
 
         {/* ── Filtros ───────────────────────────────────────────────────── */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-lg">Filtros</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="grid gap-4 md:grid-cols-5">
-              <div className="relative md:col-span-2">
-                <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-                <Input
-                  placeholder="Buscar por descrição..."
-                  value={searchTerm}
-                  onChange={e => setSearchTerm(e.target.value)}
-                  className="pl-9"
-                />
-              </div>
+        <FiltersCard>
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+            <Input
+              placeholder="Buscar por descrição..."
+              value={searchTerm}
+              onChange={e => setSearchTerm(e.target.value)}
+              className="pl-9 w-64"
+            />
+          </div>
 
-              <Select value={typeFilter} onValueChange={setTypeFilter}>
-                <SelectTrigger><SelectValue placeholder="Tipo" /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">Todos os tipos</SelectItem>
-                  <SelectItem value="income">Entradas</SelectItem>
-                  <SelectItem value="expense">Saídas</SelectItem>
-                </SelectContent>
-              </Select>
+          <Select value={typeFilter} onValueChange={setTypeFilter}>
+            <SelectTrigger className="w-[160px]"><SelectValue placeholder="Tipo" /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Todos os tipos</SelectItem>
+              <SelectItem value="income">Entradas</SelectItem>
+              <SelectItem value="expense">Saídas</SelectItem>
+            </SelectContent>
+          </Select>
 
-              <Select value={statusFilter} onValueChange={setStatusFilter}>
-                <SelectTrigger><SelectValue placeholder="Status" /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">Todos os status</SelectItem>
-                  <SelectItem value="pending">Pendente</SelectItem>
-                  <SelectItem value="paid">Pago</SelectItem>
-                  <SelectItem value="received">Recebido</SelectItem>
-                </SelectContent>
-              </Select>
+          <Select value={statusFilter} onValueChange={setStatusFilter}>
+            <SelectTrigger className="w-[160px]"><SelectValue placeholder="Status" /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Todos os status</SelectItem>
+              <SelectItem value="pending">Pendente</SelectItem>
+              <SelectItem value="paid">Pago</SelectItem>
+              <SelectItem value="received">Recebido</SelectItem>
+            </SelectContent>
+          </Select>
 
-              <Select value={categoryFilter} onValueChange={setCategoryFilter}>
-                <SelectTrigger><SelectValue placeholder="Categoria" /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">Todas as categorias</SelectItem>
-                  {categories.map(cat => (
-                    <SelectItem key={cat.id} value={cat.id}>
-                      <div className="flex items-center gap-2">
-                        <div className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: cat.color }} />
-                        {cat.name}
-                      </div>
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-          </CardContent>
-        </Card>
+          <Select value={categoryFilter} onValueChange={setCategoryFilter}>
+            <SelectTrigger className="w-[180px]"><SelectValue placeholder="Categoria" /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Todas as categorias</SelectItem>
+              {categories.map(cat => (
+                <SelectItem key={cat.id} value={cat.id}>
+                  <div className="flex items-center gap-2">
+                    <div className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: cat.color }} />
+                    {cat.name}
+                  </div>
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </FiltersCard>
 
         {/* ── Tabela ───────────────────────────────────────────────────── */}
-        <Card>
+        <Card className={CARD}>
           <CardContent className="p-0">
             {isLoading ? (
               <div className="p-6 space-y-4">
@@ -375,7 +368,7 @@ function FluxoCaixaLancamentosContent() {
                           {entry.type === 'income' ? 'Entrada' : 'Saída'}
                         </Badge>
                       </TableCell>
-                      <TableCell className={`text-right font-medium ${entry.type === 'income' ? 'text-green-600' : 'text-red-600'}`}>
+                      <TableCell className={`text-right font-medium ${entry.type === 'income' ? 'text-success' : 'text-destructive'}`}>
                         {entry.type === 'expense' ? '-' : '+'}{formatCurrency(Number(entry.amount))}
                       </TableCell>
                       <TableCell>{getStatusBadge(entry.status)}</TableCell>
@@ -388,7 +381,7 @@ function FluxoCaixaLancamentosContent() {
                             <Button variant="ghost" size="icon"
                               onClick={() => handleMarkAsDone(entry)}
                               title={entry.type === 'income' ? 'Marcar como recebido' : 'Marcar como pago'}>
-                              <CheckCircle className="h-4 w-4 text-green-600" />
+                              <CheckCircle className="h-4 w-4 text-success" />
                             </Button>
                           )}
                           <Button variant="ghost" size="icon" onClick={() => handleEdit(entry)}>
@@ -443,14 +436,8 @@ function FluxoCaixaLancamentosContent() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-    </AppLayout>
+    </>
   );
 }
 
-export default function FluxoCaixaLancamentos() {
-  return (
-    <ProtectedRoute>
-      <FluxoCaixaLancamentosContent />
-    </ProtectedRoute>
-  );
-}
+export default FluxoCaixaLancamentosContent;

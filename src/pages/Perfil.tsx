@@ -1,8 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
-import { AppLayout } from '@/components/layout/AppLayout';
-import { ProtectedRoute } from '@/components/layout/ProtectedRoute';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -355,12 +353,4 @@ function PerfilContent() {
   );
 }
 
-export default function Perfil() {
-  return (
-    <ProtectedRoute>
-      <AppLayout title="Meu Perfil">
-        <PerfilContent />
-      </AppLayout>
-    </ProtectedRoute>
-  );
-}
+export default PerfilContent;

@@ -1,8 +1,6 @@
 import { useState, useCallback, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
-import { AppLayout } from '@/components/layout/AppLayout';
-import { ProtectedRoute } from '@/components/layout/ProtectedRoute';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
@@ -46,7 +44,8 @@ import {
 } from '@/components/ui/alert-dialog';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
-import { InPageNav, shopeeNavTabs } from '@/components/layout/InPageNav';
+import { shopeeNavTabs } from '@/components/layout/InPageNav';
+import { PageHeader } from '@/components/layout/PageHeader';
 import { ExportSection } from '@/components/shopee/ExportSection';
 
 interface ParsedRow {
@@ -640,12 +639,10 @@ function UploadContent() {
 
 export default function Upload() {
   return (
-    <ProtectedRoute>
-      <AppLayout title="Gestão Shopee">
-        <InPageNav tabs={shopeeNavTabs} />
-        <UploadContent />
-         <ExportSection /> 
-      </AppLayout>
-    </ProtectedRoute>
+    <>
+      <PageHeader tabs={shopeeNavTabs} />
+      <UploadContent />
+      <ExportSection />
+    </>
   );
 }

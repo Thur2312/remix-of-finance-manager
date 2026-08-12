@@ -13,7 +13,7 @@ export function DRETable({ sections }: DRETableProps) {
       'text-right font-mono',
       item.isTotal && 'font-bold text-base',
       item.isSubtotal && 'font-semibold',
-      item.isHighlight && (isPositive ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-600 dark:text-red-400'),
+      item.isHighlight && (isPositive ? 'text-emerald-600' : 'text-red-600'),
       !item.isHighlight && !item.isTotal && !item.isSubtotal && 'text-muted-foreground'
     );
 

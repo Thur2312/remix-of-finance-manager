@@ -1,6 +1,5 @@
 import { useState } from 'react';
-import { AppLayout } from '@/components/layout/AppLayout';
-import { ProtectedRoute } from '@/components/layout/ProtectedRoute';
+import { useTopbarTitle } from '@/components/layout/TopbarTitleContext';
 import { InPageNav, shopeeNavTabs, tiktokNavTabs } from '@/components/layout/InPageNav';
 import { mercadolivreNavTabs } from '@/components/layout/InPageNav';
 
@@ -27,6 +26,15 @@ const OPTIONS: MarketplaceOption[] = [
   { value: 'mercadolivre', label: 'Mercado Livre',  available: true  },
 ];
 
+// Assinatura visual sutil por marketplace no seletor — antes os três caíam
+// no mesmo estado "ativo" genérico (bg-background), sem nenhuma pista de
+// qual contexto de marca a pessoa está gerenciando.
+const MARKETPLACE_ACCENT: Record<MarketplaceFilter, string> = {
+  shopee: 'bg-[#F97316] text-white shadow-sm',
+  tiktok: 'bg-[#1F2937] text-white shadow-sm',
+  mercadolivre: 'bg-[#FFE600] text-[#2D3277] shadow-sm',
+};
+
 function MarketplaceLogo({ mp }: { mp: MarketplaceFilter }) {
   if (mp === 'shopee') {
     return <img src={logoShopee} alt="Shopee" className="h-5 w-5 rounded-full object-cover" />;
@@ -41,28 +49,27 @@ function MarketplaceLogo({ mp }: { mp: MarketplaceFilter }) {
   );
 }
 
-function GestaoContent() {
-  const [selected, setSelected] = useState<MarketplaceFilter>('shopee');
+interface GestaoContentProps {
+  selected: MarketplaceFilter;
+  onSelect: (value: MarketplaceFilter) => void;
+}
 
+// Título/subtítulo de página já vêm do topbar (AppLayout, ver Gestao default
+// export abaixo) — não repetir um segundo cabeçalho aqui. O seletor de
+// marketplace já é autoexplicativo (ícone + nome de cada um).
+function GestaoContent({ selected, onSelect }: GestaoContentProps) {
   return (
-    <div className="space-y-6 animate-fade-in">
+    <div className="space-y-8 animate-fade-in">
 
-      <div className="space-y-1">
-        <h2 className="text-lg font-semibold text-foreground">Gestão</h2>
-        <p className="text-sm text-muted-foreground">
-          Selecione o marketplace que deseja gerenciar.
-        </p>
-      </div>
-
-      <div className="flex items-center gap-1 bg-muted/60 rounded-lg p-1 w-fit">
+      <div className="flex items-center gap-1 bg-muted/60 rounded-full p-1 w-fit">
         {OPTIONS.map(opt => (
           <button
             key={opt.value}
-            onClick={() => opt.available && setSelected(opt.value)}
+            onClick={() => opt.available && onSelect(opt.value)}
             disabled={!opt.available}
-            className={`flex items-center gap-2 px-4 py-2 rounded-md text-sm font-medium transition-all disabled:opacity-50 disabled:cursor-not-allowed ${
+            className={`flex items-center gap-2 px-4 py-2 rounded-full text-sm font-medium transition-all disabled:opacity-50 disabled:cursor-not-allowed ${
               selected === opt.value && opt.available
-                ? 'bg-background shadow-sm text-foreground'
+                ? MARKETPLACE_ACCENT[opt.value]
                 : 'text-muted-foreground hover:text-foreground'
             }`}
           >
@@ -101,12 +108,19 @@ function GestaoContent() {
   );
 }
 
+// Mesmo padrão de título das outras telas de marketplace (ex.: "Gestão
+// Shopee" em shopee/Resultados.tsx) — antes o topbar ficava genérico
+// ("Gestão", sem o marketplace) enquanto o resto do app já mostrava o
+// contexto completo, inconsistência visível ao trocar de aba.
+const MARKETPLACE_TITLE: Record<MarketplaceFilter, string> = {
+  shopee: 'Gestão Shopee',
+  tiktok: 'Gestão TikTok Shop',
+  mercadolivre: 'Gestão Mercado Livre',
+};
+
 export default function Gestao() {
-  return (
-    <ProtectedRoute>
-      <AppLayout title="Gestão">
-        <GestaoContent />
-      </AppLayout>
-    </ProtectedRoute>
-  );
+  const [selected, setSelected] = useState<MarketplaceFilter>('shopee');
+  useTopbarTitle(MARKETPLACE_TITLE[selected]);
+
+  return <GestaoContent selected={selected} onSelect={setSelected} />;
 }

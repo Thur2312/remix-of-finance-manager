@@ -1,8 +1,6 @@
 import { useState, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
-import { AppLayout } from '@/components/layout/AppLayout';
-import { ProtectedRoute } from '@/components/layout/ProtectedRoute';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Switch } from '@/components/ui/switch';
@@ -12,7 +10,8 @@ import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 import { parseAllSettlements, parseStatementsSheet, ImportSummary, StatementsImportSummary } from '@/lib/tiktok-settlement-helpers';
 import * as XLSX from 'xlsx';
-import { InPageNav, tiktokNavTabs } from '@/components/layout/InPageNav';
+import { tiktokNavTabs } from '@/components/layout/InPageNav';
+import { PageHeader } from '@/components/layout/PageHeader';
 
 interface ExtendedImportSummary extends ImportSummary {
   dataSource: 'order_details' | 'statements';
@@ -388,16 +387,14 @@ function TikTokPagamentosUploadContent() {
   }, [processFile, processMultipleFiles]);
 
   return (
-    <AppLayout title="Gestão TikTok">
-      <InPageNav tabs={tiktokNavTabs} />
+    <>
+      <PageHeader
+        icon={Upload}
+        title="Upload de Pagamentos TikTok"
+        subtitle="Importe o relatório de pagamentos (Income) do TikTok Shop para visualizar o detalhamento de recebimentos"
+        tabs={tiktokNavTabs}
+      />
       <div className="space-y-6">
-        <div>
-          <h1 className="text-3xl font-bold text-foreground">Upload de Pagamentos TikTok</h1>
-          <p className="text-muted-foreground mt-2">
-            Importe o relatório de pagamentos (Income) do TikTok Shop para visualizar o detalhamento de recebimentos
-          </p>
-        </div>
-
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
@@ -417,7 +414,7 @@ function TikTokPagamentosUploadContent() {
                   onCheckedChange={setReplaceExisting}
                 />
                 <Label htmlFor="replace-existing" className={replaceExisting ? "text-destructive font-medium" : ""}>
-                  {replaceExisting ? "⚠️ Substituir todos os pagamentos anteriores" : "Adicionar aos pagamentos existentes"}
+                  {replaceExisting ? "Substituir todos os pagamentos anteriores" : "Adicionar aos pagamentos existentes"}
                 </Label>
               </div>
               
@@ -435,11 +432,11 @@ function TikTokPagamentosUploadContent() {
               )}
               
               {!replaceExisting && (
-                <div className="bg-green-50 dark:bg-green-950/20 border border-green-200 dark:border-green-800 rounded-lg p-3 flex items-start gap-2">
-                  <CheckCircle className="h-4 w-4 text-green-600 dark:text-green-400 mt-0.5 shrink-0" />
-                  <div className="text-sm text-green-700 dark:text-green-300">
+                <div className="bg-success/10 border border-success/30 rounded-lg p-3 flex items-start gap-2">
+                  <CheckCircle className="h-4 w-4 text-success mt-0.5 shrink-0" />
+                  <div className="text-sm text-success">
                     <p className="font-medium">Modo acumulativo ativado</p>
-                    <p className="text-green-600/80 dark:text-green-400/80 mt-1">
+                    <p className="text-success/80 mt-1">
                       Os novos pagamentos serão adicionados aos existentes. Duplicatas serão atualizadas automaticamente.
                     </p>
                   </div>
@@ -479,7 +476,7 @@ function TikTokPagamentosUploadContent() {
                       <div className="mt-2 text-xs text-muted-foreground">
                         {multiFileProgress.results.map((r, i) => (
                           <div key={i} className="flex items-center gap-1 justify-center">
-                            {r.success ? <CheckCircle className="h-3 w-3 text-green-500" /> : <AlertCircle className="h-3 w-3 text-red-500" />}
+                            {r.success ? <CheckCircle className="h-3 w-3 text-success" /> : <AlertCircle className="h-3 w-3 text-destructive" />}
                             <span>{r.name}</span>
                           </div>
                         ))}
@@ -519,30 +516,30 @@ function TikTokPagamentosUploadContent() {
               <div className="space-y-4">
                 {/* Limited Data Warning */}
                 {importSummary.hasLimitedData && importSummary.statementsInfo && (
-                  <div className="bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-800 rounded-lg p-4">
-                    <h4 className="font-medium mb-2 flex items-center gap-2 text-amber-800 dark:text-amber-200">
+                  <div className="bg-warning/10 border border-warning/30 rounded-lg p-4">
+                    <h4 className="font-medium mb-2 flex items-center gap-2 text-warning">
                       <AlertTriangle className="h-4 w-4" />
                       Dados Parciais Detectados
                     </h4>
-                    <p className="text-sm text-amber-700 dark:text-amber-300 mb-2">
+                    <p className="text-sm text-warning mb-2">
                       O relatório Income do TikTok mostra <strong>apenas os pedidos do último pagamento</strong> na aba "Order details".
                     </p>
-                    <div className="text-sm space-y-1 text-amber-700 dark:text-amber-300">
+                    <div className="text-sm space-y-1 text-warning">
                       <p>• Pedidos importados: <strong>{importSummary.validRecords}</strong></p>
                       <p>• Total de pagamentos no período: <strong>{importSummary.statementsInfo.validRecords}</strong></p>
                       <p>• Valor total do período: <strong>
                         {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(importSummary.statementsInfo.totalSettlementAmount)}
                       </strong></p>
                     </div>
-                    <p className="text-xs text-amber-600 dark:text-amber-400 mt-2">
-                      💡 Para análise histórica completa, exporte relatórios periodicamente (ex: semanal ou após cada pagamento).
+                    <p className="text-xs text-warning mt-2">
+                      Para análise histórica completa, exporte relatórios periodicamente (ex: semanal ou após cada pagamento).
                     </p>
                   </div>
                 )}
 
                 <div className="bg-muted/50 rounded-lg p-4">
                   <h4 className="font-medium mb-3 flex items-center gap-2">
-                    <CheckCircle className="h-4 w-4 text-green-500" />
+                    <CheckCircle className="h-4 w-4 text-success" />
                     Resumo da Importação
                   </h4>
                   <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
@@ -552,11 +549,11 @@ function TikTokPagamentosUploadContent() {
                     </div>
                     <div>
                       <p className="text-muted-foreground">Pedidos importados</p>
-                      <p className="font-semibold text-lg text-green-600">{importSummary.validRecords}</p>
+                      <p className="font-semibold text-lg text-success">{importSummary.validRecords}</p>
                     </div>
                     <div>
                       <p className="text-muted-foreground">Rejeitados</p>
-                      <p className="font-semibold text-lg text-amber-600">{importSummary.rejectedRecords}</p>
+                      <p className="font-semibold text-lg text-warning">{importSummary.rejectedRecords}</p>
                     </div>
                     <div>
                       <p className="text-muted-foreground">Fonte de dados</p>
@@ -567,14 +564,14 @@ function TikTokPagamentosUploadContent() {
 
                 {/* Rejection Reasons */}
                 {importSummary.rejectedRecords > 0 && Object.keys(importSummary.rejectionReasons).length > 0 && (
-                  <div className="bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-800 rounded-lg p-4">
-                    <h4 className="font-medium mb-2 flex items-center gap-2 text-amber-800 dark:text-amber-200">
+                  <div className="bg-warning/10 border border-warning/30 rounded-lg p-4">
+                    <h4 className="font-medium mb-2 flex items-center gap-2 text-warning">
                       <FileWarning className="h-4 w-4" />
                       Motivos de Rejeição
                     </h4>
                     <ul className="text-sm space-y-1">
                       {Object.entries(importSummary.rejectionReasons).map(([reason, count]) => (
-                        <li key={reason} className="flex justify-between text-amber-700 dark:text-amber-300">
+                        <li key={reason} className="flex justify-between text-warning">
                           <span>{reason}</span>
                           <span className="font-medium">{count} linhas</span>
                         </li>
@@ -585,12 +582,12 @@ function TikTokPagamentosUploadContent() {
 
                 {/* Missing Columns Warning */}
                 {importSummary.missingColumns.length > 10 && (
-                  <div className="bg-blue-50 dark:bg-blue-950/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4">
-                    <h4 className="font-medium mb-2 flex items-center gap-2 text-blue-800 dark:text-blue-200">
+                  <div className="bg-accent border border-primary/20 rounded-lg p-4">
+                    <h4 className="font-medium mb-2 flex items-center gap-2 text-accent-foreground">
                       <Info className="h-4 w-4" />
                       Colunas não encontradas (opcional)
                     </h4>
-                    <p className="text-sm text-blue-700 dark:text-blue-300">
+                    <p className="text-sm text-accent-foreground">
                       Algumas colunas esperadas não foram encontradas no arquivo. 
                       Isso pode ser normal dependendo do tipo de relatório exportado.
                     </p>
@@ -601,7 +598,7 @@ function TikTokPagamentosUploadContent() {
 
             <div className="bg-muted/50 rounded-lg p-4">
               <h4 className="font-medium mb-2 flex items-center gap-2">
-                <AlertCircle className="h-4 w-4 text-amber-500" />
+                <AlertCircle className="h-4 w-4 text-warning" />
                 Como exportar o relatório de pagamentos
               </h4>
               <ol className="text-sm text-muted-foreground space-y-1 list-decimal list-inside">
@@ -613,12 +610,12 @@ function TikTokPagamentosUploadContent() {
               </ol>
             </div>
 
-            <div className="bg-blue-50 dark:bg-blue-950/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4">
-              <h4 className="font-medium mb-2 flex items-center gap-2 text-blue-800 dark:text-blue-200">
+            <div className="bg-accent border border-primary/20 rounded-lg p-4">
+              <h4 className="font-medium mb-2 flex items-center gap-2 text-accent-foreground">
                 <Info className="h-4 w-4" />
                 Limitação do relatório TikTok
               </h4>
-              <p className="text-sm text-blue-700 dark:text-blue-300">
+              <p className="text-sm text-accent-foreground">
                 O relatório "Income" do TikTok mostra o <strong>detalhamento de pedidos apenas do último pagamento</strong>. 
                 Para ter dados históricos completos por pedido, exporte e importe relatórios periodicamente 
                 (recomendamos exportar após cada pagamento recebido).
@@ -627,14 +624,8 @@ function TikTokPagamentosUploadContent() {
           </CardContent>
         </Card>
       </div>
-    </AppLayout>
+    </>
   );
 }
 
-export default function TikTokPagamentosUpload() {
-  return (
-    <ProtectedRoute>
-      <TikTokPagamentosUploadContent />
-    </ProtectedRoute>
-  );
-}
+export default TikTokPagamentosUploadContent;

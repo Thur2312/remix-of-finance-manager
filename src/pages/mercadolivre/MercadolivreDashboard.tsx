@@ -1,5 +1,4 @@
 import { useState } from 'react';
-import { AppLayout } from '@/components/layout/AppLayout';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -9,14 +8,13 @@ import {
   TrendingUp, DollarSign, ShoppingCart, Package,
   CheckCircle2, Clock, XCircle, HelpCircle, RefreshCw, ArrowRight,
 } from 'lucide-react';
-import { InPageNav, NavTab } from '@/components/layout/InPageNav';
 import { CompanySelector } from '@/components/dashboard/CompanySelector';
+import { OnboardingChecklist } from '@/components/dashboard/OnboardingChecklist';
 import { TaxSummaryRow } from '@/hooks/useIntegrationTax';
 import { Company } from '@/hooks/useCompanies';
 import { useMercadolivreData } from '@/hooks/useMercadolivreData';
 import { useIntegrations } from '@/hooks/useIntegrations';
 import { formatCurrency } from '@/lib/calculations';
-import { mercadolivreNavTabs } from '@/components/layout/InPageNav';
 // ─── Info Popover ─────────────────────────────────────────────────────────────
 function InfoPopover({ title, children }: { title: string; children: React.ReactNode }) {
   return (
@@ -76,6 +74,10 @@ const statInfo: Record<string, { title: string; description: React.ReactNode }> 
   },
 };
 
+// Superfície de cartão da área interna — mesma família visual do .glass-card
+// da landing, calibrada pra densidade (ver .app-card em index.css).
+const CARD = 'app-card bg-card border-transparent';
+
 // ─── Conteúdo interno — exportado para reuso na Gestão unificada ─────────────
 export function MercadolivreDashboardContent() {
   const [selectedCompany, setSelectedCompany] = useState<Company | null>(null);
@@ -103,16 +105,16 @@ export function MercadolivreDashboardContent() {
       value: loading ? '...' : stats.totalOrders.toString(),
       description: 'Pedidos pagos/entregues',
       icon: ShoppingCart,
-      color: 'text-blue-500',
-      bgColor: 'bg-blue-500/10',
+      color: 'text-primary',
+      bgColor: 'bg-primary/10',
     },
     {
       title: 'Faturamento',
       value: loading ? '...' : formatCurrency(stats.grossRevenue),
       description: 'Receita bruta sincronizada',
       icon: DollarSign,
-      color: 'text-emerald-500',
-      bgColor: 'bg-emerald-500/10',
+      color: 'text-success',
+      bgColor: 'bg-success/10',
     },
     {
       title: 'Valor Líquido',
@@ -127,32 +129,27 @@ export function MercadolivreDashboardContent() {
       value: loading ? '...' : formatCurrency(stats.fees),
       description: 'Comissão + frete ML',
       icon: Package,
-      color: 'text-orange-500',
-      bgColor: 'bg-orange-500/10',
+      color: 'text-warning',
+      bgColor: 'bg-warning/10',
     },
   ];
 
   return (
     <div className="space-y-8 animate-fade-in">
 
-      {/* ── Header ──────────────────────────────────────────────── */}
-      <div className="flex items-center justify-between flex-wrap gap-3">
-        <div>
-          <h2 className="text-lg font-semibold text-foreground">Dashboard Mercado Livre</h2>
-          <p className="text-sm text-muted-foreground">
-            Acompanhe seus resultados e aplique a alíquota de imposto correta.
-          </p>
-        </div>
+      {/* Título/subtítulo já vêm do topbar (AppLayout, via Gestao.tsx) — não
+         repetir aqui. Só o seletor de empresa, que é funcional. */}
+      <div className="flex items-center justify-end">
         <CompanySelector selectedCompany={selectedCompany} onSelect={setSelectedCompany} />
       </div>
 
       {/* ── Banner integração ────────────────────────────────────── */}
       {isConnected ? (
-        <Card className="border-yellow-500/30 bg-yellow-500/5">
+        <Card className={`${CARD} border-warning/30 bg-warning/5`}>
           <CardContent className="py-4">
             <div className="flex items-center justify-between flex-wrap gap-3">
               <div className="flex items-center gap-3">
-                <div className="h-9 w-9 rounded-full bg-yellow-500/15 flex items-center justify-center shrink-0 text-[11px] font-bold text-yellow-700">
+                <div className="h-9 w-9 rounded-full bg-warning/15 flex items-center justify-center shrink-0 text-[11px] font-bold text-warning">
                   ML
                 </div>
                 <div>
@@ -168,7 +165,7 @@ export function MercadolivreDashboardContent() {
                       : 'Nenhum pedido sincronizado ainda — clique em Sincronizar'}
                   </p>
                 </div>
-                <Badge className="bg-yellow-500 text-white text-xs shrink-0">Sincronizado</Badge>
+                <Badge className="bg-warning text-warning-foreground text-xs shrink-0">Sincronizado</Badge>
               </div>
               <div className="flex items-center gap-2">
                 <Button
@@ -189,10 +186,10 @@ export function MercadolivreDashboardContent() {
           </CardContent>
         </Card>
       ) : (
-        <Card className="border-dashed border-yellow-500/40 bg-yellow-500/5">
+        <Card className={`${CARD} border-dashed border-warning/40 bg-warning/5`}>
           <CardContent className="py-4 flex items-center justify-between flex-wrap gap-3">
             <div className="flex items-center gap-3">
-              <div className="h-9 w-9 rounded-full bg-yellow-500/15 flex items-center justify-center text-[11px] font-bold text-yellow-700 shrink-0">
+              <div className="h-9 w-9 rounded-full bg-warning/15 flex items-center justify-center text-[11px] font-bold text-warning shrink-0">
                 ML
               </div>
               <div>
@@ -215,7 +212,7 @@ export function MercadolivreDashboardContent() {
           const info = statInfo[stat.title];
           const isLiquido = stat.title === 'Valor Líquido';
           return (
-            <Card key={stat.title} className="relative overflow-hidden transition-shadow hover:shadow-md">
+            <Card key={stat.title} className={`${CARD} relative overflow-hidden transition-shadow hover:shadow-md`}>
               <CardHeader className="flex flex-row items-start justify-between pb-3 space-y-0">
                 <div className="flex items-center gap-1.5">
                   <span className="text-sm font-medium text-muted-foreground">{stat.title}</span>
@@ -246,15 +243,15 @@ export function MercadolivreDashboardContent() {
         <div>
           <h3 className="text-base font-semibold mb-3">Status dos Pedidos</h3>
           <div className="grid gap-4 md:grid-cols-3">
-            <Card className="border-emerald-500/20 bg-emerald-500/5 hover:shadow-md transition-shadow">
+            <Card className={`${CARD} border-success/20 bg-success/5 hover:shadow-md transition-shadow`}>
               <CardContent className="pt-5 pb-5">
                 <div className="flex items-start gap-3">
-                  <div className="h-9 w-9 rounded-lg bg-emerald-500/15 flex items-center justify-center shrink-0">
-                    <CheckCircle2 className="h-4 w-4 text-emerald-500" />
+                  <div className="h-9 w-9 rounded-lg bg-success/15 flex items-center justify-center shrink-0">
+                    <CheckCircle2 className="h-4 w-4 text-success" />
                   </div>
                   <div className="flex-1 min-w-0">
                     <span className="text-xs font-medium text-muted-foreground">Concluídos</span>
-                    <div className="text-3xl font-bold text-emerald-600 mt-1">{paidOrders}</div>
+                    <div className="text-3xl font-bold text-success mt-1">{paidOrders}</div>
                     {totalOrdersAll > 0 && (
                       <p className="text-xs text-muted-foreground mt-1">
                         {((paidOrders / totalOrdersAll) * 100).toFixed(0)}% do total
@@ -265,15 +262,15 @@ export function MercadolivreDashboardContent() {
               </CardContent>
             </Card>
 
-            <Card className="border-yellow-500/20 bg-yellow-500/5 hover:shadow-md transition-shadow">
+            <Card className={`${CARD} border-warning/20 bg-warning/5 hover:shadow-md transition-shadow`}>
               <CardContent className="pt-5 pb-5">
                 <div className="flex items-start gap-3">
-                  <div className="h-9 w-9 rounded-lg bg-yellow-500/15 flex items-center justify-center shrink-0">
-                    <Clock className="h-4 w-4 text-yellow-500" />
+                  <div className="h-9 w-9 rounded-lg bg-warning/15 flex items-center justify-center shrink-0">
+                    <Clock className="h-4 w-4 text-warning" />
                   </div>
                   <div className="flex-1 min-w-0">
                     <span className="text-xs font-medium text-muted-foreground">Em andamento</span>
-                    <div className="text-3xl font-bold text-yellow-600 mt-1">{pendingOrders}</div>
+                    <div className="text-3xl font-bold text-warning mt-1">{pendingOrders}</div>
                     {totalOrdersAll > 0 && (
                       <p className="text-xs text-muted-foreground mt-1">
                         {((pendingOrders / totalOrdersAll) * 100).toFixed(0)}% do total
@@ -284,7 +281,7 @@ export function MercadolivreDashboardContent() {
               </CardContent>
             </Card>
 
-            <Card className="border-destructive/20 bg-destructive/5 hover:shadow-md transition-shadow">
+            <Card className={`${CARD} border-destructive/20 bg-destructive/5 hover:shadow-md transition-shadow`}>
               <CardContent className="pt-5 pb-5">
                 <div className="flex items-start gap-3">
                   <div className="h-9 w-9 rounded-lg bg-destructive/15 flex items-center justify-center shrink-0">
@@ -311,40 +308,29 @@ export function MercadolivreDashboardContent() {
 
       {/* ── Primeiros Passos ─────────────────────────────────────── */}
       {!loading && orders.length === 0 && (
-        <Card className="border-dashed">
-          <CardHeader>
-            <CardTitle className="text-base">🚀 Primeiros Passos</CardTitle>
-            <CardDescription>Para começar a usar o Mercado Livre, siga estes passos:</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <ol className="list-decimal list-inside space-y-3 text-muted-foreground text-sm">
-              <li>
-                <span className="font-medium text-foreground">Conecte sua conta ML</span>
-                {' '}— Acesse{' '}
-                <Link to="/integrations" className="text-primary underline underline-offset-2">Integrações</Link>
-                {' '}e autorize o acesso
-              </li>
-              <li>
-                <span className="font-medium text-foreground">Sincronize seus pedidos</span>
-                {' '}— Clique em <em>Sincronizar</em> após conectar
-              </li>
-              <li>
-                <span className="font-medium text-foreground">Acompanhe seus resultados</span>
-                {' '}— Os dados aparecerão aqui automaticamente
-              </li>
-            </ol>
-          </CardContent>
-        </Card>
+        <OnboardingChecklist
+          description="Para começar a usar o Mercado Livre, siga estes passos:"
+          steps={[
+            {
+              title: 'Conecte sua conta ML',
+              description: (
+                <>
+                  Acesse <Link to="/integrations" className="text-primary underline underline-offset-2">Integrações</Link> e autorize o acesso
+                </>
+              ),
+            },
+            {
+              title: 'Sincronize seus pedidos',
+              description: <>Clique em <em>Sincronizar</em> após conectar</>,
+            },
+            {
+              title: 'Acompanhe seus resultados',
+              description: 'Os dados aparecerão aqui automaticamente',
+            },
+          ]}
+        />
       )}
     </div>
   );
 }
 
-export default function MercadolivreDashboard() {
-  return (
-    <AppLayout title="Gestão Mercado Livre">
-      <InPageNav tabs={mercadolivreNavTabs} />
-      <MercadolivreDashboardContent />
-    </AppLayout>
-  );
-}

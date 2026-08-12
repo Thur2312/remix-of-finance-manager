@@ -39,25 +39,25 @@ const ICON = {
 
 const STYLES = {
   warning: {
-    wrapper: 'bg-yellow-50 border-yellow-200 dark:bg-yellow-900/20 dark:border-yellow-800',
-    icon: 'text-yellow-600 dark:text-yellow-400',
-    text: 'text-yellow-800 dark:text-yellow-200',
-    sub: 'text-yellow-700 dark:text-yellow-300',
-    btn: 'text-yellow-700 dark:text-yellow-300 hover:text-yellow-900 dark:hover:text-yellow-100',
+    wrapper: 'bg-warning/10 border-warning/30',
+    icon: 'text-warning',
+    text: 'text-warning',
+    sub: 'text-warning/90',
+    btn: 'text-warning hover:text-warning/80',
   },
   error: {
-    wrapper: 'bg-red-50 border-red-200 dark:bg-red-900/20 dark:border-red-800',
-    icon: 'text-red-600 dark:text-red-400',
-    text: 'text-red-800 dark:text-red-200',
-    sub: 'text-red-700 dark:text-red-300',
-    btn: 'text-red-700 dark:text-red-300 hover:text-red-900 dark:hover:text-red-100',
+    wrapper: 'bg-destructive/10 border-destructive/30',
+    icon: 'text-destructive',
+    text: 'text-destructive',
+    sub: 'text-destructive/90',
+    btn: 'text-destructive hover:text-destructive/80',
   },
   info: {
-    wrapper: 'bg-blue-50 border-blue-200 dark:bg-blue-900/20 dark:border-blue-800',
-    icon: 'text-blue-600 dark:text-blue-400',
-    text: 'text-blue-800 dark:text-blue-200',
-    sub: 'text-blue-700 dark:text-blue-300',
-    btn: 'text-blue-700 dark:text-blue-300 hover:text-blue-900 dark:hover:text-blue-100',
+    wrapper: 'bg-accent border-primary/20',
+    icon: 'text-accent-foreground',
+    text: 'text-accent-foreground',
+    sub: 'text-accent-foreground/90',
+    btn: 'text-accent-foreground hover:text-accent-foreground/80',
   },
 };
 

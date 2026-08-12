@@ -1,6 +1,4 @@
 import { useState } from 'react';
-import { AppLayout } from '@/components/layout/AppLayout';
-import { ProtectedRoute } from '@/components/layout/ProtectedRoute';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -22,6 +20,7 @@ import {
   Building2, Laptop, Megaphone, CreditCard, Receipt,
   Truck, FolderOpen, Package, ShoppingBag, Users, Wrench, Globe,
 } from 'lucide-react';
+import { PageHeader } from '@/components/layout/PageHeader';
 
 const formatCurrency = (value: number) =>
   new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value);
@@ -141,29 +140,24 @@ function CadastroCustosContent() {
   // ── Loading ─────────────────────────────────────────────────────────────────
   if (isLoading) {
     return (
-      <AppLayout>
-        <div className="container mx-auto px-4 py-6 space-y-6">
-          <Skeleton className="h-10 w-64" />
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {[1, 2].map(i => <Skeleton key={i} className="h-32" />)}
-          </div>
-          <Skeleton className="h-64" />
+      <div className="space-y-6">
+        <Skeleton className="h-10 w-64" />
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          {[1, 2].map(i => <Skeleton key={i} className="h-32" />)}
         </div>
-      </AppLayout>
+        <Skeleton className="h-64" />
+      </div>
     );
   }
 
   return (
-    <AppLayout>
-      <div className="container mx-auto px-4 py-6 space-y-6">
+    <div className="space-y-6">
 
-        {/* ── Header ─────────────────────────────────────────────────────────── */}
-        <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-          <div>
-            <h1 className="text-2xl font-bold text-foreground">Cadastro de Custos Fixos</h1>
-            <p className="text-muted-foreground">Gerencie os custos fixos mensais da sua operação</p>
-          </div>
-
+        <PageHeader
+          icon={Receipt}
+          title="Cadastro de Custos Fixos"
+          subtitle="Gerencie os custos fixos mensais da sua operação"
+          action={
           <Dialog
             open={isAddDialogOpen}
             onOpenChange={open => { setIsAddDialogOpen(open); if (!open) resetForm(); }}
@@ -263,7 +257,8 @@ function CadastroCustosContent() {
               </DialogFooter>
             </DialogContent>
           </Dialog>
-        </div>
+          }
+        />
 
         {/* ── Card de totais ──────────────────────────────────────────────────── */}
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -398,15 +393,8 @@ function CadastroCustosContent() {
             )}
           </CardContent>
         </Card>
-      </div>
-    </AppLayout>
+    </div>
   );
 }
 
-export default function CadastroCustos() {
-  return (
-    <ProtectedRoute>
-      <CadastroCustosContent />
-    </ProtectedRoute>
-  );
-}
+export default CadastroCustosContent;

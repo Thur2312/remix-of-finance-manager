@@ -1,8 +1,6 @@
 import { useState, useCallback } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
-import { AppLayout } from '@/components/layout/AppLayout';
-import { ProtectedRoute } from '@/components/layout/ProtectedRoute';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Switch } from '@/components/ui/switch';
@@ -27,7 +25,8 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { parseTikTokCSVRow, ParsedTikTokRow, excludedStatuses } from '@/lib/tiktok-helpers';
-import { InPageNav, tiktokNavTabs } from '@/components/layout/InPageNav';
+import { tiktokNavTabs } from '@/components/layout/InPageNav';
+import { PageHeader } from '@/components/layout/PageHeader';
 
 function TikTokUploadContent() {
   const { user } = useAuth();
@@ -440,11 +439,9 @@ function TikTokUploadContent() {
 
 export default function TikTokUpload() {
   return (
-    <ProtectedRoute>
-      <AppLayout title="Gestão TikTok">
-        <InPageNav tabs={tiktokNavTabs} />
-        <TikTokUploadContent />
-      </AppLayout>
-    </ProtectedRoute>
+    <>
+      <PageHeader tabs={tiktokNavTabs} />
+      <TikTokUploadContent />
+    </>
   );
 }

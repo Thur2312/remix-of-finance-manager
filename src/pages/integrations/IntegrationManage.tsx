@@ -1,6 +1,5 @@
 import { useParams, useNavigate } from 'react-router-dom';
-import { AppLayout } from '@/components/layout/AppLayout';
-import { ProtectedRoute } from '@/components/layout/ProtectedRoute';
+import { useTopbarTitle } from '@/components/layout/TopbarTitleContext';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -56,6 +55,8 @@ export default function IntegrationManage() {
   const Icon = providerIcons[provider || ''] || Store;
   const name = providerNames[provider || ''] || provider;
 
+  useTopbarTitle(`Gerenciar ${name}`);
+
   // ✅ useShopeeSync só para Shopee/TikTok, ML não usa
   const { data: syncData, isLoading: syncLoading } = useShopeeSync(
     connection?.status === 'connected' && provider !== 'mercadolivre' ? connection.id : null,
@@ -64,21 +65,17 @@ export default function IntegrationManage() {
 
   if (!connection || connection.status === 'disconnected') {
     return (
-      <ProtectedRoute>
-        <AppLayout title={`Gerenciar ${name}`}>
-          <div className="space-y-4 max-w-4xl">
-            <Button variant="ghost" onClick={() => navigate('/integrations')}>
-              <ArrowLeft className="mr-2 h-4 w-4" /> Voltar
-            </Button>
-            <Card>
-              <CardContent className="py-12 text-center">
-                <p className="text-muted-foreground">Nenhuma conexão ativa para {name}.</p>
-                <Button className="mt-4" onClick={() => navigate('/integrations')}>Ir para Integrações</Button>
-              </CardContent>
-            </Card>
-          </div>
-        </AppLayout>
-      </ProtectedRoute>
+      <div className="space-y-4 max-w-4xl">
+        <Button variant="ghost" onClick={() => navigate('/integrations')}>
+          <ArrowLeft className="mr-2 h-4 w-4" /> Voltar
+        </Button>
+        <Card>
+          <CardContent className="py-12 text-center">
+            <p className="text-muted-foreground">Nenhuma conexão ativa para {name}.</p>
+            <Button className="mt-4" onClick={() => navigate('/integrations')}>Ir para Integrações</Button>
+          </CardContent>
+        </Card>
+      </div>
     );
   }
 
@@ -111,13 +108,11 @@ export default function IntegrationManage() {
   });
 
   return (
-    <ProtectedRoute>
-      <AppLayout title={`Gerenciar ${name}`}>
-        <div className="space-y-6 max-w-4xl">
+    <div className="space-y-6 max-w-4xl">
 
-          <Button variant="ghost" onClick={() => navigate('/integrations')} className="-ml-2">
-            <ArrowLeft className="mr-2 h-4 w-4" /> Voltar
-          </Button>
+      <Button variant="ghost" onClick={() => navigate('/integrations')} className="-ml-2">
+        <ArrowLeft className="mr-2 h-4 w-4" /> Voltar
+      </Button>
 
           {/* Header da loja */}
           <Card className="border-emerald-500/30 bg-emerald-500/5">
@@ -372,8 +367,6 @@ export default function IntegrationManage() {
             </CardContent>
           </Card>
 
-        </div>
-      </AppLayout>
-    </ProtectedRoute>
+    </div>
   );
 }

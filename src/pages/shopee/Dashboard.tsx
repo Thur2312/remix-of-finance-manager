@@ -1,19 +1,18 @@
 import { useState, useEffect, useMemo } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
-import { AppLayout } from '@/components/layout/AppLayout';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Link } from 'react-router-dom';
 import {
-  Settings, Package, ArrowRight,
+  Package, ArrowRight,
   TrendingUp, DollarSign, ShoppingCart, RefreshCw, Zap,
   CheckCircle2, Clock, XCircle, HelpCircle,
 } from 'lucide-react';
 import { DashboardCharts } from '@/components/charts/DashboardCharts';
-import { InPageNav, shopeeNavTabs } from '@/components/layout/InPageNav';
 import { TopVariationsSection } from '@/components/charts/TopVariationsSection';
+import { OnboardingChecklist } from '@/components/dashboard/OnboardingChecklist';
 import { supabase } from '@/integrations/supabase/client';
 import { calculateResults, formatCurrency, RawOrder, SettingsData } from '@/lib/calculations';
 import { fetchAllOrders } from '@/lib/supabase-helpers';
@@ -120,6 +119,10 @@ const feeLabels: Record<string, string> = {
   shipping: 'Subsídio de Frete',
 };
 
+// Superfície de cartão da área interna — mesma família visual do .glass-card
+// da landing, calibrada pra densidade (ver .app-card em index.css).
+const CARD = 'app-card bg-card border-transparent';
+
 // ─── Conteúdo interno — exportado para reuso na Gestão unificada ─────────────
 export function ShopeeDashboardContent() {
   const { user } = useAuth();
@@ -177,16 +180,16 @@ export function ShopeeDashboardContent() {
       value: loading ? '...' : totalOrders.toString(),
       description: usingSyncData ? `Últimos ${syncPeriod} dias (sync)` : 'Pedidos importados',
       icon: ShoppingCart,
-      color: 'text-blue-500',
-      bgColor: 'bg-blue-500/10',
+      color: 'text-primary',
+      bgColor: 'bg-primary/10',
     },
     {
       title: 'Faturamento',
       value: loading ? '...' : formatCurrency(totalRevenue),
       description: usingSyncData ? 'Receita bruta sincronizada' : 'Total faturado',
       icon: DollarSign,
-      color: 'text-emerald-500',
-      bgColor: 'bg-emerald-500/10',
+      color: 'text-success',
+      bgColor: 'bg-success/10',
     },
     {
       title: profitTitle,
@@ -203,33 +206,28 @@ export function ShopeeDashboardContent() {
       value: loading ? '...' : formatCurrency(totalFees),
       description: 'Comissão + serviço + frete',
       icon: Package,
-      color: 'text-orange-500',
-      bgColor: 'bg-orange-500/10',
+      color: 'text-warning',
+      bgColor: 'bg-warning/10',
     }] : []),
   ];
 
   return (
     <div className="space-y-8 animate-fade-in">
 
-      {/* ── Header ──────────────────────────────────────────────── */}
-      <div className="flex items-center justify-between flex-wrap gap-3">
-        <div>
-          <h2 className="text-lg font-semibold text-foreground">Dashboard Shopee</h2>
-          <p className="text-sm text-muted-foreground">
-            Acompanhe seus resultados e aplique a alíquota de imposto correta.
-          </p>
-        </div>
+      {/* Título/subtítulo já vêm do topbar (AppLayout, via Gestao.tsx) — não
+         repetir aqui. Só o seletor de empresa, que é funcional. */}
+      <div className="flex items-center justify-end">
         <CompanySelector selectedCompany={selectedCompany} onSelect={setSelectedCompany} />
       </div>
 
       {/* ── Banner integração ────────────────────────────────────── */}
       {isConnected && (
-        <Card className="border-emerald-500/30 bg-emerald-500/5">
+        <Card className={`${CARD} border-success/30 bg-success/5`}>
           <CardContent className="py-4">
             <div className="flex items-center justify-between flex-wrap gap-3">
               <div className="flex items-center gap-3">
-                <div className="h-9 w-9 rounded-full bg-emerald-500/15 flex items-center justify-center shrink-0">
-                  <Zap className="h-4 w-4 text-emerald-500" />
+                <div className="h-9 w-9 rounded-full bg-success/15 flex items-center justify-center shrink-0">
+                  <Zap className="h-4 w-4 text-success" />
                 </div>
                 <div>
                   <p className="text-sm font-medium leading-tight">
@@ -244,7 +242,7 @@ export function ShopeeDashboardContent() {
                       : 'Nenhum pedido sincronizado ainda — clique em Sincronizar'}
                   </p>
                 </div>
-                <Badge className="bg-emerald-500 text-white text-xs shrink-0">Sincronizado</Badge>
+                <Badge className="bg-success text-success-foreground text-xs shrink-0">Sincronizado</Badge>
               </div>
 
               <div className="flex items-center gap-2 flex-wrap">
@@ -291,7 +289,7 @@ export function ShopeeDashboardContent() {
           const info = statInfo[stat.title];
           const isProfit = stat.title === profitTitle;
           return (
-            <Card key={stat.title} className="relative overflow-hidden transition-shadow hover:shadow-md">
+            <Card key={stat.title} className={`${CARD} relative overflow-hidden transition-shadow hover:shadow-md`}>
               <CardHeader className="flex flex-row items-start justify-between pb-3 space-y-0">
                 <div className="flex items-center gap-1.5">
                   <span className="text-sm font-medium text-muted-foreground">{stat.title}</span>
@@ -327,7 +325,7 @@ export function ShopeeDashboardContent() {
 
       {/* ── Detalhamento de Taxas ────────────────────────────────── */}
       {usingSyncData && syncData.stats.feeBreakdown.length > 0 && (
-        <Card>
+        <Card className={CARD}>
           <CardHeader className="pb-3">
             <div className="flex items-center gap-2">
               <CardTitle className="text-base">Detalhamento de Taxas</CardTitle>
@@ -383,15 +381,15 @@ export function ShopeeDashboardContent() {
             <h3 className="text-base font-semibold">Status dos Pedidos</h3>
           </div>
           <div className="grid gap-4 md:grid-cols-3">
-            <Card className="border-emerald-500/20 bg-emerald-500/5 hover:shadow-md transition-shadow">
+            <Card className={`${CARD} border-success/20 bg-success/5 hover:shadow-md transition-shadow`}>
               <CardContent className="pt-5 pb-5">
                 <div className="flex items-start gap-3">
-                  <div className="h-9 w-9 rounded-lg bg-emerald-500/15 flex items-center justify-center shrink-0">
-                    <CheckCircle2 className="h-4 w-4 text-emerald-500" />
+                  <div className="h-9 w-9 rounded-lg bg-success/15 flex items-center justify-center shrink-0">
+                    <CheckCircle2 className="h-4 w-4 text-success" />
                   </div>
                   <div className="flex-1 min-w-0">
                     <span className="text-xs font-medium text-muted-foreground">Concluídos</span>
-                    <div className="text-3xl font-bold text-emerald-600 mt-1">{syncData.stats.paidOrders}</div>
+                    <div className="text-3xl font-bold text-success mt-1">{syncData.stats.paidOrders}</div>
                     {syncData.stats.totalOrders > 0 && (
                       <p className="text-xs text-muted-foreground mt-1">
                         {((syncData.stats.paidOrders / syncData.stats.totalOrders) * 100).toFixed(0)}% do total
@@ -402,15 +400,15 @@ export function ShopeeDashboardContent() {
               </CardContent>
             </Card>
 
-            <Card className="border-yellow-500/20 bg-yellow-500/5 hover:shadow-md transition-shadow">
+            <Card className={`${CARD} border-warning/20 bg-warning/5 hover:shadow-md transition-shadow`}>
               <CardContent className="pt-5 pb-5">
                 <div className="flex items-start gap-3">
-                  <div className="h-9 w-9 rounded-lg bg-yellow-500/15 flex items-center justify-center shrink-0">
-                    <Clock className="h-4 w-4 text-yellow-500" />
+                  <div className="h-9 w-9 rounded-lg bg-warning/15 flex items-center justify-center shrink-0">
+                    <Clock className="h-4 w-4 text-warning" />
                   </div>
                   <div className="flex-1 min-w-0">
                     <span className="text-xs font-medium text-muted-foreground">Em andamento</span>
-                    <div className="text-3xl font-bold text-yellow-600 mt-1">{syncData.stats.pendingOrders}</div>
+                    <div className="text-3xl font-bold text-warning mt-1">{syncData.stats.pendingOrders}</div>
                     {syncData.stats.totalOrders > 0 && (
                       <p className="text-xs text-muted-foreground mt-1">
                         {((syncData.stats.pendingOrders / syncData.stats.totalOrders) * 100).toFixed(0)}% do total
@@ -421,7 +419,7 @@ export function ShopeeDashboardContent() {
               </CardContent>
             </Card>
 
-            <Card className="border-destructive/20 bg-destructive/5 hover:shadow-md transition-shadow">
+            <Card className={`${CARD} border-destructive/20 bg-destructive/5 hover:shadow-md transition-shadow`}>
               <CardContent className="pt-5 pb-5">
                 <div className="flex items-start gap-3">
                   <div className="h-9 w-9 rounded-lg bg-destructive/15 flex items-center justify-center shrink-0">
@@ -468,41 +466,34 @@ export function ShopeeDashboardContent() {
 
       {/* ── Primeiros Passos ─────────────────────────────────────── */}
       {!usingSyncData && orders.length === 0 && (
-        <Card className="border-dashed">
-          <CardHeader>
-            <CardTitle className="text-base">🚀 Primeiros Passos</CardTitle>
-            <CardDescription>Para começar a usar o sistema, siga estes passos:</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <ol className="list-decimal list-inside space-y-3 text-muted-foreground text-sm">
-              <li>
-                <span className="font-medium text-foreground">Conecte sua loja Shopee</span>
-                {' '}— Acesse{' '}
-                <Link to="/integrations" className="text-primary underline underline-offset-2">Integrações</Link>
-                {' '}e conecte sua conta
-              </li>
-              <li>
-                <span className="font-medium text-foreground">Configure seus parâmetros</span>
-                {' '}— Defina taxas, impostos e custos na tela de{' '}
-                <Link to="/shopee/configuracoes" className="text-primary underline underline-offset-2">Configurações</Link>
-              </li>
-              <li>
-                <span className="font-medium text-foreground">Faça o upload do relatório</span>
-                {' '}— Ou importe seu arquivo XLSX da Shopee manualmente
-              </li>
-            </ol>
-          </CardContent>
-        </Card>
+        <OnboardingChecklist
+          description="Para começar a usar o sistema, siga estes passos:"
+          steps={[
+            {
+              title: 'Conecte sua loja Shopee',
+              description: (
+                <>
+                  Acesse <Link to="/integrations" className="text-primary underline underline-offset-2">Integrações</Link> e conecte sua conta
+                </>
+              ),
+            },
+            {
+              title: 'Configure seus parâmetros',
+              description: (
+                <>
+                  Defina taxas, impostos e custos na tela de{' '}
+                  <Link to="/shopee/configuracoes" className="text-primary underline underline-offset-2">Configurações</Link>
+                </>
+              ),
+            },
+            {
+              title: 'Faça o upload do relatório',
+              description: 'Ou importe seu arquivo XLSX da Shopee manualmente',
+            },
+          ]}
+        />
       )}
     </div>
   );
 }
 
-export default function Dashboard() {
-  return (
-    <AppLayout title="Gestão Shopee">
-      <InPageNav tabs={shopeeNavTabs} />
-      <ShopeeDashboardContent />
-    </AppLayout>
-  );
-}

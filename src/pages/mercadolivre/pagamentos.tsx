@@ -1,6 +1,4 @@
 import { useCallback } from 'react';
-import { AppLayout } from '@/components/layout/AppLayout';
-import { ProtectedRoute } from '@/components/layout/ProtectedRoute';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -9,8 +7,6 @@ import { cn } from '@/lib/utils';
 import {
   Loader2,
   DollarSign,
-  AlertCircle,
-  Filter,
   Download,
   CreditCard,
   CheckCircle2,
@@ -27,8 +23,15 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { formatCurrency } from '@/lib/calculations';
-import { InPageNav, mercadolivreNavTabs } from '@/components/layout/InPageNav';
+import { mercadolivreNavTabs } from '@/components/layout/InPageNav';
+import { PageHeader } from '@/components/layout/PageHeader';
+import { FiltersCard } from '@/components/layout/FiltersCard';
+import { EmptyResultsState } from '@/components/layout/EmptyResultsState';
 import { useMercadolivreData } from '@/hooks/useMercadolivreData';
+
+// Superfície de cartão da área interna — mesma família visual do .glass-card
+// da landing, calibrada pra densidade (ver .app-card em index.css).
+const CARD = 'app-card bg-card border-transparent';
 
 type PaymentStatus = 'approved' | 'pending' | 'cancelled' | string;
 
@@ -42,8 +45,8 @@ function getStatusInfo(status: PaymentStatus) {
         label: 'Aprovado',
         variant: 'default' as const,
         icon: CheckCircle2,
-        color: 'text-emerald-500',
-        bg: 'bg-emerald-500/10',
+        color: 'text-success',
+        bg: 'bg-success/10',
       };
     case 'pending':
     case 'payment_required':
@@ -52,8 +55,8 @@ function getStatusInfo(status: PaymentStatus) {
         label: 'Pendente',
         variant: 'secondary' as const,
         icon: Clock,
-        color: 'text-yellow-500',
-        bg: 'bg-yellow-500/10',
+        color: 'text-warning',
+        bg: 'bg-warning/10',
       };
     case 'cancelled':
     case 'invalid':
@@ -152,24 +155,24 @@ function PagamentosContent() {
         value: loading ? '...' : formatCurrency(stats.netRevenue),
         description: 'Após taxas e descontos ML',
         icon: Wallet,
-        color: 'text-green-500',
-        bg: 'bg-green-500/10',
+        color: 'text-success',
+        bg: 'bg-success/10',
       },
       {
         title: 'Faturamento Bruto',
         value: loading ? '...' : formatCurrency(stats.grossRevenue),
         description: 'Antes das taxas',
         icon: DollarSign,
-        color: 'text-blue-500',
-        bg: 'bg-blue-500/10',
+        color: 'text-primary',
+        bg: 'bg-primary/10',
       },
       {
         title: 'Total de Taxas',
         value: loading ? '...' : formatCurrency(totalTaxa),
         description: 'Comissão + frete ML',
         icon: CreditCard,
-        color: 'text-orange-500',
-        bg: 'bg-orange-500/10',
+        color: 'text-warning',
+        bg: 'bg-warning/10',
       },
       {
         title: 'Pedidos',
@@ -184,7 +187,7 @@ function PagamentosContent() {
     return (
       <div className="grid gap-4 md:grid-cols-4">
         {cards.map((card) => (
-          <Card key={card.title}>
+          <Card key={card.title} className={CARD}>
             <CardContent className="pt-6">
               <div className="flex items-center justify-between">
                 <div>
@@ -207,7 +210,7 @@ function PagamentosContent() {
     if (summary.length === 0) return null;
 
     return (
-      <Card>
+      <Card className={CARD}>
         <CardHeader>
           <CardTitle className="text-base flex items-center gap-2">
             <CreditCard className="h-4 w-4" />
@@ -262,20 +265,15 @@ function PagamentosContent() {
 
     if (orders.length === 0) {
       return (
-        <Card>
-          <CardContent className="py-12 text-center">
-            <AlertCircle className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
-            <h3 className="font-semibold text-lg">Nenhum pagamento encontrado</h3>
-            <p className="text-muted-foreground mt-2">
-              Sincronize seus pedidos do Mercado Livre para visualizar os pagamentos.
-            </p>
-          </CardContent>
-        </Card>
+        <EmptyResultsState
+          title="Nenhum pagamento encontrado"
+          description="Sincronize seus pedidos do Mercado Livre para visualizar os pagamentos."
+        />
       );
     }
 
     return (
-      <Card>
+      <Card className={CARD}>
         <CardHeader>
           <CardTitle>Detalhamento de Pagamentos</CardTitle>
           <CardDescription>
@@ -347,25 +345,14 @@ function PagamentosContent() {
 
   return (
     <div className="space-y-6 animate-fade-in">
-      {/* Filters */}
-      <Card>
-        <CardHeader className="pb-4">
-          <CardTitle className="text-base flex items-center gap-2">
-            <Filter className="h-4 w-4" />
-            Filtros
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="flex flex-wrap gap-4 items-end">
-            {orders.length > 0 && (
-              <Button onClick={handleExport} variant="outline">
-                <Download className="h-4 w-4 mr-2" />
-                Exportar CSV
-              </Button>
-            )}
-          </div>
-        </CardContent>
-      </Card>
+      <FiltersCard>
+        {orders.length > 0 && (
+          <Button onClick={handleExport} variant="outline">
+            <Download className="h-4 w-4 mr-2" />
+            Exportar CSV
+          </Button>
+        )}
+      </FiltersCard>
 
       {renderSummaryCards()}
       {renderStatusSummary()}
@@ -376,11 +363,9 @@ function PagamentosContent() {
 
 export default function MercadoLivrePagamentos() {
   return (
-    <ProtectedRoute>
-      <AppLayout title="Gestão Mercado Livre">
-        <InPageNav tabs={mercadolivreNavTabs} />
-        <PagamentosContent />
-      </AppLayout>
-    </ProtectedRoute>
+    <>
+      <PageHeader tabs={mercadolivreNavTabs} />
+      <PagamentosContent />
+    </>
   );
 }

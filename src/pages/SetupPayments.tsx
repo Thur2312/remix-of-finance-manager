@@ -11,8 +11,6 @@ import {
   AlertCircle,
 } from 'lucide-react';
 import { usePaymentCheckout } from '@/hooks/usePaymentCheckout';
-import { AppLayout } from '@/components/layout/AppLayout';
-import { ProtectedRoute } from '@/components/layout/ProtectedRoute';
 import { useTrialStatus } from '@/hooks/useTrialStatus';
 import { useEffect } from 'react';
 import { PLANS as PLAN_PRICING } from '@/config/plans';
@@ -130,12 +128,4 @@ function SetupPaymentContent() {
   );
 }
 
-export default function SetupPayment() {
-  return (
-    <ProtectedRoute>
-      <AppLayout>
-        <SetupPaymentContent />
-      </AppLayout>
-    </ProtectedRoute>
-  );
-}
+export default SetupPaymentContent;

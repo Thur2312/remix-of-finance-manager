@@ -1,8 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
-import { AppLayout } from '@/components/layout/AppLayout';
-import { ProtectedRoute } from '@/components/layout/ProtectedRoute';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -24,7 +22,8 @@ import {
 } from '@/components/ui/alert-dialog';
 import { z } from 'zod';
 import { TikTokSettingsData } from '@/lib/tiktok-calculations';
-import { InPageNav, tiktokNavTabs } from '@/components/layout/InPageNav';
+import { tiktokNavTabs } from '@/components/layout/InPageNav';
+import { PageHeader } from '@/components/layout/PageHeader';
 
 const settingsSchema = z.object({
   name: z.string().min(1, 'Nome é obrigatório').max(100, 'Nome muito longo'),
@@ -309,18 +308,18 @@ function TikTokConfiguracoesContent() {
 
   return (
     <div className="space-y-6 animate-fade-in">
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-        <div>
-          <h2 className="text-2xl font-bold">Configurações TikTok Shop</h2>
-          <p className="text-muted-foreground">
-            Defina os parâmetros de cálculo para suas vendas no TikTok Shop
-          </p>
-        </div>
-        <Button onClick={handleNewSettings}>
-          <Plus className="h-4 w-4 mr-2" />
-          Nova Configuração
-        </Button>
-      </div>
+      <PageHeader
+        icon={Settings}
+        title="Configurações TikTok Shop"
+        subtitle="Defina os parâmetros de cálculo para suas vendas no TikTok Shop"
+        action={
+          <Button onClick={handleNewSettings}>
+            <Plus className="h-4 w-4 mr-2" />
+            Nova Configuração
+          </Button>
+        }
+        tabs={tiktokNavTabs}
+      />
 
       <div className="grid gap-6 lg:grid-cols-4">
         <Card className="lg:col-span-1">
@@ -619,13 +618,4 @@ function TikTokConfiguracoesContent() {
   );
 }
 
-export default function TikTokConfiguracoes() {
-  return (
-    <ProtectedRoute>
-      <AppLayout title="Gestão TikTok">
-        <InPageNav tabs={tiktokNavTabs} />
-        <TikTokConfiguracoesContent />
-      </AppLayout>
-    </ProtectedRoute>
-  );
-}
+export default TikTokConfiguracoesContent;

@@ -1,8 +1,6 @@
 import { useState, useEffect, useMemo } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
-import { AppLayout } from '@/components/layout/AppLayout';
-import { ProtectedRoute } from '@/components/layout/ProtectedRoute';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Link } from 'react-router-dom';
@@ -15,10 +13,14 @@ import { TikTokSettingsData, TikTokOrder, calculateTikTokResults, formatCurrency
 import { fetchAllTikTokOrders } from '@/lib/tiktok-helpers';
 import { DashboardCharts } from '@/components/charts/DashboardCharts';
 import { TopVariationsSection } from '@/components/charts/TopVariationsSection';
-import { InPageNav, tiktokNavTabs } from '@/components/layout/InPageNav';
+import { OnboardingChecklist } from '@/components/dashboard/OnboardingChecklist';
 import { CompanySelector } from '@/components/dashboard/CompanySelector';
 import { TaxSummaryRow } from '@/hooks/useIntegrationTax';
 import { Company } from '@/hooks/useCompanies';
+
+// Superfície de cartão da área interna — mesma família visual do .glass-card
+// da landing, calibrada pra densidade (ver .app-card em index.css).
+const CARD = 'app-card bg-card border-transparent';
 
 // ─── Conteúdo interno — exportado para reuso na Gestão unificada ─────────────
 export function TikTokDashboardContent() {
@@ -84,8 +86,8 @@ export function TikTokDashboardContent() {
       value: isLoading ? '...' : totalOrders.toString(),
       description: 'Pedidos importados',
       icon: ShoppingCart,
-      color: 'text-blue-500',
-      bgColor: 'bg-blue-500/10',
+      color: 'text-primary',
+      bgColor: 'bg-primary/10',
       isProfit: false,
     },
     {
@@ -93,8 +95,8 @@ export function TikTokDashboardContent() {
       value: isLoading ? '...' : formatCurrency(totalRevenue),
       description: 'Total faturado',
       icon: DollarSign,
-      color: 'text-green-500',
-      bgColor: 'bg-green-500/10',
+      color: 'text-success',
+      bgColor: 'bg-success/10',
       isProfit: false,
     },
     {
@@ -119,19 +121,14 @@ export function TikTokDashboardContent() {
   return (
     <div className="space-y-8 animate-fade-in">
 
-      {/* ── Header ──────────────────────────────────────────────── */}
-      <div className="flex items-center justify-between flex-wrap gap-3">
-        <div>
-          <h2 className="text-lg font-semibold text-foreground">Dashboard TikTok Shop</h2>
-          <p className="text-sm text-muted-foreground">
-            Acompanhe seus resultados e aplique a alíquota de imposto correta.
-          </p>
-        </div>
+      {/* Título/subtítulo já vêm do topbar (AppLayout, via Gestao.tsx) — não
+         repetir aqui. Só o seletor de empresa, que é funcional. */}
+      <div className="flex items-center justify-end">
         <CompanySelector selectedCompany={selectedCompany} onSelect={setSelectedCompany} />
       </div>
 
       {/* ── Aviso: sem integração ativa ──────────────────────────── */}
-      <Card className="border-muted-foreground/20 bg-muted/30">
+      <Card className={`${CARD} border-muted-foreground/20 bg-muted/30`}>
         <CardContent className="py-4">
           <p className="text-sm text-muted-foreground">
             🔌 A integração automática com o TikTok Shop ainda está em desenvolvimento.
@@ -143,7 +140,7 @@ export function TikTokDashboardContent() {
       {/* ── Stats Cards ──────────────────────────────────────────── */}
       <div className="grid gap-4 md:grid-cols-3">
         {stats.map((stat) => (
-          <Card key={stat.title} className="transition-shadow hover:shadow-md">
+          <Card key={stat.title} className={`${CARD} transition-shadow hover:shadow-md`}>
             <CardHeader className="flex flex-row items-start justify-between pb-3 space-y-0">
               <span className="text-sm font-medium text-muted-foreground">{stat.title}</span>
               <div className={`h-8 w-8 rounded-lg ${stat.bgColor} flex items-center justify-center shrink-0`}>
@@ -174,7 +171,7 @@ export function TikTokDashboardContent() {
         <h3 className="text-lg font-semibold mb-4">Ações Rápidas</h3>
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
           {quickActions.map((action) => (
-            <Card key={action.title} className="group hover:border-primary transition-colors">
+            <Card key={action.title} className={`${CARD} group hover:border-primary transition-colors`}>
               <CardHeader>
                 <div className={`inline-flex h-12 w-12 items-center justify-center rounded-lg ${action.color} text-white mb-3`}>
                   <action.icon className="h-6 w-6" />
@@ -197,41 +194,30 @@ export function TikTokDashboardContent() {
 
       {/* ── Primeiros Passos ─────────────────────────────────────── */}
       {orders.length === 0 && (
-        <Card className="border-dashed">
-          <CardHeader>
-            <CardTitle className="text-lg">🚀 Primeiros Passos</CardTitle>
-            <CardDescription>Para começar a usar o sistema, siga estes passos:</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <ol className="list-decimal list-inside space-y-3 text-muted-foreground">
-              <li>
-                <span className="font-medium text-foreground">Configure seus parâmetros</span>
-                {' '}— Defina taxas, impostos e custos na tela de Configurações
-              </li>
-              <li>
-                <span className="font-medium text-foreground">Faça o upload do relatório</span>
-                {' '}— Importe seu arquivo CSV do TikTok Shop
-              </li>
-              <li>
-                <span className="font-medium text-foreground">Visualize seus resultados</span>
-                {' '}— Analise lucros por produto e variação
-              </li>
-            </ol>
-          </CardContent>
-        </Card>
+        <OnboardingChecklist
+          description="Para começar a usar o sistema, siga estes passos:"
+          steps={[
+            {
+              title: 'Configure seus parâmetros',
+              description: (
+                <>
+                  Defina taxas, impostos e custos na tela de{' '}
+                  <Link to="/tiktok/configuracoes" className="text-primary underline underline-offset-2">Configurações</Link>
+                </>
+              ),
+            },
+            {
+              title: 'Faça o upload do relatório',
+              description: 'Importe seu arquivo CSV do TikTok Shop',
+            },
+            {
+              title: 'Visualize seus resultados',
+              description: 'Analise lucros por produto e variação',
+            },
+          ]}
+        />
       )}
     </div>
   );
 }
 
-// ─── Página standalone (mantida para acesso direto via rota) ─────────────────
-export default function TikTokDashboard() {
-  return (
-    <ProtectedRoute>
-      <AppLayout title="Gestão TikTok">
-        <InPageNav tabs={tiktokNavTabs} />
-        <TikTokDashboardContent />
-      </AppLayout>
-    </ProtectedRoute>
-  );
-}

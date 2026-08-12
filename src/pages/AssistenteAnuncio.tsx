@@ -8,8 +8,6 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/hooks/use-toast';
-import { AppLayout } from '@/components/layout/AppLayout';
-import { ProtectedRoute } from '@/components/layout/ProtectedRoute';
 import { supabase } from '@/integrations/supabase/client';
 import { MedidasProdutoSection } from '@/components/assistente/MedidasProdutoSection';
 
@@ -242,17 +240,16 @@ const AssistenteAnuncio = () => {
   };
 
   return (
-    <AppLayout>
-      <div className="space-y-6">
-        <div>
-          <h1 className="text-2xl font-bold text-foreground flex items-center gap-2">
-            <Sparkles className="h-6 w-6 text-primary" />
-            Assistente de Anúncio
-          </h1>
-          <p className="text-muted-foreground">
-            Crie títulos e descrições otimizados para seus produtos na Shopee
-          </p>
-        </div>
+    <div className="space-y-6">
+      <div>
+        <h1 className="text-2xl font-bold text-foreground flex items-center gap-2">
+          <Sparkles className="h-6 w-6 text-primary" />
+          Assistente de Anúncio
+        </h1>
+        <p className="text-muted-foreground">
+          Crie títulos e descrições otimizados para seus produtos na Shopee
+        </p>
+      </div>
 
         <Card>
           <CardHeader>
@@ -404,15 +401,8 @@ const AssistenteAnuncio = () => {
             </Card>
           </div>
         )}
-      </div>
-    </AppLayout>
+    </div>
   );
 };
 
-export default function AssistenteAnuncioPage() {
-  return (
-    <ProtectedRoute>
-      <AssistenteAnuncio />
-    </ProtectedRoute>
-  );
-}
+export default AssistenteAnuncio;

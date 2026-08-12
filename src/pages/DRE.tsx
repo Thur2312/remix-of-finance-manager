@@ -1,6 +1,4 @@
 import { useState } from 'react';
-import { ProtectedRoute } from '@/components/layout/ProtectedRoute';
-import { AppLayout } from '@/components/layout/AppLayout';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Button } from '@/components/ui/button';
@@ -13,9 +11,10 @@ import { DRECharts } from '@/components/dre/DRECharts';
 import { DRESummaryCards } from '@/components/dre/DRESummaryCards';
 import { DREAlerts } from '@/components/dre/DREAlerts';
 import { formatDREForDisplay, formatCurrency, DREPeriod } from '@/lib/dre-calculations';
-import { FileSpreadsheet, RefreshCw, Download, Calendar, TrendingDown, AlertCircle, CheckCircle2, XCircle } from 'lucide-react';
+import { FileSpreadsheet, RefreshCw, Download, Calendar, BarChart3, AlertCircle, CheckCircle2, XCircle } from 'lucide-react';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
+import { PageHeader } from '@/components/layout/PageHeader';
 
 function DREContent() {
   const {
@@ -104,46 +103,37 @@ function DREContent() {
 
   return (
     <div className="space-y-6">
-      {/* Header */}
-      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-bold flex items-center gap-2">
-            
-            Demonstração do Resultado (DRE)
-          </h1>
-          <p className="text-muted-foreground text-sm mt-1">
-            Visão consolidada do resultado financeiro da empresa
-          </p>
-        </div>
+      <PageHeader
+        icon={BarChart3}
+        title="Demonstração do Resultado (DRE)"
+        subtitle="Visão consolidada do resultado financeiro da empresa"
+        action={
+          <div className="flex items-center gap-3">
+            <Select value={selectedPeriod.label} onValueChange={handlePeriodChange}>
+              <SelectTrigger className="w-48">
+                <Calendar className="h-4 w-4 mr-2 text-muted-foreground" />
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {periods.map((period) =>
+                <SelectItem key={period.label} value={period.label}>
+                    {period.label}
+                  </SelectItem>
+                )}
+              </SelectContent>
+            </Select>
 
-        <div className="flex items-center gap-3">
-          {/* Period Selector */}
-          <Select value={selectedPeriod.label} onValueChange={handlePeriodChange}>
-            <SelectTrigger className="w-48">
-              <Calendar className="h-4 w-4 mr-2 text-muted-foreground" />
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              {periods.map((period) =>
-              <SelectItem key={period.label} value={period.label}>
-                  {period.label}
-                </SelectItem>
-              )}
-            </SelectContent>
-          </Select>
+            <Button variant="outline" size="icon" onClick={refetch}>
+              <RefreshCw className="h-4 w-4" />
+            </Button>
 
-          {/* Refresh */}
-          <Button variant="outline" size="icon" onClick={refetch}>
-            <RefreshCw className="h-4 w-4" />
-          </Button>
-
-          {/* Export */}
-          <Button variant="outline" onClick={handleExportCSV}>
-            <Download className="h-4 w-4 mr-2" />
-            Exportar
-          </Button>
-        </div>
-      </div>
+            <Button variant="outline" onClick={handleExportCSV}>
+              <Download className="h-4 w-4 mr-2" />
+              Exportar
+            </Button>
+          </div>
+        }
+      />
 
       {/* Period Info - Regra 2: Resumo executivo textual (sem valor numérico duplicado) */}
       <Card className="bg-muted/30">
@@ -158,12 +148,12 @@ function DREContent() {
             <span className="flex items-center gap-2">
               <span className="text-muted-foreground">Resultado do período:</span>
               {dreData.lucroOperacional >= 0 ?
-              <span className="flex items-center gap-1.5 text-emerald-600 dark:text-emerald-400 font-semibold">
+              <span className="flex items-center gap-1.5 text-success font-semibold">
                   <CheckCircle2 className="h-4 w-4" />
                   POSITIVO
                 </span> :
 
-              <span className="flex items-center gap-1.5 text-red-600 dark:text-red-400 font-semibold">
+              <span className="flex items-center gap-1.5 text-destructive font-semibold">
                   <XCircle className="h-4 w-4" />
                   NEGATIVO
                 </span>
@@ -210,12 +200,4 @@ function DREContent() {
 
 }
 
-export default function DRE() {
-  return (
-    <ProtectedRoute>
-      <AppLayout>
-        <DREContent />
-      </AppLayout>
-    </ProtectedRoute>);
-
-}
+export default DREContent;

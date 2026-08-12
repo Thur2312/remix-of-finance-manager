@@ -1,8 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
-import { AppLayout } from '@/components/layout/AppLayout';
-import { ProtectedRoute } from '@/components/layout/ProtectedRoute';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -17,12 +15,9 @@ import {
   TrendingDown,
   DollarSign,
   Package,
-  AlertCircle,
-  Filter,
   Download,
   Edit,
   X,
-  Megaphone,
 } from 'lucide-react';
 import {
   Table,
@@ -37,8 +32,15 @@ import {
   formatCurrency,
   formatPercent,
 } from '@/lib/calculations';
-import { InPageNav, mercadolivreNavTabs } from '@/components/layout/InPageNav';
+import { mercadolivreNavTabs } from '@/components/layout/InPageNav';
+import { PageHeader } from '@/components/layout/PageHeader';
+import { FiltersCard } from '@/components/layout/FiltersCard';
+import { EmptyResultsState } from '@/components/layout/EmptyResultsState';
 import { useMercadolivreData } from '@/hooks/useMercadolivreData';
+
+// Superfície de cartão da área interna — mesma família visual do .glass-card
+// da landing, calibrada pra densidade (ver .app-card em index.css).
+const CARD = 'app-card bg-card border-transparent';
 
 function ResultadosContent() {
   const { user } = useAuth();
@@ -145,22 +147,22 @@ function ResultadosContent() {
         title: 'Total Faturado',
         value: loading ? '...' : formatCurrency(stats.grossRevenue),
         icon: DollarSign,
-        color: 'text-blue-500',
-        bg: 'bg-blue-500/10',
+        color: 'text-primary',
+        bg: 'bg-primary/10',
       },
       {
         title: 'Valor Líquido',
         value: loading ? '...' : formatCurrency(stats.netRevenue),
         icon: DollarSign,
-        color: 'text-green-500',
-        bg: 'bg-green-500/10',
+        color: 'text-success',
+        bg: 'bg-success/10',
       },
       {
         title: 'Taxas ML',
         value: loading ? '...' : formatCurrency(stats.fees),
         icon: stats.fees > 0 ? TrendingDown : TrendingUp,
-        color: 'text-orange-500',
-        bg: 'bg-orange-500/10',
+        color: 'text-warning',
+        bg: 'bg-warning/10',
       },
       {
         title: 'Produtos',
@@ -174,7 +176,7 @@ function ResultadosContent() {
     return (
       <div className="grid gap-4 md:grid-cols-4">
         {cards.map((card) => (
-          <Card key={card.title}>
+          <Card key={card.title} className={CARD}>
             <CardContent className="pt-6">
               <div className="flex items-center justify-between">
                 <div>
@@ -193,24 +195,14 @@ function ResultadosContent() {
   };
 
   const renderFilters = () => (
-    <Card>
-      <CardHeader className="pb-4">
-        <CardTitle className="text-base flex items-center gap-2">
-          <Filter className="h-4 w-4" />
-          Filtros
-        </CardTitle>
-      </CardHeader>
-      <CardContent>
-        <div className="flex flex-wrap gap-4 items-end">
-          {groups.length > 0 && (
-            <Button onClick={handleExport} variant="outline">
-              <Download className="h-4 w-4 mr-2" />
-              Exportar CSV
-            </Button>
-          )}
-        </div>
-      </CardContent>
-    </Card>
+    <FiltersCard>
+      {groups.length > 0 && (
+        <Button onClick={handleExport} variant="outline">
+          <Download className="h-4 w-4 mr-2" />
+          Exportar CSV
+        </Button>
+      )}
+    </FiltersCard>
   );
 
   const renderBatchActions = () => {
@@ -267,15 +259,7 @@ function ResultadosContent() {
 
     if (groups.length === 0) {
       return (
-        <Card>
-          <CardContent className="py-12 text-center">
-            <AlertCircle className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
-            <h3 className="font-semibold text-lg">Nenhum resultado encontrado</h3>
-            <p className="text-muted-foreground mt-2">
-              Sincronize seus pedidos do Mercado Livre para visualizar os resultados.
-            </p>
-          </CardContent>
-        </Card>
+        <EmptyResultsState description="Sincronize seus pedidos do Mercado Livre para visualizar os resultados." />
       );
     }
 
@@ -283,7 +267,7 @@ function ResultadosContent() {
     const someSelected = selectedProducts.size > 0 && selectedProducts.size < groups.length;
 
     return (
-      <Card>
+      <Card className={CARD}>
         <CardHeader>
           <CardTitle>Resultados por Produto</CardTitle>
           <CardDescription>
@@ -377,11 +361,9 @@ function ResultadosContent() {
 
 export default function MercadoLivreResultados() {
   return (
-    <ProtectedRoute>
-      <AppLayout title="Gestão Mercado Livre">
-        <InPageNav tabs={mercadolivreNavTabs} />
-        <ResultadosContent />
-      </AppLayout>
-    </ProtectedRoute>
+    <>
+      <PageHeader tabs={mercadolivreNavTabs} />
+      <ResultadosContent />
+    </>
   );
 }
