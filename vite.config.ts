@@ -3,6 +3,9 @@ import react from "@vitejs/plugin-react-swc";
 import path from "path";
 
 export default defineConfig(({ mode }) => ({
+  server: {
+    allowedHosts: true,
+  },
   plugins: [
     react(),
   ].filter(Boolean),

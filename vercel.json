@@ -14,7 +14,18 @@
           "value": "sellerfinance-seven.vercel.app"
         }
       ],
-      "destination": "https://www.sellerfinance.com.br/$1",
+      "destination": "https://sellerfinance.com.br/$1",
+      "permanent": true
+    },
+    {
+      "source": "/(.*)",
+      "has": [
+        {
+          "type": "host",
+          "value": "www.sellerfinance.com.br"
+        }
+      ],
+      "destination": "https://sellerfinance.com.br/$1",
       "permanent": true
     }
   ],

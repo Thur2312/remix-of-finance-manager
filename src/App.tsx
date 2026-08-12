@@ -2,7 +2,8 @@ import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClientProvider } from "@tanstack/react-query";
-import { Routes, Route, Navigate } from "react-router-dom";
+import { Routes, Route, Navigate, useLocation } from "react-router-dom";
+import { AnimatePresence, motion } from "framer-motion";
 import { AuthProvider } from "@/contexts/AuthContext";
 import { ProtectedRoute } from "@/components/layout/ProtectedRoute";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
@@ -77,16 +78,22 @@ const ProtectedNoGuard = ({ children }: { children: React.ReactNode }) => (
   </ProtectedRoute>
 );
 
-const App = () => {
-  return (
-    <QueryClientProvider client={queryClient}>
-      <TooltipProvider>
-        <Toaster />
-        <Sonner />
-        <AuthProvider>
-          <Suspense fallback={<PageLoader />}>
-            <Routes>
-              {/* ── Rotas públicas ─────────────────────────────────────── */}
+// ── Transição leve entre rotas (fade), respeitando prefers-reduced-motion ────
+const routeTransition = {
+  initial: { opacity: 0 },
+  animate: { opacity: 1 },
+  exit: { opacity: 0 },
+  transition: { duration: 0.18, ease: [0.16, 1, 0.3, 1] as const },
+};
+
+const AnimatedRoutes = () => {
+  const location = useLocation();
+  const reducedMotion =
+    typeof window !== "undefined" && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+  const routes = (
+    <Routes location={location}>
+      {/* ── Rotas públicas ─────────────────────────────────────── */}
               <Route path="/" element={<LandingPage />} />
               <Route path="/user/auth" element={<Auth />} />
               <Route path="/termos-de-uso" element={<TermosDeUso />} />
@@ -145,7 +152,29 @@ const App = () => {
 
               {/* ── Catch-all ──────────────────────────────────────────── */}
               <Route path="*" element={<NotFound />} />
-            </Routes>
+    </Routes>
+  );
+
+  if (reducedMotion) return routes;
+
+  return (
+    <AnimatePresence mode="wait" initial={false}>
+      <motion.div key={location.pathname} {...routeTransition}>
+        {routes}
+      </motion.div>
+    </AnimatePresence>
+  );
+};
+
+const App = () => {
+  return (
+    <QueryClientProvider client={queryClient}>
+      <TooltipProvider>
+        <Toaster />
+        <Sonner />
+        <AuthProvider>
+          <Suspense fallback={<PageLoader />}>
+            <AnimatedRoutes />
           </Suspense>
         </AuthProvider>
       </TooltipProvider>

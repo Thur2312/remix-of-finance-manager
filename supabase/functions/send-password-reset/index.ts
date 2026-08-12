@@ -93,7 +93,7 @@ const handler = async (req: Request): Promise<Response> => {
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        from: "Seller Finance <onboarding@resend.dev>",
+        from: "Seller Finance <no-reply@sellerfinance.com.br>",
         to: [email],
         subject: "Recuperação de Senha - Seller Finance",
         html: `
@@ -103,52 +103,60 @@ const handler = async (req: Request): Promise<Response> => {
             <meta charset="utf-8">
             <meta name="viewport" content="width=device-width, initial-scale=1.0">
           </head>
-          <body style="margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; background-color: #f4f4f5;">
+          <body style="margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; background-color: #eef1f5;">
             <table role="presentation" style="width: 100%; border-collapse: collapse;">
               <tr>
-                <td style="padding: 40px 20px;">
-                  <table role="presentation" style="max-width: 560px; margin: 0 auto; background-color: #ffffff; border-radius: 12px; box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);">
+                <td style="padding: 48px 20px;">
+                  <table role="presentation" style="max-width: 480px; margin: 0 auto;">
                     <tr>
-                      <td style="padding: 40px 40px 20px 40px; text-align: center;">
-                        <div style="display: inline-block; padding: 12px 16px; background: linear-gradient(135deg, #8B5CF6 0%, #A855F7 100%); border-radius: 12px; margin-bottom: 24px;">
-                          <span style="font-size: 24px; font-weight: bold; color: #ffffff;">SF</span>
-                        </div>
-                        <h1 style="margin: 0 0 8px 0; font-size: 24px; font-weight: 600; color: #18181b;">
-                          Recuperação de Senha
-                        </h1>
-                        <p style="margin: 0; font-size: 14px; color: #71717a;">
-                          Seller Finance
-                        </p>
+                      <td style="padding: 0 4px 24px 4px; text-align: left;">
+                        <span style="font-size: 15px; font-weight: 700; color: #0A1628; letter-spacing: -0.01em;">Seller Finance</span>
                       </td>
                     </tr>
                     <tr>
-                      <td style="padding: 20px 40px;">
-                        <p style="margin: 0 0 16px 0; font-size: 15px; line-height: 24px; color: #3f3f46;">
-                          Olá,
-                        </p>
-                        <p style="margin: 0 0 24px 0; font-size: 15px; line-height: 24px; color: #3f3f46;">
-                          Recebemos uma solicitação para redefinir a senha da sua conta. Clique no botão abaixo para criar uma nova senha:
-                        </p>
+                      <td style="background-color: #ffffff; border-radius: 16px; border: 1px solid #e5e9f0; box-shadow: 0 1px 2px rgba(10,22,40,0.04), 0 12px 32px -12px rgba(10,22,40,0.12); overflow: hidden;">
                         <table role="presentation" style="width: 100%; border-collapse: collapse;">
                           <tr>
-                            <td style="text-align: center; padding: 8px 0 24px 0;">
-                              <a href="${resetLink}" style="display: inline-block; padding: 14px 32px; background: linear-gradient(135deg, #8B5CF6 0%, #A855F7 100%); color: #ffffff; text-decoration: none; font-size: 15px; font-weight: 600; border-radius: 8px;">
-                                Redefinir Senha
-                              </a>
+                            <td style="height: 4px; background-color: #318EF1; font-size: 0; line-height: 0;">&nbsp;</td>
+                          </tr>
+                          <tr>
+                            <td style="padding: 40px 40px 8px 40px;">
+                              <div style="width: 44px; height: 44px; border-radius: 12px; background-color: rgba(49,142,241,0.1); text-align: center; line-height: 44px; margin-bottom: 20px;">
+                                <span style="font-size: 20px; line-height: 44px;">&#128274;</span>
+                              </div>
+                              <h1 style="margin: 0 0 10px 0; font-size: 21px; font-weight: 700; color: #0A1628; letter-spacing: -0.01em;">
+                                Redefinir sua senha
+                              </h1>
+                              <p style="margin: 0 0 28px 0; font-size: 14px; line-height: 22px; color: #5b6472;">
+                                Recebemos uma solicitação para redefinir a senha da sua conta. Clique no botão abaixo para criar uma nova senha — é rápido e seguro.
+                              </p>
+                              <table role="presentation" style="border-collapse: collapse;">
+                                <tr>
+                                  <td style="border-radius: 10px; background-color: #318EF1;">
+                                    <a href="${resetLink}" style="display: inline-block; padding: 13px 28px; color: #ffffff; text-decoration: none; font-size: 14px; font-weight: 600; letter-spacing: 0.01em;">
+                                      Redefinir senha →
+                                    </a>
+                                  </td>
+                                </tr>
+                              </table>
+                            </td>
+                          </tr>
+                          <tr>
+                            <td style="padding: 28px 40px 32px 40px; border-top: 1px solid #eef1f5;">
+                              <p style="margin: 0 0 6px 0; font-size: 12.5px; line-height: 19px; color: #94a0b2;">
+                                Não foi você? Pode ignorar este email com tranquilidade — sua senha continua a mesma.
+                              </p>
+                              <p style="margin: 0; font-size: 12.5px; line-height: 19px; color: #94a0b2;">
+                                Este link expira em 24 horas.
+                              </p>
                             </td>
                           </tr>
                         </table>
-                        <p style="margin: 0 0 16px 0; font-size: 13px; line-height: 20px; color: #71717a;">
-                          Se você não solicitou a recuperação de senha, ignore este email. Sua senha permanecerá a mesma.
-                        </p>
-                        <p style="margin: 0; font-size: 13px; line-height: 20px; color: #71717a;">
-                          Este link expira em 24 horas.
-                        </p>
                       </td>
                     </tr>
                     <tr>
-                      <td style="padding: 24px 40px 40px 40px; border-top: 1px solid #e4e4e7;">
-                        <p style="margin: 0; font-size: 12px; color: #a1a1aa; text-align: center;">
+                      <td style="padding: 24px 4px 0 4px; text-align: left;">
+                        <p style="margin: 0; font-size: 12px; color: #a1a9b8;">
                           © 2025 Seller Finance. Todos os direitos reservados.
                         </p>
                       </td>
@@ -173,7 +181,7 @@ const handler = async (req: Request): Promise<Response> => {
     console.log("Email sent successfully:", emailResult);
 
     return await withMinDelay(startTime, new Response(
-      JSON.stringify({ success: true, message: "Email de recuperação enviado com sucesso!" }),
+      JSON.stringify({ success: true, message: "Se o email existir, você receberá um link de recuperação." }),
       { status: 200, headers: { "Content-Type": "application/json", ...corsHeaders } }
     ));
   } catch (error: Error) {

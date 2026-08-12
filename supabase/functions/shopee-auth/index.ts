@@ -41,7 +41,11 @@ serve(async (req) => {
     // O JWT do usuário nunca deve trafegar pela URL enviada à Shopee (fica em
     // logs de acesso deles, Referer headers e histórico do navegador). Em vez
     // disso, geramos um state opaco de uso único, mapeado para o usuário no
-    // banco, que a Shopee só devolve de volta — sem carregar credencial nenhuma.
+    // banco — a Shopee não tem parâmetro "state" no auth_partner e valida o
+    // "redirect" contra a Redirect URL fixa cadastrada no Partner Center, então
+    // não dá pra grudar "?state=" nele (corrompe a query string que a Shopee
+    // devolve com code/shop_id). O front-end guarda esse state em
+    // sessionStorage e reenvia pro callback depois.
     const state = crypto.randomUUID()
 
     // Limpeza oportunista de states abandonados (>30min) — não há scheduler
@@ -63,8 +67,6 @@ serve(async (req) => {
       );
     }
 
-    const redirectWithState = `${REDIRECT_URI}?state=${state}`
-
     const partnerIdNum = parseInt(PARTNER_ID, 10);
     const timestamp = Math.floor(Date.now() / 1000);
     const path = "/api/v2/shop/auth_partner";
@@ -74,10 +76,10 @@ serve(async (req) => {
       .update(baseString)
       .digest("hex");
 
-    const authorization_url = `${BASE_URL}${path}?partner_id=${partnerIdNum}&timestamp=${timestamp}&sign=${sign}&redirect=${encodeURIComponent(redirectWithState)}`;
+    const authorization_url = `${BASE_URL}${path}?partner_id=${partnerIdNum}&timestamp=${timestamp}&sign=${sign}&redirect=${encodeURIComponent(REDIRECT_URI)}`;
 
     return new Response(
-      JSON.stringify({ authorization_url }),
+      JSON.stringify({ authorization_url, state }),
       {
         status: 200,
         headers: { ...corsHeaders, "Content-Type": "application/json" },

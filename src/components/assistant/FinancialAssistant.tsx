@@ -217,7 +217,7 @@ export function FinancialAssistant() {
     return (
       <button
         onClick={() => setAberto(true)}
-        className="fixed bottom-6 left-6 z-50 h-14 w-14 rounded-full bg-primary shadow-lg hover:shadow-xl hover:scale-105 transition-all duration-200 flex items-center justify-center"
+        className="fixed bottom-6 right-6 z-50 h-14 w-14 rounded-full bg-primary shadow-lg hover:shadow-xl hover:scale-105 transition-all duration-200 flex items-center justify-center"
         title="Assistente Financeiro"
       >
         <Sparkles className="h-6 w-6 text-primary-foreground" />
@@ -227,7 +227,7 @@ export function FinancialAssistant() {
   }
 
   return (
-    <div className={`fixed bottom-6 left-6 z-50 flex flex-col bg-background border border-border rounded-2xl shadow-2xl transition-all duration-300 ${minimizado ? "h-14 w-80" : "h-[600px] w-[380px]"}`}>
+    <div className={`fixed bottom-6 right-6 z-50 flex flex-col bg-background border border-border rounded-2xl shadow-2xl transition-all duration-300 ${minimizado ? "h-14 w-80" : "h-[600px] w-[380px]"}`}>
       {/* Header */}
       <div className="flex items-center gap-3 px-4 py-3 border-b border-border/60 shrink-0">
         <div className="h-8 w-8 rounded-full bg-primary/10 border border-primary/20 flex items-center justify-center">

@@ -1092,7 +1092,7 @@ function CalculadoraPrecificacaoContent() {
               </CardHeader>
               <CardContent className="space-y-4">
                 <div className="flex flex-col items-center justify-center py-4 bg-muted/30 rounded-lg">
-                  <span className="text-3xl font-bold tracking-tight">{formatCurrency(panorama.breakEven)}</span>
+                  <span className="text-3xl font-bold font-mono tracking-tight">{formatCurrency(panorama.breakEven)}</span>
                   <span className="text-sm text-muted-foreground mt-1 text-center px-2">
                     {panorama.usandoPortfolio ? (
                       <>
@@ -1153,7 +1153,7 @@ function CalculadoraPrecificacaoContent() {
               <CardContent className="space-y-3">
                 <div className="flex items-center justify-between">
                   <span className="text-sm text-muted-foreground">Faturamento total:</span>
-                  <span className="text-xl font-bold">{formatCurrency(panorama.fat)}</span>
+                  <span className="text-xl font-bold font-mono">{formatCurrency(panorama.fat)}</span>
                 </div>
                 <div className="flex items-center justify-between">
                   <span className="text-sm text-muted-foreground">Margem gerada ({formatPercent(panorama.margemPct)}):</span>
@@ -1167,7 +1167,7 @@ function CalculadoraPrecificacaoContent() {
                 <div className="space-y-1">
                   <span className="text-sm text-muted-foreground">Resultado líquido:</span>
                   <div className="flex items-end gap-2">
-                    <span className={`text-2xl font-bold tracking-tight ${panorama.lucrativo ? "text-green-600" : "text-destructive"}`}>
+                    <span className={`text-2xl font-bold font-mono tracking-tight ${panorama.lucrativo ? "text-green-600" : "text-destructive"}`}>
                       {formatCurrency(panorama.resultadoLiquido)}
                     </span>
                     <span className="text-sm text-muted-foreground pb-0.5">({panorama.margemLiquidaPct.toFixed(2)}%)</span>
@@ -1485,10 +1485,10 @@ function CalculadoraPrecificacaoContent() {
                   <TrendingUp className="h-4 w-4 text-muted-foreground" />
                   <div>
                     <p className="text-[10px] text-muted-foreground uppercase tracking-wide">Margem Real</p>
-                    <p className={`text-base font-bold leading-tight ${results.margemReal >= 0 ? "text-primary" : "text-destructive"}`}>
+                    <p className={`text-base font-bold font-mono leading-tight ${results.margemReal >= 0 ? "text-primary" : "text-destructive"}`}>
                       {formatPercent(results.margemReal)}
                     </p>
-                    <p className={`text-xs leading-tight ${results.lucro >= 0 ? "text-muted-foreground" : "text-destructive"}`}>
+                    <p className={`text-xs font-mono leading-tight ${results.lucro >= 0 ? "text-muted-foreground" : "text-destructive"}`}>
                       {formatCurrency(results.lucro)}
                     </p>
                   </div>
@@ -1523,7 +1523,7 @@ function CalculadoraPrecificacaoContent() {
                     <div className="space-y-1">
                       <div className="flex items-center justify-between">
                         <span className="text-xs text-muted-foreground">Margem desejada</span>
-                        <span className="text-xs font-bold text-primary">{margemDesejadaSlider}%</span>
+                        <span className="text-xs font-bold font-mono text-primary">{margemDesejadaSlider}%</span>
                       </div>
                       <input type="range" min="1" max="90" step="1"
                         value={margemDesejadaSlider}
@@ -1531,7 +1531,7 @@ function CalculadoraPrecificacaoContent() {
                         className="w-full accent-primary" />
                       {precoSugerido > 0 && (
                         <p className="text-xs text-muted-foreground">
-                          Preço sugerido: <span className="font-bold text-primary">{formatCurrency(precoSugerido)}</span>
+                          Preço sugerido: <span className="font-bold font-mono text-primary">{formatCurrency(precoSugerido)}</span>
                         </p>
                       )}
                     </div>
@@ -1547,7 +1547,7 @@ function CalculadoraPrecificacaoContent() {
                       />
                       {precoSugerido > 0 && parseInput(lucroDesejado) > 0 && (
                         <p className="text-xs text-muted-foreground">
-                          Preço sugerido: <span className="font-bold text-primary">{formatCurrency(precoSugerido)}</span>
+                          Preço sugerido: <span className="font-bold font-mono text-primary">{formatCurrency(precoSugerido)}</span>
                         </p>
                       )}
                     </div>
@@ -1634,7 +1634,7 @@ function CalculadoraPrecificacaoContent() {
                         </div>
                       </div>
                       <div className="text-right">
-                        <p className={`text-2xl font-bold leading-tight ${cenarios.melhor.viavel ? "text-green-600" : "text-destructive"}`}>
+                        <p className={`text-2xl font-bold font-mono leading-tight ${cenarios.melhor.viavel ? "text-green-600" : "text-destructive"}`}>
                           {formatCurrency(cenarios.melhor.lucro)}
                         </p>
                         <p className="text-xs text-muted-foreground">
@@ -1660,10 +1660,10 @@ function CalculadoraPrecificacaoContent() {
                               <Badge variant="outline" className="font-normal text-[10px] shrink-0">{c.detalhe}</Badge>
                             </div>
                             <div className="flex items-center gap-4 shrink-0">
-                              <span className={`text-sm font-bold tabular-nums ${c.lucro >= 0 ? "text-green-600" : "text-destructive"}`}>
+                              <span className={`text-sm font-bold font-mono tabular-nums ${c.lucro >= 0 ? "text-green-600" : "text-destructive"}`}>
                                 {formatCurrency(c.lucro)}
                               </span>
-                              <span className={`text-sm font-semibold tabular-nums w-16 text-right ${c.margem >= 0 ? "text-primary" : "text-destructive"}`}>
+                              <span className={`text-sm font-semibold font-mono tabular-nums w-16 text-right ${c.margem >= 0 ? "text-primary" : "text-destructive"}`}>
                                 {formatPercent(c.margem)}
                               </span>
                             </div>
@@ -1717,7 +1717,7 @@ function CalculadoraPrecificacaoContent() {
                 </div>
                 <div className="border-t pt-4 text-center">
                   <p className="text-xs text-muted-foreground mb-1">Margem de Contribuição</p>
-                  <p className={`text-2xl font-bold ${results.produtoViavel ? "text-green-600" : "text-destructive"}`}>
+                  <p className={`text-2xl font-bold font-mono ${results.produtoViavel ? "text-green-600" : "text-destructive"}`}>
                     {formatCurrency(results.margemContribuicao)}
                   </p>
                   <Badge variant={results.produtoViavel ? "default" : "destructive"} className={results.produtoViavel ? "bg-green-600 hover:bg-green-700 mt-1" : "mt-1"}>
@@ -1753,7 +1753,7 @@ function CalculadoraPrecificacaoContent() {
                 </div>
                 <div className="border-t pt-4 text-center">
                   <p className="text-xs text-muted-foreground mb-1">Lucro Líquido</p>
-                  <p className={`text-2xl font-bold ${results.lucroLiquido >= 0 ? "text-blue-600" : "text-destructive"}`}>
+                  <p className={`text-2xl font-bold font-mono ${results.lucroLiquido >= 0 ? "text-blue-600" : "text-destructive"}`}>
                     {formatCurrency(results.lucroLiquido)}
                   </p>
                   <Badge variant={results.lucroLiquido >= 0 ? "default" : "destructive"} className={results.lucroLiquido >= 0 ? "bg-blue-600 hover:bg-blue-700 mt-1" : "mt-1"}>
@@ -1786,7 +1786,7 @@ function CalculadoraPrecificacaoContent() {
                 </div>
                 <div className="border-t pt-4 text-center">
                   <p className="text-xs text-muted-foreground mb-1">Preço Necessário</p>
-                  <p className="text-2xl font-bold text-muted-foreground">
+                  <p className="text-2xl font-bold font-mono text-muted-foreground">
                     {results.margemInviavel ? "Inviável" : formatCurrency(results.precoNecessario100Percent)}
                   </p>
                   <p className="text-xs text-muted-foreground mt-1">Para {formatPercent(margemDesejada)} de margem</p>
@@ -1835,7 +1835,7 @@ function CalculadoraPrecificacaoContent() {
                 ))}
                 <div className="flex items-center justify-between p-3 bg-primary/10 rounded-lg md:col-span-2">
                   <span className="text-sm font-bold">Total Custos</span>
-                  <span className="text-xl font-bold text-primary">{formatCurrency(results.totalCustosVar)}</span>
+                  <span className="text-xl font-bold font-mono text-primary">{formatCurrency(results.totalCustosVar)}</span>
                 </div>
               </div>
             </CardContent>

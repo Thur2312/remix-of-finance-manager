@@ -9,7 +9,13 @@ interface DashboardChartsProps {
   data: GroupedResult[];
 }
 
-const COLORS = ['#1565C0', '#14B8A6', '#F97316', '#EC4899', '#8B5CF6'];
+const COLORS = [
+  'hsl(var(--chart-1))',
+  'hsl(var(--chart-2))',
+  'hsl(var(--chart-3))',
+  'hsl(var(--chart-4))',
+  'hsl(var(--chart-5))',
+];
 
 const CustomTooltip = ({ active, payload }: TooltipProps<number, string>) => {
   if (active && payload && payload.length) {

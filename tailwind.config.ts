@@ -34,7 +34,7 @@ export default {
   				'sans-serif'
   			],
   			serif: [
-  				'Lora',
+  				'Fraunces',
   				'ui-serif',
   				'Georgia',
   				'Cambria',
@@ -118,7 +118,14 @@ export default {
   				foreground: 'hsl(var(--info-foreground))',
   				muted: 'hsl(var(--info-muted))'
   			},
-  			'accent-gold': 'hsl(var(--accent-gold))'
+  			navy: {
+  				DEFAULT: 'hsl(var(--navy))'
+  			},
+  			gold: {
+  				DEFAULT: 'hsl(var(--gold))',
+  				light: 'hsl(var(--gold-light))',
+  				foreground: 'hsl(var(--gold-foreground))'
+  			}
   		},
   		borderRadius: {
   			lg: 'var(--radius)',
@@ -193,6 +200,9 @@ export default {
   			'fade-in': 'fade-in 0.3s ease-out',
   			'slide-in': 'slide-in 0.3s ease-out'
   		},
+  		transitionTimingFunction: {
+  			signature: 'cubic-bezier(0.16, 1, 0.3, 1)'
+  		},
   		boxShadow: {
   			'2xs': 'var(--shadow-2xs)',
   			xs: 'var(--shadow-xs)',
@@ -200,7 +210,9 @@ export default {
   			md: 'var(--shadow-md)',
   			lg: 'var(--shadow-lg)',
   			xl: 'var(--shadow-xl)',
-  			'2xl': 'var(--shadow-2xl)'
+  			'2xl': 'var(--shadow-2xl)',
+  			'navy-lg': '0 24px 48px -14px hsl(var(--navy) / 0.35), 0 10px 20px -10px hsl(var(--navy) / 0.28), 0 2px 6px -1px hsl(var(--navy) / 0.2)',
+  			'gold-glow': '0 24px 48px -14px hsl(var(--navy) / 0.35), 0 0 0 1px hsl(var(--gold) / 0.2), 0 10px 24px -8px hsl(var(--gold) / 0.25)'
   		}
   	}
   },

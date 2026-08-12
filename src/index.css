@@ -1,4 +1,4 @@
-@import url("https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Space+Grotesk:wght@500;600;700&display=swap");
+@import url("https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600;9..144,700&family=Inter:wght@300;400;500;600;700&family=Space+Grotesk:wght@500;600;700&family=Space+Mono:wght@400;700&display=swap");
 @import "tw-animate-css";
 
 @tailwind base;
@@ -17,7 +17,7 @@
     --popover: 0 0% 100%;
     --popover-foreground: 222 47% 11%;
 
-    --primary: 217 91% 60%;
+    --primary: 211 87% 57%;
     --primary-foreground: 0 0% 100%;
 
     --secondary: 210 40% 96%;
@@ -34,9 +34,15 @@
 
     --border: 214 32% 91%;
     --input: 214 32% 91%;
-    --ring: 217 91% 60%;
+    --ring: 211 87% 57%;
 
     --radius: 1rem;
+
+    /* Landing (Fase 1): navy de destaque + accent dourado/ambar, fora da familia azul */
+    --navy: 216 60% 10%;
+    --gold: 38 61% 56%;
+    --gold-light: 42 77% 60%;
+    --gold-foreground: 216 60% 10%;
 
     /* Sidebar */
     --sidebar-background: 0 0% 100%;
@@ -60,7 +66,7 @@
 
     --chart-1: 217 91% 60%;
     --chart-2: 142 72% 29%;
-    --chart-3: 38 92% 50%;
+    --chart-3: 258 90% 66%;
     --chart-4: 0 84% 60%;
     --chart-5: 215 16% 47%;
 
@@ -83,7 +89,7 @@
     --popover: 217 33% 17%;
     --popover-foreground: 210 40% 98%;
 
-    --primary: 217 91% 60%;
+    --primary: 211 87% 57%;
     --primary-foreground: 0 0% 100%;
 
     --secondary: 217 33% 17%;
@@ -100,7 +106,7 @@
 
     --border: 217 33% 25%;
     --input: 217 33% 25%;
-    --ring: 217 91% 60%;
+    --ring: 211 87% 57%;
 
     --sidebar-background: 222 47% 11%;
     --sidebar-foreground: 210 40% 98%;
@@ -121,7 +127,7 @@
 
     --chart-1: 217 91% 60%;
     --chart-2: 142 72% 29%;
-    --chart-3: 38 92% 50%;
+    --chart-3: 258 90% 66%;
     --chart-4: 0 84% 60%;
     --chart-5: 215 20% 65%;
 
@@ -195,8 +201,33 @@ input[type="number"] {
 
   /* Section backgrounds */
   .section-dark {
-    background-color: oklch(0.16 0.04 240);
+    background-color: hsl(var(--navy));
     color: oklch(0.97 0.005 240);
+  }
+
+  /* Grain sutil (SVG feTurbulence) pras secoes escuras da landing -- opacity
+     baixa o suficiente pra nao afetar legibilidade nem custar performance
+     (e um background-image estatico, nao um filtro renderizado por frame). */
+  .grain {
+    position: relative;
+    isolation: isolate;
+  }
+
+  .grain::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    z-index: 0;
+    pointer-events: none;
+    opacity: 0.035;
+    mix-blend-mode: overlay;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+    background-size: 180px 180px;
+  }
+
+  .grain > * {
+    position: relative;
+    z-index: 1;
   }
 
   .section-cyan {
@@ -214,18 +245,16 @@ input[type="number"] {
     color: oklch(0.16 0.04 240);
   }
 
-  /* CTA Button — usa o azul da marca (#318EF1), igual ao resto da landing.
-     Antes ficava no cyan antigo (#00B4D8) enquanto o site inteiro já tinha
-     migrado — o CTA de maior importância pra conversão com a cor errada. */
+  /* CTA Button — puxa direto do token --primary, sem hex duplicado. */
   .btn-cta {
-    background-color: #318EF1;
+    background-color: hsl(var(--primary));
     color: white;
     font-weight: 700;
     padding: 0.875rem 2rem;
     border-radius: 9999px;
     font-size: 1rem;
     letter-spacing: 0.01em;
-    transition: all 0.2s ease;
+    transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
     display: inline-flex;
     align-items: center;
     gap: 0.5rem;
@@ -234,9 +263,32 @@ input[type="number"] {
   }
 
   .btn-cta:hover {
-    background-color: #2678d1;
+    filter: brightness(0.92);
     transform: translateY(-1px);
-    box-shadow: 0 8px 24px rgba(49, 142, 241, 0.4);
+    box-shadow: 0 8px 24px hsl(var(--primary) / 0.4);
+  }
+
+  /* CTA dourado — hierarquia acima do azul padrao, pro conceito "lucro real" */
+  .btn-cta-gold {
+    background-color: hsl(var(--gold));
+    color: hsl(var(--gold-foreground));
+    font-weight: 700;
+    padding: 0.875rem 2rem;
+    border-radius: 9999px;
+    font-size: 1rem;
+    letter-spacing: 0.01em;
+    transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    border: none;
+    text-decoration: none;
+  }
+
+  .btn-cta-gold:hover {
+    filter: brightness(0.94);
+    transform: translateY(-1px);
+    box-shadow: 0 8px 24px hsl(var(--gold) / 0.4);
   }
 
   .btn-outline-white {
@@ -247,7 +299,7 @@ input[type="number"] {
     border-radius: 9999px;
     font-size: 1rem;
     border: 2px solid white;
-    transition: all 0.2s ease;
+    transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
     display: inline-flex;
     align-items: center;
     gap: 0.5rem;
@@ -263,7 +315,7 @@ input[type="number"] {
   .animate-fade-up {
     opacity: 0;
     transform: translateY(24px);
-    transition: opacity 0.5s ease, transform 0.5s ease;
+    transition: opacity 0.6s cubic-bezier(0.16, 1, 0.3, 1), transform 0.6s cubic-bezier(0.16, 1, 0.3, 1);
   }
 
   .animate-fade-up.visible {

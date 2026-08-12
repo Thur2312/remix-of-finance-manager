@@ -150,7 +150,7 @@ function VariacoesContent() {
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-sm text-muted-foreground">{card.title}</p>
-                  <p className="text-2xl font-bold">{card.value}</p>
+                  <p className="text-2xl font-bold font-mono">{card.value}</p>
                 </div>
                 <div className={cn('p-3 rounded-full', card.bg)}>
                   <card.icon className={cn('h-5 w-5', card.color)} />

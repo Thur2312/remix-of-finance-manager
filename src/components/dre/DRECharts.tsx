@@ -12,20 +12,29 @@ interface CustomTooltipProps {
   label?: string;
 }
 
-const COLORS = ['#10b981', '#3b82f6', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899', '#06b6d4'];
+const COLORS = [
+  'hsl(var(--chart-1))',
+  'hsl(var(--chart-2))',
+  'hsl(var(--chart-3))',
+  'hsl(var(--chart-4))',
+  'hsl(var(--chart-5))',
+];
 
 export function DRECharts({ data }: DREChartsProps) {
   // Data for the waterfall-like bar chart - NOVA ESTRUTURA
+  // Cores semanticas (nao chart-1..5 generico): subtotais positivos usam
+  // --success, deducoes usam --destructive/--warning/--chart-3 pra manter as
+  // 3 categorias de deducao visualmente distinguiveis entre si na cascata.
   const waterfallData = [
-    { name: 'Receita Bruta', value: data.receitaBrutaTotal, fill: '#3b82f6' },
-    { name: 'Impostos', value: -data.impostosSobreVendasTotal, fill: '#ef4444' },
-    { name: 'Devoluções', value: -data.deducoesTotal, fill: '#f97316' },
-    { name: 'COGS', value: -data.cogsTotal, fill: '#f59e0b' },
-    { name: 'Lucro Bruto', value: data.lucroBruto, fill: '#10b981' },
-    { name: 'Custos Var.', value: -data.custosVariaveisTotal, fill: '#ef4444' },
-    { name: 'Margem Contrib.', value: data.margemContribuicao, fill: '#14b8a6' },
-    { name: 'Custos Fixos', value: -data.custosFixosProrrateados, fill: '#f97316' },
-    { name: 'Lucro Líquido', value: data.lucroLiquido, fill: data.lucroLiquido >= 0 ? '#10b981' : '#ef4444' },
+    { name: 'Receita Bruta', value: data.receitaBrutaTotal, fill: 'hsl(var(--chart-1))' },
+    { name: 'Impostos', value: -data.impostosSobreVendasTotal, fill: 'hsl(var(--destructive))' },
+    { name: 'Devoluções', value: -data.deducoesTotal, fill: 'hsl(var(--chart-3))' },
+    { name: 'COGS', value: -data.cogsTotal, fill: 'hsl(var(--warning))' },
+    { name: 'Lucro Bruto', value: data.lucroBruto, fill: 'hsl(var(--success))' },
+    { name: 'Custos Var.', value: -data.custosVariaveisTotal, fill: 'hsl(var(--destructive))' },
+    { name: 'Margem Contrib.', value: data.margemContribuicao, fill: 'hsl(var(--success))' },
+    { name: 'Custos Fixos', value: -data.custosFixosProrrateados, fill: 'hsl(var(--chart-3))' },
+    { name: 'Lucro Líquido', value: data.lucroLiquido, fill: data.lucroLiquido >= 0 ? 'hsl(var(--success))' : 'hsl(var(--destructive))' },
   ];
 
   // Data for revenue distribution pie chart
