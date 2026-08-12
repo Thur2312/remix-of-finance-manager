@@ -1,6 +1,4 @@
 import { useState, useMemo } from 'react';
-import { AppLayout } from '@/components/layout/AppLayout';
-import { ProtectedRoute } from '@/components/layout/ProtectedRoute';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -538,11 +536,5 @@ function UnifiedDashboardContent() {
 }
 
 export default function UnifiedDashboard() {
-  return (
-    <ProtectedRoute>
-      <AppLayout title="Dashboard">
-        <UnifiedDashboardContent />
-      </AppLayout>
-    </ProtectedRoute>
-  );
+  return <UnifiedDashboardContent />;
 }
