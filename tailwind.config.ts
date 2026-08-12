@@ -14,6 +14,12 @@ export default {
   	},
   	extend: {
   		fontFamily: {
+  			display: [
+  				'Space Grotesk',
+  				'ui-sans-serif',
+  				'system-ui',
+  				'sans-serif'
+  			],
   			sans: [
   				'Inter',
   				'ui-sans-serif',
@@ -111,7 +117,8 @@ export default {
   				DEFAULT: 'hsl(var(--info))',
   				foreground: 'hsl(var(--info-foreground))',
   				muted: 'hsl(var(--info-muted))'
-  			}
+  			},
+  			'accent-gold': 'hsl(var(--accent-gold))'
   		},
   		borderRadius: {
   			lg: 'var(--radius)',

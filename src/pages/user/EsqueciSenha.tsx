@@ -1,14 +1,14 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
-import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { toast } from 'sonner';
-import { ArrowLeft, Mail, Loader2, CheckCircle2, AlertCircle } from 'lucide-react';
+import { Mail, Loader2, CheckCircle2, AlertCircle, ArrowRight } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { validateEmail as isValidEmailFormat } from '@/lib/validations';
+import { AuthShell } from '@/components/auth/AuthShell';
+import { RollButton } from '@/components/landing/RollButton';
 
 
 const fadeInUp = {
@@ -79,109 +79,88 @@ export default function EsqueciSenha() {
     }
   };
 
+  const shellProps = {
+    title: 'Seller Finance',
+    description: 'Gerencie seus resultados de vendas de forma simples e eficiente — lucro real, precificação e DRE em um só lugar.',
+    backTo: '/user/auth',
+  };
+
   if (emailSent) {
     return (
-      <div className="min-h-screen flex items-center justify-center p-4 bg-gradient-to-b from-white via-blue-50 to-white">
-        <motion.div
-          initial="hidden"
-          animate="visible"
-          variants={fadeInUp}
-          className="w-full max-w-md"
-        >
-          <Card className="border border-blue-200 shadow-lg bg-white">
-            <CardHeader className="text-center space-y-4 bg-blue-50 border-b border-blue-200">
-              <div className="mx-auto p-4 bg-green-100 rounded-full w-fit">
-                <CheckCircle2 className="h-8 w-8 text-green-600" />
-              </div>
-              <CardTitle className="text-2xl text-gray-900">Email Enviado!</CardTitle>
-              <CardDescription className="text-base text-gray-600">
-                Se o email estiver cadastrado, você receberá um link de recuperação.
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4 pt-6">
-              <Button
-                onClick={() => navigate('/user/auth')}
-                className="w-full h-11 bg-gradient-to-r from-blue-600 to-blue-500 text-white"
-              >
-                Voltar para Login
-              </Button>
-            </CardContent>
-          </Card>
+      <AuthShell {...shellProps}>
+        <motion.div initial="hidden" animate="visible" variants={fadeInUp} className="text-center">
+          <div className="mx-auto p-4 bg-[#318EF1]/10 rounded-full w-fit mb-4">
+            <CheckCircle2 className="h-8 w-8 text-[#318EF1]" />
+          </div>
+          <h2 className="font-display text-2xl font-bold text-[#0A1628] mb-2">Email enviado!</h2>
+          <p className="text-sm text-gray-500 mb-8">
+            Se o email estiver cadastrado, você receberá um link de recuperação.
+          </p>
+          <RollButton
+            onClick={() => navigate('/user/auth')}
+            label="Voltar para login"
+            icon={<ArrowRight className="w-3.5 h-3.5 text-white" />}
+            className="bg-[#318EF1] hover:bg-[#2678d1] text-white w-full justify-center py-3.5 shadow-[0_8px_24px_-8px_rgba(49,142,241,0.5)]"
+            textWrapperClassName="text-base font-bold"
+            circleClassName="w-4 h-4"
+          />
         </motion.div>
-      </div>
+      </AuthShell>
     );
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center p-4 bg-gradient-to-b from-white via-blue-50 to-white">
-      <motion.div
-        initial="hidden"
-        animate="visible"
-        variants={staggerContainer}
-        className="w-full max-w-md"
-      >
-        <motion.div variants={fadeInUp}>
-          <Card className="border border-blue-200 shadow-lg bg-white">
-            <CardHeader className="space-y-4 bg-blue-50 border-b border-blue-200">
-              <button
-                onClick={() => navigate('/user/auth')}
-                className="flex items-center gap-2 text-sm text-gray-600 hover:text-gray-900"
-              >
-                <ArrowLeft className="h-4 w-4" />
-                Voltar para login
-              </button>
-              <div className="space-y-2">
-                <CardTitle className="text-2xl text-gray-900">Esqueceu sua senha?</CardTitle>
-                <CardDescription className="text-gray-600">
-                  Digite seu email e enviaremos um link para redefinir sua senha.
-                </CardDescription>
-              </div>
-            </CardHeader>
-            <CardContent className="pt-6">
-              <form onSubmit={handleSubmit} className="space-y-4" noValidate>
-                <motion.div variants={fadeInUp} className="space-y-2">
-                  <Label htmlFor="email">Email</Label>
-                  <div className="relative">
-                    <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                    <Input
-                      id="email"
-                      type="email"
-                      placeholder="seu@email.com"
-                      value={email}
-                      onChange={(e) => handleEmailChange(e.target.value)}
-                      onBlur={() => setTouched(true)}
-                      className="h-11 pl-10 border-blue-200 focus:border-blue-500"
-                    />
-                  </div>
-                  {error && touched && (
-                    <p className="text-sm text-destructive flex items-center gap-1">
-                      <AlertCircle className="h-3 w-3" />
-                      {error}
-                    </p>
-                  )}
-                </motion.div>
+    <AuthShell {...shellProps}>
+      <motion.div initial="hidden" animate="visible" variants={staggerContainer}>
+        <h2 className="font-display text-2xl font-bold text-[#0A1628] mb-1">Esqueceu sua senha?</h2>
+        <p className="text-sm text-gray-500 mb-6">
+          Digite seu email e enviaremos um link para redefinir sua senha.
+        </p>
 
-                <motion.div variants={fadeInUp}>
-                  <Button
-                    type="submit"
-                    className="w-full h-11 bg-gradient-to-r from-blue-600 to-blue-500 text-white"
-                    disabled={isLoading}
-                  >
-                    {isLoading ? (
-                      <>
-                        <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                        Enviando...
-                      </>
-                    ) : (
-                      'Enviar link de recuperação'
-                    )}
-                  </Button>
-                </motion.div>
-              </form>
-            </CardContent>
-          </Card>
-        </motion.div>
+        <form onSubmit={handleSubmit} className="space-y-4" noValidate>
+          <motion.div variants={fadeInUp} className="space-y-2">
+            <Label htmlFor="email">Email</Label>
+            <div className="relative">
+              <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <Input
+                id="email"
+                type="email"
+                placeholder="seu@email.com"
+                value={email}
+                onChange={(e) => handleEmailChange(e.target.value)}
+                onBlur={() => setTouched(true)}
+                className="pl-10"
+              />
+            </div>
+            {error && touched && (
+              <p className="text-sm text-destructive flex items-center gap-1">
+                <AlertCircle className="h-3 w-3" />
+                {error}
+              </p>
+            )}
+          </motion.div>
+
+          <motion.div variants={fadeInUp}>
+            <RollButton
+              type="submit"
+              disabled={isLoading}
+              label={
+                isLoading ? (
+                  <span className="inline-flex items-center gap-2">
+                    <Loader2 className="h-4 w-4 animate-spin" /> Enviando...
+                  </span>
+                ) : (
+                  'Enviar link de recuperação'
+                )
+              }
+              icon={<ArrowRight className="w-3.5 h-3.5 text-white" />}
+              className="bg-[#318EF1] hover:bg-[#2678d1] text-white w-full justify-center py-3.5 shadow-[0_8px_24px_-8px_rgba(49,142,241,0.5)]"
+              textWrapperClassName="text-base font-bold"
+              circleClassName="w-4 h-4"
+            />
+          </motion.div>
+        </form>
       </motion.div>
-    </div>
+    </AuthShell>
   );
 }

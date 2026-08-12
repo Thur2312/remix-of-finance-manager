@@ -1,15 +1,21 @@
 import { useEffect, useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
-import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { toast } from 'sonner';
-import { ShoppingBag, TrendingUp, DollarSign, BarChart3, ArrowLeft, Eye, EyeOff } from 'lucide-react';
+import { TrendingUp, DollarSign, BarChart3, Eye, EyeOff, ArrowRight, Loader2 } from 'lucide-react';
 import { z } from 'zod';
 import { validateName } from '@/lib/validations';
+import { AuthShell } from '@/components/auth/AuthShell';
+import { RollButton } from '@/components/landing/RollButton';
+
+const highlights = [
+  { icon: TrendingUp, title: 'Acompanhe suas vendas', desc: 'Visualize relatórios detalhados' },
+  { icon: DollarSign, title: 'Calcule seu lucro', desc: 'Taxas, impostos e custos automáticos' },
+  { icon: BarChart3, title: 'Análise por produto', desc: 'Identifique seus melhores itens' },
+];
 
 const emailSchema = z.string().email('Email inválido');
 const passwordSchema = z.string()
@@ -128,190 +134,171 @@ export default function Auth() {
   };
 
   return (
-    <div className="min-h-screen flex">
-      {/* Botão voltar */}
-      <button
-        onClick={() => navigate('/')}
-        className="fixed top-4 left-4 z-50 text-gray-600 hover:text-gray-900 transition-colors"
-      >
-        <ArrowLeft className="h-5 w-5" />
-      </button>
+    <AuthShell
+      title="Seller Finance"
+      description="Gerencie seus resultados de vendas de forma simples e eficiente — lucro real, precificação e DRE em um só lugar."
+      highlights={highlights}
+    >
+      <Tabs defaultValue="login" className="w-full">
+        <TabsList className="grid w-full grid-cols-2 mb-8 bg-gray-100 rounded-full p-1 h-11">
+          <TabsTrigger
+            value="login"
+            className="rounded-full text-gray-500 data-[state=active]:bg-white data-[state=active]:text-[#318EF1] data-[state=active]:shadow-sm"
+          >
+            Entrar
+          </TabsTrigger>
+          <TabsTrigger
+            value="register"
+            className="rounded-full text-gray-500 data-[state=active]:bg-white data-[state=active]:text-[#318EF1] data-[state=active]:shadow-sm"
+          >
+            Cadastrar
+          </TabsTrigger>
+        </TabsList>
 
-      {/* Left side - Branding */}
-      <div className="hidden lg:flex lg:w-1/2 bg-primary items-center justify-center p-12">
-        <div className="text-primary-foreground max-w-md space-y-8">
-          <div className="flex items-center gap-3">
-            <ShoppingBag className="h-12 w-12" />
-            <h1 className="text-4xl font-bold">Seller Finance</h1>
-          </div>
-          <p className="text-xl opacity-90">
-            Gerencie seus resultados de vendas de forma simples e eficiente.
-          </p>
-          <div className="space-y-6 pt-8">
-            {[
-              { icon: TrendingUp, title: 'Acompanhe suas vendas',   desc: 'Visualize relatórios detalhados' },
-              { icon: DollarSign, title: 'Calcule seu lucro',        desc: 'Taxas, impostos e custos automáticos' },
-              { icon: BarChart3,  title: 'Análise por produto',      desc: 'Identifique seus melhores itens' },
-            ].map(({ icon: Icon, title, desc }) => (
-              <div key={title} className="flex items-center gap-4">
-                <div className="bg-primary-foreground/20 p-3 rounded-lg">
-                  <Icon className="h-6 w-6" />
-                </div>
-                <div>
-                  <h3 className="font-semibold">{title}</h3>
-                  <p className="text-sm opacity-80">{desc}</p>
-                </div>
+        {/* Login */}
+        <TabsContent value="login">
+          <h2 className="font-display text-2xl font-bold text-[#0A1628] mb-1">Bem-vindo de volta!</h2>
+          <p className="text-sm text-gray-500 mb-6">Entre com suas credenciais para acessar o sistema</p>
+          <form onSubmit={handleSignIn} className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="email-login">Email</Label>
+              <Input
+                id="email-login"
+                type="email"
+                placeholder="seu@email.com"
+                value={email}
+                onChange={e => setEmail(e.target.value)}
+                required
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="password-login">Senha</Label>
+              <div className="relative">
+                <Input
+                  id="password-login"
+                  type={showLoginPassword ? 'text' : 'password'}
+                  placeholder="••••••••"
+                  value={password}
+                  onChange={e => setPassword(e.target.value)}
+                  required
+                  className="pr-10"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowLoginPassword(!showLoginPassword)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                >
+                  {showLoginPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                </button>
               </div>
-            ))}
-          </div>
-        </div>
-      </div>
+            </div>
+            <RollButton
+              type="submit"
+              disabled={isLoading}
+              label={
+                isLoading ? (
+                  <span className="inline-flex items-center gap-2">
+                    <Loader2 className="h-4 w-4 animate-spin" /> Entrando...
+                  </span>
+                ) : (
+                  'Entrar'
+                )
+              }
+              icon={<ArrowRight className="w-3.5 h-3.5 text-white" />}
+              className="bg-[#318EF1] hover:bg-[#2678d1] text-white w-full justify-center py-3.5 shadow-[0_8px_24px_-8px_rgba(49,142,241,0.5)]"
+              textWrapperClassName="text-base font-bold"
+              circleClassName="w-4 h-4"
+            />
+            <div className="flex items-center space-x-2">
+              <input
+                type="checkbox"
+                id="remember"
+                checked={rememberMe}
+                onChange={e => setRememberMe(e.target.checked)}
+                className="h-4 w-4 rounded border-gray-300"
+              />
+              <label htmlFor="remember" className="text-sm text-muted-foreground cursor-pointer">
+                Lembrar de mim
+              </label>
+            </div>
+          </form>
+          <p className="text-sm text-center text-muted-foreground mt-4">
+            Esqueceu a senha?{' '}
+            <span className="text-[#318EF1] font-medium cursor-pointer" onClick={() => navigate('/user/esqueci-senha')}>
+              Recuperar senha
+            </span>
+          </p>
+        </TabsContent>
 
-      {/* Right side - Auth Form */}
-      <div className="flex-1 flex items-center justify-center p-8 bg-background">
-        <div className="w-full max-w-md">
-          {/* Mobile logo */}
-          <div className="lg:hidden flex items-center justify-center gap-2 mb-8">
-            <ShoppingBag className="h-8 w-8 text-primary" />
-            <h1 className="text-2xl font-bold text-primary">Seller Finance</h1>
-          </div>
-
-          <Tabs defaultValue="login" className="w-full">
-            <TabsList className="grid w-full grid-cols-2 mb-6">
-              <TabsTrigger value="login">Entrar</TabsTrigger>
-              <TabsTrigger value="register">Cadastrar</TabsTrigger>
-            </TabsList>
-
-            {/* Login */}
-            <TabsContent value="login">
-              <Card>
-                <CardHeader>
-                  <CardTitle>Bem-vindo de volta!</CardTitle>
-                  <CardDescription>Entre com suas credenciais para acessar o sistema</CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <form onSubmit={handleSignIn} className="space-y-4">
-                    <div className="space-y-2">
-                      <Label htmlFor="email-login">Email</Label>
-                      <Input
-                        id="email-login"
-                        type="email"
-                        placeholder="seu@email.com"
-                        value={email}
-                        onChange={e => setEmail(e.target.value)}
-                        required
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="password-login">Senha</Label>
-                      <div className="relative">
-                        <Input
-                          id="password-login"
-                          type={showLoginPassword ? 'text' : 'password'}
-                          placeholder="••••••••"
-                          value={password}
-                          onChange={e => setPassword(e.target.value)}
-                          required
-                          className="pr-10"
-                        />
-                        <button
-                          type="button"
-                          onClick={() => setShowLoginPassword(!showLoginPassword)}
-                          className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
-                        >
-                          {showLoginPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                        </button>
-                      </div>
-                    </div>
-                    <Button type="submit" className="w-full" disabled={isLoading}>
-                      {isLoading ? 'Entrando...' : 'Entrar'}
-                    </Button>
-                    <div className="flex items-center space-x-2">
-                      <input
-                        type="checkbox"
-                        id="remember"
-                        checked={rememberMe}
-                        onChange={e => setRememberMe(e.target.checked)}
-                        className="h-4 w-4 rounded border-gray-300"
-                      />
-                      <label htmlFor="remember" className="text-sm text-muted-foreground cursor-pointer">
-                        Lembrar de mim
-                      </label>
-                    </div>
-                  </form>
-                  <p className="text-sm text-center text-muted-foreground mt-4">
-                    Esqueceu a senha?{' '}
-                    <span className="text-primary cursor-pointer" onClick={() => navigate('/user/esqueci-senha')}>
-                      Recuperar senha
-                    </span>
-                  </p>
-                </CardContent>
-              </Card>
-            </TabsContent>
-
-            {/* Cadastro */}
-            <TabsContent value="register">
-              <Card>
-                <CardHeader>
-                  <CardTitle>Criar conta</CardTitle>
-                  <CardDescription>Preencha os dados abaixo para criar sua conta</CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <form onSubmit={handleSignUp} className="space-y-4">
-                    <div className="space-y-2">
-                      <Label htmlFor="name-register">Nome completo</Label>
-                      <Input
-                        id="name-register"
-                        type="text"
-                        placeholder="Seu nome"
-                        value={fullName}
-                        onChange={e => setFullName(e.target.value)}
-                        required
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="email-register">Email</Label>
-                      <Input
-                        id="email-register"
-                        type="email"
-                        placeholder="seu@email.com"
-                        value={email}
-                        onChange={e => setEmail(e.target.value)}
-                        required
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="password-register">Senha</Label>
-                      <div className="relative">
-                        <Input
-                          id="password-register"
-                          type={showRegisterPassword ? 'text' : 'password'}
-                          placeholder="Mínimo 8 caracteres, 1 maiúscula e 1 número"
-                          value={password}
-                          onChange={e => setPassword(e.target.value)}
-                          required
-                          minLength={8}
-                          className="pr-10"
-                        />
-                        <button
-                          type="button"
-                          onClick={() => setShowRegisterPassword(!showRegisterPassword)}
-                          className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
-                        >
-                          {showRegisterPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                        </button>
-                      </div>
-                    </div>
-                    <Button type="submit" className="w-full" disabled={isLoading}>
-                      {isLoading ? 'Criando conta...' : 'Criar conta'}
-                    </Button>
-                  </form>
-                </CardContent>
-              </Card>
-            </TabsContent>
-          </Tabs>
-        </div>
-      </div>
-    </div>
+        {/* Cadastro */}
+        <TabsContent value="register">
+          <h2 className="font-display text-2xl font-bold text-[#0A1628] mb-1">Criar conta</h2>
+          <p className="text-sm text-gray-500 mb-6">Preencha os dados abaixo para criar sua conta</p>
+          <form onSubmit={handleSignUp} className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="name-register">Nome completo</Label>
+              <Input
+                id="name-register"
+                type="text"
+                placeholder="Seu nome"
+                value={fullName}
+                onChange={e => setFullName(e.target.value)}
+                required
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="email-register">Email</Label>
+              <Input
+                id="email-register"
+                type="email"
+                placeholder="seu@email.com"
+                value={email}
+                onChange={e => setEmail(e.target.value)}
+                required
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="password-register">Senha</Label>
+              <div className="relative">
+                <Input
+                  id="password-register"
+                  type={showRegisterPassword ? 'text' : 'password'}
+                  placeholder="Mínimo 8 caracteres, 1 maiúscula e 1 número"
+                  value={password}
+                  onChange={e => setPassword(e.target.value)}
+                  required
+                  minLength={8}
+                  className="pr-10"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowRegisterPassword(!showRegisterPassword)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                >
+                  {showRegisterPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                </button>
+              </div>
+            </div>
+            <RollButton
+              type="submit"
+              disabled={isLoading}
+              label={
+                isLoading ? (
+                  <span className="inline-flex items-center gap-2">
+                    <Loader2 className="h-4 w-4 animate-spin" /> Criando conta...
+                  </span>
+                ) : (
+                  'Criar conta'
+                )
+              }
+              icon={<ArrowRight className="w-3.5 h-3.5 text-white" />}
+              className="bg-[#318EF1] hover:bg-[#2678d1] text-white w-full justify-center py-3.5 shadow-[0_8px_24px_-8px_rgba(49,142,241,0.5)]"
+              textWrapperClassName="text-base font-bold"
+              circleClassName="w-4 h-4"
+            />
+          </form>
+        </TabsContent>
+      </Tabs>
+    </AuthShell>
   );
 }

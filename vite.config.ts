@@ -58,7 +58,7 @@ export default defineConfig(({ mode }) => ({
           "vendor-charts": ["recharts"],
 
           // Animações
-          "vendor-motion": ["framer-motion"],
+          "vendor-motion": ["framer-motion", "gsap"],
 
           // Formulários
           "vendor-forms": ["react-hook-form", "@hookform/resolvers", "zod"],
