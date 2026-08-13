@@ -56,10 +56,21 @@ function timingSafeEqual(a: string, b: string): boolean {
 }
 
 // ── Helper: resolve userId com fallbacks (equivalente ao resolveUserId do antigo stripe-webhook) ──
+//
+// A Asaas não propaga o externalReference do checkout pro subscription/payment
+// gerados quando o chargeType é RECURRENT (plano mensal) — confirmado ao vivo:
+// os 3 campos vêm null mesmo com o valor enviado corretamente na criação do
+// checkout. Sem esse fallback por asaas_checkout_id, nenhum evento de um
+// checkout mensal consegue ser associado a um usuário, e o plano nunca ativa
+// (achado real: 0 de 32 linhas em `subscriptions` tinham asaas_customer_id/
+// asaas_subscription_id preenchidos). O checkout_id é uma âncora confiável
+// porque é gravado por `asaas-checkout` na hora da criação, direto a partir
+// do userId do JWT — não depende de nada que a Asaas devolva depois.
 async function resolveUserId(
   externalReference?: string | null,
   asaasSubscriptionId?: string | null,
   asaasCustomerId?: string | null,
+  asaasCheckoutId?: string | null,
 ): Promise<string | null> {
   if (externalReference) return externalReference;
 
@@ -77,6 +88,15 @@ async function resolveUserId(
       .from("subscriptions")
       .select("user_id")
       .eq("asaas_customer_id", asaasCustomerId)
+      .maybeSingle();
+    if (data?.user_id) return data.user_id;
+  }
+
+  if (asaasCheckoutId) {
+    const { data } = await supabase
+      .from("subscriptions")
+      .select("user_id")
+      .eq("asaas_checkout_id", asaasCheckoutId)
       .maybeSingle();
     if (data?.user_id) return data.user_id;
   }
@@ -103,7 +123,7 @@ Deno.serve(async (req) => {
     const checkout = body.checkout;
     const { userId: refUserId } = parseRef(checkout?.externalReference);
 
-    const userId = await resolveUserId(refUserId, undefined, checkout?.customer);
+    const userId = await resolveUserId(refUserId, undefined, checkout?.customer, checkout?.id);
 
     if (userId) {
       await supabase.from("subscriptions").upsert(
@@ -125,7 +145,7 @@ Deno.serve(async (req) => {
     const subscription = body.subscription;
     const { userId: refUserId } = parseRef(subscription?.externalReference);
 
-    const userId = await resolveUserId(refUserId, undefined, subscription?.customer);
+    const userId = await resolveUserId(refUserId, undefined, subscription?.customer, subscription?.checkoutSession);
 
     if (userId) {
       await supabase.from("subscriptions").upsert(
@@ -165,6 +185,7 @@ Deno.serve(async (req) => {
       refFromSubscription.userId ?? refFromInstallment.userId ?? refFromPayment.userId,
       asaasSubscriptionId,
       payment?.customer,
+      subscription?.checkoutSession ?? installment?.checkoutSession ?? payment?.checkoutSession,
     );
 
     if (userId) {
@@ -223,7 +244,7 @@ Deno.serve(async (req) => {
     const subscription = body.subscription;
     const { userId: refUserId } = parseRef(subscription?.externalReference);
 
-    const userId = await resolveUserId(refUserId, subscription?.id, subscription?.customer);
+    const userId = await resolveUserId(refUserId, subscription?.id, subscription?.customer, subscription?.checkoutSession);
 
     if (userId) {
       await supabase
