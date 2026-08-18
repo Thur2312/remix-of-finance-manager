@@ -2,7 +2,9 @@
 export const CALCULADORA_ALLOWLIST: string[] = [
   "matheusalesbr@gmail.com",
   "andradeathirson04@gmail.com",
-  "gabrielnicodemos2001@gmail.com"
+  "gabrielnicodemos2001@gmail.com",
+  "fs3742107@gmail.com",
+  "metaclickof@gmail.com"
 ];
 
 export function isCalculadoraAllowed(email: string | undefined): boolean {
