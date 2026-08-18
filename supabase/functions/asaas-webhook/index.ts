@@ -1,5 +1,5 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
-import { PlanId, planIdByCycle } from "../_shared/plans.ts";
+import { PlanId, planExpiresAt, planIdByCycle } from "../_shared/plans.ts";
 
 const ASAAS_API_KEY = Deno.env.get("ASAAS_API_KEY")!;
 const ASAAS_API_BASE_URL = Deno.env.get("ASAAS_API_BASE_URL")!;
@@ -226,6 +226,7 @@ Deno.serve(async (req) => {
             plan: planoPago,
             status: "active",
             user_plan: planoPago,
+            expires_at: planExpiresAt(planoPago).toISOString(),
             asaas_customer_id: payment?.customer ?? null,
             asaas_subscription_id: asaasSubscriptionId ?? null,
             canceled_at: null,

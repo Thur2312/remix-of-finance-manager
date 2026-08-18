@@ -26,3 +26,23 @@ export function planIdByCycle(cycle: string): PlanId | null {
     .find(([, config]) => config.cycle === cycle);
   return entry ? entry[0] : null;
 }
+
+// Data de expiração do plano pago a partir de agora, respeitando o ciclo
+// (mensal/semestral/anual). Usado pelo asaas-webhook ao confirmar pagamento —
+// sem isso, o UPDATE herdava o expires_at antigo da linha (ex.: os 5 dias do
+// trial gravados no cadastro), fazendo planos pagos "vencerem" cedo demais.
+export function planExpiresAt(planId: PlanId, from: Date = new Date()): Date {
+  const expiresAt = new Date(from);
+  switch (PLANS[planId].cycle) {
+    case "MONTHLY":
+      expiresAt.setMonth(expiresAt.getMonth() + 1);
+      break;
+    case "SEMIANNUALLY":
+      expiresAt.setMonth(expiresAt.getMonth() + 6);
+      break;
+    case "YEARLY":
+      expiresAt.setFullYear(expiresAt.getFullYear() + 1);
+      break;
+  }
+  return expiresAt;
+}
