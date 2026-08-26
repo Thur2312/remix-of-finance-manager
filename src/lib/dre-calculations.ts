@@ -1,4 +1,4 @@
-import { format, startOfMonth, endOfMonth, subMonths, differenceInDays } from 'date-fns';
+import { differenceInDays } from 'date-fns';
 
 // ============= INTERFACES =============
 
@@ -226,14 +226,37 @@ export interface TikTokSettings {
 
 // ============= HELPERS =============
 
+// América/São Paulo é UTC-3 o ano inteiro desde o fim do horário de verão em
+// 2019 — sem essa âncora fixa, getDefaultPeriods usava new Date() do
+// NAVEGADOR de quem está olhando o relatório pra decidir onde "o mês atual"
+// começa e termina, enquanto os pedidos das integrações são gravados em UTC
+// (ver safeShopeeDate/toISOString). Um pedido das 23h de 31/jan em Brasília
+// vira 2026-02-01T02:00:00Z no banco; o corte de período agora é calculado
+// como instantes UTC fixos correspondentes à meia-noite em São Paulo, então
+// o relatório não muda dependendo do fuso do dispositivo de quem está vendo.
+const BUSINESS_TZ_OFFSET_MS = -3 * 60 * 60 * 1000;
+
+function businessDateParts(date: Date): { year: number; month: number } {
+  const shifted = new Date(date.getTime() + BUSINESS_TZ_OFFSET_MS);
+  return { year: shifted.getUTCFullYear(), month: shifted.getUTCMonth() };
+}
+
+function businessMonthStart(year: number, month: number): Date {
+  return new Date(Date.UTC(year, month, 1) - BUSINESS_TZ_OFFSET_MS);
+}
+
+function businessMonthEnd(year: number, month: number): Date {
+  return new Date(businessMonthStart(year, month + 1).getTime() - 1);
+}
+
 export function getDefaultPeriods(): DREPeriod[] {
-  const now = new Date();
+  const { year, month } = businessDateParts(new Date());
   return [
-    { start: startOfMonth(now), end: endOfMonth(now), label: 'Mês Atual' },
-    { start: startOfMonth(subMonths(now, 1)), end: endOfMonth(subMonths(now, 1)), label: 'Mês Anterior' },
-    { start: startOfMonth(subMonths(now, 2)), end: endOfMonth(now), label: 'Últimos 3 Meses' },
-    { start: startOfMonth(subMonths(now, 5)), end: endOfMonth(now), label: 'Últimos 6 Meses' },
-    { start: new Date(now.getFullYear(), 0, 1), end: new Date(now.getFullYear(), 11, 31), label: 'Ano Atual' },
+    { start: businessMonthStart(year, month), end: businessMonthEnd(year, month), label: 'Mês Atual' },
+    { start: businessMonthStart(year, month - 1), end: businessMonthEnd(year, month - 1), label: 'Mês Anterior' },
+    { start: businessMonthStart(year, month - 2), end: businessMonthEnd(year, month), label: 'Últimos 3 Meses' },
+    { start: businessMonthStart(year, month - 5), end: businessMonthEnd(year, month), label: 'Últimos 6 Meses' },
+    { start: businessMonthStart(year, 0), end: businessMonthEnd(year, 11), label: 'Ano Atual' },
   ];
 }
 
@@ -274,6 +297,19 @@ function gerarAlertas(data: Partial<DREData>): DREAlerta[] {
   }
   if ((data.custosFixosTotal || 0) === 0 && (data.receitaBrutaTotal || 0) > 0) {
     alertas.push({ tipo: 'info', mensagem: 'Nenhum custo fixo cadastrado. Cadastre custos fixos para uma DRE completa.', campo: 'custosFixosTotal' });
+  }
+
+  // Nada impede que uma venda já contabilizada pela integração (Shopee/TikTok/ML)
+  // seja lançada de novo manualmente no Fluxo de Caixa (ex: ao conciliar o
+  // repasse bancário) — não existe chave de referência entre CashFlowEntry e
+  // o pedido de origem pra detectar/evitar isso automaticamente. Só alertamos.
+  const receitaMarketplace = (data.receitaBrutaTotal || 0) - (data.receitaBrutaExtra || 0);
+  if ((data.receitaBrutaExtra || 0) > 0 && receitaMarketplace > 0) {
+    alertas.push({
+      tipo: 'warning',
+      mensagem: 'Há receita lançada manualmente no Fluxo de Caixa neste período, além das vendas dos marketplaces. Confira se algum desses lançamentos não é o mesmo repasse que a integração já contabilizou — senão a receita conta em dobro.',
+      campo: 'receitaBrutaExtra',
+    });
   }
 
   return alertas;
@@ -412,7 +448,7 @@ export function calculateDRE(
   const lucroLiquido  = lucroOperacional - despesasFinanceirasTotal - outrasDespesasFluxo;
   const margemLiquida = receitaLiquida > 0 ? (lucroLiquido / receitaLiquida) * 100 : 0;
 
-  const alertas = gerarAlertas({ receitaBrutaTotal, impostosSobreVendasTotal, cogsTotal, margemContribuicao, lucroOperacional, custosFixosTotal });
+  const alertas = gerarAlertas({ receitaBrutaTotal, receitaBrutaExtra, impostosSobreVendasTotal, cogsTotal, margemContribuicao, lucroOperacional, custosFixosTotal });
 
   return {
     periodo: period,

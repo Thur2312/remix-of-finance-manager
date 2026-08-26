@@ -5,6 +5,7 @@ import { ShoppingCart, DollarSign, TrendingUp, TrendingDown, Loader2 } from 'luc
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { format, subDays, startOfDay } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
+import { isShopeeRevenueStatus } from '@/lib/shopee-sync-status';
 
 interface IntegrationDashboardProps {
   connectionId: string;
@@ -27,11 +28,18 @@ export function IntegrationDashboard({ connectionId }: IntegrationDashboardProps
       setIsLoading(true);
       try {
         // Busca pedidos
-        const { data: orders } = await supabase
+        const { data: allOrders } = await supabase
           .from('orders')
-          .select('total_amount, order_created_at')
+          .select('status, total_amount, order_created_at')
           .eq('integration_id', connectionId)
           .order('order_created_at', { ascending: false })
+
+        // Sem esse filtro, pedido cancelado/não pago entrava na soma de
+        // receita igual a um concluído — este painel era a única das 3 telas
+        // que liam orders/payments sem checar status nenhum (DRE e Dashboard
+        // principal já filtravam, cada um com sua própria lista; agora os
+        // três usam a mesma classificação de src/lib/shopee-sync-status.ts).
+        const orders = allOrders?.filter(o => isShopeeRevenueStatus(o.status)) ?? []
 
         // Busca pagamentos
         const { data: payments } = await supabase
@@ -40,8 +48,8 @@ export function IntegrationDashboard({ connectionId }: IntegrationDashboardProps
           .eq('integration_id', connectionId)
           .order('transaction_date', { ascending: false })
 
-        const totalOrders = orders?.length ?? 0
-        const totalRevenue = orders?.reduce((sum, o) => sum + Number(o.total_amount), 0) ?? 0
+        const totalOrders = orders.length
+        const totalRevenue = orders.reduce((sum, o) => sum + Number(o.total_amount), 0)
         const totalFees = payments?.reduce((sum, p) => sum + Number(p.marketplace_fee), 0) ?? 0
         const netRevenue = payments?.reduce((sum, p) => sum + Number(p.net_amount), 0) ?? 0
 
@@ -51,9 +59,9 @@ export function IntegrationDashboard({ connectionId }: IntegrationDashboardProps
           const dateStr = format(date, 'yyyy-MM-dd')
           const label = format(date, 'dd/MM', { locale: ptBR })
 
-          const dayOrders = orders?.filter(o =>
+          const dayOrders = orders.filter(o =>
             o.order_created_at?.startsWith(dateStr)
-          ) ?? []
+          )
 
           const dayPayments = payments?.filter(p =>
             p.transaction_date?.startsWith(dateStr)

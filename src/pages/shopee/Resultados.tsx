@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { fetchAllOrders } from '@/lib/supabase-helpers';
@@ -8,6 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { Checkbox } from '@/components/ui/checkbox';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 import { parseBatchCostInput } from '@/lib/numeric-validation';
@@ -91,6 +92,15 @@ function ResultadosContent() {
     }
   }, [orders, settings]);
 
+  // status_pedido só existe pra pedidos importados depois da correção que
+  // passou a excluir cancelados/devolvidos/não pagos da receita. Pedido sem
+  // status é sinal de importação anterior a essa correção — pode incluir
+  // pedidos que hoje seriam excluídos, inflando a receita mostrada aqui.
+  const hasOrdersWithoutStatus = useMemo(
+    () => orders.length > 0 && orders.some(o => !o.status_pedido),
+    [orders]
+  );
+
   const fetchSettings = async () => {
     try {
       const { data, error } = await supabase
@@ -141,9 +151,31 @@ function ResultadosContent() {
   const handleCostSave = useCallback(async (sku: string, nomeProduto: string, newCost: number) => {
     // Determine if SKU is empty/invalid - use nome_produto instead
     const isEmptySku = !sku || sku === '-' || sku.trim() === '';
-    
-    let query = supabase.from('raw_orders').update({ custo_unitario: newCost });
-    
+
+    // Editar o custo aqui reescrevia custo_unitario de TODO pedido daquele SKU,
+    // inclusive de meses já fechados — o DRE de um mês passado mudava sozinho
+    // quando alguém corrigia o custo hoje. Agora só aplica a partir do início
+    // do mês corrente; pedidos de meses anteriores mantêm o custo com que já
+    // foram apurados.
+    const currentMonthStart = new Date();
+    currentMonthStart.setDate(1);
+    currentMonthStart.setHours(0, 0, 0, 0);
+    const currentMonthStartIso = currentMonthStart.toISOString();
+
+    let historicalCountQuery = supabase
+      .from('raw_orders')
+      .select('id', { count: 'exact', head: true })
+      .lt('data_pedido', currentMonthStartIso);
+    historicalCountQuery = isEmptySku
+      ? historicalCountQuery.eq('nome_produto', nomeProduto)
+      : historicalCountQuery.eq('sku', sku);
+    const { count: historicalCount } = await historicalCountQuery;
+
+    let query = supabase
+      .from('raw_orders')
+      .update({ custo_unitario: newCost })
+      .gte('data_pedido', currentMonthStartIso);
+
     if (isEmptySku) {
       // Search by product name when SKU is empty
       query = query.eq('nome_produto', nomeProduto);
@@ -159,12 +191,18 @@ function ResultadosContent() {
       throw error;
     }
 
+    if (historicalCount && historicalCount > 0) {
+      toast.info(`Custo atualizado a partir deste mês. ${historicalCount} pedido(s) de meses anteriores mantiveram o custo original.`);
+    }
+
     // Update local orders state to trigger recalculation
     setOrders(prev => {
       const updated = prev.map(order => {
+        const isCurrentPeriod = !order.data_pedido || order.data_pedido >= currentMonthStartIso;
+        if (!isCurrentPeriod) return order;
         if (isEmptySku) {
-          return order.nome_produto === nomeProduto 
-            ? { ...order, custo_unitario: newCost } 
+          return order.nome_produto === nomeProduto
+            ? { ...order, custo_unitario: newCost }
             : order;
         }
         return order.sku === sku ? { ...order, custo_unitario: newCost } : order;
@@ -208,19 +246,36 @@ function ResultadosContent() {
     try {
       // Separate products with valid SKU from those without
       const selectedGroups = results?.groups.filter(g => selectedProducts.has(g.key)) || [];
-      
+
       const productsWithSku = selectedGroups.filter(g => g.sku && g.sku !== '-' && g.sku.trim() !== '');
       const productsWithoutSku = selectedGroups.filter(g => !g.sku || g.sku === '-' || g.sku.trim() === '');
-      
+
+      // Mesma trava do handleCostSave: custo em lote só se aplica a partir do
+      // mês corrente, pra não reescrever COGS de meses já fechados.
+      const currentMonthStart = new Date();
+      currentMonthStart.setDate(1);
+      currentMonthStart.setHours(0, 0, 0, 0);
+      const currentMonthStartIso = currentMonthStart.toISOString();
+
       let updatedCount = 0;
-      
+      let historicalSkipped = 0;
+
       // Update products with valid SKU
       if (productsWithSku.length > 0) {
         const skusToUpdate = productsWithSku.map(g => g.sku);
+
+        const { count: historicalCount } = await supabase
+          .from('raw_orders')
+          .select('id', { count: 'exact', head: true })
+          .in('sku', skusToUpdate)
+          .lt('data_pedido', currentMonthStartIso);
+        historicalSkipped += historicalCount || 0;
+
         const { error } = await supabase
           .from('raw_orders')
           .update({ custo_unitario: numValue })
-          .in('sku', skusToUpdate);
+          .in('sku', skusToUpdate)
+          .gte('data_pedido', currentMonthStartIso);
 
         if (error) {
           console.error('Erro ao atualizar por SKU:', error);
@@ -228,13 +283,21 @@ function ResultadosContent() {
           updatedCount += productsWithSku.length;
         }
       }
-      
+
       // Update products without SKU (by nome_produto)
       for (const product of productsWithoutSku) {
+        const { count: historicalCount } = await supabase
+          .from('raw_orders')
+          .select('id', { count: 'exact', head: true })
+          .eq('nome_produto', product.nome_produto)
+          .lt('data_pedido', currentMonthStartIso);
+        historicalSkipped += historicalCount || 0;
+
         const { error } = await supabase
           .from('raw_orders')
           .update({ custo_unitario: numValue })
-          .eq('nome_produto', product.nome_produto);
+          .eq('nome_produto', product.nome_produto)
+          .gte('data_pedido', currentMonthStartIso);
 
         if (error) {
           console.error(`Erro ao atualizar ${product.nome_produto}:`, error);
@@ -242,7 +305,7 @@ function ResultadosContent() {
           updatedCount++;
         }
       }
-      
+
       if (updatedCount === 0) {
         toast.error('Erro ao salvar custos em massa');
         return;
@@ -251,12 +314,14 @@ function ResultadosContent() {
       // Update local orders state
       const skuSet = new Set(productsWithSku.map(g => g.sku));
       const nameSet = new Set(productsWithoutSku.map(g => g.nome_produto));
-      
+
       setOrders(prev => {
         const updated = prev.map(order => {
+          const isCurrentPeriod = !order.data_pedido || order.data_pedido >= currentMonthStartIso;
+          if (!isCurrentPeriod) return order;
           const orderSku = order.sku || '';
           const isEmptySku = !orderSku || orderSku === '-' || orderSku.trim() === '';
-          
+
           if (isEmptySku && nameSet.has(order.nome_produto || '')) {
             return { ...order, custo_unitario: numValue };
           }
@@ -268,7 +333,11 @@ function ResultadosContent() {
         return [...updated];
       });
 
-      toast.success(`Custo atualizado para ${updatedCount} produto(s)`);
+      toast.success(
+        historicalSkipped > 0
+          ? `Custo atualizado para ${updatedCount} produto(s) a partir deste mês. ${historicalSkipped} pedido(s) de meses anteriores mantiveram o custo original.`
+          : `Custo atualizado para ${updatedCount} produto(s)`
+      );
       
       // Increment sync version to force EditableCostCell to update
       setCostSyncVersion(prev => prev + 1);
@@ -634,6 +703,19 @@ function ResultadosContent() {
 
   return (
     <div className="space-y-6 animate-fade-in">
+      {hasOrdersWithoutStatus && (
+        <Alert>
+          <AlertCircle className="h-4 w-4" />
+          <AlertTitle>Alguns pedidos podem estar desatualizados</AlertTitle>
+          <AlertDescription>
+            Pedidos importados antes da correção de status (cancelados/devolvidos)
+            não têm essa informação e continuam contando na receita abaixo.
+            Reimporte a planilha mais recente da Shopee em{' '}
+            <a href="/shopee/upload" className="underline font-medium">Upload</a>{' '}
+            pra atualizar esses números.
+          </AlertDescription>
+        </Alert>
+      )}
       {renderFilters()}
       {renderSummaryCards()}
       {results && results.groups.length > 0 && (

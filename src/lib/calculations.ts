@@ -25,6 +25,7 @@ export interface RawOrder {
   rebate_shopee: number;
   custo_unitario: number;
   data_pedido: string | null;
+  status_pedido: string | null;
 }
 
 export interface GroupedResult {

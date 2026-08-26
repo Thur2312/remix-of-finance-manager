@@ -1,5 +1,6 @@
 import { supabase } from '@/integrations/supabase/client';
 import { TikTokOrder } from './tiktok-calculations';
+import { isExcludedOrderStatus, EXCLUDED_STATUS_DESCRIPTION } from './marketplace-order-status';
 
 // Parse TikTok currency format: "BRL 35,91" -> 35.91
 export function parseTikTokCurrency(value: string): number {
@@ -36,8 +37,12 @@ export const tiktokColumnMapping = {
   status_pedido: 'Order Status',
 };
 
-// Status to exclude from import
-export const excludedStatuses = ['Cancelado', 'Não pago'];
+// Antes só excluía "Cancelado"/"Não pago" por comparação exata — não cobria
+// devolução/reembolso (pedido devolvido continuava contando como receita,
+// mesmo já descontado das vendas líquidas no painel oficial do TikTok Shop).
+// isExcludedOrderStatus normaliza e compara por palavra-chave, cobrindo as
+// variações de texto do relatório.
+export const excludedStatusesDescription = EXCLUDED_STATUS_DESCRIPTION;
 
 export interface ParsedTikTokRow {
   order_id: string;
@@ -54,9 +59,9 @@ export interface ParsedTikTokRow {
 
 export function parseTikTokCSVRow(row: Record<string, string>): ParsedTikTokRow | null {
   const status = row[tiktokColumnMapping.status_pedido] || '';
-  
-  // Skip excluded statuses
-  if (excludedStatuses.includes(status)) {
+
+  // Skip excluded statuses (cancelado, não pago, devolvido, reembolsado)
+  if (isExcludedOrderStatus(status)) {
     return null;
   }
 

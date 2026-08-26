@@ -15,6 +15,7 @@ import {
   CashFlowEntry,
   ShopeeOrderDRE,
 } from '@/lib/dre-calculations';
+import { isShopeeRevenueStatus, SHOPEE_FEE_TYPES_TAXAS } from '@/lib/shopee-sync-status';
 
 // ── Tipos internos para Shopee (orders/fees/payments) ──────────────────────
 
@@ -35,10 +36,9 @@ interface ShopeeFee {
   fee_date: string;
 }
 
-// Statuses que contam como receita (espelha useShopeeSync)
-const COMPLETED_STATUSES = ['COMPLETED'];
-const SHIPPED_STATUSES   = ['SHIPPED', 'TO_CONFIRM_RECEIVE', 'PROCESSED'];
-const FEE_TYPES_TAXAS    = ['commission', 'service_fee', 'shipping_fee', 'reverse_shipping_fee'];
+// Classificação de status compartilhada com useShopeeSync/IntegrationDashboard
+// (src/lib/shopee-sync-status.ts) — antes cada um tinha sua própria cópia
+// dessas listas, e podiam divergir sem ninguém notar.
 
 // ── Interface de resultado ──────────────────────────────────────────────────
 
@@ -304,7 +304,7 @@ export function useDREData(): UseDREDataResult {
 
     // Converter ShopeeOrder[] → ShopeeOrderDRE[] (tipo explícito, sem 'as any')
     const shopeeOrdersMapped: ShopeeOrderDRE[] = shopeeOrders
-      .filter(o => COMPLETED_STATUSES.includes(o.status) || SHIPPED_STATUSES.includes(o.status))
+      .filter(o => isShopeeRevenueStatus(o.status))
       .map(
         (o): ShopeeOrderDRE => ({
           id:             o.id,
@@ -318,7 +318,7 @@ export function useDREData(): UseDREDataResult {
     // Taxa de comissão efetiva calculada pelas fees reais
     const totalReceita   = shopeeOrdersMapped.reduce((s, o) => s + o.total_faturado, 0);
     const totalFeesTaxas = shopeeFees
-      .filter(f => FEE_TYPES_TAXAS.includes(f.fee_type))
+      .filter(f => SHOPEE_FEE_TYPES_TAXAS.includes(f.fee_type))
       .reduce((s, f) => s + Number(f.amount), 0);
     const taxaEfetiva = totalReceita > 0 ? (totalFeesTaxas / totalReceita) * 100 : 0;
 

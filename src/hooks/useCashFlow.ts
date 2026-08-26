@@ -31,13 +31,19 @@ export interface CashFlowEntry {
   recurrence_end_date: string | null;
   parent_entry_id: string | null;
   notes: string | null;
+  // Id estável vindo da origem externa (ex: fitid do OFX) — permite detectar
+  // duplicata com certeza em vez de heurística por data+valor+tipo. Null pra
+  // lançamentos criados manualmente ou importados de formatos sem id estável.
+  external_id: string | null;
   created_at: string;
   updated_at: string;
   category?: CashFlowCategory;
 }
 
 export type NewCashFlowCategory = Omit<CashFlowCategory, 'id' | 'user_id' | 'created_at' | 'updated_at'>;
-export type NewCashFlowEntry = Omit<CashFlowEntry, 'id' | 'user_id' | 'created_at' | 'updated_at' | 'category'>;
+export type NewCashFlowEntry = Omit<CashFlowEntry, 'id' | 'user_id' | 'created_at' | 'updated_at' | 'category' | 'external_id'> & {
+  external_id?: string | null;
+};
 
 const DEFAULT_CATEGORIES: Omit<NewCashFlowCategory, 'is_default'>[] = [
   // Income categories

@@ -24,7 +24,7 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
-import { parseTikTokCSVRow, ParsedTikTokRow, excludedStatuses } from '@/lib/tiktok-helpers';
+import { parseTikTokCSVRow, ParsedTikTokRow, excludedStatusesDescription } from '@/lib/tiktok-helpers';
 import { tiktokNavTabs } from '@/components/layout/InPageNav';
 import { PageHeader } from '@/components/layout/PageHeader';
 
@@ -299,7 +299,7 @@ function TikTokUploadContent() {
         <div className="mt-6 p-4 bg-muted rounded-lg">
           <h4 className="font-medium mb-2">Informações importantes:</h4>
           <ul className="text-sm text-muted-foreground space-y-1">
-            <li>• Pedidos com status <strong>"{excludedStatuses.join('", "')}"</strong> serão ignorados</li>
+            <li>• Pedidos <strong>{excludedStatusesDescription}</strong> serão ignorados</li>
             <li>• Os valores em "BRL" serão convertidos automaticamente</li>
             <li>• Você poderá preencher os custos unitários depois</li>
           </ul>

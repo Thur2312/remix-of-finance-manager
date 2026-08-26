@@ -49,7 +49,15 @@ const parseInput = (val: string): number => {
   return isNaN(parsed) ? 0 : parsed;
 };
 
+// Data em que as tabelas de comissão abaixo foram conferidas pela última vez
+// contra a Central do Vendedor de cada marketplace. As plataformas mudam
+// essas faixas sem aviso — sem essa data visível na tela, o usuário não tinha
+// como saber se o valor calculado ainda reflete a taxa real.
+const TAXAS_VERIFICADAS_EM = "26/08/2026";
+
 // ─── Tabela de taxas Shopee ───────────────────────────────────────────────────
+// Faixas vigentes em TAXAS_VERIFICADAS_EM (ver acima) — conferir na Central
+// do Vendedor Shopee antes de decisões de precificação importantes.
 function getShopeeRates(preco: number): { comissao: number; taxaFixa: number } {
   if (preco <= 79.99)  return { comissao: 20, taxaFixa: 4  };
   if (preco <= 99.99)  return { comissao: 14, taxaFixa: 16 };
@@ -1036,6 +1044,11 @@ function CalculadoraPrecificacaoContent() {
             title="Calculadora de Precificação"
             subtitle="Análise completa com Margem de Contribuição e Absorção de Custos Fixos"
           />
+
+          <p className="text-xs text-muted-foreground flex items-center gap-1.5 -mt-4">
+            <Info className="h-3 w-3 flex-shrink-0" />
+            Taxas de comissão conferidas em {TAXAS_VERIFICADAS_EM} — marketplaces podem mudar sem aviso, confirme na Central do Vendedor antes de decisões importantes.
+          </p>
 
           {/* ── Banner custos fixos ───────────────────────────────────────── */}
           {isLoadingCosts ? (

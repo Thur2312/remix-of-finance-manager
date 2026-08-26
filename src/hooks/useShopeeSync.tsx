@@ -1,5 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
+import { computeShopeeSyncStats } from '@/lib/shopee-sync-status';
 
 export interface SyncedOrderItem {
   id: string;
@@ -69,42 +70,22 @@ export interface ShopeeSyncStats {
   feeBreakdown: { type: string; label: string; amount: number }[];
 }
 
-const COMPLETED_STATUSES = ['COMPLETED' ];
-const CANCELLED_STATUSES = ['CANCELLED', 'UNPAID', 'TO_RETURN'];
-const IGNORED_STATUSES   = ['TEST'];
-const SHIPPED_STATUSES = ['SHIPPED', 'TO_CONFIRM_RECEIVE', 'PROCESSED'];
+const feeLabels: Record<string, string> = {
+  commission:           'Comissão Shopee',
+  service_fee:          'Taxa de serviço',
+  shipping_fee:         'Frete',
+  reverse_shipping_fee: 'Frete reverso',
+  adjustment:           'Ajuste (crédito)',
+  seller_discount:      'Desconto do vendedor',
+  shopee_discount:      'Desconto Shopee',
+};
 
 function computeStats(
   orders: SyncedOrder[],
   payments: SyncedPayment[],
   fees: SyncedFee[]
 ): ShopeeSyncStats {
-
-  const completedOrders = orders.filter(o => COMPLETED_STATUSES.includes(o.status));
-  const cancelledOrders = orders.filter(o => CANCELLED_STATUSES.includes(o.status));
-  const pendingOrders   = orders.filter(
-    o => !COMPLETED_STATUSES.includes(o.status) && !CANCELLED_STATUSES.includes(o.status) && !IGNORED_STATUSES.includes(o.status) && !SHIPPED_STATUSES.includes(o.status)
-  );
-
-  const shippedOrders = orders.filter(o => SHIPPED_STATUSES.includes(o.status));
-
-  const totalRevenue = completedOrders.reduce((sum, o) => sum + Number(o.total_amount), 0) + shippedOrders.reduce((sum, o) => sum + Number(o.total_amount), 0);
-
-  const totalNetAmount = payments
-    .filter(p => p.payment_method === 'escrow')
-    .reduce((sum, p) => sum + Number(p.net_amount), 0);
-
-  const feeLabels: Record<string, string> = {
-    commission:           'Comissão Shopee',
-    service_fee:          'Taxa de serviço',
-    shipping_fee:         'Frete',
-    reverse_shipping_fee: 'Frete reverso',
-    adjustment:           'Ajuste (crédito)',
-    seller_discount:      'Desconto do vendedor',
-    shopee_discount:      'Desconto Shopee',
-  };
-
-  const FEE_TYPES_TAXAS = ['commission', 'service_fee', 'shipping_fee', 'reverse_shipping_fee'];
+  const shared = computeShopeeSyncStats(orders, payments, fees);
 
   const feeMap = new Map<string, number>();
   fees.forEach(f => {
@@ -119,43 +100,7 @@ function computeStats(
     }))
     .sort((a, b) => b.amount - a.amount);
 
-  const totalFees = fees
-    .filter(f => FEE_TYPES_TAXAS.includes(f.fee_type))
-    .reduce((sum, f) => sum + Number(f.amount), 0);
-
-  const revenueMap = new Map<string, { revenue: number; net: number }>();
-
-  completedOrders.forEach(o => {
-    const date = o.order_created_at?.substring(0, 10) || '';
-    if (!date) return;
-    const existing = revenueMap.get(date) || { revenue: 0, net: 0 };
-    revenueMap.set(date, { revenue: existing.revenue + Number(o.total_amount), net: existing.net });
-  });
-
-  payments
-    .filter(p => p.payment_method === 'escrow')
-    .forEach(p => {
-      const date = p.transaction_date?.substring(0, 10) || '';
-      if (!date) return;
-      const existing = revenueMap.get(date) || { revenue: 0, net: 0 };
-      revenueMap.set(date, { ...existing, net: existing.net + Number(p.net_amount) });
-    });
-
-  const revenueByDay = Array.from(revenueMap.entries())
-    .map(([date, vals]) => ({ date, ...vals }))
-    .sort((a, b) => a.date.localeCompare(b.date));
-
-  return {    
-    totalOrders: completedOrders.length + shippedOrders.length,
-    totalRevenue,
-    totalFees,
-    totalNetAmount,
-    paidOrders:      completedOrders.length,
-    pendingOrders:   shippedOrders.length,
-    cancelledOrders: cancelledOrders.length,
-    revenueByDay,
-    feeBreakdown,
-  };
+  return { ...shared, feeBreakdown };
 }
 
 export function useShopeeSync(connectionId: string | null, days: number = 15) {

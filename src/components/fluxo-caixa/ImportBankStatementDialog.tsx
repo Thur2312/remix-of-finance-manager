@@ -10,6 +10,8 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { useCashFlowCategories, useCashFlowEntries } from '@/hooks/useCashFlow';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
+import { useAuth } from '@/contexts/AuthContext';
+import { useQueryClient } from '@tanstack/react-query';
 import { 
   Upload, 
   FileText, 
@@ -48,15 +50,19 @@ interface ImportBankStatementDialogProps {
 
 export default function ImportBankStatementDialog({ open, onOpenChange }: ImportBankStatementDialogProps) {
   const { toast } = useToast();
+  const { user } = useAuth();
+  const queryClient = useQueryClient();
   const { categories } = useCashFlowCategories();
-  const { createEntry, entries: existingEntries } = useCashFlowEntries();
+  const { entries: existingEntries } = useCashFlowEntries();
 
-  // Nada aqui checava duplicidade antes de inserir — reimportar um período já
-  // importado (ex: baixar o extrato de novo, que inclui meses anteriores)
-  // duplicava cada lançamento. fitid (OFX) não cobre CSV/XLSX/PDF, que sempre
-  // vêm com fitid null — por isso o match é por data+valor+tipo, que funciona
-  // pra qualquer formato.
+  // Quando o arquivo tem fitid (OFX), a checagem é exata — compara contra o
+  // external_id já gravado de uma importação anterior. Pra CSV/XLSX/PDF, que
+  // sempre vêm com fitid null, ainda caímos na heurística por data+valor+tipo
+  // (menos confiável, mas é o único sinal disponível nesses formatos).
   const isLikelyDuplicate = useCallback((t: BankTransaction): boolean => {
+    if (t.fitid) {
+      return existingEntries.some(e => e.external_id === t.fitid);
+    }
     return existingEntries.some(e =>
       e.date === t.date &&
       e.type === t.type &&
@@ -281,11 +287,22 @@ export default function ImportBankStatementDialog({ open, onOpenChange }: Import
       return;
     }
 
+    if (!user) return;
+
     setIsImporting(true);
 
-    try {
-      for (const t of selectedTransactions) {
-        await createEntry.mutateAsync({
+    let createdCount = 0;
+    let skippedDuplicates = 0;
+    let failedCount = 0;
+
+    // Inserção direta em vez de createEntry.mutateAsync: o onError da mutation
+    // dispara um toast genérico a cada chamada, mesmo quando o catch aqui
+    // trata o erro — isso inundava a tela de "Erro ao criar lançamento" pra
+    // cada duplicata legitimamente ignorada durante uma importação em lote.
+    for (const t of selectedTransactions) {
+      try {
+        const { error } = await supabase.from('cash_flow_entries').insert({
+          user_id: user.id,
           description: t.description + (t.counterpart ? ` (${t.counterpart})` : ''),
           amount: t.amount,
           type: t.type,
@@ -298,25 +315,47 @@ export default function ImportBankStatementDialog({ open, onOpenChange }: Import
           recurrence_end_date: null,
           parent_entry_id: null,
           notes: `Importado de extrato bancário${parseResult?.bankName ? ` - ${parseResult.bankName}` : ''}`,
+          external_id: t.fitid || null,
         });
+        if (error) throw error;
+        createdCount++;
+      } catch (err) {
+        // 23505 = unique_violation — a constraint em (user_id, external_id)
+        // barrou uma duplicata exata (mesmo fitid já importado). Não é erro
+        // real, é o dedupe funcionando; um lançamento duplicado sozinho não
+        // deve abortar o resto do lote.
+        const isDuplicateConstraint = (err as { code?: string })?.code === '23505';
+        if (isDuplicateConstraint) {
+          skippedDuplicates++;
+        } else {
+          failedCount++;
+          console.error('Error importing transaction:', err);
+        }
       }
+    }
 
+    if (createdCount > 0) {
+      queryClient.invalidateQueries({ queryKey: ['cash-flow-entries', user.id] });
       toast({
         title: 'Importação concluída!',
-        description: `${selectedTransactions.length} lançamentos criados com sucesso.`,
+        description: [
+          `${createdCount} lançamento(s) criado(s).`,
+          skippedDuplicates > 0 ? `${skippedDuplicates} duplicata(s) ignorada(s).` : null,
+          failedCount > 0 ? `${failedCount} falharam.` : null,
+        ].filter(Boolean).join(' '),
       });
-
       handleOpenChange(false);
-    } catch (err) {
-      console.error('Error importing transactions:', err);
+    } else {
       toast({
-        title: 'Erro na importação',
-        description: 'Alguns lançamentos podem não ter sido criados. Tente novamente.',
+        title: 'Nada foi importado',
+        description: skippedDuplicates > 0
+          ? 'Todas as transações selecionadas já tinham sido importadas antes.'
+          : 'Não foi possível criar os lançamentos. Tente novamente.',
         variant: 'destructive',
       });
-    } finally {
-      setIsImporting(false);
     }
+
+    setIsImporting(false);
   };
 
   const selectedCount = transactions.filter(t => t.selected).length;

@@ -47,6 +47,7 @@ import { Switch } from '@/components/ui/switch';
 import { shopeeNavTabs } from '@/components/layout/InPageNav';
 import { PageHeader } from '@/components/layout/PageHeader';
 import { ExportSection } from '@/components/shopee/ExportSection';
+import { isExcludedOrderStatus, EXCLUDED_STATUS_DESCRIPTION } from '@/lib/marketplace-order-status';
 
 interface ParsedRow {
   order_id: string;
@@ -58,6 +59,7 @@ interface ParsedRow {
   rebate_shopee: number;
   custo_unitario: number;
   data_pedido: string | null;
+  status_pedido: string | null;
 }
 
 interface ColumnMapping {
@@ -69,6 +71,7 @@ interface ColumnMapping {
   total_faturado: string;
   rebate_shopee: string;
   data_pedido: string;
+  status_pedido: string;
 }
 
 interface RawRowData {
@@ -84,6 +87,7 @@ const defaultMapping: ColumnMapping = {
   total_faturado: 'Preço acordado',
   rebate_shopee: 'Rebate da Shopee',
   data_pedido: 'Data de criação do pedido',
+  status_pedido: 'Status do pedido',
 };
 
 const requiredFields: (keyof ColumnMapping)[] = ['order_id', 'nome_produto', 'quantidade', 'total_faturado'];
@@ -238,6 +242,7 @@ function UploadContent() {
       total_faturado: 'Total Faturado',
       rebate_shopee: 'Rebate Shopee',
       data_pedido: 'Data do Pedido',
+      status_pedido: 'Status do Pedido',
     };
     return labels[field];
   };
@@ -278,8 +283,15 @@ function UploadContent() {
         rebate_shopee: parseNumber(getValue('rebate_shopee')),
         custo_unitario: 0,
         data_pedido: parseDate(getValue('data_pedido')),
+        status_pedido: getValue('status_pedido') ? String(getValue('status_pedido')) : null,
       };
-    }).filter(row => row.order_id && row.nome_produto);
+    })
+      .filter(row => row.order_id && row.nome_produto)
+      // raw_orders nunca teve status — toda linha da planilha (cancelada,
+      // não paga, devolvida) entrava na soma de receita. Isso é a causa mais
+      // provável de a receita mostrada aqui divergir da Central do Vendedor
+      // Shopee, que já desconta esses pedidos das vendas.
+      .filter(row => !isExcludedOrderStatus(row.status_pedido));
   };
 
   const handlePreview = () => {
@@ -528,6 +540,9 @@ function UploadContent() {
               <AlertCircle className="h-5 w-5 text-primary" />
               <p className="text-sm">
                 <strong>{processDataForImport().length}</strong> pedidos serão importados para o sistema.
+                {mapping.status_pedido && headers.includes(mapping.status_pedido) && (
+                  <> Pedidos {EXCLUDED_STATUS_DESCRIPTION} já foram excluídos dessa contagem.</>
+                )}
               </p>
             </div>
 

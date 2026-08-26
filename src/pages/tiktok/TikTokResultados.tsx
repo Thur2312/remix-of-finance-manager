@@ -7,6 +7,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { Checkbox } from '@/components/ui/checkbox';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import { isExcludedOrderStatus } from '@/lib/marketplace-order-status';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow, TableFooter } from '@/components/ui/table';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
@@ -115,12 +117,44 @@ function TikTokResultadosContent() {
     return calculateTikTokResults(orders, settings, 'produto');
   }, [orders, settings]);
 
+  // Antes, a exclusão de status na importação só cobria "Cancelado"/"Não
+  // pago" por comparação exata — devolução/reembolso passava e ficava salvo
+  // em tiktok_orders. isExcludedOrderStatus (mais abrangente) detecta esses
+  // pedidos já importados que hoje seriam excluídos, pra avisar que ainda
+  // estão inflando a receita mostrada até o cliente reimportar a planilha.
+  const hasOrdersThatShouldBeExcluded = useMemo(
+    () => orders.some(o => isExcludedOrderStatus(o.status_pedido)),
+    [orders]
+  );
+
   const handleCostSave = useCallback(async (sku: string, nomeProduto: string, newCost: number) => {
     if (!user) return;
     const isEmptySku = !sku || sku === '-' || sku.trim() === '';
-    
-    let query = supabase.from('tiktok_orders').update({ custo_unitario: newCost }).eq('user_id', user.id);
-    
+
+    // Mesma trava aplicada no Shopee: editar aqui reescrevia custo_unitario de
+    // todo pedido daquele SKU, inclusive de meses já fechados. Agora só aplica
+    // a partir do início do mês corrente.
+    const currentMonthStart = new Date();
+    currentMonthStart.setDate(1);
+    currentMonthStart.setHours(0, 0, 0, 0);
+    const currentMonthStartIso = currentMonthStart.toISOString();
+
+    let historicalCountQuery = supabase
+      .from('tiktok_orders')
+      .select('id', { count: 'exact', head: true })
+      .eq('user_id', user.id)
+      .lt('data_pedido', currentMonthStartIso);
+    historicalCountQuery = isEmptySku
+      ? historicalCountQuery.eq('nome_produto', nomeProduto)
+      : historicalCountQuery.eq('sku', sku);
+    const { count: historicalCount } = await historicalCountQuery;
+
+    let query = supabase
+      .from('tiktok_orders')
+      .update({ custo_unitario: newCost })
+      .eq('user_id', user.id)
+      .gte('data_pedido', currentMonthStartIso);
+
     if (isEmptySku) {
       query = query.eq('nome_produto', nomeProduto);
     } else {
@@ -135,11 +169,17 @@ function TikTokResultadosContent() {
       throw error;
     }
 
+    if (historicalCount && historicalCount > 0) {
+      toast.info(`Custo atualizado a partir deste mês. ${historicalCount} pedido(s) de meses anteriores mantiveram o custo original.`);
+    }
+
     setOrders(prev => {
       const updated = prev.map(order => {
+        const isCurrentPeriod = !order.data_pedido || order.data_pedido >= currentMonthStartIso;
+        if (!isCurrentPeriod) return order;
         if (isEmptySku) {
-          return order.nome_produto === nomeProduto 
-            ? { ...order, custo_unitario: newCost } 
+          return order.nome_produto === nomeProduto
+            ? { ...order, custo_unitario: newCost }
             : order;
         }
         return order.sku === sku ? { ...order, custo_unitario: newCost } : order;
@@ -182,12 +222,35 @@ function TikTokResultadosContent() {
     
     try {
       const selectedGroups = calculatedResults?.groups.filter(g => selectedProducts.has(g.key)) || [];
-      
+
+      // Mesma trava do handleCostSave: custo em lote só se aplica a partir do
+      // mês corrente, pra não reescrever COGS de meses já fechados.
+      const currentMonthStart = new Date();
+      currentMonthStart.setDate(1);
+      currentMonthStart.setHours(0, 0, 0, 0);
+      const currentMonthStartIso = currentMonthStart.toISOString();
+      let historicalSkipped = 0;
+
       for (const group of selectedGroups) {
         const isEmptySku = !group.sku || group.sku === '-' || group.sku.trim() === '';
-        
-        let query = supabase.from('tiktok_orders').update({ custo_unitario: numValue }).eq('user_id', user.id);
-        
+
+        let historicalCountQuery = supabase
+          .from('tiktok_orders')
+          .select('id', { count: 'exact', head: true })
+          .eq('user_id', user.id)
+          .lt('data_pedido', currentMonthStartIso);
+        historicalCountQuery = isEmptySku
+          ? historicalCountQuery.eq('nome_produto', group.nome_produto)
+          : historicalCountQuery.eq('sku', group.sku);
+        const { count: historicalCount } = await historicalCountQuery;
+        historicalSkipped += historicalCount || 0;
+
+        let query = supabase
+          .from('tiktok_orders')
+          .update({ custo_unitario: numValue })
+          .eq('user_id', user.id)
+          .gte('data_pedido', currentMonthStartIso);
+
         if (isEmptySku) {
           query = query.eq('nome_produto', group.nome_produto);
         } else {
@@ -200,11 +263,13 @@ function TikTokResultadosContent() {
       setOrders(prev => {
         const skuSet = new Set(selectedGroups.filter(g => g.sku && g.sku !== '-').map(g => g.sku));
         const nameSet = new Set(selectedGroups.filter(g => !g.sku || g.sku === '-').map(g => g.nome_produto));
-        
+
         const updated = prev.map(order => {
+          const isCurrentPeriod = !order.data_pedido || order.data_pedido >= currentMonthStartIso;
+          if (!isCurrentPeriod) return order;
           const orderSku = order.sku || '';
           const isEmptySku = !orderSku || orderSku === '-' || orderSku.trim() === '';
-          
+
           if (isEmptySku && nameSet.has(order.nome_produto || '')) {
             return { ...order, custo_unitario: numValue };
           }
@@ -216,7 +281,11 @@ function TikTokResultadosContent() {
         return [...updated];
       });
 
-      toast.success(`Custo atualizado para ${selectedGroups.length} produto(s)`);
+      toast.success(
+        historicalSkipped > 0
+          ? `Custo atualizado para ${selectedGroups.length} produto(s) a partir deste mês. ${historicalSkipped} pedido(s) de meses anteriores mantiveram o custo original.`
+          : `Custo atualizado para ${selectedGroups.length} produto(s)`
+      );
       setSelectedProducts(new Set());
       setBatchCostValue('');
       setShowBatchInput(false);
@@ -571,6 +640,19 @@ function TikTokResultadosContent() {
 
   return (
     <div className="space-y-6 animate-fade-in">
+      {hasOrdersThatShouldBeExcluded && (
+        <Alert>
+          <AlertCircle className="h-4 w-4" />
+          <AlertTitle>Alguns pedidos podem estar desatualizados</AlertTitle>
+          <AlertDescription>
+            Pedidos devolvidos/reembolsados importados antes da correção de
+            status continuam contando na receita abaixo. Reimporte a planilha
+            mais recente do TikTok Shop em{' '}
+            <a href="/tiktok/upload" className="underline font-medium">Upload</a>{' '}
+            pra atualizar esses números.
+          </AlertDescription>
+        </Alert>
+      )}
       {renderFilters()}
       {renderSummaryCards()}
       {calculatedResults && calculatedResults.groups.length > 0 && (
