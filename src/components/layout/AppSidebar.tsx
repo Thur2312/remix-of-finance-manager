@@ -6,7 +6,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { Sidebar, SidebarContent, SidebarFooter, SidebarGroup, SidebarGroupContent, SidebarHeader, SidebarMenu, SidebarMenuButton, SidebarMenuItem, useSidebar } from '@/components/ui/sidebar';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { User, ChevronUp, LogOut, TrendingUp, Calculator, Receipt, Sparkles, BarChart3, HandCoins, Wallet, Plug, LayoutDashboard, Moon, Sun, type LucideIcon } from 'lucide-react';
+import { User, ChevronUp, LogOut, TrendingUp, Calculator, Receipt, Sparkles, BarChart3, HandCoins, Wallet, Plug, LayoutDashboard, Moon, Sun, Shield, type LucideIcon } from 'lucide-react';
 import logo from '@/assets/logo-new.svg';
 import { useNavigate } from 'react-router-dom';
 import { PlanBadge } from '@/components/PlanBadge';
@@ -56,6 +56,7 @@ const sidebarGroups: SidebarGroup[] = [
 ];
 
 const planosItem: SidebarItem = { title: 'Planos', url: '/planos', icon: Wallet };
+const adminItem: SidebarItem = { title: 'Avisos', url: '/admin/notificacoes', icon: Shield };
 
 // Rotas que pertencem a cada seção (para highlight ativo)
 const sectionRoutes: Record<string, string[]> = {
@@ -145,6 +146,22 @@ export function AppSidebar() {
             </SidebarGroupContent>
           </SidebarGroup>
         ))}
+
+        {profile?.is_admin && (
+          <>
+            <div className="mx-2.5 my-3 h-px bg-sidebar-border" />
+            <SidebarGroup className="py-0">
+              {!collapsed && (
+                <div className="px-2.5 pt-0 pb-2 text-[10px] font-bold uppercase tracking-wider text-muted-foreground/70">
+                  Admin
+                </div>
+              )}
+              <SidebarGroupContent>
+                <SidebarMenu className="gap-0.5">{renderItem(adminItem)}</SidebarMenu>
+              </SidebarGroupContent>
+            </SidebarGroup>
+          </>
+        )}
 
         <div className="mx-2.5 my-3 h-px bg-sidebar-border" />
 

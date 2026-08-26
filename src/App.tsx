@@ -53,6 +53,7 @@ const FluxoCaixaCategorias      = lazy(() => import("./pages/fluxo-caixa/FluxoCa
 const AssistenteAnuncio         = lazy(() => import("./pages/AssistenteAnuncio"));
 const DRE                       = lazy(() => import("./pages/DRE"));
 const Perfil                    = lazy(() => import("./pages/Perfil"));
+const NotificacoesAdmin         = lazy(() => import("./pages/admin/Notificacoes"));
 
 const App = () => {
   return (
@@ -112,6 +113,7 @@ const App = () => {
                 <Route path="/perfil" element={<Perfil />} />
                 <Route path="/integrations" element={<IntegrationsOverview />} />
                 <Route path="/integrations/:provider" element={<IntegrationManage />} />
+                <Route path="/admin/notificacoes" element={<NotificacoesAdmin />} />
               </Route>
 
               {/* ── Mesma casca, sem TrialGuard — setup pós-cadastro e a

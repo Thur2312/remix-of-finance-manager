@@ -7,6 +7,7 @@ import { FinancialAssistant } from '@/components/assistant/FinancialAssistant'; 
 import { TrialBanner } from '../TrialBanner';
 import { getPageTitle } from './pageTitles';
 import { useTopbarTitleOverride } from './TopbarTitleContext';
+import { NotificationBell } from './NotificationBell';
 
 interface AppLayoutProps {
   children: ReactNode;
@@ -34,6 +35,8 @@ export function AppLayout({ children, title }: AppLayoutProps) {
               <SidebarTrigger className="-ml-1 text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground" />
               <Separator orientation="vertical" className="mr-2 h-4 bg-sidebar-border" />
               {resolvedTitle && <h1 className="font-display text-lg font-semibold text-sidebar-foreground">{resolvedTitle}</h1>}
+              <div className="flex-1" />
+              <NotificationBell />
             </header>
             <TrialBanner />
             <main className="flex-1 p-8 bg-background">
