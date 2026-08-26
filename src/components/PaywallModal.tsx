@@ -1,13 +1,10 @@
 import { useTrialStatus } from "@/hooks/useTrialStatus";
-import { useNavigate, useLocation } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Lock, Crown, Check, ArrowRight, CreditCard } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { usePaymentCheckout } from "@/hooks/usePaymentCheckout";
 import { PLANS as PLAN_PRICING } from "@/config/plans";
-
-// Rotas onde o paywall NUNCA deve aparecer
-const PAYWALL_EXCLUDED = ["/setup-payment", "/planos", "/user/auth"];
 
 const PAYWALL_FEATURES = [
   "Dashboard avançado",
@@ -23,15 +20,15 @@ const PAYWALL_FEATURES = [
 export function PaywallModal() {
   const { isBlocked, isLoading } = useTrialStatus();
   const navigate = useNavigate();
-  const { pathname } = useLocation();
   const { handleCheckout, loadingPlanId } = usePaymentCheckout();
 
   const loadingAnual = loadingPlanId === "anual";
 
-  // Não mostrar nas rotas excluídas
-  const isExcluded = PAYWALL_EXCLUDED.some((r) => pathname.startsWith(r));
-
-  if (isLoading || !isBlocked || isExcluded) return null;
+  // PaywallModal só é montado dentro de TrialGuard, que por sua vez só entra
+  // em InternalLayout (guarded) — /setup-payment, /planos e /user/auth nunca
+  // chegam a renderizar este componente (ver App.tsx: InternalLayoutNoGuard
+  // e rotas públicas). Não precisa de uma segunda lista de exclusão aqui.
+  if (isLoading || !isBlocked) return null;
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">

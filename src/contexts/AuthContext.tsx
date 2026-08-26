@@ -2,8 +2,7 @@ import { createContext, useContext, useEffect, useState, ReactNode } from 'react
 import { User, Session } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
 import { queryClient } from '@/lib/queryClient';
-import axios from 'axios';
-import { set } from 'date-fns';
+import { computePlanStatus } from '@/lib/plan-status';
 
 
 export interface Profile {
@@ -15,6 +14,7 @@ export interface Profile {
   plan: string | null;
   trial_ends_at: string | null;
   created_at: string; // Data de criação do perfil
+  is_admin: boolean;
   data: any; // Campo para armazenar dados adicionais, como permissões do plano, etc.
 }
 
@@ -54,29 +54,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [isTrialExpired, setIsTrialExpired] = useState(false);
   const [trialDaysRemaining, setTrialDaysRemaining] = useState(0);
 
-  /**
-   * Calcula se o trial expirou e quantos dias restam, com base em
-   * profiles.trial_ends_at (preenchido pelo trigger de cadastro / webhook
-   * do Asaas). Fonte única de verdade, compartilhada com useTrialStatus.
-   */
-  const calculateTrialStatus = (trialEndsAt: string | null): { isExpired: boolean; daysRemaining: number } => {
-    if (!trialEndsAt) {
-      return { isExpired: true, daysRemaining: 0 };
-    }
-
-    const diffMs = new Date(trialEndsAt).getTime() - new Date().getTime();
-    const daysRemaining = Math.max(0, Math.ceil(diffMs / (1000 * 60 * 60 * 24)));
-    const isExpired = diffMs <= 0;
-
-    return { isExpired, daysRemaining };
-  };
-
   const fetchProfile = async (userId: string) => {
     setProfileLoading(true);
     try {
       const { data, error } = await supabase
         .from('profiles')
-        .select('id, full_name, email, phone, avatar_url, plan, trial_ends_at, created_at')
+        .select('id, full_name, email, phone, avatar_url, plan, trial_ends_at, created_at, is_admin')
         .eq('id', userId)
         .single();
 
@@ -88,31 +71,22 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (data) {
         setProfile(data as unknown as Profile);
 
-        // Determinar o plano efetivo. Sem plano definido = nunca completou o
-        // checkout, então não tem trial nem acesso pago.
-        let effectivePlan = (data as any).plan || 'sem_plano';
+        // computePlanStatus é a mesma classificação usada por useTrialStatus —
+        // antes cada hook tinha sua própria lista de PAID_PLANS/lógica de
+        // expiração, que podiam divergir sem ninguém notar.
+        const status = computePlanStatus({
+          rawPlan: (data as any).plan,
+          trialEndsAt: (data as any).trial_ends_at,
+        });
 
-        // Se o plano é trial, verificar se expirou
-        if (effectivePlan === 'trial') {
-          const { isExpired, daysRemaining } = calculateTrialStatus((data as any).trial_ends_at);
-          setIsTrialExpired(isExpired);
-          setTrialDaysRemaining(daysRemaining);
+        setIsTrialExpired(status.isTrialExpired);
+        setTrialDaysRemaining(status.daysRemaining);
+        setPlan(status.effectivePlanForPermissions);
 
-          // Se trial expirou, mudar para basico
-          if (isExpired) {
-            effectivePlan = 'basico';
-          }
-        } else {
-          // sem_plano = nunca passou pelo checkout, não é trial expirado
-          // (mesma regra de useTrialStatus.ts)
-          setIsTrialExpired(false);
-          setTrialDaysRemaining(0);
-        }
-
-        setPlan(effectivePlan);
-
-        // Buscar as permissões do plano
-        await fetchPlanPermissions(effectivePlan);
+        // Buscar as permissões do plano. Quando bloqueado (trial vencido ou
+        // cancelado), effectivePlanForPermissions é um sentinela sem linha
+        // correspondente em plan_permissions — retorna vazio de propósito.
+        await fetchPlanPermissions(status.effectivePlanForPermissions);
       }
     } catch (error) {
       console.error('Error fetching profile:', error);
@@ -124,7 +98,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const fetchPlanPermissions = async (planName: string) => {
     try {
       const { data, error } = await supabase
-        .from('plan_permissions' as any)
+        .from('plan_permissions')
         .select('permission, limit_value')
         .eq('plan', planName);
 
@@ -265,5 +239,3 @@ export function useAuth() {
   }
   return context;
 }
-
-//teste

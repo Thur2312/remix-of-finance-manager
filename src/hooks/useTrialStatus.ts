@@ -1,6 +1,7 @@
-import { useEffect, useState } from "react";
-import { supabase } from "@/integrations/supabase/client";
+import { useEffect } from "react";
 import { useLocation } from "react-router-dom";
+import { useAuth } from "@/contexts/AuthContext";
+import { computePlanStatus, PlanStatus } from "@/lib/plan-status";
 
 export type PlanType = "sem_plano" | "trial" | "profissional" | "cancelado";
 
@@ -16,118 +17,33 @@ export type TrialStatus = {
   trialEndsAt: Date | null;
 };
 
-type ProfileRow = {
-  plan: string | null;
-  trial_ends_at: string | null;
-};
+function toPlanType(status: PlanStatus): PlanType {
+  if (status.isPaid) return "profissional";
+  if (status.isCanceled) return "cancelado";
+  if (status.isTrialActive || status.isTrialExpired) return "trial";
+  return "sem_plano";
+}
 
-// Planos que significam acesso pago ativo. "cancel_at_period_end" é resíduo
-// do modelo antigo (Stripe, removido do projeto) — o Asaas cancela na hora,
-// sem período de carência (ver supabase/functions/asaas-cancel), então esse
-// valor não é mais escrito por nenhum webhook hoje. Mantido no allowlist só
-// por segurança, caso ainda exista alguma linha antiga com esse valor.
-const PAID_PLANS = ["mensal", "semestral", "anual", "cancel_at_period_end"];
-
-// Planos que significam cancelamento efetivo (sem acesso)
-const CANCELED_PLANS = ["cancelado"];
-
+// Antes, este hook fazia sua PRÓPRIA consulta a profiles, com sua própria
+// lista de PAID_PLANS e seu próprio cálculo de expiração de trial —
+// duplicando o que o AuthContext já busca no login, e podendo divergir dele
+// silenciosamente (confirmado real: esta lista nunca incluiu "starter" nem
+// "profissional"). Agora só deriva de useAuth(), que é a única fonte que
+// efetivamente consulta o banco.
 export function useTrialStatus(): TrialStatus {
   const { pathname, search } = useLocation();
-  const [status, setStatus] = useState<TrialStatus>({
-    isLoading: true,
-    plan: "sem_plano",
-    isTrialActive: false,
-    isTrialExpired: false,
-    isPaid: false,
-    isCanceled: false,
-    isBlocked: false,
-    daysRemaining: 0,
-    trialEndsAt: null,
-  });
+  const { user, profile, profileLoading, refreshProfile } = useAuth();
 
+  // Re-fetch quando volta do checkout (?trial=success na URL) ou navega
+  // dentro do app — sem isso, quem fica parado numa página vê o card de
+  // "trial expirado" travado mesmo depois que o webhook confirma o
+  // pagamento e libera o plano pago.
   useEffect(() => {
-    async function fetchStatus() {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
+    if (!user) return;
 
-      const { data } = await supabase
-        .from("profiles")
-        .select("plan, trial_ends_at")
-        .eq("id", user.id)
-        .single();
-
-      if (!data) return;
-
-      const profile = data as unknown as ProfileRow;
-      const rawPlan = (profile.plan ?? "sem_plano").trim().toLowerCase();
-
-      const trialEndsAt = profile.trial_ends_at
-        ? new Date(profile.trial_ends_at)
-        : null;
-
-      const now = new Date();
-
-      // ── Dias restantes do trial ───────────────────────────────────
-      let daysRemaining = 0;
-      if (trialEndsAt) {
-        const diffMs = trialEndsAt.getTime() - now.getTime();
-        daysRemaining = Math.max(0, Math.ceil(diffMs / (1000 * 60 * 60 * 24)));
-      }
-
-      // ── Derivar estado ────────────────────────────────────────────
-
-      // Pago = plano profissional ativo (ou cancelado mas ainda no período pago)
-      const isPaid = PAID_PLANS.includes(rawPlan);
-
-      // Cancelado efetivamente = plano explicitamente cancelado
-      // "free" NÃO é cancelado — é usuário que ainda não assinou
-      const isCanceled = CANCELED_PLANS.includes(rawPlan);
-
-      // Sem plano = nunca passou pelo checkout
-      const semPlano = rawPlan === "sem_plano" || rawPlan === "free" || rawPlan === "";
-
-      // Trial ativo = plano "trial" com dias restantes
-      const isTrialActive = rawPlan === "trial" && daysRemaining > 0;
-
-      // Trial expirado = plano "trial" com dias zerados
-      // (enquanto o webhook não chegou para atualizar para "profissional")
-      const isTrialExpired = rawPlan === "trial" && daysRemaining === 0;
-
-      // Bloqueado:
-      // - trial expirado (webhook ainda não chegou ou cartão recusado)
-      // - OU plano explicitamente cancelado
-      // NÃO bloqueia: free/sem_plano (redireciona para /setup-payment no auth)
-      // NÃO bloqueia: profissional / cancel_at_period_end
-      const isBlocked = isTrialExpired || isCanceled;
-
-      const plan: PlanType = isPaid
-        ? "profissional"
-        : isCanceled
-        ? "cancelado"
-        : isTrialActive || isTrialExpired
-        ? "trial"
-        : "sem_plano";
-
-      setStatus({
-        isLoading: false,
-        plan,
-        isTrialActive,
-        isTrialExpired,
-        isPaid,
-        isCanceled,
-        isBlocked,
-        daysRemaining,
-        trialEndsAt,
-      });
-    }
-
-    fetchStatus();
-
-    // Re-fetch quando volta do Stripe (?trial=success na URL) ou navega dentro do app
-    // Sem isso, quem fica parado numa página vê o card de "trial expirado" travado
-    // mesmo depois que o webhook do Stripe confirma o pagamento e libera o plano pago.
-    const interval = setInterval(fetchStatus, 60_000);
-    const onFocus = () => fetchStatus();
+    refreshProfile();
+    const interval = setInterval(refreshProfile, 60_000);
+    const onFocus = () => refreshProfile();
     window.addEventListener("focus", onFocus);
     document.addEventListener("visibilitychange", onFocus);
 
@@ -136,7 +52,24 @@ export function useTrialStatus(): TrialStatus {
       window.removeEventListener("focus", onFocus);
       document.removeEventListener("visibilitychange", onFocus);
     };
-  }, [pathname, search]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pathname, search, user]);
 
-  return status;
+  const isLoading = !!user && (profileLoading || !profile);
+  const status = computePlanStatus({
+    rawPlan: profile?.plan,
+    trialEndsAt: profile?.trial_ends_at,
+  });
+
+  return {
+    isLoading,
+    plan: toPlanType(status),
+    isTrialActive: status.isTrialActive,
+    isTrialExpired: status.isTrialExpired,
+    isPaid: status.isPaid,
+    isCanceled: status.isCanceled,
+    isBlocked: status.isBlocked,
+    daysRemaining: status.daysRemaining,
+    trialEndsAt: status.trialEndsAtDate,
+  };
 }
