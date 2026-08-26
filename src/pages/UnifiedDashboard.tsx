@@ -13,6 +13,7 @@ import {
 } from 'recharts';
 import { useDashboardData, Marketplace, MarketplaceStats } from '@/hooks/useDashboardData';
 import { CompanySelector } from '@/components/dashboard/CompanySelector';
+import { OnboardingChecklist } from '@/components/dashboard/OnboardingChecklist';
 import { TaxSummaryRow } from '@/hooks/useIntegrationTax';
 import { Company } from '@/hooks/useCompanies';
 import { formatCurrency } from '@/lib/calculations';
@@ -150,18 +151,74 @@ function StatCard({ title, value, description, icon: Icon, iconColor, iconBg, is
 }
 
 // ── EmptyState ────────────────────────────────────────────────────────────────
+// Primeira tela que um usuário novo vê após o login — por isso usa o mesmo
+// OnboardingChecklist dos dashboards por marketplace (em vez de um card
+// genérico "sem dados") para já orientar o próximo passo concreto.
 function EmptyState({ mp }: { mp: Marketplace }) {
-  const msgs: Record<Marketplace, string> = {
-    tiktok:        'O TikTok Shop ainda não possui integração ativa.',
-    mercadolivre:  'Nenhum pedido encontrado. Conecte sua conta do Mercado Livre em Integrações.',
-    shopee:        'Nenhum dado encontrado. Faça upload de um relatório ou conecte sua loja.',
-    todos:         'Nenhum marketplace com dados. Conecte uma loja para começar.',
-  };
+  if (mp === 'shopee') {
+    return (
+      <OnboardingChecklist
+        description="Para começar a usar o sistema, siga estes passos:"
+        steps={[
+          {
+            title: 'Conecte sua loja Shopee',
+            description: (
+              <>Acesse <Link to="/integrations" className="text-primary underline underline-offset-2">Integrações</Link> e conecte sua conta, ou faça upload de um relatório em <Link to="/shopee/upload" className="text-primary underline underline-offset-2">Upload</Link></>
+            ),
+          },
+          {
+            title: 'Configure seus parâmetros',
+            description: (
+              <>Defina taxas, impostos e custos na tela de <Link to="/shopee/configuracoes" className="text-primary underline underline-offset-2">Configurações</Link></>
+            ),
+          },
+          { title: 'Veja seus resultados', description: 'Os dados aparecem aqui automaticamente após a sincronização ou upload' },
+        ]}
+      />
+    );
+  }
+  if (mp === 'tiktok') {
+    return (
+      <OnboardingChecklist
+        description="O TikTok Shop ainda não possui integração ativa. Siga estes passos:"
+        steps={[
+          {
+            title: 'Faça o upload do relatório',
+            description: (
+              <>Importe seu arquivo CSV do TikTok Shop em <Link to="/tiktok/upload" className="text-primary underline underline-offset-2">Upload</Link></>
+            ),
+          },
+          {
+            title: 'Configure seus parâmetros',
+            description: (
+              <>Defina taxas, impostos e custos na tela de <Link to="/tiktok/configuracoes" className="text-primary underline underline-offset-2">Configurações</Link></>
+            ),
+          },
+        ]}
+      />
+    );
+  }
+  if (mp === 'mercadolivre') {
+    return (
+      <OnboardingChecklist
+        description="Nenhum pedido encontrado. Para começar, siga estes passos:"
+        steps={[
+          {
+            title: 'Conecte sua conta ML',
+            description: (
+              <>Acesse <Link to="/integrations" className="text-primary underline underline-offset-2">Integrações</Link> e autorize o acesso</>
+            ),
+          },
+          { title: 'Sincronize seus pedidos', description: <>Clique em <em>Sincronizar</em> após conectar</> },
+        ]}
+      />
+    );
+  }
   return (
     <Card className="border-dashed">
       <CardContent className="flex flex-col items-center justify-center py-16 text-center gap-3">
         <Store className="h-10 w-10 text-muted-foreground/40" />
-        <p className="text-sm text-muted-foreground max-w-sm">{msgs[mp]}</p>
+        <p className="text-sm text-muted-foreground max-w-sm">Nenhum marketplace com dados. Conecte uma loja para começar.</p>
         <Button size="sm" asChild variant="outline">
           <Link to="/integrations">Ir para Integrações <ArrowRight className="h-3 w-3 ml-1.5" /></Link>
         </Button>

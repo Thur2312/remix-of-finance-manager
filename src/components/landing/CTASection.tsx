@@ -8,7 +8,7 @@ export function CTASection() {
   const navigate = useNavigate();
 
   return (
-    <section className="relative py-20 md:py-28 text-white">
+    <section className="relative py-16 md:py-24 text-white">
       <div className="container relative z-10">
         <div className="glass-panel rounded-[2.5rem] p-8 md:p-14 grid lg:grid-cols-2 gap-12 items-center">
           <Reveal>
@@ -20,7 +20,7 @@ export function CTASection() {
               lucratividade da sua loja.
             </p>
             <RollButton
-              label="Assine agora"
+              label="Quero ver meu lucro real"
               icon={<ArrowRight size={14} className="text-white" />}
               onClick={() => navigate("/user/auth?redirect=/planos")}
               className="bg-[#318EF1] hover:bg-[#2678d1] text-white pl-6 pr-2 py-2 shadow-[0_10px_30px_-6px_rgba(49,142,241,0.55)] hover:-translate-y-0.5 transition-all"

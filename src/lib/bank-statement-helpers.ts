@@ -1,4 +1,8 @@
-import * as XLSX from 'xlsx';
+// xlsx (424kB, 142kB gzip) é importado sob demanda dentro de parseXLSXFile,
+// não aqui no topo — esse arquivo também exporta parseOFXFile/parseCSVFile,
+// usados sem nunca precisar de xlsx, então todo import (Upload de extrato
+// bancário, que aceita OFX/CSV/PDF/XLSX) baixava a lib inteira de qualquer
+// forma, mesmo quando o usuário escolhe outro formato.
 
 export interface BankTransaction {
   id: string;
@@ -230,6 +234,7 @@ export const parseCSVFile = async (file: File, bankType: string = 'generic'): Pr
 
 // Parse XLSX file
 export const parseXLSXFile = async (file: File, bankType: string = 'generic'): Promise<ParseResult> => {
+  const XLSX = await import('xlsx');
   const buffer = await file.arrayBuffer();
   const workbook = XLSX.read(buffer, { type: 'array' });
 

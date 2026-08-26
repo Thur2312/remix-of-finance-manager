@@ -39,7 +39,7 @@ export function FAQSection() {
   const [open, setOpen] = useState<number | null>(null);
 
   return (
-    <section className="py-20 md:py-28 text-white">
+    <section className="py-24 md:py-36 text-white">
       <div className="container max-w-3xl">
         <Reveal className="flex justify-center mb-6">
           <SectionTag index={5} total={5} label="Perguntas frequentes" />

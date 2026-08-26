@@ -30,7 +30,11 @@ export default function IntegrationCallback() {
         mercadolivre: 'Mercado Livre',
       };
       toast({ title: `${names[connected] ?? connected} conectado com sucesso!` });
-      navigate('/integrations', { replace: true });
+      // Antes voltava pra /integrations — a pessoa conectava a loja e caía numa
+      // lista sem próximo passo visível. Agora leva direto pra Gestão já na aba
+      // do marketplace recém-conectado, onde a sincronização aparece.
+      const destination = connected in names ? `/gestao?mp=${connected}` : '/integrations';
+      navigate(destination, { replace: true });
       return;
     }
 

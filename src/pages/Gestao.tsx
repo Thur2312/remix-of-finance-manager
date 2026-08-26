@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { useTopbarTitle } from '@/components/layout/TopbarTitleContext';
 import { InPageNav, shopeeNavTabs, tiktokNavTabs } from '@/components/layout/InPageNav';
 import { mercadolivreNavTabs } from '@/components/layout/InPageNav';
@@ -118,8 +119,21 @@ const MARKETPLACE_TITLE: Record<MarketplaceFilter, string> = {
   mercadolivre: 'Gestão Mercado Livre',
 };
 
+const VALID_MARKETPLACES: MarketplaceFilter[] = ['shopee', 'tiktok', 'mercadolivre'];
+
+function isMarketplaceFilter(value: string | null): value is MarketplaceFilter {
+  return VALID_MARKETPLACES.includes(value as MarketplaceFilter);
+}
+
 export default function Gestao() {
-  const [selected, setSelected] = useState<MarketplaceFilter>('shopee');
+  const [searchParams] = useSearchParams();
+  // Permite abrir já na aba certa via ?mp=shopee — usado pelo redirect
+  // pós-conexão OAuth, que antes sempre mandava de volta pra Integrações
+  // em vez de mostrar o marketplace recém-conectado.
+  const mpParam = searchParams.get('mp');
+  const [selected, setSelected] = useState<MarketplaceFilter>(
+    isMarketplaceFilter(mpParam) ? mpParam : 'shopee'
+  );
   useTopbarTitle(MARKETPLACE_TITLE[selected]);
 
   return <GestaoContent selected={selected} onSelect={setSelected} />;

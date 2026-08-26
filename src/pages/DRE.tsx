@@ -11,10 +11,12 @@ import { DRECharts } from '@/components/dre/DRECharts';
 import { DRESummaryCards } from '@/components/dre/DRESummaryCards';
 import { DREAlerts } from '@/components/dre/DREAlerts';
 import { formatDREForDisplay, formatCurrency, DREPeriod } from '@/lib/dre-calculations';
-import { FileSpreadsheet, RefreshCw, Download, Calendar, BarChart3, AlertCircle, CheckCircle2, XCircle } from 'lucide-react';
+import { FileSpreadsheet, RefreshCw, Download, Calendar, BarChart3, AlertCircle, CheckCircle2, XCircle, ArrowRight } from 'lucide-react';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { PageHeader } from '@/components/layout/PageHeader';
+import { EmptyResultsState } from '@/components/layout/EmptyResultsState';
+import { Link } from 'react-router-dom';
 
 function DREContent() {
   const {
@@ -87,16 +89,17 @@ function DREContent() {
 
   if (!dreData) {
     return (
-      <Card>
-        <CardContent className="py-12 text-center">
-          <FileSpreadsheet className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
-          <h3 className="text-lg font-medium mb-2">Nenhum dado disponível</h3>
-          <p className="text-muted-foreground text-sm">
-            Importe dados de vendas para visualizar o DRE da sua empresa.
-          </p>
-        </CardContent>
-      </Card>);
-
+      <EmptyResultsState
+        title="Nenhum dado disponível"
+        description="O DRE é calculado a partir dos seus pedidos. Conecte uma loja ou importe um relatório para começar."
+        icon={FileSpreadsheet}
+        action={
+          <Button size="sm" asChild variant="outline">
+            <Link to="/integrations">Ir para Integrações <ArrowRight className="h-3 w-3 ml-1.5" /></Link>
+          </Button>
+        }
+      />
+    );
   }
 
   const dreSections = formatDREForDisplay(dreData);

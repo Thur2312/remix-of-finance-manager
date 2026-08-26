@@ -32,14 +32,14 @@ const sidebarGroups: SidebarGroup[] = [
     items: [{ title: 'Dashboard', url: '/dashboard', icon: LayoutDashboard }],
   },
   {
-    label: 'Operação',
+    label: 'Dia a Dia',
     items: [
       { title: 'Gestão', url: '/gestao', icon: TrendingUp },
       { title: 'Fluxo de Caixa', url: '/fluxo-caixa', icon: HandCoins },
     ],
   },
   {
-    label: 'Planejamento',
+    label: 'Financeiro',
     items: [
       { title: 'Precificação', url: '/calculadora', icon: Calculator },
       { title: 'Custos Fixos', url: '/precificacao/custos', icon: Receipt },

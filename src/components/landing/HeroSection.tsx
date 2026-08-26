@@ -165,9 +165,9 @@ export function HeroSection() {
             </h1>
 
             <p className="text-white/70 text-lg leading-relaxed mb-8 max-w-md">
-              O Seller Finance entrega gestão financeira completa para vendedores de Shopee e
-              TikTok Shop — cálculo de lucro, precificação inteligente e DRE automático em um só
-              lugar.
+              Entre taxa do marketplace, frete e imposto, é fácil vender bem e ainda assim não
+              sobrar nada no fim do mês. O Seller Finance mostra pra onde foi seu lucro — pedido
+              por pedido, não só no extrato do banco.
             </p>
 
             <div className="flex flex-col sm:flex-row sm:items-center gap-4 mb-10">

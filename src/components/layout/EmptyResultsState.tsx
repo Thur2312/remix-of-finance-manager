@@ -1,4 +1,4 @@
-import { type LucideIcon } from 'lucide-react';
+import { type ReactNode, type LucideIcon } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { GrowthEcho } from '@/components/brand/GrowthEcho';
 
@@ -8,6 +8,9 @@ interface EmptyResultsStateProps {
   /** Ícone alternativo, pra estados que não são "neutro, sem dado ainda"
    *  (ex.: um erro de verdade). Sem isso, usa o GrowthEcho. */
   icon?: LucideIcon;
+  /** CTA opcional (ex.: botão pra Integrações) — sem isso o estado fica
+   *  só informativo, pros casos em que "ajuste os filtros" já é a ação. */
+  action?: ReactNode;
 }
 
 // Estado vazio das telas de Resultados/Variações — antes copiado quase
@@ -16,6 +19,7 @@ export function EmptyResultsState({
   title = 'Nenhum resultado encontrado',
   description = 'Ajuste os filtros ou faça upload de pedidos para visualizar os resultados.',
   icon: Icon,
+  action,
 }: EmptyResultsStateProps) {
   return (
     <Card className="panel bg-card border-transparent">
@@ -27,6 +31,7 @@ export function EmptyResultsState({
         )}
         <h3 className="font-semibold text-lg">{title}</h3>
         <p className="text-muted-foreground mt-2">{description}</p>
+        {action && <div className="mt-4">{action}</div>}
       </CardContent>
     </Card>
   );
