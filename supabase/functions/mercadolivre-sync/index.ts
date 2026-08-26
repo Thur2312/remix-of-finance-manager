@@ -1,6 +1,8 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { getCorsHeaders, handleCorsPreflightRequest } from "../_shared/cors.ts";
+import { hasActivePlanAccess } from "../_shared/plan-guard.ts";
+import { encryptToken, decryptToken } from "../_shared/token-crypto.ts";
 
 const ML_API = "https://api.mercadolibre.com";
 
@@ -84,9 +86,22 @@ serve(async (req) => {
     }
 
     const results = [];
+    const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
+    const SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 
     for (const connection of connections) {
       try {
+        // Sem isso, um usuário com plano cancelado ou trial expirado continuava
+        // puxando pedidos/pagamentos reais do Mercado Livre indefinidamente — o
+        // bloqueio (PaywallModal/FeatureGate) era decidido só no cliente. Como
+        // esta function pode varrer TODAS as conexões (chamada de cron sem
+        // connection_id), a checagem precisa ser por conexão, não uma vez só.
+        const hasAccess = await hasActivePlanAccess(SUPABASE_URL, SERVICE_ROLE_KEY, connection.user_id);
+        if (!hasAccess) {
+          results.push({ user_id: connection.user_id, skipped: "plano inativo ou trial expirado" });
+          continue;
+        }
+
         const accessToken = await getValidToken(supabase, connection);
         const syncResult = await syncConnection(supabase, connection, accessToken);
         results.push({ user_id: connection.user_id, ...syncResult });
@@ -119,7 +134,7 @@ async function getValidToken(supabase, connection): Promise<string> {
   const fiveMinutes = 5 * 60 * 1000;
 
   if (expiresAt.getTime() - now.getTime() > fiveMinutes) {
-    return connection.access_token;
+    return (await decryptToken(connection.access_token)) || "";
   }
 
   console.log(`Renovando token ML para user ${connection.user_id}...`);
@@ -133,7 +148,7 @@ async function getValidToken(supabase, connection): Promise<string> {
       grant_type: "refresh_token",
       client_id: ML_CLIENT_ID,
       client_secret: ML_CLIENT_SECRET,
-      refresh_token: connection.refresh_token,
+      refresh_token: (await decryptToken(connection.refresh_token)) || "",
     }),
   });
 
@@ -149,8 +164,8 @@ async function getValidToken(supabase, connection): Promise<string> {
   await supabase
     .from("integration_connections")
     .update({
-      access_token: tokenData.access_token,
-      refresh_token: tokenData.refresh_token,
+      access_token: await encryptToken(tokenData.access_token),
+      refresh_token: await encryptToken(tokenData.refresh_token),
       token_expires_at: new Date(Date.now() + tokenData.expires_in * 1000).toISOString(),
       updated_at: new Date().toISOString(),
     })

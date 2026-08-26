@@ -62,7 +62,9 @@ if (provider === "shopee") {
     `&sign=${sign}` +
     `&redirect=${encodeURIComponent(REDIRECT_URI)}`
 
-  console.log({ partnerIdNum, timestamp, baseString, sign, authorization_url })
+  // baseString e sign são material de assinatura HMAC — nunca logar, mesmo
+  // que não permitam recuperar a partner_key diretamente.
+  console.log({ partnerIdNum, timestamp, authorization_url })
 }
     // =========================
     // 🟣 TIKTOK

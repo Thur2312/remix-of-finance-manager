@@ -1,5 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2"
+import { encryptToken } from "../_shared/token-crypto.ts"
 
 const FRONTEND_URL = Deno.env.get("FRONTEND_URL")?.trim() || "https://sellerfinance.com.br"
 
@@ -93,8 +94,8 @@ serve(async (req) => {
         status: "connected",
         external_shop_id: open_id ?? "",
         shop_name: seller_name ?? "",
-        access_token,
-        refresh_token,
+        access_token: await encryptToken(access_token),
+        refresh_token: await encryptToken(refresh_token),
         token_expires_at: new Date(now.getTime() + access_token_expire_in * 1000).toISOString(),
         refresh_token_expires_at: new Date(now.getTime() + refresh_token_expire_in * 1000).toISOString(),
         updated_at: now.toISOString(),

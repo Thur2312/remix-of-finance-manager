@@ -79,7 +79,10 @@ Deno.serve(async (req) => {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   } catch (error) {
-    return new Response(JSON.stringify({ error: error.message }), {
+    // Nunca repassar error.message pro client: pode ser um PostgrestError
+    // vazando nome de coluna/constraint interna do banco, ou detalhe da API da Asaas.
+    console.error("Error:", error);
+    return new Response(JSON.stringify({ error: "Erro ao cancelar assinatura" }), {
       status: 400,
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });

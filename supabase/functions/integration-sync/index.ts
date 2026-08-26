@@ -2,6 +2,8 @@ import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2"
 import { createHmac } from "https://deno.land/std@0.168.0/node/crypto.ts"
 import { getCorsHeaders, handleCorsPreflightRequest } from "../_shared/cors.ts"
+import { hasActivePlanAccess } from "../_shared/plan-guard.ts"
+import { encryptToken, decryptToken } from "../_shared/token-crypto.ts"
 
 function safeShopeeDate(timestamp: number | null): string | null {
   if (!timestamp || timestamp <= 0) return null
@@ -69,7 +71,9 @@ async function shopeeGet<T>(baseUrl: string, path: string, params: Record<string
   }
   const query = new URLSearchParams(queryParams)
   const url = `${baseUrl}${path}?${query.toString()}`
-  console.log("🔗 Shopee API call:", url.substring(0, 200) + "...")
+  // Nunca logar a URL completa: ela carrega access_token e sign na query
+  // string, e isso ficava exposto em texto puro nos logs da function.
+  console.log("🔗 Shopee API call:", path, JSON.stringify(params))
   const res = await fetch(url)
   if (!res.ok) {
     const body = await res.text()
@@ -187,6 +191,17 @@ serve(async (req) => {
       })
     }
 
+    // Sem isso, um usuário com plano cancelado ou trial expirado continuava
+    // puxando pedidos/pagamentos reais da Shopee indefinidamente — o bloqueio
+    // (PaywallModal/FeatureGate) era decidido só no cliente.
+    const planOwnerId = isCronCall ? connection.user_id : userId
+    const hasAccess = await hasActivePlanAccess(Deno.env.get("SUPABASE_URL")!, serviceKey, planOwnerId)
+    if (!hasAccess) {
+      return new Response(JSON.stringify({ error: "Plano inativo ou trial expirado. Assine para continuar sincronizando." }), {
+        status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" }
+      })
+    }
+
     // Esta function só implementa a assinatura/API da Shopee. Antes, uma
     // conexão TikTok chegava até aqui (useIntegrations.ts roteia "sync now"
     // pra cá pra qualquer provider que não seja Mercado Livre) e tentava
@@ -219,20 +234,21 @@ serve(async (req) => {
       })
     }
 
-    let accessToken = connection.access_token || ""
+    let accessToken = await decryptToken(connection.access_token) || ""
     const tokenExpiresAt = connection.token_expires_at ? new Date(connection.token_expires_at).getTime() : 0
     const oneHourFromNow = Date.now() + 60 * 60 * 1000
 
     if (tokenExpiresAt < oneHourFromNow || tokenExpiresAt === 0) {
       console.log("🔄 Token expiring soon, refreshing...")
-      const refreshed = await refreshShopeeToken(BASE_URL, PARTNER_ID, PARTNER_KEY, connection.refresh_token || "", shopId)
+      const decryptedRefreshToken = await decryptToken(connection.refresh_token) || ""
+      const refreshed = await refreshShopeeToken(BASE_URL, PARTNER_ID, PARTNER_KEY, decryptedRefreshToken, shopId)
       if (refreshed && refreshed.access_token) {
         const now2 = new Date()
         const expireAt = refreshed.expire_in > 0 ? new Date(now2.getTime() + refreshed.expire_in * 1000).toISOString() : null
         const refreshExpireAt = refreshed.refresh_token_expire_in > 0 ? new Date(now2.getTime() + refreshed.refresh_token_expire_in * 1000).toISOString() : null
         const { error: updateError } = await supabaseAdmin.from("integration_connections").update({
-          access_token: refreshed.access_token,
-          refresh_token: refreshed.refresh_token,
+          access_token: await encryptToken(refreshed.access_token),
+          refresh_token: await encryptToken(refreshed.refresh_token),
           token_expires_at: expireAt,
           refresh_token_expires_at: refreshExpireAt,
           updated_at: now2.toISOString(),

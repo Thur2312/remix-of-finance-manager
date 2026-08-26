@@ -55,9 +55,11 @@ serve(async (req) => {
     )
 
   } catch (error) {
+    // Nunca repassar error.message pro client: pode ser um PostgrestError
+    // vazando nome de coluna/constraint interna do banco.
     console.error("Error:", error)
     return new Response(
-      JSON.stringify({ error: error instanceof Error ? error.message : "Erro interno" }),
+      JSON.stringify({ error: "Erro interno do servidor" }),
       { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     )
   }

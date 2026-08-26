@@ -1,16 +1,12 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
-
-const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-signature",
-  "Access-Control-Allow-Methods": "POST, OPTIONS",
-};
+import { getCorsHeaders, handleCorsPreflightRequest } from "../_shared/cors.ts";
+import { encryptToken, decryptToken } from "../_shared/token-crypto.ts";
 
 serve(async (req) => {
-  if (req.method === "OPTIONS") {
-    return new Response(null, { status: 200, headers: corsHeaders });
-  }
+  const preflight = handleCorsPreflightRequest(req);
+  if (preflight) return preflight;
+  const corsHeaders = getCorsHeaders(req);
 
   try {
     const supabase = createClient(
@@ -104,7 +100,7 @@ async function getValidToken(supabase, connection): Promise<string> {
   const fiveMinutes = 5 * 60 * 1000;
 
   if (expiresAt.getTime() - now.getTime() > fiveMinutes) {
-    return connection.access_token;
+    return (await decryptToken(connection.access_token)) || "";
   }
 
   // Renova o token
@@ -119,14 +115,14 @@ async function getValidToken(supabase, connection): Promise<string> {
       grant_type: "refresh_token",
       client_id: ML_CLIENT_ID,
       client_secret: ML_CLIENT_SECRET,
-      refresh_token: connection.refresh_token,
+      refresh_token: (await decryptToken(connection.refresh_token)) || "",
     }),
   });
 
   if (!res.ok) {
     const err = await res.text();
     console.error("Erro ao renovar token ML:", err);
-    return connection.access_token; // usa o atual mesmo expirado como fallback
+    return (await decryptToken(connection.access_token)) || ""; // usa o atual mesmo expirado como fallback
   }
 
   const tokenData = await res.json();
@@ -134,8 +130,8 @@ async function getValidToken(supabase, connection): Promise<string> {
   await supabase
     .from("integration_connections")
     .update({
-      access_token: tokenData.access_token,
-      refresh_token: tokenData.refresh_token,
+      access_token: await encryptToken(tokenData.access_token),
+      refresh_token: await encryptToken(tokenData.refresh_token),
       token_expires_at: new Date(Date.now() + tokenData.expires_in * 1000).toISOString(),
     })
     .eq("id", connection.id);

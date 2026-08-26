@@ -3,7 +3,7 @@ import { PlanId, planExpiresAt, planIdByCycle } from "../_shared/plans.ts";
 
 const ASAAS_API_KEY = Deno.env.get("ASAAS_API_KEY")!;
 const ASAAS_API_BASE_URL = Deno.env.get("ASAAS_API_BASE_URL")!;
-const ASAAS_WEBHOOK_TOKEN = Deno.env.get("ASAAS_WEBHOOK_TOKEN")!;
+const ASAAS_WEBHOOK_TOKEN = Deno.env.get("ASAAS_WEBHOOK_TOKEN") ?? "";
 
 const supabase = createClient(
   Deno.env.get("SUPABASE_URL")!,
@@ -105,8 +105,17 @@ async function resolveUserId(
 }
 
 Deno.serve(async (req) => {
+  // Sem o secret configurado, ASAAS_WEBHOOK_TOKEN vira "" e um header ausente
+  // também vira "" — timingSafeEqual("", "") compara dois buffers vazios como
+  // iguais e libera QUALQUER chamada sem token. Falhar fechado aqui em vez de
+  // deixar essa comparação decidir.
+  if (!ASAAS_WEBHOOK_TOKEN) {
+    console.error("ASAAS_WEBHOOK_TOKEN não configurado — recusando webhook (fail-closed).");
+    return new Response("Webhook não configurado", { status: 500 });
+  }
+
   const token = req.headers.get("asaas-access-token") ?? "";
-  if (!timingSafeEqual(token, ASAAS_WEBHOOK_TOKEN)) {
+  if (!token || !timingSafeEqual(token, ASAAS_WEBHOOK_TOKEN)) {
     return new Response("Token inválido", { status: 401 });
   }
 

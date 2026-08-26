@@ -1,5 +1,5 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-import { createClient } from '@supabase/supabase-js';
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 import { getCorsHeaders, handleCorsPreflightRequest } from '../_shared/cors.ts';
 import { parseBankStatementSchema, createValidationErrorResponse } from '../_shared/validation.ts';
 import { hasActivePlanAccess } from '../_shared/plan-guard.ts';

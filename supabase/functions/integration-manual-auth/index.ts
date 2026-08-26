@@ -1,6 +1,7 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2"
 import { getCorsHeaders, handleCorsPreflightRequest } from "../_shared/cors.ts"
+import { encryptToken } from "../_shared/token-crypto.ts"
 
 serve(async (req) => {
   const preflight = handleCorsPreflightRequest(req)
@@ -37,6 +38,13 @@ serve(async (req) => {
       })
     }
 
+    const VALID_PROVIDERS = ["shopee", "tiktok", "mercadolivre"]
+    if (!VALID_PROVIDERS.includes(provider)) {
+      return new Response(JSON.stringify({ error: "provider inválido" }), {
+        status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" }
+      })
+    }
+
     const { error } = await supabase
       .from("integration_connections")
       .upsert({
@@ -44,8 +52,8 @@ serve(async (req) => {
         provider,
         status: "connected",
         external_shop_id: shop_id,
-        access_token,
-        refresh_token: refresh_token || null,
+        access_token: await encryptToken(access_token),
+        refresh_token: await encryptToken(refresh_token || null),
         updated_at: new Date().toISOString(),
       }, { onConflict: "user_id,provider" })
 
@@ -57,9 +65,11 @@ serve(async (req) => {
     )
 
   } catch (error) {
+    // Nunca repassar error.message pro client: pode ser um PostgrestError
+    // vazando nome de coluna/constraint interna do banco.
     console.error("Error:", error)
     return new Response(
-      JSON.stringify({ error: error instanceof Error ? error.message : "Erro interno" }),
+      JSON.stringify({ error: "Erro interno do servidor" }),
       { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     )
   }

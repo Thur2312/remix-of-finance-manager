@@ -1,6 +1,7 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
 import { createHmac } from "https://deno.land/std@0.168.0/node/crypto.ts"
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2"
+import { encryptToken } from "../_shared/token-crypto.ts"
 
 // Permite sobrescrever via env var (ex: testar OAuth contra um preview
 // deploy) sem alterar o comportamento padrão de produção.
@@ -136,8 +137,8 @@ serve(async (req) => {
         status: "connected",
         external_shop_id: resolvedShopId,
         shop_name: shopName,
-        access_token,
-        refresh_token,
+        access_token: await encryptToken(access_token),
+        refresh_token: await encryptToken(refresh_token),
         token_expires_at: safeTokenExpiresAt(expire_in),
         refresh_token_expires_at: safeTokenExpiresAt(refresh_token_expire_in),
         updated_at: now.toISOString(),

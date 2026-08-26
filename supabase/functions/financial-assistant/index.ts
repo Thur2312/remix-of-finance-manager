@@ -642,9 +642,11 @@ serve(async (req: Request) => {
     );
 
   } catch (error) {
+    // Nunca repassar error.message pro client aqui: pode vazar detalhe interno
+    // da API de IA ou do banco.
     console.error('Erro no financial-assistant:', error);
     return new Response(
-      JSON.stringify({ error: error instanceof Error ? error.message : 'Erro desconhecido' }),
+      JSON.stringify({ error: 'Erro ao gerar resposta do assistente' }),
       { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
   }
