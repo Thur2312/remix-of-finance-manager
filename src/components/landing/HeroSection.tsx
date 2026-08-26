@@ -5,6 +5,8 @@ import { useEffect, useState, type MouseEvent } from "react";
 import { Reveal, EXPO_OUT } from "./Reveal";
 import { RollButton } from "./RollButton";
 import { useCountUp } from "./hooks";
+import logoShopee from "@/assets/logo-shopee.jpg";
+import logoTikTok from "@/assets/logo-tiktok.png";
 
 const breakdown = [
   { label: "Preço de venda", value: 89.9, pct: 100, color: "bg-white/25" },
@@ -21,13 +23,6 @@ const headline = [
   { text: "em" },
   { text: "cada" },
   { text: "pedido" },
-];
-
-const avatars = [
-  { initial: "C", color: "#5BA6F5" },
-  { initial: "A", color: "#318EF1" },
-  { initial: "R", color: "#2678D1" },
-  { initial: "M", color: "#1F5FC4" },
 ];
 
 function OrderProfitMockup() {
@@ -187,20 +182,22 @@ export function HeroSection() {
               <span className="text-white/50 text-sm">Cancele quando quiser</span>
             </div>
 
+            {/* Antes mostrava avatares com iniciais genéricas ("C", "A", "R", "M")
+               afirmando "vendedores já usam" sem nenhuma fonte real por trás —
+               mesma prova social fabricada que a StatsSection tinha. Troca por
+               uma afirmação verificável: o produto realmente conecta com essas
+               lojas, sem alegar escala/uso que a gente não tem como provar. */}
             <div className="flex items-center gap-3">
-              <div className="flex -space-x-2">
-                {avatars.map((a, i) => (
-                  <div
-                    key={i}
-                    className="w-9 h-9 rounded-full border-2 border-[#0A1628] flex items-center justify-center text-white text-xs font-bold"
-                    style={{ backgroundColor: a.color }}
-                  >
-                    {a.initial}
-                  </div>
-                ))}
+              <div className="flex items-center gap-2">
+                <div className="w-9 h-9 rounded-xl bg-white flex items-center justify-center overflow-hidden shadow-sm">
+                  <img src={logoShopee} alt="Shopee" className="w-6 h-6 object-contain" />
+                </div>
+                <div className="w-9 h-9 rounded-xl bg-white flex items-center justify-center overflow-hidden shadow-sm">
+                  <img src={logoTikTok} alt="TikTok Shop" className="w-7 h-7 object-contain" />
+                </div>
               </div>
               <div>
-                <p className="text-white text-sm font-semibold">Vendedores já usam o Seller Finance</p>
+                <p className="text-white text-sm font-semibold">Conecta direto com sua loja</p>
                 <p className="text-white/50 text-xs">Shopee · TikTok Shop</p>
               </div>
             </div>

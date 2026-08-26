@@ -5,7 +5,7 @@ import { HeroSection } from "@/components/landing/HeroSection";
 import { WhatIsSection } from "@/components/landing/WhatIsSection";
 import { HowItWorksSection } from "@/components/landing/HowItWorksSection";
 import { FeaturesSection } from "@/components/landing/FeaturesSection";
-import { StatsSection } from "@/components/landing/StatsSection";
+import { ProductShowcaseSection } from "@/components/landing/ProductShowcaseSection";
 import { PricingSection } from "@/components/landing/PricingSection";
 import { CTASection } from "@/components/landing/CTASection";
 import { FAQSection } from "@/components/landing/FAQSection";
@@ -25,7 +25,7 @@ export default function Home() {
         <WhatIsSection />
         <HowItWorksSection />
         <FeaturesSection />
-        <StatsSection />
+        <ProductShowcaseSection />
         <PricingSection />
         <CTASection />
         <FAQSection />
