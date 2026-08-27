@@ -57,6 +57,14 @@ export function useIntegrations() {
       || null;
   }, [data]);
 
+  const getConnectionsByProvider = useCallback((provider: string) => {
+    return data?.connections?.filter(c => c.provider === provider) || [];
+  }, [data]);
+
+  const getConnectionById = useCallback((id: string) => {
+    return data?.connections?.find(c => c.id === id) || null;
+  }, [data]);
+
   const getLogsForConnection = useCallback((connectionId: string) => {
     return data?.logs?.filter(l => l.connection_id === connectionId) || [];
   }, [data]);
@@ -196,6 +204,8 @@ export function useIntegrations() {
     isLoading,
     error,
     getConnection,
+    getConnectionsByProvider,
+    getConnectionById,
     getLogsForConnection,
     startAuth,
     manualAuth,

@@ -45,13 +45,14 @@ const COMPLETED_STATUSES = ['COMPLETED', 'SHIPPED', 'TO_CONFIRM_RECEIVE', 'READY
 const CANCELLED_STATUSES = ['CANCELLED', 'UNPAID', 'TO_RETURN', 'cancelled'];
 
 export default function IntegrationManage() {
-  const { provider } = useParams<{ provider: string }>();
+  const { connectionId } = useParams<{ connectionId: string }>();
   const navigate = useNavigate();
-  const { getConnection, getLogsForConnection, syncNow, disconnect, updateSyncSettings } = useIntegrations();
+  const { getConnectionById, getLogsForConnection, syncNow, disconnect, updateSyncSettings } = useIntegrations();
   const [syncPeriod, setSyncPeriod] = useState<'7' | '15' | '30' | '60'>('15');
 
-  const connection = getConnection(provider || '');
+  const connection = getConnectionById(connectionId || '');
   const logs = connection ? getLogsForConnection(connection.id) : [];
+  const provider = connection?.provider;
   const Icon = providerIcons[provider || ''] || Store;
   const name = providerNames[provider || ''] || provider;
 

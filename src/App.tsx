@@ -112,7 +112,7 @@ const App = () => {
                 <Route path="/dre" element={<DRE />} />
                 <Route path="/perfil" element={<Perfil />} />
                 <Route path="/integrations" element={<IntegrationsOverview />} />
-                <Route path="/integrations/:provider" element={<IntegrationManage />} />
+                <Route path="/integrations/manage/:connectionId" element={<IntegrationManage />} />
                 <Route path="/admin/notificacoes" element={<NotificacoesAdmin />} />
               </Route>
 

@@ -142,7 +142,7 @@ serve(async (req) => {
         token_expires_at: safeTokenExpiresAt(expire_in),
         refresh_token_expires_at: safeTokenExpiresAt(refresh_token_expire_in),
         updated_at: now.toISOString(),
-      }, { onConflict: "user_id,provider" })
+      }, { onConflict: "user_id,provider,external_shop_id" })
 
     if (dbError) {
       console.error("DB error:", dbError)

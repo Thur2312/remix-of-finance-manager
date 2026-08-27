@@ -12,6 +12,7 @@ import {
   XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend,
 } from 'recharts';
 import { useDashboardData, Marketplace, MarketplaceStats } from '@/hooks/useDashboardData';
+import { useActiveShopeeConnection } from '@/hooks/useActiveShopeeConnection';
 import { CompanySelector } from '@/components/dashboard/CompanySelector';
 import { OnboardingChecklist } from '@/components/dashboard/OnboardingChecklist';
 import { TaxSummaryRow } from '@/hooks/useIntegrationTax';
@@ -437,6 +438,7 @@ function UnifiedDashboardContent() {
 
   const { shopee, tiktok, mercadolivre, combined, isShopeeConnected, syncData, syncNow, shopeeConnection } =
     useDashboardData(syncPeriod);
+  const { shopeeConnections, setActiveConnectionId } = useActiveShopeeConnection();
 
   const statsMap: Record<Marketplace, MarketplaceStats> = { shopee, tiktok, mercadolivre, todos: combined };
   const stats = statsMap[marketplace];
@@ -477,6 +479,18 @@ function UnifiedDashboardContent() {
       {/* ── Sync Shopee ───────────────────────────────────────────── */}
       {(marketplace === 'shopee' || marketplace === 'todos') && isShopeeConnected && (
         <div className="flex items-center gap-3 flex-wrap">
+          {shopeeConnections.length > 1 && (
+            <Select value={shopeeConnection?.id} onValueChange={setActiveConnectionId}>
+              <SelectTrigger className="h-8 w-[180px] text-xs"><SelectValue placeholder="Selecione a loja" /></SelectTrigger>
+              <SelectContent>
+                {shopeeConnections.map(conn => (
+                  <SelectItem key={conn.id} value={conn.id}>
+                    {conn.shop_name || conn.external_shop_id || 'Loja sem nome'}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          )}
           <div className="flex items-center gap-2">
             <span className="text-xs text-muted-foreground">Período:</span>
             <Select value={String(syncPeriod)} onValueChange={(v) => setSyncPeriod(Number(v))} disabled={syncNow.isPending}>

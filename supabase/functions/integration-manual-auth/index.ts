@@ -55,7 +55,7 @@ serve(async (req) => {
         access_token: await encryptToken(access_token),
         refresh_token: await encryptToken(refresh_token || null),
         updated_at: new Date().toISOString(),
-      }, { onConflict: "user_id,provider" })
+      }, { onConflict: "user_id,provider,external_shop_id" })
 
     if (error) throw error
 

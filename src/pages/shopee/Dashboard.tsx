@@ -18,6 +18,7 @@ import { calculateResults, formatCurrency, RawOrder, SettingsData } from '@/lib/
 import { fetchAllOrders } from '@/lib/supabase-helpers';
 import { useShopeeSync } from '@/hooks/useShopeeSync';
 import { useIntegrations } from '@/hooks/useIntegrations';
+import { useActiveShopeeConnection } from '@/hooks/useActiveShopeeConnection';
 import { useNavigate } from 'react-router-dom';
 import { ProductOrdersList } from '@/components/dashboard/ProductOrdersList';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -133,8 +134,8 @@ export function ShopeeDashboardContent() {
   const [selectedCompany, setSelectedCompany] = useState<Company | null>(null);
   const [syncPeriod, setSyncPeriod] = useState<'7' | '15' | '30' | '60'>('15');
 
-  const { getConnection, syncNow } = useIntegrations();
-  const shopeeConnection = getConnection('shopee');
+  const { syncNow } = useIntegrations();
+  const { shopeeConnections, activeConnection: shopeeConnection, setActiveConnectionId } = useActiveShopeeConnection();
   const isConnected = shopeeConnection?.status === 'connected';
   const { data: syncData, isLoading: syncLoading } = useShopeeSync(
     isConnected ? shopeeConnection!.id : null,
@@ -215,8 +216,23 @@ export function ShopeeDashboardContent() {
     <div className="space-y-8 animate-fade-in">
 
       {/* Título/subtítulo já vêm do topbar (AppLayout, via Gestao.tsx) — não
-         repetir aqui. Só o seletor de empresa, que é funcional. */}
-      <div className="flex items-center justify-end">
+         repetir aqui. Seletor de loja só aparece com 2+ lojas Shopee
+         conectadas — não faz sentido escolher entre 1 opção só. */}
+      <div className="flex items-center justify-end gap-2">
+        {shopeeConnections.length > 1 && (
+          <Select value={shopeeConnection?.id} onValueChange={setActiveConnectionId}>
+            <SelectTrigger className="w-[200px] h-9">
+              <SelectValue placeholder="Selecione a loja" />
+            </SelectTrigger>
+            <SelectContent>
+              {shopeeConnections.map(conn => (
+                <SelectItem key={conn.id} value={conn.id}>
+                  {conn.shop_name || conn.external_shop_id || 'Loja sem nome'}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        )}
         <CompanySelector selectedCompany={selectedCompany} onSelect={setSelectedCompany} />
       </div>
 

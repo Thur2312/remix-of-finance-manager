@@ -16,7 +16,7 @@ export default function IntegrationsOverview() {
   const navigate = useNavigate();
   const { toast } = useToast();
   const queryClient = useQueryClient();
-  const { connections, logs, isLoading, getConnection, startAuth, manualAuth, syncNow, refetch } = useIntegrations();
+  const { connections, logs, isLoading, getConnection, getConnectionsByProvider, startAuth, manualAuth, syncNow, refetch } = useIntegrations();
   const [connectProvider, setConnectProvider] = useState<Provider | null>(null);
   const [isSyncing, setIsSyncing] = useState(false);
 
@@ -40,7 +40,7 @@ export default function IntegrationsOverview() {
     }
   }, [searchParams, toast, queryClient, refetch]);
 
-  const shopee = getConnection('shopee');
+  const shopeeConnections = getConnectionsByProvider('shopee');
   const tiktok = getConnection('tiktok');
   const mercadolivre = getConnection('mercadolivre');
 
@@ -99,18 +99,40 @@ export default function IntegrationsOverview() {
         </div>
 
         <div className="grid gap-3 md:grid-cols-2">
-          <IntegrationCard
-            provider="shopee"
-            status={shopee?.status || 'disconnected'}
-            shopName={shopee?.shop_name}
-            shopId={shopee?.external_shop_id}
-            lastSyncAt={shopee?.last_sync_at}
-            nextSyncAt={shopee?.next_sync_at}
-            lastErrorMessage={shopee?.last_error_message}
-            onConnect={() => setConnectProvider('shopee')}
-            onManage={() => navigate('/integrations/shopee')}
-            isConnecting={startAuth.isPending}
-          />
+          {shopeeConnections.length === 0 ? (
+            <IntegrationCard
+              provider="shopee"
+              status="disconnected"
+              onConnect={() => setConnectProvider('shopee')}
+              onManage={() => {}}
+              isConnecting={startAuth.isPending}
+            />
+          ) : (
+            shopeeConnections.map(conn => (
+              <IntegrationCard
+                key={conn.id}
+                provider="shopee"
+                status={conn.status}
+                shopName={conn.shop_name}
+                shopId={conn.external_shop_id}
+                lastSyncAt={conn.last_sync_at}
+                nextSyncAt={conn.next_sync_at}
+                lastErrorMessage={conn.last_error_message}
+                onConnect={() => setConnectProvider('shopee')}
+                onManage={() => navigate(`/integrations/manage/${conn.id}`)}
+                isConnecting={startAuth.isPending}
+              />
+            ))
+          )}
+          {shopeeConnections.length > 0 && (
+            <button
+              onClick={() => setConnectProvider('shopee')}
+              className="flex items-center justify-center gap-2 rounded-lg border border-dashed p-5 text-sm font-medium text-muted-foreground hover:text-foreground hover:border-foreground/30 transition-colors"
+            >
+              <Plug className="h-4 w-4" />
+              Adicionar outra loja Shopee
+            </button>
+          )}
           <IntegrationCard
             provider="tiktok"
             status={tiktok?.status || 'disconnected'}
@@ -143,7 +165,7 @@ export default function IntegrationsOverview() {
           lastError={allErrors || null}
           onViewLogs={() => {
             const firstConnected = connections.find(c => c.status === 'connected');
-            if (firstConnected) navigate(`/integrations/${firstConnected.provider}`);
+            if (firstConnected) navigate(`/integrations/manage/${firstConnected.id}`);
           }}
         />
       </div>

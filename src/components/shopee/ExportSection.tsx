@@ -8,7 +8,7 @@ import { Label } from '@/components/ui/label';
 import { toast } from 'sonner';
 import { Download, FileSpreadsheet, ShoppingCart, DollarSign, Loader2 } from 'lucide-react';
 import * as XLSX from 'xlsx';
-import { useIntegrations } from '@/hooks/useIntegrations';
+import { useActiveShopeeConnection } from '@/hooks/useActiveShopeeConnection';
 
 type ExportType = 'raw_orders' | 'synced_orders' | 'synced_payments' | 'synced_fees';
 
@@ -66,8 +66,7 @@ function formatCurrency(value: number): string {
 
 export function ExportSection() {
   const { user } = useAuth();
-  const { getConnection } = useIntegrations();
-  const shopeeConnection = getConnection('shopee');
+  const { activeConnection: shopeeConnection } = useActiveShopeeConnection();
   const isConnected = shopeeConnection?.status === 'connected';
 
   const [selectedType, setSelectedType] = useState<ExportType>('raw_orders');

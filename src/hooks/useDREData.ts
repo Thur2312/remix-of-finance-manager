@@ -1,6 +1,7 @@
 import { useState, useEffect, useMemo } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
+import { useActiveShopeeConnection } from '@/hooks/useActiveShopeeConnection';
 import {
   DREData,
   DREPeriod,
@@ -56,6 +57,7 @@ interface UseDREDataResult {
 
 export function useDREData(): UseDREDataResult {
   const { user } = useAuth();
+  const { activeConnectionId: activeShopeeConnectionId } = useActiveShopeeConnection();
   const [isLoading, setIsLoading]     = useState(true);
   const [error, setError]             = useState<string | null>(null);
 
@@ -197,16 +199,20 @@ export function useDREData(): UseDREDataResult {
   // ── Função central de carregamento ────────────────────────────────────────
 
   async function loadAllData(userId: string) {
-    // 1. Buscar integration_id da Shopee conectada
-    const { data: connections } = await supabase
-      .from('integration_connections')
-      .select('id, provider, status')
-      .eq('user_id', userId)
-      .eq('provider', 'shopee')
-      .eq('status', 'connected')
-      .limit(1);
-
-    const shopeeIntegrationId = connections?.[0]?.id ?? null;
+    // 1. Loja Shopee ativa (mesma seleção usada em Dashboard/Unificado,
+    // compartilhada via useActiveShopeeConnection). No primeiro carregamento,
+    // antes desse hook resolver, cai no fallback de sempre (1ª conectada).
+    let shopeeIntegrationId = activeShopeeConnectionId;
+    if (!shopeeIntegrationId) {
+      const { data: connections } = await supabase
+        .from('integration_connections')
+        .select('id, provider, status')
+        .eq('user_id', userId)
+        .eq('provider', 'shopee')
+        .eq('status', 'connected')
+        .limit(1);
+      shopeeIntegrationId = connections?.[0]?.id ?? null;
+    }
     console.log('[DRE] Shopee integration_id:', shopeeIntegrationId);
 
     // 2. Buscar tudo em paralelo

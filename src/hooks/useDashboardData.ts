@@ -2,6 +2,7 @@ import { useMemo } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useShopeeSync } from '@/hooks/useShopeeSync';
 import { useIntegrations } from '@/hooks/useIntegrations';
+import { useActiveShopeeConnection } from '@/hooks/useActiveShopeeConnection';
 import { useMercadolivreData } from '@/hooks/useMercadolivreData';
 import { formatCurrency } from '@/lib/calculations';
 
@@ -39,8 +40,8 @@ export function useDashboardData(syncPeriod: number = 15) {
   const { user } = useAuth();
 
   // ── Shopee ───────────────────────────────────────────────────────────────
-  const { getConnection, syncNow } = useIntegrations();
-  const shopeeConnection = getConnection('shopee');
+  const { syncNow } = useIntegrations();
+  const { activeConnection: shopeeConnection } = useActiveShopeeConnection();
   const isShopeeConnected = shopeeConnection?.status === 'connected';
   const { data: syncData, isLoading: syncLoading } = useShopeeSync(
     isShopeeConnected ? shopeeConnection!.id : null,
