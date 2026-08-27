@@ -17,7 +17,7 @@ begin
     where conrelid = 'public.integration_connections'::regclass
       and contype = 'u'
       and (
-        select array_agg(attname order by attname)
+        select array_agg(attname::text order by attname)
         from pg_attribute
         where attrelid = conrelid and attnum = any(conkey)
       ) = array['provider', 'user_id']
