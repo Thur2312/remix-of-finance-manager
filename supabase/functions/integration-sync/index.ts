@@ -11,6 +11,11 @@ function safeShopeeDate(timestamp: number | null): string | null {
   return isNaN(date.getTime()) ? null : date.toISOString()
 }
 
+// Espelha SHOPEE_IGNORED_STATUSES de src/lib/shopee-sync-status.ts — edge
+// functions não importam do app (contextos de deploy separados), então essa
+// pequena lista fica duplicada aqui de propósito.
+const SALE_EVENT_IGNORED_STATUSES = ["TEST"]
+
 function sign(partnerId: number, path: string, timestamp: number, partnerKey: string, accessToken?: string, shopId?: number): string {
   const base = accessToken && shopId
     ? `${partnerId}${path}${timestamp}${accessToken}${shopId}`
@@ -357,6 +362,17 @@ if (!step || step === 'orders') {
           synced_at: now.toISOString(),
         }))
 
+        // Pra saber quais pedidos são genuinamente novos (não só "status
+        // mudou"), preciso saber quem já existia ANTES do upsert — o sync
+        // roda a cada 15 min e rescaneia a mesma janela de create_time, então
+        // a maioria dos order_sn de cada lote já existe de syncs anteriores.
+        const { data: existingOrderRows } = await supabaseAdmin
+          .from("orders")
+          .select("external_order_id")
+          .eq("integration_id", connection_id)
+          .in("external_order_id", ordersToUpsert.map(o => o.external_order_id))
+        const existingOrderIds = new Set((existingOrderRows ?? []).map(r => r.external_order_id))
+
         const { data: upsertedOrders, error: upsertError } = await supabaseAdmin
           .from("orders")
           .upsert(ordersToUpsert, { onConflict: "integration_id,external_order_id" })
@@ -367,6 +383,38 @@ if (!step || step === 'orders') {
         } else {
           ordersCount += upsertedOrders?.length || 0
           console.log(`✅ ${upsertedOrders?.length} pedidos salvos em batch`)
+
+          // Evento de venda só pros pedidos que não existiam antes deste sync
+          // — dispara na primeira vez que vemos o pedido, não quando o status
+          // muda pra pago/completo (ver comentário no topo da migration
+          // sale_events: se exigisse status final, quase nunca dispararia).
+          const newSaleEvents = (orderDetails.order_list ?? [])
+            .filter(order => !existingOrderIds.has(order.order_sn))
+            .filter(order => !SALE_EVENT_IGNORED_STATUSES.includes(order.order_status || ""))
+            .map(order => {
+              const savedOrder = upsertedOrders?.find(o => o.external_order_id === order.order_sn)
+              return {
+                user_id: connection.user_id,
+                integration_id: connection_id,
+                order_id: savedOrder?.id ?? null,
+                provider: "shopee",
+                external_order_id: order.order_sn,
+                status: order.order_status || "UNKNOWN",
+                total_amount: Number(order.total_amount) || 0,
+                currency: order.currency || "BRL",
+                buyer_username: order.buyer_username ?? null,
+                product_name: order.item_list?.[0]?.item_name ?? order.item_list?.[0]?.model_name ?? null,
+                order_created_at: safeShopeeDate(order.create_time ?? null) ?? now.toISOString(),
+              }
+            })
+
+          if (newSaleEvents.length > 0) {
+            const { error: saleEventsError } = await supabaseAdmin
+              .from("sale_events")
+              .upsert(newSaleEvents, { onConflict: "integration_id,external_order_id", ignoreDuplicates: true })
+            if (saleEventsError) console.error("❌ Erro ao registrar sale_events:", JSON.stringify(saleEventsError))
+            else console.log(`🔔 ${newSaleEvents.length} sale_events registrados`)
+          }
 
           const itemsToUpsert: {
             order_id: string

@@ -5,6 +5,7 @@
 // URL) não entram aqui — usam useTopbarTitle() em vez disso.
 const PAGE_TITLES: Record<string, string> = {
   '/dashboard': 'Dashboard',
+  '/vendas': 'Vendas',
   '/mercadolivre/resultados': 'Gestão Mercado Livre',
   '/mercadolivre/variacoes': 'Gestão Mercado Livre',
   '/mercadolivre/pagamentos': 'Gestão Mercado Livre',

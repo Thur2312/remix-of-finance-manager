@@ -27,6 +27,7 @@ const IntegrationManage         = lazy(() => import("./pages/integrations/Integr
 
 const UnifiedDashboard          = lazy(() => import("./pages/UnifiedDashboard"));
 const Gestao                    = lazy(() => import("./pages/Gestao"));
+const Vendas                    = lazy(() => import("./pages/Vendas"));
 
 const Configuracoes             = lazy(() => import("./pages/shopee/Configuracoes"));
 const Upload                    = lazy(() => import("./pages/shopee/Upload"));
@@ -83,6 +84,7 @@ const App = () => {
               <Route element={<InternalLayout />}>
                 <Route path="/dashboard" element={<UnifiedDashboard />} />
                 <Route path="/gestao" element={<Gestao />} />
+                <Route path="/vendas" element={<Vendas />} />
 
                 <Route path="/mercadolivre/resultados" element={<MercadoLivreResultados />} />
                 <Route path="/mercadolivre/variacoes" element={<MercadoLivreVariacoes />} />

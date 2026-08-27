@@ -5,14 +5,17 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Badge } from '@/components/ui/badge';
 import {
   RefreshCw, ShoppingCart, DollarSign, TrendingUp, Percent,
-  Store, TrendingDown, Minus, Trophy, ArrowRight,
+  Store, TrendingDown, Minus, Trophy, ArrowRight, Zap,
 } from 'lucide-react';
 import {
   AreaChart, Area, BarChart, Bar, PieChart, Pie, Cell,
   XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend,
 } from 'recharts';
+import { formatDistanceToNow } from 'date-fns';
+import { ptBR } from 'date-fns/locale';
 import { useDashboardData, Marketplace, MarketplaceStats } from '@/hooks/useDashboardData';
 import { useActiveShopeeConnection } from '@/hooks/useActiveShopeeConnection';
+import { useRecentSaleEvents } from '@/hooks/useSaleEvents';
 import { CompanySelector } from '@/components/dashboard/CompanySelector';
 import { OnboardingChecklist } from '@/components/dashboard/OnboardingChecklist';
 import { TaxSummaryRow } from '@/hooks/useIntegrationTax';
@@ -430,6 +433,60 @@ function TopProductsCard({ orders }: { orders: Order[] }) {
   );
 }
 
+// ── Atividade recente (vendas novas) ────────────────────────────────────────
+const SALE_EVENT_STATUS_LABEL: Record<string, string> = {
+  COMPLETED: 'Concluído', SHIPPED: 'Enviado', TO_CONFIRM_RECEIVE: 'A caminho',
+  PROCESSED: 'Processando', UNPAID: 'Aguardando pagamento', TO_RETURN: 'Devolução',
+  CANCELLED: 'Cancelado', paid: 'Pago', payment_required: 'Aguardando pagamento',
+  payment_in_process: 'Pagamento em processamento', partially_paid: 'Parcialmente pago',
+  confirmed: 'Confirmado', invalid: 'Inválido',
+};
+
+function RecentSalesActivityCard() {
+  const { data: events, isLoading } = useRecentSaleEvents(5);
+
+  if (!isLoading && (!events || events.length === 0)) return null;
+
+  return (
+    <Card>
+      <CardHeader className="pb-3">
+        <div className="flex items-center gap-2">
+          <Zap className="h-4 w-4 text-primary" />
+          <CardTitle className="text-base">Atividade recente</CardTitle>
+        </div>
+        <CardDescription>Últimas vendas registradas (Shopee e Mercado Livre)</CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-3">
+        {isLoading ? (
+          <p className="text-sm text-muted-foreground">Carregando...</p>
+        ) : (
+          <>
+            {events!.map(ev => (
+              <div key={ev.id} className="flex items-center gap-3">
+                <MarketplaceBadge mp={ev.provider} />
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-medium truncate">
+                    {ev.product_name || `Pedido ${ev.external_order_id}`}
+                  </p>
+                  <p className="text-xs text-muted-foreground">
+                    {SALE_EVENT_STATUS_LABEL[ev.status] || ev.status} · {formatDistanceToNow(new Date(ev.order_created_at), { addSuffix: true, locale: ptBR })}
+                  </p>
+                </div>
+                <span className="text-sm font-semibold tabular-nums shrink-0">
+                  {formatCurrency(ev.total_amount)}
+                </span>
+              </div>
+            ))}
+            <Link to="/vendas" className="flex items-center gap-1 text-xs font-medium text-primary hover:underline pt-1">
+              Ver tudo <ArrowRight className="h-3 w-3" />
+            </Link>
+          </>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
 // ── Componente principal ──────────────────────────────────────────────────────
 function UnifiedDashboardContent() {
   const [marketplace, setMarketplace] = useState<Marketplace>('shopee');
@@ -558,6 +615,7 @@ function UnifiedDashboardContent() {
             )}
             {syncData?.orders?.length > 0 && <TopProductsCard orders={syncData.orders} />}
             {feeBreakdown.length > 0 && <FeesBarChart breakdown={feeBreakdown} />}
+            <RecentSalesActivityCard />
           </div>
 
           {/* Breakdown por marketplace */}

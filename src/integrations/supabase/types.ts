@@ -1313,6 +1313,82 @@ export type Database = {
         }
         Relationships: []
       }
+      sale_events: {
+        Row: {
+          buyer_username: string | null
+          created_at: string
+          currency: string
+          detected_at: string
+          external_order_id: string
+          id: string
+          integration_id: string
+          order_created_at: string
+          order_id: string | null
+          product_name: string | null
+          provider: string
+          seen_at: string | null
+          status: string
+          total_amount: number
+          user_id: string
+        }
+        Insert: {
+          buyer_username?: string | null
+          created_at?: string
+          currency?: string
+          detected_at?: string
+          external_order_id: string
+          id?: string
+          integration_id: string
+          order_created_at: string
+          order_id?: string | null
+          product_name?: string | null
+          provider: string
+          seen_at?: string | null
+          status: string
+          total_amount?: number
+          user_id: string
+        }
+        Update: {
+          buyer_username?: string | null
+          created_at?: string
+          currency?: string
+          detected_at?: string
+          external_order_id?: string
+          id?: string
+          integration_id?: string
+          order_created_at?: string
+          order_id?: string | null
+          product_name?: string | null
+          provider?: string
+          seen_at?: string | null
+          status?: string
+          total_amount?: number
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "sale_events_integration_id_fkey"
+            columns: ["integration_id"]
+            isOneToOne: false
+            referencedRelation: "integration_connections"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sale_events_integration_id_fkey"
+            columns: ["integration_id"]
+            isOneToOne: false
+            referencedRelation: "integration_connections_safe"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sale_events_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "orders"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       settings: {
         Row: {
           adicional_por_item: number | null

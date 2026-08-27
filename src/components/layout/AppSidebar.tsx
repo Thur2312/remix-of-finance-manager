@@ -6,7 +6,8 @@ import { useAuth } from '@/contexts/AuthContext';
 import { Sidebar, SidebarContent, SidebarFooter, SidebarGroup, SidebarGroupContent, SidebarHeader, SidebarMenu, SidebarMenuButton, SidebarMenuItem, useSidebar } from '@/components/ui/sidebar';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { User, ChevronUp, LogOut, TrendingUp, Calculator, Receipt, Sparkles, BarChart3, HandCoins, Wallet, Plug, LayoutDashboard, Moon, Sun, Shield, type LucideIcon } from 'lucide-react';
+import { User, ChevronUp, LogOut, TrendingUp, Calculator, Receipt, Sparkles, BarChart3, HandCoins, Wallet, Plug, LayoutDashboard, Moon, Sun, Shield, Zap, type LucideIcon } from 'lucide-react';
+import { useSaleEventsUnseenCount } from '@/hooks/useSaleEvents';
 import logo from '@/assets/logo-new.svg';
 import { useNavigate } from 'react-router-dom';
 import { PlanBadge } from '@/components/PlanBadge';
@@ -35,6 +36,7 @@ const sidebarGroups: SidebarGroup[] = [
     label: 'Dia a Dia',
     items: [
       { title: 'Gestão', url: '/gestao', icon: TrendingUp },
+      { title: 'Vendas', url: '/vendas', icon: Zap },
       { title: 'Fluxo de Caixa', url: '/fluxo-caixa', icon: HandCoins },
     ],
   },
@@ -81,6 +83,7 @@ export function AppSidebar() {
   const { theme, setTheme } = useTheme();
 
   const getInitials = (email: string) => email.slice(0, 2).toUpperCase();
+  const { data: unseenSalesCount } = useSaleEventsUnseenCount();
 
   const isItemActive = (url: string) => {
     // /integrations/:provider é dinâmica (shopee/tiktok/mercadolivre) — uma
@@ -95,6 +98,9 @@ export function AppSidebar() {
 
   const renderItem = (item: SidebarItem) => {
     const active = isItemActive(item.url);
+    const badge = item.url === '/vendas' && unseenSalesCount
+      ? (unseenSalesCount > 9 ? '9+' : String(unseenSalesCount))
+      : item.badge;
     return (
       <SidebarMenuItem key={item.title}>
         <SidebarMenuButton
@@ -110,9 +116,9 @@ export function AppSidebar() {
           <NavLink to={item.url} className="flex items-center gap-3">
             <item.icon className="h-[18px] w-[18px]" strokeWidth={2} />
             <span>{item.title}</span>
-            {item.badge && (
+            {badge && (
               <span className="ml-auto text-[9px] font-bold tracking-wide text-warning bg-warning/15 px-1.5 py-0.5 rounded-full">
-                {item.badge}
+                {badge}
               </span>
             )}
           </NavLink>

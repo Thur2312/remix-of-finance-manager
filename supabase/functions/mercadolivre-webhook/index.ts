@@ -194,6 +194,17 @@ async function handlePaymentNotification(
 async function upsertOrder(supabase, connection, order) {
   const now = new Date().toISOString();
 
+  // Pra saber se é um pedido genuinamente novo (dispara sale_events) ou só
+  // uma atualização de status de um pedido já visto — precisa checar ANTES
+  // do upsert, senão a linha já existe e "é novo" nunca seria verdade.
+  const { data: existingOrder } = await supabase
+    .from("orders")
+    .select("id")
+    .eq("integration_id", connection.id)
+    .eq("external_order_id", String(order.id))
+    .maybeSingle();
+  const isNewOrder = !existingOrder;
+
   // 1. Upsert na tabela orders (compartilhada)
   const { data: orderRow, error: orderError } = await supabase
     .from("orders")
@@ -219,6 +230,30 @@ async function upsertOrder(supabase, connection, order) {
   if (orderError) {
     console.error("Erro ao upsert order ML:", orderError);
     return;
+  }
+
+  if (isNewOrder) {
+    // Nunca deixar isso derrubar o upsert real do pedido — o webhook sempre
+    // devolve 200 pro ML pra evitar retentativa infinita, então uma falha
+    // aqui só é logada.
+    try {
+      const { error: saleEventError } = await supabase.from("sale_events").upsert({
+        user_id: connection.user_id,
+        integration_id: connection.id,
+        order_id: orderRow?.id ?? null,
+        provider: "mercadolivre",
+        external_order_id: String(order.id),
+        status: order.status,
+        total_amount: order.total_amount ?? 0,
+        currency: order.currency_id ?? "BRL",
+        buyer_username: order.buyer?.nickname ?? null,
+        product_name: order.order_items?.[0]?.item?.title ?? null,
+        order_created_at: order.date_created ?? now,
+      }, { onConflict: "integration_id,external_order_id", ignoreDuplicates: true });
+      if (saleEventError) console.error("Erro ao registrar sale_event ML:", saleEventError);
+    } catch (saleEventException) {
+      console.error("Exceção ao registrar sale_event ML:", saleEventException);
+    }
   }
 
   // 2. Upsert na tabela ml_orders (específica ML)
