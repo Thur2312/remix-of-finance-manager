@@ -1,8 +1,8 @@
 # Diagnóstico Financeiro — Seller Finance
 
-> **Status:** levantamento de código + teste no banco real concluídos. Correções
-> da captação não iniciadas.
-> **Data:** 27/08/2026 · revisado 28/08/2026 (teste no banco da Maluth Store)
+> **Status:** Commit 1 (captação Shopee) feito e deployado. Falta Commit 3
+> (agregação) e Commit 2 (frete visual, baixa prioridade).
+> **Data:** 27/08/2026 · revisado 28/08/2026 (Commit 1 + validação do número correto)
 > **Escopo:** cálculo financeiro da Gestão Shopee (dashboard) e da Calculadora de Precificação.
 >
 > **Revisão 27/08 (sync Shopee):** seção 5 resolvida (sem bug de sinal — cliente
@@ -18,6 +18,17 @@
 > BUG-15 (mesma loja física em 2 contas do app → dado particionado por corrida
 > de sync; a 2ª conexão é lixo, mitigação manual). Decisão: **corrigir a
 > captação antes de mexer na agregação.**
+>
+> **Revisão 28/08 (Commit 1 + número validado):** Commit `3272f29` — `integration-sync`
+> step payments reescrito (BUG-10/11/13/14 corrigidos). Deployado. Teste na
+> Maluth: `orfas_15d` → **0**, Fase 2 recupera pedidos ausentes via
+> `get_order_detail`. **A loja é saudável** — Valor Líquido correto (competência,
+> Σ `escrow_amount`) = **+R$ 6.473** sobre R$ 10.461 de faturamento (margem
+> 61,9%); o `−R$ 44` era 100% bug de agregação. Decisão da coorte do card:
+> **(a) pedido concluído na janela** (`COMPLETED` + `order_updated_at` ≥ 15d).
+> BUG-03b **rebaixado**: `escrow_amount` já reflete o frete real, então o Commit
+> 3 corrige o efeito visível sozinho. Novo: BUG-16 (`IntegrationDashboard.tsx`
+> tem conta própria — 3º site de finança Shopee).
 >
 > Este documento é a fonte de verdade do que já foi apurado. Leia antes de mexer
 > em qualquer cálculo. Se alguma premissa aqui se mostrar errada ao ler o código,
@@ -236,19 +247,34 @@ Motivo: o card vizinho é a margem (`líquido ÷ faturamento`). Casar por data d
 liberação faria numerador e denominador virem de safras de pedidos diferentes —
 a margem subiria quando o vendedor não vende nada e repasses antigos caem.
 
+**Coorte do card — decisão (a), 28/08:** `status = COMPLETED` **E**
+`order_updated_at` ≥ 15d atrás. `order_updated_at` de um pedido concluído ≈ a
+data de conclusão (não há `completed_at` limpo). Faturamento e Líquido saem da
+**mesma** coorte. Rejeitadas: "criado na janela" (238 pedidos ainda em trânsito
+→ líquido enganosamente baixo) e "repasse na janela" (já rejeitada — margem sobe
+sem vender).
+
 **Regra dura:** pedido sem dado de repasse **nunca vira zero**. Ou sai do
-agregado com contagem de excluídos, ou o resultado carrega flag de incerteza.
+agregado com contagem de excluídos (`pedidosSemDado`), ou usa `estimated`.
 
-`computeShopeeSyncStats` retorna a decomposição, não só o total:
-`{ liberado, aLiberar, totalCompetencia, pedidosSemDado }`.
+`computeShopeeSyncStats` retorna a decomposição:
+`{ faturamento, liberado, aLiberar, totalCompetencia, pedidosSemDado, emTransito }`.
 
-> **BUG-12 descartado (28/08):** não há duplicação. Mas a correção continua
-> **bloqueada pela captação**: o join por `order_id` só funciona em 45% das
-> linhas hoje (BUG-14). `escrow_amount` em si é confiável (1014/1016 preenchidos).
-> Ordem obrigatória: consertar captação (BUG-10/13/14) → backfill → só então a
-> agregação por competência.
+> **Validado no banco (28/08), pós-Commit 1:** coorte (a) na Maluth →
+> **315 pedidos · faturamento R$ 10.460,80 · Valor Líquido R$ 6.473,17 · margem
+> 61,9% · 101 em trânsito.** A margem bate com a coorte "criado na janela"
+> (4006/6468 = 61,9%) — coortes diferentes, mesma economia. O `−R$ 44` era 100%
+> bug de agregação. **BUG-12 descartado** (sem duplicação); **BUG-10/11/13/14
+> corrigidos** no Commit 1.
 
-### BUG-03b — Frete: rebate não subtraído e `estimated` no lugar de `actual` · MÉDIO
+### BUG-03b — Frete: rebate não subtraído e `estimated` no lugar de `actual` · BAIXO (rebaixado 28/08)
+
+> **Rebaixado:** o Commit 3 usa `escrow_amount` como Valor Líquido, e o
+> `escrow_amount` **já** reflete o frete real (a Shopee já abateu o rebate). Então
+> o número do card fica certo sem tocar nas linhas de `fee`. O que resta é
+> cosmético: o "Detalhamento de Taxas" ainda mostra `shipping_fee` bruto
+> (R$ 3.599 na Maluth) em vez de ~R$ 600. Vira Commit 2, baixa prioridade —
+> corrige só a decomposição visual.
 
 Achado confirmado no levantamento (não é a causa dominante do líquido negativo,
 mas é erro real de valor):
@@ -343,7 +369,12 @@ cheio** — muda a faixa e ninguém percebe.
   da direita, alinhado ao campo Desconto, enquanto seu label fica órfão na coluna
   da esquerda. Verificar o grid.
 
-### BUG-10 — Perda de dado silenciosa no sync (truncagem) · ALTO
+### BUG-10 — Perda de dado silenciosa no sync (truncagem) · ✅ CORRIGIDO — Commit 1 (`3272f29`)
+
+> `.slice(0, 30)` e `escrowSafetyLimit < 3` removidos; `safetyLimit < 1` do
+> orders → `< 40`. Paginação até `more === false`. Teto de segurança só no
+> caminho do cron (`escrowBudget = 150`, sem janela). Client (`useIntegrations.ts`)
+> janela o step `payments` em 1 dia. Validado: `total` fees 4997 → 6404.
 
 Três tetos diferentes, nenhum sinalizado na UI:
 
@@ -370,7 +401,9 @@ em 30.
 do edge function, o client fatia o step `payments` por janela de release-time
 (como já faz com `orders`).
 
-### BUG-11 — Precedência de operador apaga valor real · ALTO
+### BUG-11 — Precedência de operador apaga valor real · ✅ CORRIGIDO — Commit 1 (`3272f29`)
+
+> `marketplace_fee: (Number(income.commission_fee) || 0) + (Number(income.net_service_fee) || 0)`.
 
 `integration-sync/index.ts:535`:
 
@@ -414,7 +447,10 @@ auto-syncs ao longo de meses não produziram uma única linha repetida.
 Efeito colateral do "único global": ver BUG-15 (duas conexões brigam pela mesma
 linha).
 
-### BUG-13 — `payments.transaction_date` não guarda data de negócio · MÉDIO
+### BUG-13 — `payments.transaction_date` não guarda data de negócio · ✅ CORRIGIDO — Commit 1 (`3272f29`)
+
+> `transaction_date` agora recebe `safeShopeeDate(escrowOrder.escrow_release_time)`.
+> (Backfill retroativo dos `payments` antigos ainda pendente — vem numa sync ampla.)
 
 `integration-sync/index.ts:541` grava `transaction_date: now.toISOString()` — a
 hora em que o sync rodou, não a data real da transação/repasse. Pior: o `upsert`
@@ -437,7 +473,13 @@ competência é join `payments → orders` por `order_id` e filtro por
 via `get_escrow_list`, que só devolve repasse já liberado, então `escrow_release_time`
 está sempre disponível.)
 
-### BUG-14 — Sync grava `fees`/`payments` com `order_id` nulo · ALTO
+### BUG-14 — Sync grava `fees`/`payments` com `order_id` nulo · ✅ CORRIGIDO — Commit 1 (`3272f29`)
+
+> Fase 2 do loop novo: coleta os `order_sn` ausentes, busca `get_order_detail` em
+> lotes de 50, upsert em `orders` + `order_items`, mapa `order_sn → order_id`,
+> Fase 4 grava com id real. Validado na Maluth: `orfas_15d` → **0** (`🧩 27/27
+> pedidos ausentes → 27 recuperados`). Restam ~2600 órfãs **históricas** (fora da
+> janela de 15d) — resolvem numa sync ampla (`days: 180`), pendente.
 
 Ao processar um repasse, o loop de escrow faz um `select` na tabela `orders`
 local pelo `external_order_id` (`integration-sync/index.ts:528`). Se o pedido
@@ -491,6 +533,20 @@ O dashboard lê **uma** `integration_id`, então o user `60afd787` **não vê** 
 a conta `84cb1d3e` e re-sincroniza a `efbd3b5b` para reclamar as 257 fees. Sem
 migration por ora. Se no futuro houver caso legítimo de 2 contas na mesma loja,
 mudar o `unique` de `external_fee_id` para `(integration_id, external_fee_id)`.
+
+### BUG-16 — `IntegrationDashboard.tsx` tem cálculo financeiro próprio · MÉDIO
+
+A tela "Gerenciar Shopee" (`src/components/integrations/IntegrationDashboard.tsx:52`)
+não usa `computeShopeeSyncStats` — calcula à mão:
+```ts
+const totalRevenue = orders.reduce((sum, o) => sum + Number(o.total_amount), 0)  // COMPLETED, sem filtro de data
+const totalFees    = payments?.reduce((sum, p) => sum + Number(p.marketplace_fee), 0)
+const netRevenue   = payments?.reduce((sum, p) => sum + Number(p.net_amount), 0)
+```
+É o **3º** site de finança Shopee (com `shopee/Dashboard.tsx` e `useDREData.ts`),
+cada um com sua conta. O Commit 3 roteia os três pela mesma função pura
+(seção 7.1). Enquanto isso, essa tela mostra números "quase certos" por sorte
+(coortes grandes se cancelam).
 
 ---
 
@@ -603,22 +659,27 @@ a:
 1. **Reconciliação por `order_id`.** `orders`, `fees` e `payments` são casados por
    pedido antes de qualquer soma. Proibido somar as três listas em paralelo (é o
    BUG-03a).
-2. **Regime de competência.** Recorte por pedido concluído no período, não por
-   data de liberação do repasse. `escrow_amount` é somado ao pedido mesmo que o
-   repasse ainda não tenha caído.
+2. **Coorte do período = decisão (a):** `status = COMPLETED` **E**
+   `order_updated_at` na janela. A **mesma** coorte alimenta Faturamento
+   (Σ `total_amount`) e Valor Líquido (Σ `escrow_amount`).
 3. **Três estados por pedido, nunca dois:**
    - `liberado` → `escrow_amount` real
    - `estimado` → `escrow` estimado pela Shopee
    - `indisponivel` → sem dado
+   (Na Maluth, 315/315 concluídos estão `liberado` — `estimado`/`indisponivel`
+   são raros, mas a regra fica.)
 4. **Ausência nunca vira zero.** `indisponivel` sai do agregado com contagem
    (`pedidosSemDado`) ou marca o resultado como incerto. Nada de `?? 0` / `|| 0`
    em valor monetário de pedido.
 5. **Retorno é decomposição, não só total:**
-   `{ liberado, aLiberar, totalCompetencia, pedidosSemDado }`.
-6. **Rótulos sem ambiguidade caixa/competência.** "Faturamento (vendas do
-   período)" e "Valor Líquido (pedidos do período)". "Líquido" sozinho foi o que
-   deixou o card errado passar.
-7. **Fronteira de captação (`integration-sync`).** Payload bruto da Shopee é
+   `{ faturamento, liberado, aLiberar, totalCompetencia, pedidosSemDado, emTransito }`.
+6. **Rótulos sem ambiguidade caixa/competência.** "Faturamento (vendas
+   concluídas no período)" e "Valor Líquido (repasses das vendas concluídas)" +
+   linha "N pedidos em trânsito". "Líquido" sozinho foi o que deixou o card
+   errado passar.
+7. **Um único cálculo.** `shopee/Dashboard.tsx`, `IntegrationDashboard.tsx`
+   (BUG-16) e `useDREData.ts` passam a chamar a **mesma** função.
+8. **Fronteira de captação (`integration-sync`).** Payload bruto da Shopee é
    convertido uma vez, na entrada; percentuais e datas normalizados; sem `|| 0`
    sobre soma (BUG-11); paginação sem teto silencioso (BUG-10); pedido sempre
    buscado quando falta (BUG-14); `transaction_date` real (BUG-13).
@@ -636,19 +697,18 @@ a:
 | ~~1~~ | ~~Verificar o modo "Por Preço" (seção 5)~~ | ✅ feito — sem bug de sinal; cliente em "Por Margem" |
 | 2 | Levantamento do código (seção 9) | sync Shopee concluído; schema (tipos de coluna) e Calculadora pendentes |
 | 3 | **Decisão do Thur:** base do imposto (BUG-01) | trava BUG-02 e migrations |
-| 4 | **Captação — Commit 1:** BUG-11 (precedência) + BUG-13 (`transaction_date`) + BUG-14 (buscar `get_order_detail`) + BUG-10 (paginar, sem teto) + BUG-03b (frete líquido). Deploy. | não depende de 3 |
-| 5 | **Backfill:** re-sync completo da conexão `efbd3b5b` (2637 fees órfãs) + dono desconecta `929c33cc` (BUG-15) | depende de 4 |
-| 6 | Fixture: congelar o JSON do `get_escrow_detail` pós-correção (seção 12) | depende de 5 |
-| 7 | **Agregação — Commit 3:** `computeShopeeSyncStats` por `order_id` / competência / três estados (BUG-03a), rótulos (seção 7.1) | depende de 5, 6 |
+| ~~4~~ | ~~**Captação — Commit 1:** BUG-11 + BUG-13 + BUG-14 + BUG-10~~ | ✅ **feito e deployado 28/08** (`3272f29`). BUG-03b saiu daqui (rebaixado → Commit 2). |
+| 5 | **Backfill histórico:** sync ampla (`days: 180`) da `efbd3b5b` (2637 fees órfãs) + dono desconecta `929c33cc` (BUG-15) | melhora telas de histórico; não bloqueia o card de 15d |
+| 6 | Fixture: congelar o JSON do `get_escrow_detail` pós-correção (seção 12) | opcional agora |
+| **7** | **Agregação — Commit 3:** `computeShopeeSyncStats` por `order_id` / coorte (a) / três estados / rótulos (seção 7.1) + rotear `IntegrationDashboard.tsx` (BUG-16) e `useDREData.ts` pela mesma função | **PRÓXIMO** — número validado: R$ 6.473 líquido |
 | 8 | Calculadora: BUG-04, BUG-05, BUG-07, BUG-08, BUG-09 | — |
-| 9 | Dashboard: BUG-02 (guard imposto sobre negativo), BUG-09 | depende de 3 |
-| 10 | Padronização em centavos (seção 6) | depende de 3 |
-| 11 | Proposta de frete na precificação (BUG-06) | depende de 8 |
+| 9 | Dashboard: BUG-02 (guard imposto sobre negativo) — só depois do BUG-01 | depende de 3 |
+| 10 | Commit 2: frete líquido no "Detalhamento de Taxas" (BUG-03b, cosmético) | — |
+| 11 | Padronização em centavos (seção 6) | depende de 3 |
+| 12 | Proposta de frete na precificação (BUG-06) | depende de 8 |
 
-> Etapa 0 vem antes de tudo: qualquer número medido sobre `fees` duplicadas leva
-> a conclusão errada.
-> Não iniciar a etapa 10 antes da 3. Migration em cima de regra de imposto errada
-> custa caro para desfazer.
+> Não iniciar a padronização em centavos antes da decisão do imposto (BUG-01).
+> Migration em cima de regra de imposto errada custa caro para desfazer.
 
 ---
 
@@ -723,6 +783,30 @@ Números-chave apurados (conexão ativa `efbd3b5b`, salvo indicação):
 | `adjustment` "Rebate frete Shopee" (15d, ignorado) | R$ 241,08 | BUG-03b |
 | Linhas por `fee_type` na janela | exatamente **30** cada | BUG-10 (`.slice(0,30)`) |
 | Conexões para a loja `1427450574` | 2 (`user_id` distintos) | BUG-15 |
+
+### 9.3 Pós-Commit 1 — número correto validado (28/08)
+
+Depois do deploy do `3272f29` + sync da Maluth:
+
+| Métrica | Antes (buggy) | Depois (Commit 1) |
+|---|---|---|
+| `fees` total (efbd3b5b + 929c33cc) | 4972 | 6404 |
+| `fees` órfãs na janela de 15d | ~todas | **0** |
+| `fees` órfãs históricas (>30d) | — | 2607 (pendente backfill `days: 180`) |
+
+**Coorte (a)** — `COMPLETED` + `order_updated_at` ≥ 15d:
+
+| | valor |
+|---|---|
+| Pedidos concluídos | 315 |
+| Faturamento (Σ `total_amount`) | R$ 10.460,80 |
+| **Valor Líquido (Σ `escrow_amount`)** | **R$ 6.473,17** |
+| Margem | 61,9% |
+| Em trânsito (receita a caminho) | 101 |
+
+Consistência: a coorte "criado na janela" dá 4006/6468 = **61,9%** — mesma
+margem, valida a economia. O card mostrava `−R$ 44` → era 100% bug de agregação.
+O Commit 3 troca a agregação por essa coorte.
 
 Queries e protocolo: seção 12.1.
 
