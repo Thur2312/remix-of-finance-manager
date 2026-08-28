@@ -7,8 +7,9 @@
 > **Revisão 27/08 (sync Shopee):** a seção 5 foi resolvida (sem bug de sinal — o
 > cliente estava em "Por Margem", queixa = BUG-04 + BUG-05). O BUG-03 foi
 > refutado no mecanismo e reescrito como BUG-03a (dominante) + BUG-03b. Novos:
-> BUG-10 (truncagem), BUG-11 (precedência de operador), BUG-12 (idempotência,
-> pendente de verificação).
+> BUG-10 (truncagem), BUG-11 (precedência de operador), BUG-12 (idempotência —
+> expectativa: sem duplicação, ainda a verificar), BUG-13
+> (`payments.transaction_date` = hora do sync, não data de negócio).
 >
 > Este documento é a fonte de verdade do que já foi apurado. Leia antes de mexer
 > em qualquer cálculo. Se alguma premissa aqui se mostrar errada ao ler o código,
@@ -123,6 +124,15 @@ escopo: virou **BUG-03b** (rebate não subtraído + `estimated` no lugar de
 `actual`), severidade MÉDIA, não a causa dominante.
 
 **Não reinvestigar "frete cheio" como causa raiz do líquido negativo.**
+
+### 3.5 `SHOPEE_FEE_TYPES_TAXAS` — conferida (não reconferir)
+
+A lista que define quais `fee_type` entram no total de taxas é
+`["commission", "service_fee", "shipping_fee", "reverse_shipping_fee"]`
+(`shopee-sync-status.ts:14`), usada por `computeShopeeSyncStats` e por
+`useDREData`. É a mesma base do card "Taxas Shopee" (R$ 647,99) e do que a
+Calculadora/DRE usam. `adjustment` (que inclui o `shopee_shipping_rebate`) fica
+**de fora** — é o que sustenta o BUG-03b.
 
 ---
 
@@ -338,7 +348,7 @@ corretos.
 
 **Correção:** `Number(income.commission_fee || 0) + Number(income.net_service_fee || 0)`.
 
-### BUG-12 — Idempotência do sync · PENDENTE DE VERIFICAÇÃO · potencial causa dominante
+### BUG-12 — Idempotência do sync · PENDENTE DE VERIFICAÇÃO · expectativa: sem duplicação
 
 `syncNow` re-varre sempre os últimos 15 dias (`useIntegrations.ts:107-139`), e o
 auto-sync roda a cada N minutos sobre a mesma janela. Se a escrita de `fees` /
@@ -365,6 +375,36 @@ Inferência: se a constraint **não** existisse, o PostgREST devolveria erro
 fees na base. Logo a constraint provavelmente existe e o sync é idempotente.
 **Confirmar com o teste de contagem (seção 12) antes de mexer na agregação** —
 corrigir agregação sobre dado duplicado não resolve o número.
+
+> **Atualização (27/08, revisão do teste):** o auto-sync roda na mesma janela de
+> 15 dias a cada 15 min (`pg_cron` → `trigger_auto_sync()`, ver seção 12.1). Se
+> houvesse duplicação acumulativa, as taxas já estariam na casa dos milhares, não
+> em R$ 647,99 — isso é evidência **contra** duplicação e a favor de a constraint
+> `UNIQUE` existir. O teste de contagem continua valendo (barato e definitivo),
+> mas a expectativa agora é: **sem duplicação; a causa é o descasamento de coorte
+> do BUG-03a.**
+
+### BUG-13 — `payments.transaction_date` não guarda data de negócio · MÉDIO
+
+`integration-sync/index.ts:541` grava `transaction_date: now.toISOString()` — a
+hora em que o sync rodou, não a data real da transação/repasse. Pior: o `upsert`
+(`onConflict: "external_transaction_id"`) reescreve a linha inteira, então o
+valor é **sobrescrito a cada ressincronização**.
+
+Consequência: **qualquer consulta que filtre pagamento por `transaction_date`
+está errada hoje** — todo escrow já sincronizado cai dentro de qualquer janela
+recente. Passou despercebido porque o dashboard reconstrói o líquido por
+`receita − fees` e usa `fee_date` (que é correto — ver seção 9, Verificação A),
+nunca `transaction_date`.
+
+Isto invalidou a "Correção 1" proposta para o script de teste (filtrar
+`pedidos_com_escrow` por `transaction_date` seria no-op). O recorte correto de
+competência é join `payments → orders` por `order_id` e filtro por
+`orders.order_created_at`.
+
+**Investigar depois:** qual campo da Shopee deveria ir em `transaction_date` —
+provavelmente `escrow_release_time` (mesmo do `fee_date`) ou `create_time` do
+pedido, conforme a semântica que a coluna deva ter.
 
 ---
 
@@ -506,7 +546,7 @@ a:
 | 1 | ~~Verificar o modo "Por Preço" (seção 5)~~ | ✅ feito — sem bug de sinal; cliente em "Por Margem"; queixa = BUG-04 + BUG-05 |
 | 2 | Levantamento do código (seção 9) | parcial — sync Shopee levantado; schema e calculadora pendentes |
 | 3 | **Decisão do Thur:** base do imposto (BUG-01) | BUG-02, migrations |
-| 4 | Captação: BUG-11 (precedência) + BUG-10 (truncagem). Commit isolado. | não depende de 3 |
+| 4 | Captação: BUG-11 (precedência) + BUG-10 (truncagem) + BUG-13 (`transaction_date`). Commit isolado. | não depende de 3 |
 | 5 | Fixture: payload real da Maluth Store, congelar JSON (seção 12) | testes de 6 e 7 |
 | 6 | `computeShopeeSyncStats` por `order_id` / competência / três estados (BUG-03a) | depende de 0 e 5 |
 | 7 | Captação de frete: `actual_shipping_fee`, `buyer_paid_shipping_fee`, frete líquido (BUG-03b) | depende de 5 |
@@ -555,6 +595,28 @@ Responder com caminho de arquivo e trecho de código:
    - **Resposta parcial (27/08):** **não há adapter.** `integration-sync` grava
      o payload quase cru em `float`/`text`; a agregação lê direto dessas tabelas.
      É exatamente a "Fronteira" que a seção 7.1 item 7 exige criar.
+
+### 9.1 Verificações do teste de idempotência (27/08)
+
+**A · O que `fees.fee_date` recebe?** A **data da Shopee**, não a do sync.
+`integration-sync/index.ts:567`:
+```ts
+fee_date: safeShopeeDate(escrowOrder.escrow_release_time) ?? now.toISOString(),
+```
+`escrow_release_time` vem do `get_escrow_list` (só lista pedidos já liberados →
+sempre preenchido); o fallback para `now` só dispara com data inválida. Portanto
+o descasamento de coorte do BUG-03a é real e vem de `fee_date` (liberação) vs
+`order_created_at` (criação) — **sem** duplicação de linha.
+Contraste: `payments.transaction_date` recebe `now` → é o BUG-13.
+
+**B · Auto-sync.** `pg_cron` roda `select trigger_auto_sync()` a cada 15 min
+(ver migração `20260806230000_revoke_dangerous_rpc_execute.sql`). A função é
+`SECURITY DEFINER` e **o corpo não está em migration** — presume-se que filtre
+`auto_sync_enabled = true AND next_sync_at <= now()`. Desligar por conexão:
+switch "Sincronização automática" em `/integrations/shopee` (chama
+`integration-update-settings` → `update integration_connections set
+auto_sync_enabled = false`), ou o mesmo `update` via SQL. Não mexe em
+`next_sync_at`; o botão "Sincronizar" manual continua funcionando.
 
 ---
 
@@ -609,49 +671,125 @@ direto com o `access_token` da conexão.
 Order_sns necessários: ≥1 liberado, ≥1 `COMPLETED` não liberado, se possível 1
 cancelado/devolvido (para o caso retroativo da seção abaixo).
 
-**Protocolo:** rodar as queries → `syncNow` 2× seguidas na mesma janela →
-rodar as queries de novo. Se `linhas` crescer e `duplicatas` sair de 0 → BUG-12
-é a causa dominante; corrigir a escrita antes de tocar na agregação.
+**Protocolo:**
+1. Desligar o auto-sync da Maluth (switch em `/integrations/shopee` ou o `update`
+   da seção 9.1-B). Anotar o horário.
+2. Rodar o bloco SQL abaixo com `momento = 'antes'`. Conferir `0-conexao` = 1.
+   Copiar o resultado inteiro.
+3. `/gestao` → Shopee → **Sincronizar** (15d). Aguardar. Repetir uma 2ª vez.
+4. Trocar `'antes'` → `'depois'`, rodar de novo, copiar.
+5. Comparar. Se `*_DUPLICATAS` > 0 ou `fees_linhas` cresceu → BUG-12 (duplicação).
+   Se estáveis → confirma a expectativa: causa é o descasamento de coorte
+   (`fees_15d_de_pedido_FORA_da_janela` + `fees_orfas_sem_escrow_15d`).
+6. Religar o auto-sync.
+
+`fee_type` da query 3 usa a lista real conferida (seção 3.5). Datas com
+`::timestamptz` porque as colunas podem estar como `text` — se der erro de tipo,
+são `text` e há mais um problema a registrar.
 
 ```sql
--- :conn = id da integration_connection da Maluth Store
+with
+p as (
+  select 'antes'::text as momento          -- <<<<<< troque para 'depois' na 2ª rodada
+),
+conn as (
+  select id from integration_connections
+  where provider = 'shopee'
+    and shop_name ilike '%maluth%'          -- ajuste se necessário
+),
+r as (
+  select '0-conexao'::text as secao, 'conexoes_casadas'::text as metrica,
+         (select count(*)::numeric from conn) as valor,
+         (select string_agg(id::text, ', ') from conn) as detalhe
 
--- (1) Contagem + duplicatas por chave de upsert
-select 'fees' as tabela, count(*) as linhas,
-       count(distinct external_fee_id) as chaves,
-       count(*) - count(distinct external_fee_id) as duplicatas
-from fees where integration_id = :conn
-union all
-select 'payments', count(*),
-       count(distinct external_transaction_id),
-       count(*) - count(distinct external_transaction_id)
-from payments where integration_id = :conn;
+  union all
+  select '1-contagem','fees_linhas',
+         (select count(*)::numeric from fees where integration_id in (select id from conn)), null::text
+  union all
+  select '1-contagem','fees_chaves_distintas',
+         (select count(distinct external_fee_id)::numeric from fees where integration_id in (select id from conn)), null::text
+  union all
+  select '1-contagem','fees_DUPLICATAS',
+         (select (count(*)-count(distinct external_fee_id))::numeric from fees where integration_id in (select id from conn)), null::text
+  union all
+  select '1-contagem','payments_linhas',
+         (select count(*)::numeric from payments where integration_id in (select id from conn)), null::text
+  union all
+  select '1-contagem','payments_distintos',
+         (select count(distinct external_transaction_id)::numeric from payments where integration_id in (select id from conn)), null::text
+  union all
+  select '1-contagem','payments_DUPLICATAS',
+         (select (count(*)-count(distinct external_transaction_id))::numeric from payments where integration_id in (select id from conn)), null::text
 
--- (2) Chaves com mais de uma linha (esperado: nenhuma)
-select external_fee_id, count(*) n
-from fees where integration_id = :conn
-group by external_fee_id having count(*) > 1 order by n desc limit 20;
+  union all
+  select '2-fee_repetida', external_fee_id,
+         count(*)::numeric, ('aparece '||count(*)||'x')::text
+  from fees where integration_id in (select id from conn)
+  group by external_fee_id having count(*) > 1
 
--- (3) Decomposição de taxas na janela — bate com 320,52 / 183,17 / 144,30?
---     count por tipo parece 16 ou 32?
-select fee_type, count(*) linhas, sum(amount) total
-from fees where integration_id = :conn
-  and fee_date >= now() - interval '15 days'
-group by fee_type order by total desc;
+  union all
+  select '3-por_tipo_15d', fee_type,
+         count(*)::numeric, ('soma=R$ '||round(sum(amount)::numeric,2))::text
+  from fees
+  where integration_id in (select id from conn)
+    and fee_date::timestamptz >= now() - interval '15 days'
+  group by fee_type
+  union all
+  select '3-por_tipo_15d', 'TOTAL_TAXAS (=647,99?)',
+         count(*)::numeric, ('soma=R$ '||round(sum(amount)::numeric,2))::text
+  from fees
+  where integration_id in (select id from conn)
+    and fee_date::timestamptz >= now() - interval '15 days'
+    and fee_type in ('commission','service_fee','shipping_fee','reverse_shipping_fee')
 
--- (4) Descasamento de coorte (BUG-03a) quantificado
-select
-  (select count(*) from orders o where o.integration_id = :conn
-     and o.status = 'COMPLETED'
-     and o.order_created_at >= now() - interval '15 days')        as completed_15d,
-  (select count(distinct p.order_id) from payments p
-     where p.integration_id = :conn and p.payment_method = 'escrow'
-       and p.order_id is not null)                                as com_escrow,
-  (select count(*) from fees f where f.integration_id = :conn
-     and f.order_id is not null
-     and not exists (select 1 from payments p
-                     where p.order_id = f.order_id
-                       and p.payment_method = 'escrow'))          as fees_orfas;
+  union all
+  select '4-coorte','orders_completed_15d',
+         (select count(*)::numeric from orders o
+          where o.integration_id in (select id from conn)
+            and o.status='COMPLETED'
+            and o.order_created_at::timestamptz >= now() - interval '15 days'), null::text
+  union all
+  select '4-coorte','pedidos_c_escrow_criados_15d',
+         (select count(distinct o.id)::numeric
+          from orders o
+          join payments pay on pay.order_id = o.id and pay.integration_id = o.integration_id
+          where o.integration_id in (select id from conn)
+            and pay.payment_method='escrow' and o.status='COMPLETED'
+            and o.order_created_at::timestamptz >= now() - interval '15 days'), null::text
+  union all
+  select '4-coorte','escrow_pagtos_sem_order_id',
+         (select count(*)::numeric from payments pay
+          where pay.integration_id in (select id from conn)
+            and pay.payment_method='escrow' and pay.order_id is null), null::text
+  union all
+  select '4-coorte','fees_orfas_sem_escrow_15d',
+         (select count(*)::numeric from fees f
+          where f.integration_id in (select id from conn)
+            and f.fee_date::timestamptz >= now() - interval '15 days'
+            and f.order_id is not null
+            and not exists (
+              select 1 from payments p3
+              where p3.order_id = f.order_id
+                and p3.integration_id = f.integration_id
+                and p3.payment_method='escrow')), null::text
+  union all
+  select '4-coorte','fees_15d_de_pedido_FORA_da_janela',
+         (select count(*)::numeric from fees f
+          join orders o on o.id = f.order_id and o.integration_id = f.integration_id
+          where f.integration_id in (select id from conn)
+            and f.fee_date::timestamptz >= now() - interval '15 days'
+            and o.order_created_at::timestamptz < now() - interval '15 days'), null::text
+
+  union all
+  select '5-receita_15d','revenue_completed_15d (=603,05?)',
+         (select coalesce(sum(o.total_amount),0)::numeric from orders o
+          where o.integration_id in (select id from conn)
+            and o.status='COMPLETED'
+            and o.order_created_at::timestamptz >= now() - interval '15 days'), null::text
+)
+select p.momento, r.secao, r.metrica, r.valor, r.detalhe
+from p cross join r
+order by r.secao, r.metrica;
 ```
 
 ### 12.2 Retroatividade (Tarefa 4 — pendente de decisão)
