@@ -388,6 +388,10 @@ export function ShopeeDashboardContent() {
               {syncData.stats.feeBreakdown.filter(f => f.type !== 'adjustment').map((fee) => {
                 const key = Object.keys(feeLabels).find(k => fee.label.toLowerCase().includes(k)) ?? '';
                 const explanation = feeInfo[key];
+                // BUG-03b: com o rebate de frete abatido, o bucket "shipping_fee"
+                // pode ficar negativo (rebate > frete estimado) — nesse caso é
+                // crédito ao vendedor, não taxa.
+                const isCredito = fee.amountCents < 0;
                 return (
                   <div key={fee.type} className="flex items-center justify-between gap-4">
                     <div className="flex items-center gap-1.5 min-w-0">
@@ -396,8 +400,8 @@ export function ShopeeDashboardContent() {
                         <InfoPopover title={feeLabels[key] ?? fee.label}>{explanation}</InfoPopover>
                       )}
                     </div>
-                    <span className="text-sm font-medium text-destructive tabular-nums shrink-0">
-                      −{formatCents(fee.amountCents)}
+                    <span className={`text-sm font-medium tabular-nums shrink-0 ${isCredito ? 'text-emerald-600' : 'text-destructive'}`}>
+                      {isCredito ? '+' : '−'}{formatCents(Math.abs(fee.amountCents) as typeof fee.amountCents)}
                     </span>
                   </div>
                 );

@@ -16,7 +16,7 @@ import {
   CashFlowEntry,
   ShopeeOrderDRE,
 } from '@/lib/dre-calculations';
-import { isShopeeRevenueStatus, SHOPEE_FEE_TYPES_TAXAS } from '@/lib/shopee-sync-status';
+import { isShopeeRevenueStatus, isShopeeShippingRebate, SHOPEE_FEE_TYPES_TAXAS } from '@/lib/shopee-sync-status';
 
 // ── Tipos internos para Shopee (orders/fees/payments) ──────────────────────
 
@@ -37,6 +37,7 @@ interface ShopeeFee {
   amount: number;
   amount_cents: number;
   fee_date: string;
+  description: string | null;
 }
 
 interface ShopeePayment {
@@ -116,7 +117,7 @@ export function useDREData(): UseDREDataResult {
     while (true) {
       const { data, error } = await supabase
         .from('fees')
-        .select('id, integration_id, fee_type, amount, amount_cents, fee_date')
+        .select('id, integration_id, fee_type, amount, amount_cents, fee_date, description')
         .eq('integration_id', integrationId)
         .range(page * PAGE_SIZE, (page + 1) * PAGE_SIZE - 1);
       if (error) { console.warn('[DRE] Shopee fees error:', error); break; }
@@ -373,9 +374,14 @@ export function useDREData(): UseDREDataResult {
     const receitaComEscrow = comEscrow.reduce((s, o) => s + o.total_faturado, 0);
     const escrowTotal      = comEscrow.reduce((s, o) => s + (escrowByOrder.get(o.id) ?? 0), 0);
 
-    const totalFeesTaxas = shopeeFees
-      .filter(f => SHOPEE_FEE_TYPES_TAXAS.includes(f.fee_type))
-      .reduce((s, f) => s + Number(f.amount), 0);
+    // BUG-03b: o rebate de frete vem como `adjustment` (fora de
+    // SHOPEE_FEE_TYPES_TAXAS) e precisa abater o `shipping_fee` inflado — senão
+    // este fallback superestima a taxa efetiva e o DRE subestima o lucro.
+    const totalFeesTaxas = shopeeFees.reduce((s, f) => {
+      if (SHOPEE_FEE_TYPES_TAXAS.includes(f.fee_type)) return s + Number(f.amount);
+      if (isShopeeShippingRebate(f)) return s - Number(f.amount);
+      return s;
+    }, 0);
 
     const taxaEfetiva =
       receitaComEscrow > 0

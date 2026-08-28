@@ -3,6 +3,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Badge } from '@/components/ui/badge';
 import { formatCurrency } from '@/lib/calculations';
 import { SyncedOrder, SyncedFee, SyncedPayment } from '@/hooks/useShopeeSync';
+import { isShopeeShippingRebate } from '@/lib/shopee-sync-status';
 import { useProductCosts } from '@/hooks/useProductCosts';
 import {
   Package,
@@ -105,14 +106,24 @@ export function ProductOrdersList({ orders, fees, payments }: Props) {
     return map;
   }, [productCosts]);
 
+  // BUG-03b: o rebate de frete (fee_type "adjustment") nunca era subtraído do
+  // shipping_fee bruto — quando um pedido caía no fallback de líquido (sem
+  // escrow ainda registrado, ver orderNet abaixo), o lucro real podia sair
+  // falso-negativo por causa desse frete inflado.
   const feesByOrder = useMemo(() => {
     const map = new Map<string, number>();
-    fees
-      .filter(f => ['commission','service_fee','shipping_fee'].includes(f.fee_type))
-      .forEach(f => {
-        if (!f.order_id) return;
-        map.set(f.order_id, (map.get(f.order_id) || 0) + Number(f.amount));
-      });
+    fees.forEach(f => {
+      if (!f.order_id) return;
+      let amount = 0;
+      if (['commission', 'service_fee', 'shipping_fee'].includes(f.fee_type)) {
+        amount = Number(f.amount);
+      } else if (isShopeeShippingRebate(f)) {
+        amount = -Number(f.amount);
+      } else {
+        return;
+      }
+      map.set(f.order_id, (map.get(f.order_id) || 0) + amount);
+    });
     return map;
   }, [fees]);
 

@@ -77,6 +77,26 @@ export interface ShopeeFinanceFeeLike {
   amount: number;
   amount_cents: number;
   fee_date: string;
+  description: string | null;
+}
+
+// BUG-03b: a captação grava o rebate de frete da Shopee como fee_type
+// "adjustment" (junto com desconto do vendedor e voucher, que devem
+// continuar fora do total de taxas) e description exata
+// "Rebate frete Shopee" (integration-sync/index.ts). Nunca era subtraído do
+// "shipping_fee" em lugar nenhum do consumo, então o frete exibido ficava
+// ~4x o valor real, e o lucro por produto podia ficar falso-negativo quando
+// caía no fallback "faturamento − taxas" (sem escrow ainda registrado).
+export const SHOPEE_SHIPPING_REBATE_DESCRIPTION = "Rebate frete Shopee";
+
+// O rebate é o único `adjustment` que abate frete — desconto do vendedor,
+// desconto Shopee e vouchers continuam fora do total de taxas. Todo consumidor
+// que soma frete/taxas Shopee deve subtrair o que este helper identifica.
+export function isShopeeShippingRebate(
+  fee: { fee_type: string; description: string | null },
+): boolean {
+  return fee.fee_type === "adjustment" &&
+    fee.description === SHOPEE_SHIPPING_REBATE_DESCRIPTION;
 }
 
 // ─── Saída ───────────────────────────────────────────────────────────────────
@@ -184,12 +204,17 @@ export function computeShopeeFinance(
   ).length;
 
   // ── Decomposição de taxas (visual) — só da coorte ──────────────────────────
+  // BUG-03b: rebate de frete entra no bucket "shipping_fee" (subtraindo),
+  // não fica separado como "adjustment" — ver SHOPEE_SHIPPING_REBATE_DESCRIPTION.
   const feeMap = new Map<string, number>();
   const feeMapCents = new Map<string, number>();
   for (const f of fees) {
     if (!f.order_id || !cohortIds.has(f.order_id)) continue;
-    feeMap.set(f.fee_type, (feeMap.get(f.fee_type) ?? 0) + Number(f.amount || 0));
-    feeMapCents.set(f.fee_type, (feeMapCents.get(f.fee_type) ?? 0) + Number(f.amount_cents || 0));
+    const isShippingRebate = isShopeeShippingRebate(f);
+    const bucket = isShippingRebate ? "shipping_fee" : f.fee_type;
+    const sign = isShippingRebate ? -1 : 1;
+    feeMap.set(bucket, (feeMap.get(bucket) ?? 0) + sign * Number(f.amount || 0));
+    feeMapCents.set(bucket, (feeMapCents.get(bucket) ?? 0) + sign * Number(f.amount_cents || 0));
   }
   const feeBreakdown = [...feeMap.entries()]
     .map(([type, amount]) => ({

@@ -1,6 +1,8 @@
 import { describe, it, expect } from 'vitest';
 import {
   computeShopeeFinance,
+  isShopeeShippingRebate,
+  SHOPEE_SHIPPING_REBATE_DESCRIPTION,
   type ShopeeFinanceOrderLike,
   type ShopeeFinancePaymentLike,
   type ShopeeFinanceFeeLike,
@@ -28,8 +30,8 @@ function order(p: Partial<ShopeeFinanceOrderLike> = {}): ShopeeFinanceOrderLike 
 function payment(order_id: string, net_amount: number, method = 'escrow'): ShopeeFinancePaymentLike {
   return { order_id, payment_method: method, net_amount, net_amount_cents: Math.round(net_amount * 100) };
 }
-function fee(order_id: string | null, fee_type: string, amount: number, fee_date = '2026-01-20T10:00:00.000Z'): ShopeeFinanceFeeLike {
-  return { order_id, fee_type, amount, amount_cents: Math.round(amount * 100), fee_date };
+function fee(order_id: string | null, fee_type: string, amount: number, fee_date = '2026-01-20T10:00:00.000Z', description: string | null = null): ShopeeFinanceFeeLike {
+  return { order_id, fee_type, amount, amount_cents: Math.round(amount * 100), fee_date, description };
 }
 
 const run = (
@@ -183,6 +185,24 @@ describe('computeShopeeFinance', () => {
     ]);
   });
 
+  it('BUG-03b: rebate de frete (adjustment) é subtraído do bucket shipping_fee, não fica escondido', () => {
+    const o = order({ id: 'x', total_amount: 320.52, order_updated_at: '2026-01-20T10:00:00Z' });
+    const fees = [
+      fee('x', 'shipping_fee', 320.52, undefined, 'Frete estimado'),
+      fee('x', 'adjustment', 241.08, undefined, SHOPEE_SHIPPING_REBATE_DESCRIPTION),
+      fee('x', 'adjustment', 15, undefined, 'Desconto do vendedor'), // fica de fora, tipo diferente
+    ];
+    const r = run([o], [payment('x', 79.44)], fees);
+
+    const frete = r.feeBreakdown.find(f => f.type === 'shipping_fee');
+    expect(frete?.amount).toBeCloseTo(79.44, 6); // 320,52 − 241,08, não 320,52 bruto
+    expect(frete?.amountCents).toBe(7944);
+    // O rebate some do bucket "adjustment" (foi absorvido no shipping_fee);
+    // outros adjustments (desconto do vendedor) continuam separados, como antes.
+    const adjustment = r.feeBreakdown.find(f => f.type === 'adjustment');
+    expect(adjustment?.amount).toBe(15);
+  });
+
   it('porDia agrupa pela data de conclusão (order_updated_at)', () => {
     const d20a = order({ id: 'a', total_amount: 100, order_updated_at: '2026-01-20T09:00:00Z' });
     const d20b = order({ id: 'b', total_amount: 50, order_updated_at: '2026-01-20T18:00:00Z' });
@@ -261,5 +281,16 @@ describe('computeShopeeFinance', () => {
       expect(r.liberadoCents).toBe(0);
       expect(r.aLiberarCents).toBe(0);
     });
+  });
+});
+
+describe('isShopeeShippingRebate', () => {
+  it('reconhece só o adjustment de rebate de frete', () => {
+    expect(isShopeeShippingRebate({ fee_type: 'adjustment', description: SHOPEE_SHIPPING_REBATE_DESCRIPTION })).toBe(true);
+  });
+  it('ignora outros adjustments (desconto, voucher) e outros fee_types', () => {
+    expect(isShopeeShippingRebate({ fee_type: 'adjustment', description: 'Desconto do vendedor' })).toBe(false);
+    expect(isShopeeShippingRebate({ fee_type: 'adjustment', description: null })).toBe(false);
+    expect(isShopeeShippingRebate({ fee_type: 'shipping_fee', description: SHOPEE_SHIPPING_REBATE_DESCRIPTION })).toBe(false);
   });
 });
