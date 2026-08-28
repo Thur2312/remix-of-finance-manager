@@ -593,7 +593,13 @@ function UnifiedDashboardContent() {
               delta={makeDelta(stats.netRevenue, prevStats?.valorLiquido)}
             >
               {!stats.isLoading && selectedCompany && selectedCompany.tax_rate > 0 && (
-                <TaxSummaryRow netProfit={stats.netRevenue} taxRate={selectedCompany.tax_rate} companyName={selectedCompany.name} />
+                <TaxSummaryRow
+                  netProfit={stats.netRevenue}
+                  revenue={stats.grossRevenue}
+                  taxRate={selectedCompany.tax_rate}
+                  taxBase={selectedCompany.tax_base}
+                  companyName={selectedCompany.name}
+                />
               )}
             </StatCard>
             <StatCard title="Retido pelos marketplaces" value={formatCurrency(stats.fees)} description="Comissão, serviço, frete e descontos"

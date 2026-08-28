@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '../integrations/supabase/client';
+import type { TaxBase } from '../lib/tax';
 
 export interface Company {
   id: string;
@@ -7,6 +8,7 @@ export interface Company {
   name: string;
   cnpj: string;
   tax_rate: number;
+  tax_base: TaxBase;
   created_at: string;
   updated_at: string;
 }
@@ -106,12 +108,6 @@ export function useCompanies() {
     deleteCompany,
     linkIntegration,
   };
-}
-
-export function applyTaxRate(netProfit: number, taxRate: number) {
-  const taxAmount = netProfit * (taxRate / 100);
-  const netAfterTax = netProfit - taxAmount;
-  return { taxAmount, netAfterTax };
 }
 
 export function formatCNPJ(value: string): string {

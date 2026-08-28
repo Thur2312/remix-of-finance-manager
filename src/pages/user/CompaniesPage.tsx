@@ -3,7 +3,8 @@ import {
   Building2, Plus, Pencil, Trash2, Link2, AlertTriangle,
   TrendingDown, Percent, Store, RefreshCw
 } from 'lucide-react';
-import { useCompanies, applyTaxRate, Company } from '../../hooks/useCompanies';
+import { useCompanies, Company } from '../../hooks/useCompanies';
+import { applyTax } from '../../lib/tax';
 import { CompanyModal } from '../../components/settings/CompanyModal';
 
 // ─── Confirmation Dialog ────────────────────────────────────────────────────
@@ -42,18 +43,18 @@ function ConfirmDialog({
 }
 
 // ─── Tax Preview Card ────────────────────────────────────────────────────────
-function TaxPreviewCard({ taxRate }: { taxRate: number }) {
+function TaxPreviewCard({ taxRate, taxBase }: { taxRate: number; taxBase: Company['tax_base'] }) {
   const example = 10000;
-  const { taxAmount, netAfterTax } = applyTaxRate(example, taxRate);
+  const { taxAmount, netAfterTax } = applyTax({ revenue: example, profit: example, taxRate, taxBase });
   return (
     <div className="bg-gradient-to-br from-indigo-50 to-purple-50 dark:from-indigo-950/40 dark:to-purple-950/40 rounded-xl p-4 border border-indigo-100 dark:border-indigo-900">
       <p className="text-xs font-medium text-indigo-700 dark:text-indigo-400 mb-3 flex items-center gap-1.5">
         <Percent className="w-3.5 h-3.5" />
-        Simulação com alíquota de {taxRate}%
+        Simulação com alíquota de {taxRate}% sobre {taxBase === 'revenue' ? 'faturamento' : 'lucro'}
       </p>
       <div className="space-y-1.5">
         <div className="flex justify-between text-xs">
-          <span className="text-gray-500 dark:text-gray-400">Lucro líquido</span>
+          <span className="text-gray-500 dark:text-gray-400">{taxBase === 'revenue' ? 'Faturamento' : 'Lucro líquido'}</span>
           <span className="font-medium text-gray-700 dark:text-gray-300">
             R$ {example.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
           </span>
@@ -122,7 +123,7 @@ function CompanyCard({
         </div>
       </div>
 
-      <TaxPreviewCard taxRate={company.tax_rate} />
+      <TaxPreviewCard taxRate={company.tax_rate} taxBase={company.tax_base} />
 
       <div className="mt-3 flex items-center gap-2 text-xs text-gray-400 dark:text-gray-500">
         <Link2 className="w-3.5 h-3.5" />

@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '../integrations/supabase/client';
-import { applyTaxRate } from './useCompanies';
+import { applyTax, type TaxBase } from '../lib/tax';
 
 interface TaxInfo {
   companyId: string | null;
@@ -60,29 +60,22 @@ export function useIntegrationTax(
   return info;
 }
 
-export function calcFinancials(netProfit: number, taxRate: number) {
-  const { taxAmount, netAfterTax } = applyTaxRate(netProfit, taxRate);
-  return {
-    grossProfit: netProfit,
-    taxRate,
-    taxAmount,
-    netAfterTax,
-    hasTax: taxRate > 0,
-  };
-}
-
 export function TaxSummaryRow({
   netProfit,
+  revenue,
   taxRate,
+  taxBase,
   companyName,
 }: {
   netProfit: number;
+  revenue: number;
   taxRate: number;
+  taxBase: TaxBase;
   companyName: string | null;
 }) {
   if (taxRate === 0) return null;
 
-  const { taxAmount, netAfterTax } = applyTaxRate(netProfit, taxRate);
+  const { taxAmount, netAfterTax } = applyTax({ revenue, profit: netProfit, taxRate, taxBase });
   const fmt = (v: number) =>
     v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 
@@ -100,7 +93,9 @@ export function TaxSummaryRow({
         <span className="text-gray-700 dark:text-gray-300 font-medium">{fmt(netProfit)}</span>
       </div>
       <div className="flex justify-between text-xs">
-        <span className="text-red-500">Imposto ({taxRate}%)</span>
+        <span className="text-red-500">
+          Imposto ({taxRate}% sobre {taxBase === 'revenue' ? 'faturamento' : 'lucro'})
+        </span>
         <span className="text-red-500 font-medium">− {fmt(taxAmount)}</span>
       </div>
       <div className="flex justify-between text-xs font-semibold">

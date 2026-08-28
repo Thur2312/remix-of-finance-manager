@@ -371,6 +371,7 @@ export type Database = {
           created_at: string | null
           id: string
           name: string
+          tax_base: string
           tax_rate: number
           updated_at: string | null
           user_id: string
@@ -380,6 +381,7 @@ export type Database = {
           created_at?: string | null
           id?: string
           name: string
+          tax_base?: string
           tax_rate?: number
           updated_at?: string | null
           user_id: string
@@ -389,6 +391,7 @@ export type Database = {
           created_at?: string | null
           id?: string
           name?: string
+          tax_base?: string
           tax_rate?: number
           updated_at?: string | null
           user_id?: string

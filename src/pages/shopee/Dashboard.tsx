@@ -335,7 +335,9 @@ export function ShopeeDashboardContent() {
                 {isProfit && !loading && selectedCompany && selectedCompany.tax_rate > 0 && (
                   <TaxSummaryRow
                     netProfit={totalProfit}
+                    revenue={totalRevenue}
                     taxRate={selectedCompany.tax_rate}
+                    taxBase={selectedCompany.tax_base}
                     companyName={selectedCompany.name}
                   />
                 )}
