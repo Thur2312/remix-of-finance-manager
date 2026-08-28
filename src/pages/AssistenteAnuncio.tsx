@@ -9,7 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
-import { MedidasProdutoSection } from '@/components/assistente/MedidasProdutoSection';
+import { MedidasProdutoSection } from '@/components/assistente-anuncio/MedidasProdutoSection';
 
 interface MedidaLinha {
   id: string;
