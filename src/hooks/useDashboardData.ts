@@ -57,16 +57,17 @@ export function useDashboardData(syncPeriod: number = 15) {
       return { ...EMPTY_STATS, isLoading: syncLoading };
     }
 
-    const gross = syncData.stats.totalRevenue;
-    const fees = syncData.stats.totalFees;
+    // Competência: faturamento e líquido da mesma coorte de pedidos concluídos.
+    const gross = syncData.stats.faturamento;
+    const net = syncData.stats.valorLiquido;
     return {
-      totalOrders: syncData.stats.totalOrders,
+      totalOrders: syncData.stats.pedidos,
       grossRevenue: gross,
-      netRevenue: gross - fees,
-      fees,
-      profit: gross - fees,
+      netRevenue: net,
+      fees: gross - net,          // retido pela Shopee
+      profit: net,
       isLoading: syncLoading,
-      hasData: syncData.stats.totalOrders > 0,
+      hasData: syncData.stats.pedidos > 0 || syncData.stats.emTransito > 0,
     };
   }, [syncData, syncLoading, isShopeeConnected]);
 

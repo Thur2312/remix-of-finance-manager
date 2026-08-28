@@ -501,7 +501,9 @@ function UnifiedDashboardContent() {
   const stats = statsMap[marketplace];
   const prevStats = syncData?.prevStats;
 
-  const revenueByDay = (marketplace === 'shopee' || marketplace === 'todos') ? (syncData?.stats.revenueByDay ?? []) : [];
+  const revenueByDay = (marketplace === 'shopee' || marketplace === 'todos')
+    ? (syncData?.stats.porDia ?? []).map(d => ({ date: d.date, revenue: d.faturamento, net: d.liquido }))
+    : [];
   const feeBreakdown = (marketplace === 'shopee' || marketplace === 'todos') ? (syncData?.stats.feeBreakdown ?? []) : [];
   const showPie = marketplace === 'todos' && (shopee.hasData || tiktok.hasData || mercadolivre.hasData);
 
@@ -567,7 +569,7 @@ function UnifiedDashboardContent() {
           </Button>
           {syncData && (
             <Badge variant="secondary" className="text-xs">
-              {syncData.stats.totalOrders} pedidos{shopeeConnection?.shop_name ? ` · ${shopeeConnection.shop_name}` : ''}
+              {syncData.stats.pedidos} pedidos concluídos{shopeeConnection?.shop_name ? ` · ${shopeeConnection.shop_name}` : ''}
             </Badge>
           )}
         </div>
@@ -580,23 +582,24 @@ function UnifiedDashboardContent() {
         <>
           {/* Stats Cards */}
           <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-            <StatCard title="Pedidos" value={stats.totalOrders.toString()} description="Total no período"
+            <StatCard title="Pedidos" value={stats.totalOrders.toString()} description="Concluídos no período"
               icon={ShoppingCart} iconColor="text-blue-500" iconBg="bg-blue-500/10" isLoading={stats.isLoading}
-              delta={makeDelta(stats.totalOrders, prevStats?.totalOrders)} />
-            <StatCard title="Faturamento Bruto" value={formatCurrency(stats.grossRevenue)} description="Total cobrado dos compradores"
+              delta={makeDelta(stats.totalOrders, prevStats?.pedidos)} />
+            <StatCard title="Faturamento" value={formatCurrency(stats.grossRevenue)} description="Vendas concluídas no período"
               icon={DollarSign} iconColor="text-emerald-500" iconBg="bg-emerald-500/10" isLoading={stats.isLoading}
-              delta={makeDelta(stats.grossRevenue, prevStats?.totalRevenue)} />
-            <StatCard title="Faturamento Líquido" value={formatCurrency(stats.netRevenue)} description="Após taxas dos marketplaces"
+              delta={makeDelta(stats.grossRevenue, prevStats?.faturamento)} />
+            <StatCard title="Valor Líquido" value={formatCurrency(stats.netRevenue)} description="Repasses dos marketplaces"
               icon={TrendingUp} iconColor="text-primary" iconBg="bg-primary/10" isLoading={stats.isLoading}
-              delta={makeDelta(stats.netRevenue, prevStats ? prevStats.totalRevenue - prevStats.totalFees : undefined)}
+              delta={makeDelta(stats.netRevenue, prevStats?.valorLiquido)}
             >
               {!stats.isLoading && selectedCompany && selectedCompany.tax_rate > 0 && (
                 <TaxSummaryRow netProfit={stats.netRevenue} taxRate={selectedCompany.tax_rate} companyName={selectedCompany.name} />
               )}
             </StatCard>
-            <StatCard title="Taxas" value={formatCurrency(stats.fees)} description="Total descontado pelos marketplaces"
+            <StatCard title="Retido pelos marketplaces" value={formatCurrency(stats.fees)} description="Comissão, serviço, frete e descontos"
               icon={Percent} iconColor="text-orange-500" iconBg="bg-orange-500/10" isLoading={stats.isLoading}
-              delta={makeDelta(stats.fees, prevStats?.totalFees) ? { ...makeDelta(stats.fees, prevStats?.totalFees)!, invert: true } : undefined} />
+              delta={makeDelta(stats.fees, prevStats ? prevStats.faturamento - prevStats.valorLiquido : undefined)
+                ? { ...makeDelta(stats.fees, prevStats ? prevStats.faturamento - prevStats.valorLiquido : undefined)!, invert: true } : undefined} />
           </div>
 
           {/* Gráfico de área */}
@@ -607,10 +610,10 @@ function UnifiedDashboardContent() {
             {showPie && <MarketplacePieChart shopee={shopee} tiktok={tiktok} mercadolivre={mercadolivre} />}
             {syncData && (
               <OrderStatusCard
-                paid={syncData.stats.paidOrders}
-                pending={syncData.stats.pendingOrders}
-                cancelled={syncData.stats.cancelledOrders}
-                total={syncData.stats.totalOrders}
+                paid={syncData.stats.pedidos}
+                pending={syncData.stats.emTransito}
+                cancelled={syncData.stats.cancelados}
+                total={syncData.stats.pedidos + syncData.stats.emTransito + syncData.stats.cancelados}
               />
             )}
             {syncData?.orders?.length > 0 && <TopProductsCard orders={syncData.orders} />}

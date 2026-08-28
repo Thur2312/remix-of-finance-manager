@@ -41,8 +41,6 @@ const statusVariants: Record<string, 'default' | 'secondary' | 'destructive' | '
   connected: 'default', error: 'destructive', expired: 'destructive',
 };
 
-const COMPLETED_STATUSES = ['COMPLETED', 'SHIPPED', 'TO_CONFIRM_RECEIVE', 'READY_TO_SHIP', 'paid'];
-const CANCELLED_STATUSES = ['CANCELLED', 'UNPAID', 'TO_RETURN', 'cancelled'];
 
 export default function IntegrationManage() {
   const { connectionId } = useParams<{ connectionId: string }>();
@@ -80,32 +78,26 @@ export default function IntegrationManage() {
     );
   }
 
-  const orders = syncData?.orders ?? [];
-  const fees = syncData?.fees ?? [];
-  const payments = syncData?.payments ?? [];
-
-  const completedOrders = orders.filter(o => COMPLETED_STATUSES.includes(o.status));
-  const cancelledOrders = orders.filter(o => CANCELLED_STATUSES.includes(o.status));
-  const pendingOrders = orders.filter(o => !COMPLETED_STATUSES.includes(o.status) && !CANCELLED_STATUSES.includes(o.status));
-
-  const totalRevenue = completedOrders.reduce((sum, o) => sum + Number(o.total_amount), 0);
-  const totalFees = fees
-    .filter(f => ['commission', 'service_fee', 'shipping_fee', 'marketplace_fee'].includes(f.fee_type))
-    .reduce((sum, f) => sum + Number(f.amount), 0);
-  const totalNet = totalRevenue - totalFees;
+  // Mesma agregação por competência do Dashboard principal (ver
+  // shopee-sync-status.ts / docs seção 7.1).
+  const s = syncData?.stats;
+  const totalRevenue = s?.faturamento ?? 0;
+  const totalNet = s?.valorLiquido ?? 0;
+  const totalFees = totalRevenue - totalNet;   // retido pela Shopee
+  const pedidos = s?.pedidos ?? 0;
+  const emTransito = s?.emTransito ?? 0;
+  const cancelados = s?.cancelados ?? 0;
 
   const chartData = Array.from({ length: 7 }, (_, i) => {
     const date = new Date();
     date.setDate(date.getDate() - (6 - i));
-    const dateStr = date.toISOString().substring(0, 10);
-    const label = format(date, 'dd/MM', { locale: ptBR });
-    const vendas = completedOrders
-      .filter(o => o.order_created_at?.startsWith(dateStr))
-      .reduce((sum, o) => sum + Number(o.total_amount), 0);
-    const liquido = payments
-      .filter(p => p.transaction_date?.startsWith(dateStr))
-      .reduce((sum, p) => sum + Number(p.net_amount), 0);
-    return { date: label, vendas, liquido };
+    const key = date.toISOString().substring(0, 10);
+    const day = (s?.porDia ?? []).find(d => d.date === key);
+    return {
+      date: format(date, 'dd/MM', { locale: ptBR }),
+      vendas: day?.faturamento ?? 0,
+      liquido: day?.liquido ?? 0,
+    };
   });
 
   return (
@@ -202,9 +194,9 @@ export default function IntegrationManage() {
 
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
               {[
-                { label: 'Pedidos', value: syncLoading ? '...' : orders.length.toString(), icon: ShoppingCart, color: 'text-blue-500', bg: 'bg-blue-500/10' },
+                { label: 'Pedidos concluídos', value: syncLoading ? '...' : pedidos.toString(), icon: ShoppingCart, color: 'text-blue-500', bg: 'bg-blue-500/10' },
                 { label: 'Faturamento', value: syncLoading ? '...' : formatCurrency(totalRevenue), icon: DollarSign, color: 'text-emerald-500', bg: 'bg-emerald-500/10' },
-                { label: `Taxas ${name}`, value: syncLoading ? '...' : formatCurrency(totalFees), icon: Package, color: 'text-orange-500', bg: 'bg-orange-500/10' },
+                { label: `Retido pela ${name}`, value: syncLoading ? '...' : formatCurrency(totalFees), icon: Package, color: 'text-orange-500', bg: 'bg-orange-500/10' },
                 { label: 'Valor Líquido', value: syncLoading ? '...' : formatCurrency(totalNet), icon: TrendingUp, color: 'text-primary', bg: 'bg-primary/10' },
               ].map((stat) => (
                 <Card key={stat.label} className="hover:shadow-md transition-shadow">
@@ -234,7 +226,7 @@ export default function IntegrationManage() {
                   </div>
                   <div>
                     <p className="text-xs text-muted-foreground">Concluídos</p>
-                    <p className="text-2xl font-bold text-emerald-600">{syncLoading ? '...' : completedOrders.length}</p>
+                    <p className="text-2xl font-bold text-emerald-600">{syncLoading ? '...' : pedidos}</p>
                   </div>
                 </div>
               </CardContent>
@@ -247,7 +239,7 @@ export default function IntegrationManage() {
                   </div>
                   <div>
                     <p className="text-xs text-muted-foreground">Em andamento</p>
-                    <p className="text-2xl font-bold text-yellow-600">{syncLoading ? '...' : pendingOrders.length}</p>
+                    <p className="text-2xl font-bold text-yellow-600">{syncLoading ? '...' : emTransito}</p>
                   </div>
                 </div>
               </CardContent>
@@ -260,7 +252,7 @@ export default function IntegrationManage() {
                   </div>
                   <div>
                     <p className="text-xs text-muted-foreground">Cancelados</p>
-                    <p className="text-2xl font-bold text-destructive">{syncLoading ? '...' : cancelledOrders.length}</p>
+                    <p className="text-2xl font-bold text-destructive">{syncLoading ? '...' : cancelados}</p>
                   </div>
                 </div>
               </CardContent>
