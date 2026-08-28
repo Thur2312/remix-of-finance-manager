@@ -37,6 +37,14 @@ interface ShopeeFee {
   fee_date: string;
 }
 
+interface ShopeePayment {
+  id: string;
+  integration_id: string;
+  order_id: string | null;
+  payment_method: string;
+  net_amount: number;
+}
+
 // Classificação de status compartilhada com useShopeeSync/IntegrationDashboard
 // (src/lib/shopee-sync-status.ts) — antes cada um tinha sua própria cópia
 // dessas listas, e podiam divergir sem ninguém notar.
@@ -64,6 +72,7 @@ export function useDREData(): UseDREDataResult {
   // Estados de dados
   const [shopeeOrders,      setShopeeOrders]      = useState<ShopeeOrder[]>([]);
   const [shopeeFees,        setShopeeFees]        = useState<ShopeeFee[]>([]);
+  const [shopeePayments,    setShopeePayments]    = useState<ShopeePayment[]>([]);
   const [tiktokOrders,      setTiktokOrders]      = useState<TikTokOrder[]>([]);
   const [tiktokSettlements, setTiktokSettlements] = useState<TikTokSettlement[]>([]);
   const [fixedCosts,        setFixedCosts]        = useState<FixedCost[]>([]);
@@ -110,6 +119,26 @@ export function useDREData(): UseDREDataResult {
       if (error) { console.warn('[DRE] Shopee fees error:', error); break; }
       if (!data || data.length === 0) break;
       all = [...all, ...(data as ShopeeFee[])];
+      if (data.length < PAGE_SIZE) break;
+      page++;
+    }
+    return all;
+  }
+
+  async function fetchShopeePayments(integrationId: string): Promise<ShopeePayment[]> {
+    const PAGE_SIZE = 1000;
+    let all: ShopeePayment[] = [];
+    let page = 0;
+    while (true) {
+      const { data, error } = await supabase
+        .from('payments')
+        .select('id, integration_id, order_id, payment_method, net_amount')
+        .eq('integration_id', integrationId)
+        .eq('payment_method', 'escrow')
+        .range(page * PAGE_SIZE, (page + 1) * PAGE_SIZE - 1);
+      if (error) { console.warn('[DRE] Shopee payments error:', error); break; }
+      if (!data || data.length === 0) break;
+      all = [...all, ...(data as ShopeePayment[])];
       if (data.length < PAGE_SIZE) break;
       page++;
     }
@@ -219,6 +248,7 @@ export function useDREData(): UseDREDataResult {
     const [
       shopeeOrdersData,
       shopeeFeesData,
+      shopeePaymentsData,
       tiktokOrdersResult,
       tiktokSettlementsResult,
       fixedCostsResult,
@@ -227,8 +257,9 @@ export function useDREData(): UseDREDataResult {
       mlOrdersResult,
       cashFlowResult,
     ] = await Promise.all([
-      shopeeIntegrationId ? fetchShopeeOrders(shopeeIntegrationId) : Promise.resolve([]),
-      shopeeIntegrationId ? fetchShopeeFees(shopeeIntegrationId)   : Promise.resolve([]),
+      shopeeIntegrationId ? fetchShopeeOrders(shopeeIntegrationId)   : Promise.resolve([]),
+      shopeeIntegrationId ? fetchShopeeFees(shopeeIntegrationId)     : Promise.resolve([]),
+      shopeeIntegrationId ? fetchShopeePayments(shopeeIntegrationId) : Promise.resolve([]),
       fetchTikTokOrders(userId),
       fetchTikTokSettlements(userId),
       supabase.from('fixed_costs').select('*').eq('user_id', userId),
@@ -257,6 +288,7 @@ export function useDREData(): UseDREDataResult {
 
     setShopeeOrders(shopeeOrdersData);
     setShopeeFees(shopeeFeesData);
+    setShopeePayments(shopeePaymentsData);
 
     if (tiktokOrdersResult.error) throw tiktokOrdersResult.error;
     setTiktokOrders(tiktokOrdersResult.data || []);
@@ -321,12 +353,31 @@ export function useDREData(): UseDREDataResult {
         }),
       );
 
-    // Taxa de comissão efetiva calculada pelas fees reais
-    const totalReceita   = shopeeOrdersMapped.reduce((s, o) => s + o.total_faturado, 0);
+    // Dedução efetiva da Shopee. Preferência: `escrow_amount` real (o que a
+    // Shopee repassa), casado por order_id — já com comissão, serviço e o frete
+    // REAL descontados. Cai no cálculo por fees só se não houver repasse.
+    const totalReceita = shopeeOrdersMapped.reduce((s, o) => s + o.total_faturado, 0);
+
+    const escrowByOrder = new Map<string, number>();
+    for (const p of shopeePayments) {
+      if (p.payment_method === 'escrow' && p.order_id) {
+        escrowByOrder.set(p.order_id, (escrowByOrder.get(p.order_id) ?? 0) + Number(p.net_amount || 0));
+      }
+    }
+    const comEscrow        = shopeeOrdersMapped.filter(o => escrowByOrder.has(o.id));
+    const receitaComEscrow = comEscrow.reduce((s, o) => s + o.total_faturado, 0);
+    const escrowTotal      = comEscrow.reduce((s, o) => s + (escrowByOrder.get(o.id) ?? 0), 0);
+
     const totalFeesTaxas = shopeeFees
       .filter(f => SHOPEE_FEE_TYPES_TAXAS.includes(f.fee_type))
       .reduce((s, f) => s + Number(f.amount), 0);
-    const taxaEfetiva = totalReceita > 0 ? (totalFeesTaxas / totalReceita) * 100 : 0;
+
+    const taxaEfetiva =
+      receitaComEscrow > 0
+        ? ((receitaComEscrow - escrowTotal) / receitaComEscrow) * 100
+        : totalReceita > 0
+          ? (totalFeesTaxas / totalReceita) * 100
+          : 0;
 
     const shopeeSettingsAjustado: ShopeeSettings = {
       ...(shopeeSettings ?? {
@@ -336,7 +387,9 @@ export function useDREData(): UseDREDataResult {
         gasto_shopee_ads:       null,
       }),
       taxa_comissao_shopee:
-        totalFeesTaxas > 0 ? taxaEfetiva : (shopeeSettings?.taxa_comissao_shopee ?? 0),
+        (receitaComEscrow > 0 || totalFeesTaxas > 0)
+          ? taxaEfetiva
+          : (shopeeSettings?.taxa_comissao_shopee ?? 0),
     };
 
     return calculateDRE(
@@ -353,6 +406,7 @@ export function useDREData(): UseDREDataResult {
   }, [
     shopeeOrders,
     shopeeFees,
+    shopeePayments,
     tiktokOrders,
     tiktokSettlements,
     fixedCosts,

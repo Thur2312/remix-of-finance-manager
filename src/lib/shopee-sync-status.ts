@@ -89,19 +89,6 @@ export interface ShopeeFinance {
   // Decomposição visual (não entra no líquido — ver BUG-03b)
   feeBreakdown: { type: string; label: string; amount: number }[];
   porDia: { date: string; faturamento: number; liquido: number }[];
-
-  // ── LEGADO ── mantidos até os Commits 3b/3c migrarem os últimos consumidores
-  // (`useDashboardData`, `UnifiedDashboard`, `PeriodComparison`, `IntegrationManage`).
-  // Semântica antiga: receita = COMPLETED criado na janela; fees = todas na janela.
-  totalOrders: number;
-  totalRevenue: number;
-  totalFees: number;
-  totalNetAmount: number;
-  paidOrders: number;
-  pendingOrders: number;
-  cancelledOrders: number;
-  revenueByDay: { date: string; revenue: number; net: number }[];
-  feeBreakdownLegacy: { type: string; label: string; amount: number }[];
 }
 
 export function computeShopeeFinance(
@@ -188,39 +175,6 @@ export function computeShopeeFinance(
     .map(([date, v]) => ({ date, ...v }))
     .sort((a, b) => a.date.localeCompare(b.date));
 
-  // ── LEGADO (semântica antiga — por order_created_at) ───────────────────────
-  const createdInWindow = orders.filter(o => inWindow(o.order_created_at));
-  const completedLegacy = createdInWindow.filter(o => isShopeeCompletedStatus(o.status));
-  const shippedLegacy = createdInWindow.filter(o => isShopeeShippedStatus(o.status));
-  const cancelledLegacy = createdInWindow.filter(o => isShopeeCancelledStatus(o.status));
-  const totalRevenue = completedLegacy.reduce((s, o) => s + Number(o.total_amount || 0), 0);
-  const totalNetAmount = payments
-    .filter(p => p.payment_method === "escrow")
-    .reduce((s, p) => s + Number(p.net_amount || 0), 0);
-  const feesInWindow = fees.filter(f => inWindow(f.fee_date));
-  const totalFees = feesInWindow
-    .filter(f => SHOPEE_FEE_TYPES_TAXAS.includes(f.fee_type))
-    .reduce((s, f) => s + Number(f.amount || 0), 0);
-  const feeMapLegacy = new Map<string, number>();
-  for (const f of feesInWindow) {
-    feeMapLegacy.set(f.fee_type, (feeMapLegacy.get(f.fee_type) ?? 0) + Number(f.amount || 0));
-  }
-  const feeBreakdownLegacy = [...feeMapLegacy.entries()]
-    .map(([type, amount]) => ({ type, label: SHOPEE_FEE_LABELS[type] ?? type, amount }))
-    .sort((a, b) => b.amount - a.amount);
-  const legDay = new Map<string, { revenue: number; net: number }>();
-  for (const o of completedLegacy) {
-    const d = (o.order_created_at ?? "").substring(0, 10);
-    if (!d) continue;
-    const e = legDay.get(d) ?? { revenue: 0, net: 0 };
-    e.revenue += Number(o.total_amount || 0);
-    e.net += netByOrder.get(o.id) ?? 0;
-    legDay.set(d, e);
-  }
-  const revenueByDay = [...legDay.entries()]
-    .map(([date, v]) => ({ date, ...v }))
-    .sort((a, b) => a.date.localeCompare(b.date));
-
   return {
     pedidos: cohort.length,
     faturamento,
@@ -233,14 +187,5 @@ export function computeShopeeFinance(
     cancelados,
     feeBreakdown,
     porDia,
-    totalOrders: completedLegacy.length,
-    totalRevenue,
-    totalFees,
-    totalNetAmount,
-    paidOrders: completedLegacy.length,
-    pendingOrders: shippedLegacy.length,
-    cancelledOrders: cancelledLegacy.length,
-    revenueByDay,
-    feeBreakdownLegacy,
   };
 }

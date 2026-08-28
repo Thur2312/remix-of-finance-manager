@@ -267,8 +267,8 @@ export function ShopeeDashboardContent() {
                     )}
                   </p>
                   <p className="text-xs text-muted-foreground mt-0.5">
-                    {syncData?.stats.totalOrders
-                      ? `${syncData.stats.totalOrders} pedidos sincronizados nos últimos ${syncPeriod} dias`
+                    {syncData && syncData.orders.length > 0
+                      ? `${syncData.stats.pedidos} pedidos concluídos nos últimos ${syncPeriod} dias`
                       : 'Nenhum pedido sincronizado ainda — clique em Sincronizar'}
                   </p>
                 </div>
