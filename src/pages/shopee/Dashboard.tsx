@@ -172,13 +172,23 @@ export function ShopeeDashboardContent() {
   const totalOrders = usingSyncData ? syncData.stats.pedidos : orders.length;
   const totalRevenue = usingSyncData ? syncData.stats.faturamento : (calculatedResults?.totals.total_faturado || 0);
   const totalProfit = usingSyncData ? syncData.stats.valorLiquido : (calculatedResults?.totals.lucro_reais || 0);
+  // Agora os dois lados do ternário têm _cents (sync via computeShopeeFinance,
+  // upload manual via calculateResults) — os 3 cards de topo já podem usar
+  // formatCents direto, sem fallback pra formatCurrency.
+  const totalRevenueCents = (usingSyncData
+    ? syncData.stats.faturamentoCents
+    : (calculatedResults?.totals.total_faturado_cents ?? 0)) as Cents;
+  const totalProfitCents = (usingSyncData
+    ? syncData.stats.valorLiquidoCents
+    : (calculatedResults?.totals.lucro_reais_cents ?? 0)) as Cents;
   // "Taxas Shopee" = tudo que a Shopee reteve/abateu (comissão, serviço, frete,
   // descontos) = faturamento − líquido. É o único número que reconcilia os 3 cards.
-  const totalFees = usingSyncData
-    ? syncData.stats.faturamento - syncData.stats.valorLiquido
-    : (calculatedResults?.totals.taxa_shopee_reais || 0);
-  // Só existe (e só é usado) dentro do bloco gated por usingSyncData —
-  // diferente de totalFees acima, não precisa de fallback pro upload manual.
+  const totalFeesCentsCard = (usingSyncData
+    ? syncData.stats.faturamentoCents - syncData.stats.valorLiquidoCents
+    : (calculatedResults?.totals.taxa_shopee_reais_cents ?? 0)) as Cents;
+  // Só existe (e só é usado) dentro do bloco "Detalhamento de Taxas", gated
+  // por usingSyncData — diferente de totalFeesCentsCard acima, não precisa de
+  // fallback pro upload manual (esse card específico só aparece com sync).
   const totalFeesCents = (usingSyncData
     ? syncData.stats.faturamentoCents - syncData.stats.valorLiquidoCents
     : 0) as Cents;
@@ -204,7 +214,7 @@ export function ShopeeDashboardContent() {
     },
     {
       title: 'Faturamento',
-      value: loading ? '...' : formatCurrency(totalRevenue),
+      value: loading ? '...' : formatCents(totalRevenueCents),
       description: usingSyncData ? 'Vendas concluídas no período' : 'Total faturado',
       icon: DollarSign,
       color: 'text-success',
@@ -212,7 +222,7 @@ export function ShopeeDashboardContent() {
     },
     {
       title: profitTitle,
-      value: loading ? '...' : formatCurrency(totalProfit),
+      value: loading ? '...' : formatCents(totalProfitCents),
       description: usingSyncData
         ? (syncData!.stats.pedidosSemRepasse > 0
             ? `${syncData!.stats.pedidosSemRepasse} pedido(s) com repasse ainda estimado`
@@ -224,7 +234,7 @@ export function ShopeeDashboardContent() {
     },
     ...(usingSyncData ? [{
       title: 'Taxas Shopee',
-      value: loading ? '...' : formatCurrency(totalFees),
+      value: loading ? '...' : formatCents(totalFeesCentsCard),
       description: 'Comissão, serviço, frete e descontos',
       icon: Package,
       color: 'text-warning',
