@@ -45,4 +45,37 @@ describe('applyTax', () => {
     expect(taxAmount).toBe(0);
     expect(netAfterTax).toBe(3000);
   });
+
+  it('BUG-02: lucro negativo nunca gera imposto, mesmo com base revenue', () => {
+    const { taxAmount, netAfterTax } = applyTax({
+      revenue: 603.05,
+      profit: -44.94,
+      taxRate: 9,
+      taxBase: 'revenue',
+    });
+    expect(taxAmount).toBe(0);
+    expect(netAfterTax).toBe(-44.94); // sem o guard, viraria -40.90 (imposto somando ao prejuízo)
+  });
+
+  it('BUG-02: lucro negativo nunca gera imposto com base profit', () => {
+    const { taxAmount, netAfterTax } = applyTax({
+      revenue: 603.05,
+      profit: -44.94,
+      taxRate: 9,
+      taxBase: 'profit',
+    });
+    expect(taxAmount).toBe(0);
+    expect(netAfterTax).toBe(-44.94);
+  });
+
+  it('lucro exatamente zero também não gera imposto', () => {
+    const { taxAmount, netAfterTax } = applyTax({
+      revenue: 10000,
+      profit: 0,
+      taxRate: 9,
+      taxBase: 'revenue',
+    });
+    expect(taxAmount).toBe(0);
+    expect(netAfterTax).toBe(0);
+  });
 });
