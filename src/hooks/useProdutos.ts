@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
+import type { Json } from '@/integrations/supabase/types';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
 
@@ -60,6 +61,15 @@ export interface AnuncioInput {
   taxafixa?: number | null;
 }
 
+// As colunas `custos_adicionais` e `kit_itens` são jsonb no banco (`Json` nos
+// tipos gerados), mas o app trabalha com shapes concretos. A ponte entre os
+// dois vive só aqui.
+const toAnuncioRow = <T extends { custos_adicionais: CustoAdicionalDB[]; kit_itens: KitItemDB[] }>(input: T) => ({
+  ...input,
+  custos_adicionais: input.custos_adicionais as unknown as Json,
+  kit_itens: input.kit_itens as unknown as Json,
+});
+
 // ─── Hook ────────────────────────────────────────────────────────────────────
 
 export function useAnuncios() {
@@ -78,7 +88,7 @@ export function useAnuncios() {
         .order('atualizado_em', { ascending: false });
 
       if (error) throw error;
-      setAnuncios((data as Anuncio[]) || []);
+      setAnuncios((data as unknown as Anuncio[]) || []);
     } catch (error) {
       console.error('Erro ao buscar anúncios:', error);
       toast.error('Erro ao carregar anúncios');
@@ -106,7 +116,7 @@ export function useAnuncios() {
       const { error } = await supabase
         .from('anuncios')
         .insert({
-          ...input,
+          ...toAnuncioRow(input),
           user_id: user.id,
         });
 
@@ -127,7 +137,7 @@ export function useAnuncios() {
     try {
       const { error } = await supabase
         .from('anuncios')
-        .update(input)
+        .update(toAnuncioRow(input))
         .eq('id', id);
 
       if (error) throw error;
