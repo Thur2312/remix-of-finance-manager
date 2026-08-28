@@ -1,5 +1,6 @@
 import { Card, CardContent } from '@/components/ui/card';
-import { DREData, formatCurrency, formatPercent } from '@/lib/dre-calculations';
+import { DREData, formatPercent } from '@/lib/dre-calculations';
+import { formatCents } from '@/lib/money';
 import { TrendingUp, TrendingDown, DollarSign, Percent, Package, Calculator, Wallet, Target, Info } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import {
@@ -51,7 +52,7 @@ export function DRESummaryCards({ data }: DRESummaryCardsProps) {
   const cards: CardConfig[] = [
   {
     title: 'Receita Bruta',
-    value: formatCurrency(data.receitaBrutaTotal),
+    value: formatCents(data.receitaBrutaTotalCents),
     icon: DollarSign,
     color: 'text-blue-600',
     bgColor: 'bg-blue-50',
@@ -59,11 +60,11 @@ export function DRESummaryCards({ data }: DRESummaryCardsProps) {
   },
   {
     title: 'Receita Líquida',
-    value: formatCurrency(data.receitaLiquida),
+    value: formatCents(data.receitaLiquidaCents),
     subtitle: receitasDiferencaPequena ?
     'Baixa dedução de impostos/ajustes' :
     data.impostosSobreVendasTotal > 0 ?
-    `(-) Impostos: ${formatCurrency(data.impostosSobreVendasTotal)}` :
+    `(-) Impostos: ${formatCents(data.impostosSobreVendasTotalCents)}` :
     undefined,
     icon: Calculator,
     color: 'text-indigo-600',
@@ -75,7 +76,7 @@ export function DRESummaryCards({ data }: DRESummaryCardsProps) {
   },
   {
     title: 'Lucro Bruto',
-    value: formatCurrency(data.lucroBruto),
+    value: formatCents(data.lucroBrutoCents),
     subtitle: `Margem: ${formatPercent(data.margemBruta)}`,
     icon: Package,
     color: data.lucroBruto >= 0 ? 'text-emerald-600' : 'text-red-600',
@@ -84,7 +85,7 @@ export function DRESummaryCards({ data }: DRESummaryCardsProps) {
   },
   {
     title: 'Margem Contribuição',
-    value: formatCurrency(data.margemContribuicao),
+    value: formatCents(data.margemContribuicaoCents),
     subtitle: `${formatPercent(data.percentualMargemContribuicao)} da receita`,
     icon: Target,
     color: data.margemContribuicao >= 0 ? 'text-teal-600' : 'text-red-600',
@@ -97,7 +98,7 @@ export function DRESummaryCards({ data }: DRESummaryCardsProps) {
   },
   {
     title: 'Custos Fixos',
-    value: formatCurrency(data.custosFixosProrrateados),
+    value: formatCents(data.custosFixosProrrateadosCents),
     subtitle: data.diasPeriodo !== 30 ?
     `${data.diasPeriodo} dias (prorrateado)` :
     'Mensal',
@@ -109,7 +110,7 @@ export function DRESummaryCards({ data }: DRESummaryCardsProps) {
   {
     // Regra 3: Lucro Operacional é a métrica PRINCIPAL
     title: 'Lucro Operacional',
-    value: formatCurrency(data.lucroOperacional),
+    value: formatCents(data.lucroOperacionalCents),
     subtitle: lucroLiquidoIgualOperacional ?
     'Resultado final do período' :
     `Margem: ${formatPercent(data.margemOperacional)}`,
@@ -126,7 +127,7 @@ export function DRESummaryCards({ data }: DRESummaryCardsProps) {
   {
     // Regra 1: Só exibe se for DIFERENTE do Lucro Operacional
     title: 'Lucro Líquido',
-    value: formatCurrency(data.lucroLiquido),
+    value: formatCents(data.lucroLiquidoCents),
     subtitle: `Margem: ${formatPercent(data.margemLiquida)}`,
     icon: data.lucroLiquido >= 0 ? TrendingUp : TrendingDown,
     color: data.lucroLiquido >= 0 ? 'text-emerald-600' : 'text-red-600',
