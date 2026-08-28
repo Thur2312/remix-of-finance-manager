@@ -103,14 +103,14 @@ Organizado em faixas paralelas. Ordem sugerida dentro de cada faixa. `[ ]` a faz
 
 ### Faixa B — Higiene técnica (rápido, sem impacto visual, destrava o resto)
 
-- [ ] **`src/lib/format.ts`** — `formatCurrency` / `formatPercent` / `formatCompact` num lugar só. Trocar as 13 cópias inline. (`utils.ts` já existe pra o `cn`.)
-- [ ] **Deletar os 9 componentes UI órfãos** (`aspect-ratio`, `context-menu`, `hover-card`, `menubar`, `navigation-menu`, `carousel`, `resizable`, `calendar`, `input-otp`) — some 5 dos 11 erros de typecheck.
-- [ ] **Zerar os 6 erros de typecheck restantes** (`DisconnectDialog`, `EmptyResultsState`, `useCashFlow`, `useProdutos`).
-- [ ] **`package.json`** — adicionar `"typecheck": "tsc -p tsconfig.app.json --noEmit"`; rodar no CI/pre-commit.
+- [x] **`src/lib/format.ts`** (`05f3b9e`) — `formatCurrency` (opt `{whole}`) / `formatCurrencyCompact` / `formatPercent`. 3 libs reexportam (imports antigos intactos), 11 cópias inline removidas + 2 one-offs. `format.test.ts`. `ExportSection` fora (CSV cru, de propósito).
+- [x] **Deletar os 9 componentes UI órfãos** (`1e30129`) — + `tsc_out.txt` + gitignore. typecheck 11 → 6.
+- [x] **Zerar erros de typecheck** (`e11f4ba`) — `EmptyResultsState` (ReactNode de 'react'), `DisconnectDialog` (MouseEvent), `useCashFlow` (strip `category` do `.update()` — era bug latente). Restam **3** em `useProdutos` (Calculadora, tela protegida — deixados de propósito).
+- [x] **`package.json`** — `typecheck` + `test` + `test:watch` já adicionados (sessão anterior, Vitest).
 - [ ] **`tsconfig.app.json`** — ligar `strict: true` **incrementalmente** (arquivo a arquivo com `// @ts-nocheck` temporário nos que não passam, ou por pasta). Começar por `src/lib/` e `src/hooks/`.
-- [ ] **Vitest** — instalar, config mínima, e escrever a primeira suíte cobrindo `computeShopeeFinance` + `calculations.ts` + `dre-calculations.ts` (os testes que o `DIAGNOSTICO` seção 10 pede). Fixture: JSON real da Maluth congelado no repo.
-- [ ] **Limpar `console.log`** — trocar por um logger com flag (`import.meta.env.DEV`) ou remover. `tsc_out.txt` → apagar + gitignore.
-- [ ] **Unificar `components/assistant` e `components/assistente`** numa pasta só.
+- [x] **Vitest** — instalado, 7 arquivos / 65 testes (`money`, `tax`, `calculations`, `dre-calculations`, `tiktok-calculations`, `shopee-sync-status`, `format`). Falta: fixture com JSON real da Maluth congelado.
+- [ ] **Limpar `console.log`** — 33 ocorrências em **5 arquivos** (`useDREData`, `useIntegrations`, `tiktok-settlement-helpers`, `TikTokPagamentosUpload`, `MedidasProdutoSection`). `tsc_out.txt` → ✅ feito (`1e30129`).
+- [ ] **`components/assistant` vs `components/assistente`** — NÃO são a mesma coisa: `assistant/` = chat financeiro (widget global), `assistente/` = Assistente de Anúncio (geração de imagem, medidas). Juntar pioraria. Ação real: renomear `assistente/` → algo desambíguo (ex.: `anuncio/`). Só 1 import externo (`AssistenteAnuncio.tsx`).
 - [ ] **`supabase gen types`** — regenerar `types.ts` (depois de confirmar migrations no ar).
 
 ### Faixa C — Design system + layout das telas internas (o redesign)
