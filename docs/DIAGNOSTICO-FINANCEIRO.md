@@ -1,15 +1,23 @@
 # Diagnóstico Financeiro — Seller Finance
 
-> **Status:** levantamento de código em curso, correções não iniciadas.
-> **Data:** 27/08/2026 · revisado 27/08/2026 (levantamento do sync Shopee)
+> **Status:** levantamento de código + teste no banco real concluídos. Correções
+> da captação não iniciadas.
+> **Data:** 27/08/2026 · revisado 28/08/2026 (teste no banco da Maluth Store)
 > **Escopo:** cálculo financeiro da Gestão Shopee (dashboard) e da Calculadora de Precificação.
 >
-> **Revisão 27/08 (sync Shopee):** a seção 5 foi resolvida (sem bug de sinal — o
-> cliente estava em "Por Margem", queixa = BUG-04 + BUG-05). O BUG-03 foi
-> refutado no mecanismo e reescrito como BUG-03a (dominante) + BUG-03b. Novos:
-> BUG-10 (truncagem), BUG-11 (precedência de operador), BUG-12 (idempotência —
-> expectativa: sem duplicação, ainda a verificar), BUG-13
-> (`payments.transaction_date` = hora do sync, não data de negócio).
+> **Revisão 27/08 (sync Shopee):** seção 5 resolvida (sem bug de sinal — cliente
+> em "Por Margem", queixa = BUG-04 + BUG-05). BUG-03 refutado no mecanismo e
+> reescrito como BUG-03a (dominante) + BUG-03b. Novos: BUG-10 (truncagem),
+> BUG-11 (precedência de operador), BUG-12, BUG-13 (`payments.transaction_date`).
+>
+> **Revisão 28/08 (teste no banco real da Maluth):** BUG-12 (idempotência)
+> **testado e descartado** — zero duplicação. Confirmados com número: BUG-03a
+> (16 pedidos de receita × ~30 de taxa), BUG-03b (frete R$ 320,52 ignora rebate
+> de R$ 241,08), BUG-10 (teto de 30 visível no dado). Novos: BUG-14 (55% de
+> `fees`/`payments` com `order_id` nulo — vínculo se auto-corrige devagar) e
+> BUG-15 (mesma loja física em 2 contas do app → dado particionado por corrida
+> de sync; a 2ª conexão é lixo, mitigação manual). Decisão: **corrigir a
+> captação antes de mexer na agregação.**
 >
 > Este documento é a fonte de verdade do que já foi apurado. Leia antes de mexer
 > em qualquer cálculo. Se alguma premissa aqui se mostrar errada ao ler o código,
@@ -208,6 +216,18 @@ reconciliação e com ausência de dado virando zero silencioso.
 - Escrita coalesce ausência para zero: `Number(income.escrow_amount) || 0`
   (`integration-sync/index.ts:536`). Leitura não conta os excluídos.
 
+**Evidência (banco real da Maluth, 28/08):**
+
+| coorte | pedidos | R$ |
+|---|---|---|
+| Receita — `order_created_at` ≤15d, `COMPLETED` | **16** | 603,05 |
+| Taxa — `fee_date` (= `escrow_release_time`) ≤15d | **~30** | 647,99 (commission 183,17 + service 144,30 + shipping 320,52) |
+| Interseção real (com `order_id` casável) | **7** | — |
+
+O card divide taxa de 30 pedidos por receita de 16. Os 30 são o teto do
+`.slice(0, 30)` (BUG-10) — não há nada entre 7 e 15 dias no dado, tudo o que
+aparece são os 30 repasses mais recentes.
+
 **Correção — regime de competência (decisão do Thur, 27/08):** Valor Líquido =
 Σ `escrow_amount` dos pedidos **concluídos no período**, casando `orders` +
 `payments` por `order_id`, independente de o repasse já ter caído.
@@ -222,8 +242,11 @@ agregado com contagem de excluídos, ou o resultado carrega flag de incerteza.
 `computeShopeeSyncStats` retorna a decomposição, não só o total:
 `{ liberado, aLiberar, totalCompetencia, pedidosSemDado }`.
 
-> **Bloqueado por BUG-12.** Corrigir a agregação sobre `fees` possivelmente
-> duplicadas não resolve o número. Rodar o teste de contagem (seção 12) primeiro.
+> **BUG-12 descartado (28/08):** não há duplicação. Mas a correção continua
+> **bloqueada pela captação**: o join por `order_id` só funciona em 45% das
+> linhas hoje (BUG-14). `escrow_amount` em si é confiável (1014/1016 preenchidos).
+> Ordem obrigatória: consertar captação (BUG-10/13/14) → backfill → só então a
+> agregação por competência.
 
 ### BUG-03b — Frete: rebate não subtraído e `estimated` no lugar de `actual` · MÉDIO
 
@@ -244,6 +267,23 @@ custo real de frete do vendedor =
   actual_shipping_fee − buyer_paid_shipping_fee − shopee_shipping_rebate
   (ou final_shipping_fee direto, quando a Shopee devolve)
 ```
+
+**Evidência (banco real da Maluth, 28/08), janela de 15d:**
+
+| `adjustment` (não entra no total de taxas) | R$ |
+|---|---|
+| Rebate frete Shopee | **241,08** |
+| Desconto do vendedor | 970,22 (promo do próprio vendedor — provavelmente correto ficar fora) |
+| Voucher Shopee | 10,48 |
+
+```
+shipping_fee bruto gravado        320,52
+Rebate frete Shopee (ignorado)   −241,08
+─────────────────────────────────────────
+frete real do vendedor          ~  79,44
+```
+
+Sozinho, abater o rebate já reverte quase todo o "líquido negativo".
 
 Sob a abordagem B (escrow como verdade), o frete deixa de entrar no cálculo do
 líquido — vira apenas decomposição visual. Mas a decomposição precisa estar
@@ -318,11 +358,17 @@ O `syncNow` do client chama o step `orders` uma vez por janela de 1 dia
 30 no sync inteiro. Com volume real, `totalFees` e `totalRevenue` são truncados
 em pontos diferentes e os cards ficam errados sem aviso.
 
-Com os 16 pedidos da Maluth Store nenhum teto foi atingido — por isso não
-apareceu antes.
+**Confirmado no dado (28/08):** o teto de 30 do `.slice(0, 30)` aparece cru —
+na janela de 15d há **exatamente 30** linhas de `commission`, 30 de `service_fee`
+e 30 de `shipping_fee`, e `7d` == `15d` (nada além dos 30 repasses mais recentes).
+Os "16 pedidos" da Maluth eram a coorte de *receita*; a de *taxa* estava capada
+em 30.
 
-**Correção:** paginar tudo até o fim; se um teto de segurança for atingido,
-propagar (flag + contagem) em vez de cortar em silêncio.
+**Correção:** paginar tudo até o fim (remover `.slice(0, 30)` e o
+`escrowSafetyLimit < 3`); se um teto de segurança for atingido, propagar
+(flag + contagem) em vez de cortar em silêncio. Se o volume estourar o timeout
+do edge function, o client fatia o step `payments` por janela de release-time
+(como já faz com `orders`).
 
 ### BUG-11 — Precedência de operador apaga valor real · ALTO
 
@@ -348,41 +394,25 @@ corretos.
 
 **Correção:** `Number(income.commission_fee || 0) + Number(income.net_service_fee || 0)`.
 
-### BUG-12 — Idempotência do sync · PENDENTE DE VERIFICAÇÃO · expectativa: sem duplicação
+### BUG-12 — Idempotência do sync · VERIFICADO E DESCARTADO (28/08)
 
-`syncNow` re-varre sempre os últimos 15 dias (`useIntegrations.ts:107-139`), e o
-auto-sync roda a cada N minutos sobre a mesma janela. Se a escrita de `fees` /
-`payments` não for idempotente, syncs repetidos **acumulam taxas duplicadas**.
+Hipótese: `syncNow` re-varre sempre a mesma janela, o auto-sync roda a cada 15
+min — se a escrita não fosse idempotente, syncs repetidos acumulariam taxas
+duplicadas, e `647,99` seria na verdade um valor menor multiplicado.
 
-`647,99 ÷ 2 = 323,99` contra receita `603,05` → margem ~46%, plausível para a
-loja. Duplicação explicaria o número melhor que o descasamento de coorte.
+**Teste no banco real da Maluth (seção 12.1):** medição antes/depois de 2 syncs.
 
-**O que o código faz** (`integration-sync/index.ts`):
-- `payments`: `.upsert({...}, { onConflict: "external_transaction_id" })` (linha 530),
-  chave = `orderSn`.
-- `fees`: `.upsert({...}, { onConflict: "external_fee_id" })` (linha 559),
-  chave = `${orderSn}_${fee.key}` — determinística, sem componente temporal.
-- Erros de upsert são **logados e engolidos** (linha 570), não interrompem.
-- Janelas se sobrepõem 100% entre execuções.
+| | fees_linhas | fees_distintas (`external_fee_id`) | duplicatas |
+|---|---|---|---|
+| antes | 4972 | 4972 | **0** |
+| depois | 4972 | 4972 | **0** |
 
-**Não verificável só pelo repositório:** as tabelas `orders` / `fees` /
-`payments` **não estão em nenhuma migration** — foram criadas fora do controle
-de versão. Não dá para confirmar se existe `UNIQUE (external_fee_id)` /
-`UNIQUE (external_transaction_id)`.
+`external_fee_id` é único **global**, o `upsert` é idempotente, e centenas de
+auto-syncs ao longo de meses não produziram uma única linha repetida.
+**Duplicação está descartada como causa de qualquer coisa.**
 
-Inferência: se a constraint **não** existisse, o PostgREST devolveria erro
-`42P10` em todo upsert com `on_conflict` e **nenhuma** fee seria gravada — mas há
-fees na base. Logo a constraint provavelmente existe e o sync é idempotente.
-**Confirmar com o teste de contagem (seção 12) antes de mexer na agregação** —
-corrigir agregação sobre dado duplicado não resolve o número.
-
-> **Atualização (27/08, revisão do teste):** o auto-sync roda na mesma janela de
-> 15 dias a cada 15 min (`pg_cron` → `trigger_auto_sync()`, ver seção 12.1). Se
-> houvesse duplicação acumulativa, as taxas já estariam na casa dos milhares, não
-> em R$ 647,99 — isso é evidência **contra** duplicação e a favor de a constraint
-> `UNIQUE` existir. O teste de contagem continua valendo (barato e definitivo),
-> mas a expectativa agora é: **sem duplicação; a causa é o descasamento de coorte
-> do BUG-03a.**
+Efeito colateral do "único global": ver BUG-15 (duas conexões brigam pela mesma
+linha).
 
 ### BUG-13 — `payments.transaction_date` não guarda data de negócio · MÉDIO
 
@@ -402,9 +432,65 @@ Isto invalidou a "Correção 1" proposta para o script de teste (filtrar
 competência é join `payments → orders` por `order_id` e filtro por
 `orders.order_created_at`.
 
-**Investigar depois:** qual campo da Shopee deveria ir em `transaction_date` —
-provavelmente `escrow_release_time` (mesmo do `fee_date`) ou `create_time` do
-pedido, conforme a semântica que a coluna deva ter.
+**Correção:** `transaction_date` recebe `safeShopeeDate(escrowOrder.escrow_release_time)`
+— a mesma fonte do `fee_date` das fees-irmãs. (O escrow só entra em `payments`
+via `get_escrow_list`, que só devolve repasse já liberado, então `escrow_release_time`
+está sempre disponível.)
+
+### BUG-14 — Sync grava `fees`/`payments` com `order_id` nulo · ALTO
+
+Ao processar um repasse, o loop de escrow faz um `select` na tabela `orders`
+local pelo `external_order_id` (`integration-sync/index.ts:528`). Se o pedido
+não está lá — porque foi criado antes da janela que o step `orders` varre, ou
+por causa do teto de página (BUG-10) — grava `order_id: null`
+(`integration-sync/index.ts:562`) e **nunca chama a API pra buscar o pedido**.
+
+**Evidência (banco real da Maluth, 28/08):**
+
+| conexão | fees com `order_id` nulo |
+|---|---|
+| `efbd3b5b` (ativa, 5 meses de histórico) | **2637 / 4740 (56%)** |
+| `929c33cc` (só sincronizou Ago 4–10) | 6 / 257 (2%) |
+
+O problema é de **profundidade histórica**: repasse que cai hoje para um pedido
+de meses atrás que nunca foi puxado. O vínculo **se auto-corrige devagar** — o
+`upsert` da fee reescreve `order_id` a cada sync, então quando o pedido
+eventualmente entra na tabela `orders` a fee é religada; mas só ~30 pedidos são
+re-tocados por sync (`.slice(0, 30)`), então leva muitas execuções.
+
+**Consequência:** a agregação por competência do BUG-03a (join `orders` +
+`payments` por `order_id`) **não roda** sobre 55% das linhas. `escrow_amount` em
+si está preenchido (1014/1016) — falta só o vínculo com a data do pedido.
+
+**Correção:** no loop de escrow, quando o pedido não está em `orders`, coletar os
+`order_sn` faltantes, buscar `get_order_detail` em lotes de 50, fazer upsert em
+`orders` + `order_items`, e usar o id resultante. Nunca gravar `order_id: null`.
+Backfill: re-sync completo da conexão ativa.
+
+### BUG-15 — Mesma loja física em 2 contas do app · MÉDIO · mitigação manual por ora
+
+`orders` / `fees` / `payments` **não têm coluna `user_id`** — a posse é via
+`integration_id → integration_connections.user_id`. Com `external_fee_id` único
+**global** (BUG-12), cada linha pertence a **quem sincronizou por último**.
+
+**Evidência (banco real da Maluth, 28/08):** a loja `1427450574` está conectada
+em duas `integration_connections`, de dois `user_id` diferentes:
+
+| id | user_id | auto_sync | último sync | fatia de dados |
+|---|---|---|---|---|
+| `efbd3b5b` | `60afd787` | ON | 28/08 | 4740 fees, 1047 orders (28/03→hoje) |
+| `929c33cc` | `84cb1d3e` | OFF | 10/08 | 257 fees, 260 orders (Ago 4–10) |
+
+O dashboard lê **uma** `integration_id`, então o user `60afd787` **não vê** as
+257 fees / 260 orders presas sob `929c33cc`. Se `84cb1d3e` re-sincronizar, ele
+"rouba" ~30 linhas recentes de volta e elas somem da tela do outro.
+
+**Não muda o diagnóstico do líquido negativo** (BUG-03a/10/03b explicam sozinhos).
+
+**Decisão (28/08):** a conexão `929c33cc` é lixo. **Mitigação:** o dono desconecta
+a conta `84cb1d3e` e re-sincroniza a `efbd3b5b` para reclamar as 257 fees. Sem
+migration por ora. Se no futuro houver caso legítimo de 2 contas na mesma loja,
+mudar o `unique` de `external_fee_id` para `(integration_id, external_fee_id)`.
 
 ---
 
@@ -534,22 +620,26 @@ a:
    deixou o card errado passar.
 7. **Fronteira de captação (`integration-sync`).** Payload bruto da Shopee é
    convertido uma vez, na entrada; percentuais e datas normalizados; sem `|| 0`
-   sobre soma (BUG-11); paginação sem teto silencioso (BUG-10).
+   sobre soma (BUG-11); paginação sem teto silencioso (BUG-10); pedido sempre
+   buscado quando falta (BUG-14); `transaction_date` real (BUG-13).
 
 ---
 
 ## 8. Ordem de execução
 
+> **Realinhada em 28/08.** A agregação (BUG-03a) **não pode** ser feita antes da
+> captação — o join por `order_id` só existe em 45% das linhas hoje.
+
 | # | Etapa | Status / Bloqueia |
 |---|---|---|
-| 0 | **BUG-12 — idempotência do sync.** Teste de contagem (seção 12) antes/depois de 2 syncs. Se duplicar, corrigir a escrita. | contamina TODA medição posterior |
-| 1 | ~~Verificar o modo "Por Preço" (seção 5)~~ | ✅ feito — sem bug de sinal; cliente em "Por Margem"; queixa = BUG-04 + BUG-05 |
-| 2 | Levantamento do código (seção 9) | parcial — sync Shopee levantado; schema e calculadora pendentes |
-| 3 | **Decisão do Thur:** base do imposto (BUG-01) | BUG-02, migrations |
-| 4 | Captação: BUG-11 (precedência) + BUG-10 (truncagem) + BUG-13 (`transaction_date`). Commit isolado. | não depende de 3 |
-| 5 | Fixture: payload real da Maluth Store, congelar JSON (seção 12) | testes de 6 e 7 |
-| 6 | `computeShopeeSyncStats` por `order_id` / competência / três estados (BUG-03a) | depende de 0 e 5 |
-| 7 | Captação de frete: `actual_shipping_fee`, `buyer_paid_shipping_fee`, frete líquido (BUG-03b) | depende de 5 |
+| ~~0~~ | ~~BUG-12 — idempotência~~ | ✅ **testado e descartado 28/08** — zero duplicação |
+| ~~1~~ | ~~Verificar o modo "Por Preço" (seção 5)~~ | ✅ feito — sem bug de sinal; cliente em "Por Margem" |
+| 2 | Levantamento do código (seção 9) | sync Shopee concluído; schema (tipos de coluna) e Calculadora pendentes |
+| 3 | **Decisão do Thur:** base do imposto (BUG-01) | trava BUG-02 e migrations |
+| 4 | **Captação — Commit 1:** BUG-11 (precedência) + BUG-13 (`transaction_date`) + BUG-14 (buscar `get_order_detail`) + BUG-10 (paginar, sem teto) + BUG-03b (frete líquido). Deploy. | não depende de 3 |
+| 5 | **Backfill:** re-sync completo da conexão `efbd3b5b` (2637 fees órfãs) + dono desconecta `929c33cc` (BUG-15) | depende de 4 |
+| 6 | Fixture: congelar o JSON do `get_escrow_detail` pós-correção (seção 12) | depende de 5 |
+| 7 | **Agregação — Commit 3:** `computeShopeeSyncStats` por `order_id` / competência / três estados (BUG-03a), rótulos (seção 7.1) | depende de 5, 6 |
 | 8 | Calculadora: BUG-04, BUG-05, BUG-07, BUG-08, BUG-09 | — |
 | 9 | Dashboard: BUG-02 (guard imposto sobre negativo), BUG-09 | depende de 3 |
 | 10 | Padronização em centavos (seção 6) | depende de 3 |
@@ -618,6 +708,24 @@ switch "Sincronização automática" em `/integrations/shopee` (chama
 auto_sync_enabled = false`), ou o mesmo `update` via SQL. Não mexe em
 `next_sync_at`; o botão "Sincronizar" manual continua funcionando.
 
+### 9.2 Resultado do teste no banco real da Maluth (28/08)
+
+Números-chave apurados (conexão ativa `efbd3b5b`, salvo indicação):
+
+| Métrica | Valor | Bug |
+|---|---|---|
+| `fees_linhas` = `fees_distintas` (antes e depois de 2 syncs) | 4972 = 4972 | BUG-12 morto |
+| `fees` com `order_id` nulo | 2637 / 4740 (56%) | BUG-14 |
+| `payments` escrow com `net_amount` 0/nulo | 2 / 1016 | `escrow_amount` confiável |
+| Coorte de receita (`COMPLETED`, criado ≤15d) | 16 pedidos · R$ 603,05 | BUG-03a |
+| Coorte de taxa (`fee_date` ≤15d) | ~30 pedidos · R$ 647,99 | BUG-03a + BUG-10 |
+| `commission` + `service_fee` + `shipping_fee` (15d) | 183,17 + 144,30 + 320,52 = **647,99** | bate com o card |
+| `adjustment` "Rebate frete Shopee" (15d, ignorado) | R$ 241,08 | BUG-03b |
+| Linhas por `fee_type` na janela | exatamente **30** cada | BUG-10 (`.slice(0,30)`) |
+| Conexões para a loja `1427450574` | 2 (`user_id` distintos) | BUG-15 |
+
+Queries e protocolo: seção 12.1.
+
 ---
 
 ## 10. Critérios de aceite globais
@@ -660,16 +768,18 @@ Congelar os números atuais num fixture: pegar o payload real da Maluth Store,
 salvar como JSON no repo, usar como base dos testes. **Sem isso não há como provar
 que a correção corrigiu — só que os números mudaram.**
 
-### 12.1 Teste de idempotência (BUG-12) — fazer PRIMEIRO
+### 12.1 Teste de idempotência (BUG-12) — ✅ EXECUTADO 28/08
+
+**Resultado: sem duplicação** (ver BUG-12 e seção 9.2). Antes/depois de 2 syncs:
+`fees` 4972→4972, `fees_distintas` 4972→4972, zero duplicata. As queries abaixo
+ficam registradas para reuso.
 
 O `get_escrow_detail` bruto **não é logado hoje** (`integration-sync/index.ts`
-loga só `get_order_detail` na linha 348). Para capturar: adicionar
-`console.log(JSON.stringify(escrowDetail, null, 2))` após a linha 524 (commit
-throwaway, revert depois) e ler nos logs da Edge Function, ou chamar a API
-direto com o `access_token` da conexão.
-
-Order_sns necessários: ≥1 liberado, ≥1 `COMPLETED` não liberado, se possível 1
-cancelado/devolvido (para o caso retroativo da seção abaixo).
+loga só `get_order_detail` na linha 348). Para capturar o fixture (etapa 6 da
+seção 8): adicionar log **filtrado** dos campos financeiros (não o objeto
+inteiro — traz nome/endereço/telefone do comprador), deployar, sincronizar, ler
+nos logs da Edge Function. Order_sns necessários: ≥1 liberado, ≥1 `COMPLETED`
+não liberado (para responder o que a Shopee devolve num pedido sem repasse).
 
 **Protocolo:**
 1. Desligar o auto-sync da Maluth (switch em `/integrations/shopee` ou o `update`
