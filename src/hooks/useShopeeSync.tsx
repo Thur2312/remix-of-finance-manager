@@ -1,6 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
-import { computeShopeeSyncStats } from '@/lib/shopee-sync-status';
+import { computeShopeeFinance, ShopeeFinance } from '@/lib/shopee-sync-status';
 
 export interface SyncedOrderItem {
   id: string;
@@ -58,166 +58,110 @@ export interface SyncedFee {
   fee_date: string;
 }
 
-export interface ShopeeSyncStats {
-  totalOrders: number;
-  totalRevenue: number;
-  totalFees: number;
-  totalNetAmount: number;
-  paidOrders: number;
-  pendingOrders: number;
-  cancelledOrders: number;
-  revenueByDay: { date: string; revenue: number; net: number }[];
-  feeBreakdown: { type: string; label: string; amount: number }[];
-}
-
-const feeLabels: Record<string, string> = {
-  commission:           'Comissão Shopee',
-  service_fee:          'Taxa de serviço',
-  shipping_fee:         'Frete',
-  reverse_shipping_fee: 'Frete reverso',
-  adjustment:           'Ajuste (crédito)',
-  seller_discount:      'Desconto do vendedor',
-  shopee_discount:      'Desconto Shopee',
-};
-
-function computeStats(
-  orders: SyncedOrder[],
-  payments: SyncedPayment[],
-  fees: SyncedFee[]
-): ShopeeSyncStats {
-  const shared = computeShopeeSyncStats(orders, payments, fees);
-
-  const feeMap = new Map<string, number>();
-  fees.forEach(f => {
-    feeMap.set(f.fee_type, (feeMap.get(f.fee_type) || 0) + Number(f.amount));
-  });
-
-  const feeBreakdown = Array.from(feeMap.entries())
-    .map(([type, amount]) => ({
-      type,
-      label: feeLabels[type] || type,
-      amount,
-    }))
-    .sort((a, b) => b.amount - a.amount);
-
-  return { ...shared, feeBreakdown };
-}
+// Nome mantido para os imports existentes; a forma é a de `computeShopeeFinance`.
+export type ShopeeSyncStats = ShopeeFinance;
 
 export function useShopeeSync(connectionId: string | null, days: number = 15) {
   return useQuery({
     queryKey: ['shopee-sync', connectionId, days],
     enabled: !!connectionId,
-    staleTime: 5 * 60 * 1000, 
+    staleTime: 5 * 60 * 1000,
     gcTime: 10 * 60 * 1000,
     queryFn: async () => {
-      const since = new Date(new Date().getTime() - days * 24 * 60 * 60 * 1000 )
-      since.setUTCHours(0, 0, 0, 0)
-      const prevEnd = new Date(since)
-      const prevStart = new Date(since)
-      prevStart.setDate(prevStart.getDate() - days)
+      const since = new Date(new Date().getTime() - days * 24 * 60 * 60 * 1000);
+      since.setUTCHours(0, 0, 0, 0);
+      const prevEnd = new Date(since);
+      const prevStart = new Date(since);
+      prevStart.setDate(prevStart.getDate() - days);
 
-      const allOrders: SyncedOrder[] = []
-      let page = 0
-      const pageSize = 1000
+      const sinceIso = since.toISOString();
+      const prevStartIso = prevStart.toISOString();
+      const prevEndIso = prevEnd.toISOString();
+      const pageSize = 1000;
+
+      // Pedidos da janela atual: concluído na janela (`order_updated_at`) OU
+      // criado na janela (para o contexto "em trânsito"). O recorte fino é
+      // feito em `computeShopeeFinance`.
+      const allOrders: SyncedOrder[] = [];
+      let page = 0;
       while (true) {
         const { data, error } = await supabase
           .from('orders')
           .select('*, order_items(*)')
           .eq('integration_id', connectionId!)
-          .gte('order_created_at', since.toISOString())
+          .or(`order_updated_at.gte.${sinceIso},order_created_at.gte.${sinceIso}`)
           .order('order_created_at', { ascending: false })
-          .range(page * pageSize, (page + 1) * pageSize - 1)
-        if (error) throw error
-        if (!data || data.length === 0) break
-        allOrders.push(...(data as unknown as SyncedOrder[]))
-        if (data.length < pageSize) break
-        page++
+          .range(page * pageSize, (page + 1) * pageSize - 1);
+        if (error) throw error;
+        if (!data || data.length === 0) break;
+        allOrders.push(...(data as unknown as SyncedOrder[]));
+        if (data.length < pageSize) break;
+        page++;
       }
 
-      const prevOrders: SyncedOrder[] = []
-      let prevPage = 0
+      const prevOrders: SyncedOrder[] = [];
+      let prevPage = 0;
       while (true) {
         const { data, error } = await supabase
           .from('orders')
-          .select('id, status, total_amount, order_created_at')
+          .select('id, status, total_amount, order_created_at, order_updated_at')
           .eq('integration_id', connectionId!)
-          .gte('order_created_at', prevStart.toISOString())
-          .lt('order_created_at', prevEnd.toISOString())
-          .range(prevPage * pageSize, (prevPage + 1) * pageSize - 1)
-        if (error) throw error
-        if (!data || data.length === 0) break
-        prevOrders.push(...(data as unknown as SyncedOrder[]))
-        if (data.length < pageSize) break
-        prevPage++
+          .or(
+            `and(order_updated_at.gte.${prevStartIso},order_updated_at.lt.${prevEndIso}),` +
+            `and(order_created_at.gte.${prevStartIso},order_created_at.lt.${prevEndIso})`,
+          )
+          .range(prevPage * pageSize, (prevPage + 1) * pageSize - 1);
+        if (error) throw error;
+        if (!data || data.length === 0) break;
+        prevOrders.push(...(data as unknown as SyncedOrder[]));
+        if (data.length < pageSize) break;
+        prevPage++;
       }
 
-      const allFees: SyncedFee[] = []
-      let feePage = 0
+      // Busca as fees das duas janelas (30d) de uma vez. `computeShopeeFinance`
+      // faz o recorte: coorte por `order_id`, legado por `fee_date`.
+      const allFees: SyncedFee[] = [];
+      let feePage = 0;
       while (true) {
         const { data, error } = await supabase
           .from('fees')
           .select('*')
           .eq('integration_id', connectionId!)
-          .gte('fee_date', since.toISOString())
-          .range(feePage * pageSize, (feePage + 1) * pageSize - 1)
-        if (error) throw error
-        if (!data || data.length === 0) break
-        allFees.push(...(data as unknown as SyncedFee[]))
-        if (data.length < pageSize) break
-        feePage++
+          .gte('fee_date', prevStartIso)
+          .range(feePage * pageSize, (feePage + 1) * pageSize - 1);
+        if (error) throw error;
+        if (!data || data.length === 0) break;
+        allFees.push(...(data as unknown as SyncedFee[]));
+        if (data.length < pageSize) break;
+        feePage++;
       }
 
-      const allPrevFees: SyncedFee[] = []
-      let prevFeePage = 0
+      // Escrow é casado por `order_id`, não por data — busca tudo da conexão uma
+      // vez e as duas janelas usam o mesmo array (o join decide o recorte).
+      const allPayments: SyncedPayment[] = [];
+      let payPage = 0;
       while (true) {
         const { data, error } = await supabase
-          .from('fees')
+          .from('payments')
           .select('*')
           .eq('integration_id', connectionId!)
-          .gte('fee_date', prevStart.toISOString())
-          .lt('fee_date', prevEnd.toISOString())
-          .range(prevFeePage * pageSize, (prevFeePage + 1) * pageSize - 1)
-        if (error) throw error
-        if (!data || data.length === 0) break
-        allPrevFees.push(...(data as unknown as SyncedFee[]))
-        if (data.length < pageSize) break
-        prevFeePage++
+          .eq('payment_method', 'escrow')
+          .range(payPage * pageSize, (payPage + 1) * pageSize - 1);
+        if (error) throw error;
+        if (!data || data.length === 0) break;
+        allPayments.push(...(data as unknown as SyncedPayment[]));
+        if (data.length < pageSize) break;
+        payPage++;
       }
-
-      const [paymentsRes, prevPaymentsRes] = await Promise.all([
-        supabase
-          .from('payments')
-          .select('*')
-          .eq('integration_id', connectionId!)
-          .gte('transaction_date', since.toISOString())
-          .order('transaction_date', { ascending: false })
-          .limit(5000),
-        supabase
-          .from('payments')
-          .select('*')
-          .eq('integration_id', connectionId!)
-          .gte('transaction_date', prevStart.toISOString())
-          .lt('transaction_date', prevEnd.toISOString())
-          .limit(5000),
-      ])
-
-      if (paymentsRes.error) throw paymentsRes.error
-      if (prevPaymentsRes.error) throw prevPaymentsRes.error
-
-      const orders       = allOrders
-      const payments     = (paymentsRes.data     || []) as unknown as SyncedPayment[]
-      const fees         = allFees
-      const prevPayments = (prevPaymentsRes.data || []) as unknown as SyncedPayment[]
-      const prevFees     = allPrevFees
 
       return {
-        orders,
-        payments,
-        fees,
+        orders: allOrders,
+        payments: allPayments,
+        fees: allFees.filter(f => f.fee_date >= sinceIso),
         prevOrders,
-        stats:     computeStats(orders,     payments,     fees),
-        prevStats: computeStats(prevOrders, prevPayments, prevFees),
-      }
+        stats:     computeShopeeFinance(allOrders, allPayments, allFees, { sinceIso }),
+        prevStats: computeShopeeFinance(prevOrders, allPayments, allFees, { sinceIso: prevStartIso, untilIso: prevEndIso }),
+      };
     },
-  })
+  });
 }

@@ -71,14 +71,14 @@ const statInfo: Record<string, { title: string; description: React.ReactNode }> 
     ),
   },
   'Valor Líquido': {
-    title: 'Valor Líquido (após taxas Shopee)',
+    title: 'Valor Líquido (repasse da Shopee)',
     description: (
       <>
-        Valor que você efetivamente recebe após a Shopee deduzir comissões, taxas de serviço e frete subsidiado.
+        Soma do <span className="font-medium text-foreground">escrow_amount</span> — o valor que a Shopee efetivamente
+        repassa por cada pedido, já com comissão, taxa de serviço e frete descontados.
         <br /><br />
-        <span className="font-medium text-foreground">Fórmula:</span> Faturamento − Total de Taxas Shopee
-        <br /><br />
-        <span className="font-medium text-foreground">⚠️ Atenção ao período:</span> a Shopee repassa o valor 7 a 15 dias após a confirmação de entrega.
+        Considera os pedidos <span className="font-medium text-foreground">concluídos no período</span> (mesma safra do
+        Faturamento ao lado). Pedido concluído cujo repasse ainda não caiu entra por estimativa.
         <br /><br />
         Não inclui seus custos de produto e operação — para lucro real, configure os custos em <em>Configurações</em>.
       </>
@@ -164,13 +164,21 @@ export function ShopeeDashboardContent() {
     return calculateResults(orders, settings, 'produto');
   }, [orders, settings]);
 
-  const usingSyncData = isConnected && syncData && syncData.stats.totalOrders > 0;
-  const totalOrders = usingSyncData ? syncData.stats.totalOrders : orders.length;
-  const totalRevenue = usingSyncData ? syncData.stats.totalRevenue : (calculatedResults?.totals.total_faturado || 0);
-  const totalFees = usingSyncData ? syncData.stats.totalFees : (calculatedResults?.totals.taxa_shopee_reais || 0);
-  const totalProfit = usingSyncData
-    ? syncData.stats.totalRevenue - syncData.stats.totalFees
-    : (calculatedResults?.totals.lucro_reais || 0);
+  const usingSyncData = isConnected && !!syncData && syncData.orders.length > 0;
+  // Regime de competência: coorte = pedido concluído na janela (ver
+  // shopee-sync-status.ts / docs seção 7.1). Faturamento e Valor Líquido saem da
+  // mesma coorte; o Líquido é Σ escrow_amount, não `receita − taxas`.
+  const totalOrders = usingSyncData ? syncData.stats.pedidos : orders.length;
+  const totalRevenue = usingSyncData ? syncData.stats.faturamento : (calculatedResults?.totals.total_faturado || 0);
+  const totalProfit = usingSyncData ? syncData.stats.valorLiquido : (calculatedResults?.totals.lucro_reais || 0);
+  // "Taxas Shopee" = tudo que a Shopee reteve/abateu (comissão, serviço, frete,
+  // descontos) = faturamento − líquido. É o único número que reconcilia os 3 cards.
+  const totalFees = usingSyncData
+    ? syncData.stats.faturamento - syncData.stats.valorLiquido
+    : (calculatedResults?.totals.taxa_shopee_reais || 0);
+  const statusTotal = usingSyncData
+    ? syncData.stats.pedidos + syncData.stats.emTransito + syncData.stats.cancelados
+    : 0;
 
   const loading = isLoading || (isConnected && syncLoading);
   const profitTitle = usingSyncData ? 'Valor Líquido' : 'Lucro Estimado';
@@ -179,7 +187,11 @@ export function ShopeeDashboardContent() {
     {
       title: 'Total de Pedidos',
       value: loading ? '...' : totalOrders.toString(),
-      description: usingSyncData ? `Últimos ${syncPeriod} dias (sync)` : 'Pedidos importados',
+      description: usingSyncData
+        ? (syncData!.stats.emTransito > 0
+            ? `Concluídos · +${syncData!.stats.emTransito} em trânsito`
+            : `Concluídos nos últimos ${syncPeriod} dias`)
+        : 'Pedidos importados',
       icon: ShoppingCart,
       color: 'text-primary',
       bgColor: 'bg-primary/10',
@@ -187,7 +199,7 @@ export function ShopeeDashboardContent() {
     {
       title: 'Faturamento',
       value: loading ? '...' : formatCurrency(totalRevenue),
-      description: usingSyncData ? 'Receita bruta sincronizada' : 'Total faturado',
+      description: usingSyncData ? 'Vendas concluídas no período' : 'Total faturado',
       icon: DollarSign,
       color: 'text-success',
       bgColor: 'bg-success/10',
@@ -196,7 +208,9 @@ export function ShopeeDashboardContent() {
       title: profitTitle,
       value: loading ? '...' : formatCurrency(totalProfit),
       description: usingSyncData
-        ? 'Repasses podem levar 7–15 dias após a entrega'
+        ? (syncData!.stats.pedidosSemRepasse > 0
+            ? `${syncData!.stats.pedidosSemRepasse} pedido(s) com repasse ainda estimado`
+            : 'Repasses já liberados pela Shopee')
         : (settings ? 'Após taxas e custos' : 'Configure as taxas primeiro'),
       icon: TrendingUp,
       color: 'text-primary',
@@ -205,7 +219,7 @@ export function ShopeeDashboardContent() {
     ...(usingSyncData ? [{
       title: 'Taxas Shopee',
       value: loading ? '...' : formatCurrency(totalFees),
-      description: 'Comissão + serviço + frete',
+      description: 'Comissão, serviço, frete e descontos',
       icon: Package,
       color: 'text-warning',
       bgColor: 'bg-warning/10',
@@ -371,17 +385,17 @@ export function ShopeeDashboardContent() {
                 );
               })}
               <div className="border-t pt-3 flex items-center justify-between">
-                <span className="text-sm font-semibold">Total de taxas</span>
+                <span className="text-sm font-semibold">Total retido pela Shopee</span>
                 <span className="text-sm font-semibold text-destructive tabular-nums">
                   −{formatCurrency(totalFees)}
                 </span>
               </div>
-              {syncData.stats.totalRevenue > 0 && (
+              {syncData.stats.faturamento > 0 && (
                 <div className="rounded-lg bg-muted/50 px-3 py-2">
                   <p className="text-xs text-muted-foreground">
-                    💡 Inclui taxas de pedidos <span className="font-medium text-foreground">concluídos</span>,{' '}
-                    <span className="font-medium text-foreground">em andamento</span> e{' '}
-                    <span className="font-medium text-foreground">cancelados</span>.
+                    💡 O total retido é <span className="font-medium text-foreground">faturamento − valor líquido</span>{' '}
+                    dos pedidos concluídos no período. A lista acima é a decomposição estimada;
+                    pode não fechar exato com o total enquanto o frete não usar o valor real.
                   </p>
                 </div>
               )}
@@ -405,10 +419,10 @@ export function ShopeeDashboardContent() {
                   </div>
                   <div className="flex-1 min-w-0">
                     <span className="text-xs font-medium text-muted-foreground">Concluídos</span>
-                    <div className="text-3xl font-bold text-success mt-1">{syncData.stats.paidOrders}</div>
-                    {syncData.stats.totalOrders > 0 && (
+                    <div className="text-3xl font-bold text-success mt-1">{syncData.stats.pedidos}</div>
+                    {statusTotal > 0 && (
                       <p className="text-xs text-muted-foreground mt-1">
-                        {((syncData.stats.paidOrders / syncData.stats.totalOrders) * 100).toFixed(0)}% do total
+                        {((syncData.stats.pedidos / statusTotal) * 100).toFixed(0)}% do total
                       </p>
                     )}
                   </div>
@@ -424,10 +438,10 @@ export function ShopeeDashboardContent() {
                   </div>
                   <div className="flex-1 min-w-0">
                     <span className="text-xs font-medium text-muted-foreground">Em andamento</span>
-                    <div className="text-3xl font-bold text-warning mt-1">{syncData.stats.pendingOrders}</div>
-                    {syncData.stats.totalOrders > 0 && (
+                    <div className="text-3xl font-bold text-warning mt-1">{syncData.stats.emTransito}</div>
+                    {statusTotal > 0 && (
                       <p className="text-xs text-muted-foreground mt-1">
-                        {((syncData.stats.pendingOrders / syncData.stats.totalOrders) * 100).toFixed(0)}% do total
+                        {((syncData.stats.emTransito / statusTotal) * 100).toFixed(0)}% do total
                       </p>
                     )}
                   </div>
@@ -443,11 +457,11 @@ export function ShopeeDashboardContent() {
                   </div>
                   <div className="flex-1 min-w-0">
                     <span className="text-xs font-medium text-muted-foreground">Cancelados</span>
-                    <div className="text-3xl font-bold text-destructive mt-1">{syncData.stats.cancelledOrders}</div>
-                    {syncData.stats.totalOrders > 0 && (
+                    <div className="text-3xl font-bold text-destructive mt-1">{syncData.stats.cancelados}</div>
+                    {statusTotal > 0 && (
                       <p className="text-xs text-muted-foreground mt-1">
-                        {((syncData.stats.cancelledOrders / syncData.stats.totalOrders) * 100).toFixed(0)}% do total
-                        {syncData.stats.cancelledOrders / syncData.stats.totalOrders > 0.05 && (
+                        {((syncData.stats.cancelados / statusTotal) * 100).toFixed(0)}% do total
+                        {syncData.stats.cancelados / statusTotal > 0.05 && (
                           <span className="text-destructive font-medium"> · atenção</span>
                         )}
                       </p>

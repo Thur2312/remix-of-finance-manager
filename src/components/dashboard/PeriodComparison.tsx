@@ -29,7 +29,7 @@ function Delta({ current, previous }: { current: number; previous: number }) {
 }
 
 export function PeriodComparison({ current, previous, days }: Props) {
-  const hasPreviousData = previous.totalOrders > 0
+  const hasPreviousData = previous.pedidos > 0
 
   if (!hasPreviousData) {
     return (
@@ -53,8 +53,8 @@ export function PeriodComparison({ current, previous, days }: Props) {
   const items = [
     {
       label: 'Pedidos',
-      current: current.totalOrders,
-      previous: previous.totalOrders,
+      current: current.pedidos,
+      previous: previous.pedidos,
       format: (v: number) => v.toString(),
       icon: ShoppingCart,
       color: 'text-blue-500',
@@ -62,17 +62,17 @@ export function PeriodComparison({ current, previous, days }: Props) {
     },
     {
       label: 'Faturamento',
-      current: current.totalRevenue,
-      previous: previous.totalRevenue,
+      current: current.faturamento,
+      previous: previous.faturamento,
       format: formatCurrency,
       icon: DollarSign,
       color: 'text-emerald-500',
       bg: 'bg-emerald-500/10',
     },
     {
-      label: 'Taxas Shopee',
-      current: current.totalFees,
-      previous: previous.totalFees,
+      label: 'Retido pela Shopee',
+      current: current.faturamento - current.valorLiquido,
+      previous: previous.faturamento - previous.valorLiquido,
       format: formatCurrency,
       icon: Package,
       color: 'text-orange-500',
@@ -81,9 +81,8 @@ export function PeriodComparison({ current, previous, days }: Props) {
     },
     {
       label: 'Valor Líquido',
-
-      current: current.totalRevenue - current.totalFees,
-      previous: previous.totalRevenue - previous.totalFees,
+      current: current.valorLiquido,
+      previous: previous.valorLiquido,
       format: formatCurrency,
       icon: TrendingUp,
       color: 'text-primary',
