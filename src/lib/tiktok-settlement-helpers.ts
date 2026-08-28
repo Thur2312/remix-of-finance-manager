@@ -1,5 +1,5 @@
 import { supabase } from '@/integrations/supabase/client';
-import { types } from 'util';
+import { logger } from '@/lib/logger';
 
 // Parse TikTok settlement currency format
 // Handles both formats: "BRL 35.91" (US decimal) and "BRL 35,91" (BR decimal)
@@ -426,10 +426,10 @@ export function parseAllSettlements(rows: Record<string, string>[]): {
     foundColumns = analysis.foundColumns;
     missingColumns = analysis.missingColumns;
     
-    console.log('📊 Análise de colunas do arquivo:');
-    console.log('Colunas no arquivo:', analysis.fileColumns);
-    console.log('Colunas mapeadas:', foundColumns);
-    console.log('Colunas não encontradas:', missingColumns);
+    logger.debug('📊 Análise de colunas do arquivo:');
+    logger.debug('Colunas no arquivo:', analysis.fileColumns);
+    logger.debug('Colunas mapeadas:', foundColumns);
+    logger.debug('Colunas não encontradas:', missingColumns);
   }
   
   for (const row of rows) {
@@ -452,13 +452,13 @@ export function parseAllSettlements(rows: Record<string, string>[]): {
   };
   
   // === LOGS DE VALIDAÇÃO DETALHADOS (conforme especificação) ===
-  console.log('📋 Validação genérica (parseAllSettlements):', {
+  logger.debug('📋 Validação genérica (parseAllSettlements):', {
     linhas_order_details_brutas: rows.length,
     linhas_orders_validas: settlements.length,
     rejeitadas: rows.length - settlements.length,
     motivos_rejeicao: rejectionReasons,
   });
-  console.log('📋 Resumo da importação:', summary);
+  logger.debug('📋 Resumo da importação:', summary);
   
   return { settlements, summary };
 }

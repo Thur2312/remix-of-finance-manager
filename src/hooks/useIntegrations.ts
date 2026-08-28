@@ -3,6 +3,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
+import { logger } from '@/lib/logger';
 
 interface IntegrationConnection {
   id: string;
@@ -117,11 +118,11 @@ export function useIntegrations() {
 
       for (let i = 0; i < windows; i++) {
         const { time_from, time_to } = windowRange(i);
-        console.log(`🔄 Orders janela ${i + 1}/${windows}: ${time_from} → ${time_to}`);
+        logger.debug(`🔄 Orders janela ${i + 1}/${windows}: ${time_from} → ${time_to}`);
         const { data, error } = await supabase.functions.invoke('integration-sync', {
           body: { connection_id: connectionId, time_from, time_to, step: 'orders' },
         });
-        console.log(`✅ Orders janela ${i + 1} resultado:`, data, 'erro:', error);
+        logger.debug(`✅ Orders janela ${i + 1} resultado:`, data, 'erro:', error);
         if (error) throw error;
       }
 

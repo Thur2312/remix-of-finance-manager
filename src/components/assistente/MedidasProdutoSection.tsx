@@ -38,12 +38,7 @@ export const MedidasProdutoSection = ({
   const [novaMedidaUnidade, setNovaMedidaUnidade] = useState('');
 
   const handleAddMedidaPersonalizada = () => {
-    console.log('Tentando adicionar medida:', novaMedidaNome, novaMedidaUnidade);  // Log para debug
-    if (!novaMedidaNome.trim() || !novaMedidaUnidade.trim()) {
-      console.log('Campos obrigatórios não preenchidos');  // Log para debug
-      return;
-    }
-    console.log('Chamando onAddMedidaPersonalizada');  // Log para debug
+    if (!novaMedidaNome.trim() || !novaMedidaUnidade.trim()) return;
     onAddMedidaPersonalizada(novaMedidaNome.trim(), novaMedidaUnidade.trim());
     setNovaMedidaNome('');
     setNovaMedidaUnidade('');

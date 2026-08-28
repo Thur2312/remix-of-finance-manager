@@ -10,6 +10,7 @@ import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 import { parseAllSettlements, parseStatementsSheet, ImportSummary, StatementsImportSummary } from '@/lib/tiktok-settlement-helpers';
 import { formatCurrency } from '@/lib/format';
+import { logger } from '@/lib/logger';
 import * as XLSX from 'xlsx';
 import { tiktokNavTabs } from '@/components/layout/InPageNav';
 import { PageHeader } from '@/components/layout/PageHeader';
@@ -50,8 +51,8 @@ function TikTokPagamentosUploadContent() {
       const arrayBuffer = await file.arrayBuffer();
       const workbook = XLSX.read(arrayBuffer, { type: 'array' });
       
-      console.log('📁 Arquivo carregado:', file.name);
-      console.log('📑 Abas encontradas:', workbook.SheetNames);
+      logger.debug('📁 Arquivo carregado:', file.name);
+      logger.debug('📑 Abas encontradas:', workbook.SheetNames);
       
       // === SELEÇÃO DE ABAS FLEXÍVEL ===
       // Suporta inglês e português brasileiro
@@ -65,10 +66,10 @@ function TikTokPagamentosUploadContent() {
         name => statementsVariants.includes(name.toLowerCase().trim())
       );
       
-      console.log('📋 Abas do arquivo:', workbook.SheetNames);
-      console.log('📋 Abas mapeadas:');
-      console.log('  - Order details / Detalhes do pedido:', orderDetailsSheetName || 'NÃO ENCONTRADA');
-      console.log('  - Statements / Demonstrativos:', statementsSheetName || 'NÃO ENCONTRADA');
+      logger.debug('📋 Abas do arquivo:', workbook.SheetNames);
+      logger.debug('📋 Abas mapeadas:');
+      logger.debug('  - Order details / Detalhes do pedido:', orderDetailsSheetName || 'NÃO ENCONTRADA');
+      logger.debug('  - Statements / Demonstrativos:', statementsSheetName || 'NÃO ENCONTRADA');
       
       // Parse Statements sheet to get total reference
       let statementsInfo: StatementsImportSummary | undefined;
@@ -86,7 +87,7 @@ function TikTokPagamentosUploadContent() {
         );
         const parsed = parseStatementsSheet(statementsDataAsStrings);
         statementsInfo = parsed.summary;
-        console.log('📋 Dados de Statements:', statementsInfo);
+        logger.debug('📋 Dados de Statements:', statementsInfo);
       }
       
       // === FUNÇÃO PARA TORNAR HEADERS ÚNICOS (colunas duplicadas) ===
@@ -115,7 +116,7 @@ function TikTokPagamentosUploadContent() {
           blankrows: false,
         });
         
-        console.log('📋 Matriz bruta lida:', matrix.length, 'linhas (incluindo header)');
+        logger.debug('📋 Matriz bruta lida:', matrix.length, 'linhas (incluindo header)');
         
         if (matrix.length >= 2) {
           // 2) Processar headers únicos
@@ -123,8 +124,8 @@ function TikTokPagamentosUploadContent() {
           const headers = makeHeadersUnique(rawHeaders);
           const duplicateCount = rawHeaders.length - new Set(rawHeaders.filter((h: string) => h)).size;
           
-          console.log('📋 Headers encontrados:', headers.length);
-          console.log('📋 Headers duplicados:', rawHeaders.filter((h, i, arr) => arr.indexOf(h) !== i));
+          logger.debug('📋 Headers encontrados:', headers.length);
+          logger.debug('📋 Headers duplicados:', rawHeaders.filter((h, i, arr) => arr.indexOf(h) !== i));
           
           // 3) Converter linhas em objetos
           for (let i = 1; i < matrix.length; i++) {
@@ -151,14 +152,14 @@ function TikTokPagamentosUploadContent() {
           return (typeStr === 'order' || typeStr === 'pedido') && orderId.toString().trim() !== '';
         }).length;
         
-        console.log('📋 Validação genérica:', {
+        logger.debug('📋 Validação genérica:', {
           linhas_order_details_brutas: linhasOrderDetailsBrutas,
           linhas_convertidas_para_objetos: orderDetailsData.length,
           linhas_orders_validas: linhasOrdersValidas,
         });
       } else {
         toast.error('Aba "Order details" ou "Detalhes do pedido" não encontrada no arquivo');
-        console.log('❌ Abas disponíveis:', workbook.SheetNames);
+        logger.debug('❌ Abas disponíveis:', workbook.SheetNames);
         setIsProcessing(false);
         return;
       }
@@ -184,7 +185,7 @@ function TikTokPagamentosUploadContent() {
         return;
       }
 
-      console.log('🔍 Colunas encontradas:', Object.keys(jsonData[0] || {}));
+      logger.debug('🔍 Colunas encontradas:', Object.keys(jsonData[0] || {}));
 
       // Parse settlements with detailed diagnostics
       const { settlements, summary } = parseAllSettlements(jsonData);
@@ -261,7 +262,7 @@ function TikTokPagamentosUploadContent() {
           if (statementsError) {
             console.error('Error saving statements:', statementsError);
           } else {
-            console.log(`✅ ${parsedStatements.length} statements salvos na tabela tiktok_statements`);
+            logger.debug(`✅ ${parsedStatements.length} statements salvos na tabela tiktok_statements`);
           }
         }
       }

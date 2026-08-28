@@ -17,6 +17,7 @@ import {
   ShopeeOrderDRE,
 } from '@/lib/dre-calculations';
 import { isShopeeRevenueStatus, isShopeeShippingRebate, SHOPEE_FEE_TYPES_TAXAS } from '@/lib/shopee-sync-status';
+import { logger } from '@/lib/logger';
 
 // ── Tipos internos para Shopee (orders/fees/payments) ──────────────────────
 
@@ -246,7 +247,7 @@ export function useDREData(): UseDREDataResult {
         .limit(1);
       shopeeIntegrationId = connections?.[0]?.id ?? null;
     }
-    console.log('[DRE] Shopee integration_id:', shopeeIntegrationId);
+    logger.debug('[DRE] Shopee integration_id:', shopeeIntegrationId);
 
     // 2. Buscar tudo em paralelo
     const [
@@ -283,12 +284,12 @@ export function useDREData(): UseDREDataResult {
       fetchCashFlow(userId),
     ]);
 
-    console.log('[DRE] Shopee orders:', shopeeOrdersData.length, '| fees:', shopeeFeesData.length);
-    console.log('[DRE] TikTok orders:', tiktokOrdersResult.data?.length ?? 'null', '| error:', tiktokOrdersResult.error);
-    console.log('[DRE] TikTok settlements:', tiktokSettlementsResult.data?.length ?? 'null', '| error:', tiktokSettlementsResult.error);
-    console.log('[DRE] ML orders:', mlOrdersResult.data?.length ?? 'null', '| error:', mlOrdersResult.error);
-    console.log('[DRE] Cash flow:', cashFlowResult.data?.length ?? 'null', '| error:', cashFlowResult.error);
-    console.log('[DRE] Fixed costs:', fixedCostsResult.data?.length ?? 'null', '| error:', fixedCostsResult.error);
+    logger.debug('[DRE] Shopee orders:', shopeeOrdersData.length, '| fees:', shopeeFeesData.length);
+    logger.debug('[DRE] TikTok orders:', tiktokOrdersResult.data?.length ?? 'null', '| error:', tiktokOrdersResult.error);
+    logger.debug('[DRE] TikTok settlements:', tiktokSettlementsResult.data?.length ?? 'null', '| error:', tiktokSettlementsResult.error);
+    logger.debug('[DRE] ML orders:', mlOrdersResult.data?.length ?? 'null', '| error:', mlOrdersResult.error);
+    logger.debug('[DRE] Cash flow:', cashFlowResult.data?.length ?? 'null', '| error:', cashFlowResult.error);
+    logger.debug('[DRE] Fixed costs:', fixedCostsResult.data?.length ?? 'null', '| error:', fixedCostsResult.error);
 
     setShopeeOrders(shopeeOrdersData);
     setShopeeFees(shopeeFeesData);
@@ -432,7 +433,7 @@ export function useDREData(): UseDREDataResult {
 
   const refetch = async () => {
     if (!user) return;
-    console.log('[DRE] refetch iniciado');
+    logger.debug('[DRE] refetch iniciado');
     setIsLoading(true);
     setError(null);
     try {
