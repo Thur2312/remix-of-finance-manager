@@ -109,7 +109,7 @@ Organizado em faixas paralelas. Ordem sugerida dentro de cada faixa. `[ ]` a faz
 - [x] **`package.json`** — `typecheck` + `test` + `test:watch` já adicionados (sessão anterior, Vitest).
 - [ ] **`tsconfig.app.json`** — ligar `strict: true` **incrementalmente** (arquivo a arquivo com `// @ts-nocheck` temporário nos que não passam, ou por pasta). Começar por `src/lib/` e `src/hooks/`.
 - [x] **Vitest** — instalado, 7 arquivos / 65 testes (`money`, `tax`, `calculations`, `dre-calculations`, `tiktok-calculations`, `shopee-sync-status`, `format`). Falta: fixture com JSON real da Maluth congelado.
-- [ ] **Limpar `console.log`** — 33 ocorrências em **5 arquivos** (`useDREData`, `useIntegrations`, `tiktok-settlement-helpers`, `TikTokPagamentosUpload`, `MedidasProdutoSection`). `tsc_out.txt` → ✅ feito (`1e30129`).
+- [x] **Limpar `console.log`** (`2c00176`) — `src/lib/logger.ts` (`logger.debug`, só em dev); 30 viraram `logger.debug`, 3 de debug puro removidos. Bônus: `import { types } from 'util'` morto removido de `tiktok-settlement-helpers`. `tsc_out.txt` → `1e30129`.
 - [ ] **`components/assistant` vs `components/assistente`** — NÃO são a mesma coisa: `assistant/` = chat financeiro (widget global), `assistente/` = Assistente de Anúncio (geração de imagem, medidas). Juntar pioraria. Ação real: renomear `assistente/` → algo desambíguo (ex.: `anuncio/`). Só 1 import externo (`AssistenteAnuncio.tsx`).
 - [ ] **`supabase gen types`** — regenerar `types.ts` (depois de confirmar migrations no ar).
 
