@@ -1,6 +1,7 @@
 import { useState, useEffect, useMemo } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
+import type { Cents } from '@/lib/money';
 
 export interface MlOrder {
   user_id: string;
@@ -10,11 +11,17 @@ export interface MlOrder {
   variacao: string | null;
   quantidade: number;
   total_faturado: number;
+  total_faturado_cents?: number | null;
   desconto_plataforma: number;
+  desconto_plataforma_cents?: number | null;
   desconto_vendedor: number;
+  desconto_vendedor_cents?: number | null;
   custo_unitario: number;
+  custo_unitario_cents?: number | null;
   taxa_ml: number;
+  taxa_ml_cents?: number | null;
   frete_ml: number;
+  frete_ml_cents?: number | null;
   status_pedido: string;
   data_pedido: string;
   updated_at: string;
@@ -28,6 +35,14 @@ export interface MlStats {
   profit: number;
   isLoading: boolean;
   hasData: boolean;
+
+  // Equivalentes em centavos (Fase 4, aditivo). Só existem quando hasData —
+  // nos dois retornos "vazios" acima ficam undefined, igual aos demais campos
+  // que já eram 0 antes (nada de novo pra inicializar ali).
+  grossRevenueCents?: Cents;
+  netRevenueCents?: Cents;
+  feesCents?: Cents;
+  profitCents?: Cents;
 }
 
 export function useMercadolivreData() {
@@ -105,6 +120,25 @@ export function useMercadolivreData() {
     const netRevenue = grossRevenue - fees - descontos;
     const profit = netRevenue - custos;
 
+    // Sem multiplicação por percentual em nenhum lugar aqui (taxa_ml/frete_ml
+    // já vêm em R$ absoluto) — soma pura de inteiros, sempre exata, sem risco
+    // de arredondamento em cascata divergir do float.
+    const grossRevenueCents = paidOrders.reduce((acc, o) => acc + Number(o.total_faturado_cents ?? 0), 0);
+    const feesCents = paidOrders.reduce(
+      (acc, o) => acc + Number(o.taxa_ml_cents ?? 0) + Number(o.frete_ml_cents ?? 0),
+      0
+    );
+    const descontosCents = paidOrders.reduce(
+      (acc, o) => acc + Number(o.desconto_plataforma_cents ?? 0) + Number(o.desconto_vendedor_cents ?? 0),
+      0
+    );
+    const custosCents = paidOrders.reduce(
+      (acc, o) => acc + Number(o.custo_unitario_cents ?? 0) * (o.quantidade ?? 1),
+      0
+    );
+    const netRevenueCents = grossRevenueCents - feesCents - descontosCents;
+    const profitCents = netRevenueCents - custosCents;
+
     return {
       totalOrders: paidOrders.length,
       grossRevenue,
@@ -113,6 +147,10 @@ export function useMercadolivreData() {
       profit,
       isLoading: false,
       hasData: true,
+      grossRevenueCents: grossRevenueCents as Cents,
+      netRevenueCents: netRevenueCents as Cents,
+      feesCents: feesCents as Cents,
+      profitCents: profitCents as Cents,
     };
   }, [orders, loading]);
 
