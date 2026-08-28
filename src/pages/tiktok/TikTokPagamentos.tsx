@@ -22,6 +22,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { motion } from 'framer-motion';
+import { formatCurrency } from '@/lib/format';
 import {
   DollarSign,
   TrendingUp,
@@ -258,13 +259,6 @@ function TikTokPagamentosContent() {
     
     return filtered;
   }, [settlements, searchTerm, typeFilter]);
-
-  const formatCurrency = (value: number) => {
-    return new Intl.NumberFormat('pt-BR', {
-      style: 'currency',
-      currency: 'BRL',
-    }).format(value);
-  };
 
   const formatDate = (dateStr: string | null) => {
     if (!dateStr) return '-';

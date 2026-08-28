@@ -34,13 +34,10 @@ import {
   Popover, PopoverContent, PopoverTrigger,
 } from "@/components/ui/popover";
 import { useAnuncios, AnuncioInput, CustoAdicionalDB, TipoProduto, KitItemDB } from "@/hooks/useProdutos";
+import { formatCurrency, formatPercent } from "@/lib/format";
 import { toast } from "sonner";
 
 // ─── Helpers ────────────────────────────────────────────────────────────────
-const formatCurrency = (value: number): string =>
-  value.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
-
-const formatPercent = (value: number): string => `${value.toFixed(1)}%`;
 
 const parseInput = (val: string): number => {
   if (!val || val === "" || val === "," || val === ".") return 0;

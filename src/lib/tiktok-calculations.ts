@@ -280,13 +280,5 @@ export function calculateTikTokResults(
   return { groups: results, totals };
 }
 
-export function formatCurrency(value: number): string {
-  return new Intl.NumberFormat('pt-BR', {
-    style: 'currency',
-    currency: 'BRL',
-  }).format(value);
-}
-
-export function formatPercent(value: number): string {
-  return `${value.toFixed(1)}%`;
-}
+// Reexport: fonte única em ./format (mantido pra não quebrar imports existentes).
+export { formatCurrency, formatPercent } from './format';

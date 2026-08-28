@@ -11,6 +11,7 @@ import { fluxoCaixaNavTabs } from '@/components/layout/InPageNav';
 import { format, startOfMonth, endOfMonth, isAfter, isBefore, parseISO, subYears, addYears } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { HandCoins } from 'lucide-react';
+import { formatCurrency } from '@/lib/format';
 
 // Superfície de cartão da área interna — mesma família visual do .glass-card
 // da landing, calibrada pra densidade (ver .app-card em index.css). bg-card
@@ -72,12 +73,6 @@ function FluxoCaixaDashboardContent() {
   }).sort((a, b) => parseISO(a.due_date!).getTime() - parseISO(b.due_date!).getTime()).slice(0, 5);
   // "Últimos Lançamentos" mostra apenas os registros reais criados pelo usuário, nunca ocorrências virtuais.
   const recentEntries = entries.slice(0, 5);
-  const formatCurrency = (value: number) => {
-    return new Intl.NumberFormat('pt-BR', {
-      style: 'currency',
-      currency: 'BRL'
-    }).format(value);
-  };
   return <>
       <PageHeader
         icon={HandCoins}

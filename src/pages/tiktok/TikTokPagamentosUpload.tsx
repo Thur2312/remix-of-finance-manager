@@ -9,6 +9,7 @@ import { Upload, FileSpreadsheet, CheckCircle, AlertCircle, Loader2, FileWarning
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 import { parseAllSettlements, parseStatementsSheet, ImportSummary, StatementsImportSummary } from '@/lib/tiktok-settlement-helpers';
+import { formatCurrency } from '@/lib/format';
 import * as XLSX from 'xlsx';
 import { tiktokNavTabs } from '@/components/layout/InPageNav';
 import { PageHeader } from '@/components/layout/PageHeader';
@@ -528,7 +529,7 @@ function TikTokPagamentosUploadContent() {
                       <p>• Pedidos importados: <strong>{importSummary.validRecords}</strong></p>
                       <p>• Total de pagamentos no período: <strong>{importSummary.statementsInfo.validRecords}</strong></p>
                       <p>• Valor total do período: <strong>
-                        {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(importSummary.statementsInfo.totalSettlementAmount)}
+                        {formatCurrency(importSummary.statementsInfo.totalSettlementAmount)}
                       </strong></p>
                     </div>
                     <p className="text-xs text-warning mt-2">

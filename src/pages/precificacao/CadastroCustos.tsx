@@ -21,9 +21,7 @@ import {
   Truck, FolderOpen, Package, ShoppingBag, Users, Wrench, Globe,
 } from 'lucide-react';
 import { PageHeader } from '@/components/layout/PageHeader';
-
-const formatCurrency = (value: number) =>
-  new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value);
+import { formatCurrency } from '@/lib/format';
 
 // ── Ícones das categorias padrão + customizadas ──────────────────────────────
 const DEFAULT_ICON_MAP: Record<string, React.ReactNode> = {

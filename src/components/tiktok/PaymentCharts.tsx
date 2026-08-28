@@ -8,6 +8,7 @@ import {
   Tooltip,
   Legend,
   } from 'recharts';
+import { formatCurrency as formatBRL } from '@/lib/format';
 
 interface Settlement {
   statement_date: string | null;
@@ -26,14 +27,8 @@ interface PaymentChartsProps {
   settlements: Settlement[];}
 
 export function PaymentCharts({ settlements }: PaymentChartsProps) {
-  const formatCurrency = (value: number) => {
-    return new Intl.NumberFormat('pt-BR', {
-      style: 'currency',
-      currency: 'BRL',
-      minimumFractionDigits: 0,
-      maximumFractionDigits: 0,
-    }).format(value);
-  };
+  // Gráfico: valores sem centavos.
+  const formatCurrency = (value: number) => formatBRL(value, { whole: true });
 
   // Type breakdown (Orders vs Refunds vs Adjustments)
   const typeBreakdown = useMemo(() => {

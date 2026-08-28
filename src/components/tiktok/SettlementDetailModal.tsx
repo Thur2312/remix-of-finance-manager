@@ -17,6 +17,7 @@ import {
   TrendingUp,
   AlertTriangle,
 } from 'lucide-react';
+import { formatCurrency } from '@/lib/format';
 
 interface Settlement {
   order_id: string;
@@ -79,13 +80,6 @@ export function SettlementDetailModal({
   onOpenChange,
 }: SettlementDetailModalProps) {
   if (!settlement) return null;
-
-  const formatCurrency = (value: number) => {
-    return new Intl.NumberFormat('pt-BR', {
-      style: 'currency',
-      currency: 'BRL',
-    }).format(value);
-  };
 
   const formatDate = (dateStr: string | null) => {
     if (!dateStr) return '-';

@@ -25,6 +25,7 @@ import {
   Building2,
 } from 'lucide-react';
 import { format, parseISO } from 'date-fns';
+import { formatCurrency } from '@/lib/format';
 import { 
   BankTransaction, 
   ParseResult, 
@@ -78,13 +79,6 @@ export default function ImportBankStatementDialog({ open, onOpenChange }: Import
   const [parseResult, setParseResult] = useState<ParseResult | null>(null);
   const [transactions, setTransactions] = useState<TransactionWithSelection[]>([]);
   const [error, setError] = useState<string | null>(null);
-
-  const formatCurrency = (value: number) => {
-    return new Intl.NumberFormat('pt-BR', {
-      style: 'currency',
-      currency: 'BRL',
-    }).format(value);
-  };
 
   const resetState = () => {
     setIsDragging(false);

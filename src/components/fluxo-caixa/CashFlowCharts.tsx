@@ -20,6 +20,7 @@ import {
 import { format, subMonths, startOfMonth, endOfMonth, parseISO } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { expandRecurringEntries, type CashFlowEntry, type CashFlowCategory } from '@/hooks/useCashFlow';
+import { formatCurrency as formatBRL } from '@/lib/format';
 
 
 interface CashFlowChartsProps {
@@ -140,14 +141,8 @@ export function CashFlowCharts({ entries, categories, isLoading }: CashFlowChart
       .slice(0, 8);
   }, [entries, categories]);
 
-  const formatCurrency = (value: number) => {
-    return new Intl.NumberFormat('pt-BR', {
-      style: 'currency',
-      currency: 'BRL',
-      minimumFractionDigits: 0,
-      maximumFractionDigits: 0,
-    }).format(value);
-  };
+  // Gráfico: valores sem centavos (eixo e tooltip) — o centavo é ruído aqui.
+  const formatCurrency = (value: number) => formatBRL(value, { whole: true });
 
   const CustomTooltip = ({ active, payload, label }: TooltipProps<number, string>) => {
     if (active && payload && payload.length) {

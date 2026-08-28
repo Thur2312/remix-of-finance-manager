@@ -14,6 +14,7 @@ import CashFlowEntryDialog from '@/components/fluxo-caixa/CashFlowEntryDialog';
 import ImportBankStatementDialog from '@/components/fluxo-caixa/ImportBankStatementDialog';
 import { Plus, Search, Download, CheckCircle, Trash2, Edit, Upload, Tag } from 'lucide-react';
 import { format, parseISO } from 'date-fns';
+import { formatCurrency } from '@/lib/format';
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
@@ -200,9 +201,6 @@ function FluxoCaixaLancamentosContent() {
   const filteredEntries = entries.filter(entry =>
     entry.description.toLowerCase().includes(searchTerm.toLowerCase())
   );
-
-  const formatCurrency = (value: number) =>
-    new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value);
 
   const getStatusBadge = (status: string) => {
     const labels: Record<string, string>                           = { pending: 'Pendente', paid: 'Pago', received: 'Recebido' };

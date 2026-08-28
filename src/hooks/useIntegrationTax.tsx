@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '../integrations/supabase/client';
 import { applyTax, type TaxBase } from '../lib/tax';
+import { formatCurrency } from '../lib/format';
 
 interface TaxInfo {
   companyId: string | null;
@@ -76,8 +77,7 @@ export function TaxSummaryRow({
   if (taxRate === 0) return null;
 
   const { taxAmount, netAfterTax } = applyTax({ revenue, profit: netProfit, taxRate, taxBase });
-  const fmt = (v: number) =>
-    v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+  const fmt = formatCurrency;
 
   return (
     <div className="mt-3 pt-3 border-t border-gray-100 dark:border-gray-800 space-y-1.5">
