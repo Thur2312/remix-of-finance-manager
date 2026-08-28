@@ -531,6 +531,7 @@ export type Database = {
       fixed_costs: {
         Row: {
           amount: number
+          amount_cents: number
           category: string
           created_at: string
           id: string
@@ -542,6 +543,7 @@ export type Database = {
         }
         Insert: {
           amount?: number
+          amount_cents?: number
           category: string
           created_at?: string
           id?: string
@@ -553,6 +555,7 @@ export type Database = {
         }
         Update: {
           amount?: number
+          amount_cents?: number
           category?: string
           created_at?: string
           id?: string
@@ -1774,177 +1777,279 @@ export type Database = {
       tiktok_settlements: {
         Row: {
           actual_return_shipping_fee: number | null
+          actual_return_shipping_fee_cents: number | null
           adjustment_amount: number | null
+          adjustment_amount_cents: number | null
           adjustment_reason: string | null
           affiliate_commission: number | null
+          affiliate_commission_cents: number | null
           affiliate_partner_commission: number | null
+          affiliate_partner_commission_cents: number | null
           affiliate_shop_ads_commission: number | null
+          affiliate_shop_ads_commission_cents: number | null
           bonus_cashback_fee: number | null
+          bonus_cashback_fee_cents: number | null
           chargeable_weight: number | null
           collection_method: string | null
           created_at: string | null
           currency: string | null
           customer_payment: number | null
+          customer_payment_cents: number | null
           customer_refund: number | null
+          customer_refund_cents: number | null
           customer_shipping_fee: number | null
+          customer_shipping_fee_cents: number | null
           data_criacao_pedido: string | null
           data_entrega: string | null
           delivery_option: string | null
           fee_per_item: number | null
+          fee_per_item_cents: number | null
           icms_difal: number | null
+          icms_difal_cents: number | null
           icms_penalty: number | null
+          icms_penalty_cents: number | null
           id: string
           live_specials_fee: number | null
+          live_specials_fee_cents: number | null
           net_sales: number | null
+          net_sales_cents: number | null
           nome_produto: string | null
           order_id: string | null
           payment_id: string | null
           platform_cofunded_discount: number | null
+          platform_cofunded_discount_cents: number | null
           platform_discounts: number | null
+          platform_discounts_cents: number | null
           platform_discounts_refund: number | null
+          platform_discounts_refund_cents: number | null
           quantidade: number | null
           refund_seller_discounts: number | null
+          refund_seller_discounts_cents: number | null
           refund_subtotal: number | null
+          refund_subtotal_cents: number | null
           refunded_shipping: number | null
+          refunded_shipping_cents: number | null
           related_order_id: string | null
           seller_cofunded_discount: number | null
+          seller_cofunded_discount_cents: number | null
           seller_cofunded_discount_refund: number | null
+          seller_cofunded_discount_refund_cents: number | null
           seller_discounts: number | null
+          seller_discounts_cents: number | null
           sfp_service_fee: number | null
+          sfp_service_fee_cents: number | null
           shipping_incentive: number | null
+          shipping_incentive_cents: number | null
           shipping_incentive_refund: number | null
+          shipping_incentive_refund_cents: number | null
           shipping_subsidy: number | null
+          shipping_subsidy_cents: number | null
           shipping_total: number | null
+          shipping_total_cents: number | null
           sku_id: string | null
           statement_date: string | null
           statement_id: string | null
           status: string | null
           subtotal_before_discounts: number | null
+          subtotal_before_discounts_cents: number | null
           tiktok_commission_fee: number | null
+          tiktok_commission_fee_cents: number | null
           tiktok_shipping_fee: number | null
+          tiktok_shipping_fee_cents: number | null
           total_fees: number | null
+          total_fees_cents: number | null
           total_settlement_amount: number | null
+          total_settlement_amount_cents: number | null
           type: string | null
           updated_at: string | null
           user_id: string
           variacao: string | null
           voucher_xtra_fee: number | null
+          voucher_xtra_fee_cents: number | null
         }
         Insert: {
           actual_return_shipping_fee?: number | null
+          actual_return_shipping_fee_cents?: number | null
           adjustment_amount?: number | null
+          adjustment_amount_cents?: number | null
           adjustment_reason?: string | null
           affiliate_commission?: number | null
+          affiliate_commission_cents?: number | null
           affiliate_partner_commission?: number | null
+          affiliate_partner_commission_cents?: number | null
           affiliate_shop_ads_commission?: number | null
+          affiliate_shop_ads_commission_cents?: number | null
           bonus_cashback_fee?: number | null
+          bonus_cashback_fee_cents?: number | null
           chargeable_weight?: number | null
           collection_method?: string | null
           created_at?: string | null
           currency?: string | null
           customer_payment?: number | null
+          customer_payment_cents?: number | null
           customer_refund?: number | null
+          customer_refund_cents?: number | null
           customer_shipping_fee?: number | null
+          customer_shipping_fee_cents?: number | null
           data_criacao_pedido?: string | null
           data_entrega?: string | null
           delivery_option?: string | null
           fee_per_item?: number | null
+          fee_per_item_cents?: number | null
           icms_difal?: number | null
+          icms_difal_cents?: number | null
           icms_penalty?: number | null
+          icms_penalty_cents?: number | null
           id?: string
           live_specials_fee?: number | null
+          live_specials_fee_cents?: number | null
           net_sales?: number | null
+          net_sales_cents?: number | null
           nome_produto?: string | null
           order_id?: string | null
           payment_id?: string | null
           platform_cofunded_discount?: number | null
+          platform_cofunded_discount_cents?: number | null
           platform_discounts?: number | null
+          platform_discounts_cents?: number | null
           platform_discounts_refund?: number | null
+          platform_discounts_refund_cents?: number | null
           quantidade?: number | null
           refund_seller_discounts?: number | null
+          refund_seller_discounts_cents?: number | null
           refund_subtotal?: number | null
+          refund_subtotal_cents?: number | null
           refunded_shipping?: number | null
+          refunded_shipping_cents?: number | null
           related_order_id?: string | null
           seller_cofunded_discount?: number | null
+          seller_cofunded_discount_cents?: number | null
           seller_cofunded_discount_refund?: number | null
+          seller_cofunded_discount_refund_cents?: number | null
           seller_discounts?: number | null
+          seller_discounts_cents?: number | null
           sfp_service_fee?: number | null
+          sfp_service_fee_cents?: number | null
           shipping_incentive?: number | null
+          shipping_incentive_cents?: number | null
           shipping_incentive_refund?: number | null
+          shipping_incentive_refund_cents?: number | null
           shipping_subsidy?: number | null
+          shipping_subsidy_cents?: number | null
           shipping_total?: number | null
+          shipping_total_cents?: number | null
           sku_id?: string | null
           statement_date?: string | null
           statement_id?: string | null
           status?: string | null
           subtotal_before_discounts?: number | null
+          subtotal_before_discounts_cents?: number | null
           tiktok_commission_fee?: number | null
+          tiktok_commission_fee_cents?: number | null
           tiktok_shipping_fee?: number | null
+          tiktok_shipping_fee_cents?: number | null
           total_fees?: number | null
+          total_fees_cents?: number | null
           total_settlement_amount?: number | null
+          total_settlement_amount_cents?: number | null
           type?: string | null
           updated_at?: string | null
           user_id: string
           variacao?: string | null
           voucher_xtra_fee?: number | null
+          voucher_xtra_fee_cents?: number | null
         }
         Update: {
           actual_return_shipping_fee?: number | null
+          actual_return_shipping_fee_cents?: number | null
           adjustment_amount?: number | null
+          adjustment_amount_cents?: number | null
           adjustment_reason?: string | null
           affiliate_commission?: number | null
+          affiliate_commission_cents?: number | null
           affiliate_partner_commission?: number | null
+          affiliate_partner_commission_cents?: number | null
           affiliate_shop_ads_commission?: number | null
+          affiliate_shop_ads_commission_cents?: number | null
           bonus_cashback_fee?: number | null
+          bonus_cashback_fee_cents?: number | null
           chargeable_weight?: number | null
           collection_method?: string | null
           created_at?: string | null
           currency?: string | null
           customer_payment?: number | null
+          customer_payment_cents?: number | null
           customer_refund?: number | null
+          customer_refund_cents?: number | null
           customer_shipping_fee?: number | null
+          customer_shipping_fee_cents?: number | null
           data_criacao_pedido?: string | null
           data_entrega?: string | null
           delivery_option?: string | null
           fee_per_item?: number | null
+          fee_per_item_cents?: number | null
           icms_difal?: number | null
+          icms_difal_cents?: number | null
           icms_penalty?: number | null
+          icms_penalty_cents?: number | null
           id?: string
           live_specials_fee?: number | null
+          live_specials_fee_cents?: number | null
           net_sales?: number | null
+          net_sales_cents?: number | null
           nome_produto?: string | null
           order_id?: string | null
           payment_id?: string | null
           platform_cofunded_discount?: number | null
+          platform_cofunded_discount_cents?: number | null
           platform_discounts?: number | null
+          platform_discounts_cents?: number | null
           platform_discounts_refund?: number | null
+          platform_discounts_refund_cents?: number | null
           quantidade?: number | null
           refund_seller_discounts?: number | null
+          refund_seller_discounts_cents?: number | null
           refund_subtotal?: number | null
+          refund_subtotal_cents?: number | null
           refunded_shipping?: number | null
+          refunded_shipping_cents?: number | null
           related_order_id?: string | null
           seller_cofunded_discount?: number | null
+          seller_cofunded_discount_cents?: number | null
           seller_cofunded_discount_refund?: number | null
+          seller_cofunded_discount_refund_cents?: number | null
           seller_discounts?: number | null
+          seller_discounts_cents?: number | null
           sfp_service_fee?: number | null
+          sfp_service_fee_cents?: number | null
           shipping_incentive?: number | null
+          shipping_incentive_cents?: number | null
           shipping_incentive_refund?: number | null
+          shipping_incentive_refund_cents?: number | null
           shipping_subsidy?: number | null
+          shipping_subsidy_cents?: number | null
           shipping_total?: number | null
+          shipping_total_cents?: number | null
           sku_id?: string | null
           statement_date?: string | null
           statement_id?: string | null
           status?: string | null
           subtotal_before_discounts?: number | null
+          subtotal_before_discounts_cents?: number | null
           tiktok_commission_fee?: number | null
+          tiktok_commission_fee_cents?: number | null
           tiktok_shipping_fee?: number | null
+          tiktok_shipping_fee_cents?: number | null
           total_fees?: number | null
+          total_fees_cents?: number | null
           total_settlement_amount?: number | null
+          total_settlement_amount_cents?: number | null
           type?: string | null
           updated_at?: string | null
           user_id?: string
           variacao?: string | null
           voucher_xtra_fee?: number | null
+          voucher_xtra_fee_cents?: number | null
         }
         Relationships: []
       }
