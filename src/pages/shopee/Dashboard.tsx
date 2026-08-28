@@ -15,6 +15,7 @@ import { TopVariationsSection } from '@/components/charts/TopVariationsSection';
 import { OnboardingChecklist } from '@/components/dashboard/OnboardingChecklist';
 import { supabase } from '@/integrations/supabase/client';
 import { calculateResults, formatCurrency, RawOrder, SettingsData } from '@/lib/calculations';
+import { formatCents, type Cents } from '@/lib/money';
 import { fetchAllOrders } from '@/lib/supabase-helpers';
 import { useShopeeSync } from '@/hooks/useShopeeSync';
 import { useIntegrations } from '@/hooks/useIntegrations';
@@ -176,6 +177,11 @@ export function ShopeeDashboardContent() {
   const totalFees = usingSyncData
     ? syncData.stats.faturamento - syncData.stats.valorLiquido
     : (calculatedResults?.totals.taxa_shopee_reais || 0);
+  // Só existe (e só é usado) dentro do bloco gated por usingSyncData —
+  // diferente de totalFees acima, não precisa de fallback pro upload manual.
+  const totalFeesCents = (usingSyncData
+    ? syncData.stats.faturamentoCents - syncData.stats.valorLiquidoCents
+    : 0) as Cents;
   const statusTotal = usingSyncData
     ? syncData.stats.pedidos + syncData.stats.emTransito + syncData.stats.cancelados
     : 0;
@@ -381,7 +387,7 @@ export function ShopeeDashboardContent() {
                       )}
                     </div>
                     <span className="text-sm font-medium text-destructive tabular-nums shrink-0">
-                      −{formatCurrency(fee.amount)}
+                      −{formatCents(fee.amountCents)}
                     </span>
                   </div>
                 );
@@ -389,7 +395,7 @@ export function ShopeeDashboardContent() {
               <div className="border-t pt-3 flex items-center justify-between">
                 <span className="text-sm font-semibold">Total retido pela Shopee</span>
                 <span className="text-sm font-semibold text-destructive tabular-nums">
-                  −{formatCurrency(totalFees)}
+                  −{formatCents(totalFeesCents)}
                 </span>
               </div>
               {syncData.stats.faturamento > 0 && (

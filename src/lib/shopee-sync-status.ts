@@ -6,6 +6,8 @@
 // coortes de pedido diferentes — o Dashboard chegava a mostrar Valor Líquido
 // negativo (`receita de N pedidos − taxas de M pedidos`, N ≠ M).
 //
+import type { Cents } from './money';
+
 // Regra (ver docs/DIAGNOSTICO-FINANCEIRO.md, seção 7.1):
 //   - Coorte do card = pedido CONCLUÍDO na janela (`order_updated_at`), não
 //     "criado na janela" (que ignora pedidos em trânsito) nem "repasse na
@@ -93,16 +95,16 @@ export interface ShopeeFinance {
   cancelados: number;           // CANCELLED-like na janela
 
   // Decomposição visual (não entra no líquido — ver BUG-03b)
-  feeBreakdown: { type: string; label: string; amount: number; amountCents: number }[];
-  porDia: { date: string; faturamento: number; liquido: number; faturamentoCents: number; liquidoCents: number }[];
+  feeBreakdown: { type: string; label: string; amount: number; amountCents: Cents }[];
+  porDia: { date: string; faturamento: number; liquido: number; faturamentoCents: Cents; liquidoCents: Cents }[];
 
   // Equivalentes em centavos dos campos acima (Fase 4, aditivo — ainda não
   // usados por nenhuma tela). Somam os inteiros `_cents` diretamente, sem
   // passar por ponto flutuante em nenhum momento.
-  faturamentoCents: number;
-  valorLiquidoCents: number;
-  liberadoCents: number;
-  aLiberarCents: number;
+  faturamentoCents: Cents;
+  valorLiquidoCents: Cents;
+  liberadoCents: Cents;
+  aLiberarCents: Cents;
 }
 
 export function computeShopeeFinance(
@@ -194,7 +196,7 @@ export function computeShopeeFinance(
       type,
       label: SHOPEE_FEE_LABELS[type] ?? type,
       amount,
-      amountCents: feeMapCents.get(type) ?? 0,
+      amountCents: (feeMapCents.get(type) ?? 0) as Cents,
     }))
     .sort((a, b) => b.amount - a.amount);
 
@@ -211,7 +213,13 @@ export function computeShopeeFinance(
     dayMap.set(d, e);
   }
   const porDia = [...dayMap.entries()]
-    .map(([date, v]) => ({ date, ...v }))
+    .map(([date, v]) => ({
+      date,
+      faturamento: v.faturamento,
+      liquido: v.liquido,
+      faturamentoCents: v.faturamentoCents as Cents,
+      liquidoCents: v.liquidoCents as Cents,
+    }))
     .sort((a, b) => a.date.localeCompare(b.date));
 
   return {
@@ -226,9 +234,9 @@ export function computeShopeeFinance(
     cancelados,
     feeBreakdown,
     porDia,
-    faturamentoCents,
-    valorLiquidoCents,
-    liberadoCents,
-    aLiberarCents,
+    faturamentoCents: faturamentoCents as Cents,
+    valorLiquidoCents: valorLiquidoCents as Cents,
+    liberadoCents: liberadoCents as Cents,
+    aLiberarCents: aLiberarCents as Cents,
   };
 }
