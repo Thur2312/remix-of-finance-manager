@@ -293,6 +293,7 @@ export type Database = {
       cash_flow_entries: {
         Row: {
           amount: number
+          amount_cents: number
           category_id: string | null
           created_at: string
           date: string
@@ -312,6 +313,7 @@ export type Database = {
         }
         Insert: {
           amount?: number
+          amount_cents?: number
           category_id?: string | null
           created_at?: string
           date?: string
@@ -331,6 +333,7 @@ export type Database = {
         }
         Update: {
           amount?: number
+          amount_cents?: number
           category_id?: string | null
           created_at?: string
           date?: string
@@ -461,6 +464,7 @@ export type Database = {
       fees: {
         Row: {
           amount: number
+          amount_cents: number
           created_at: string
           currency: string
           description: string | null
@@ -474,6 +478,7 @@ export type Database = {
         }
         Insert: {
           amount: number
+          amount_cents?: number
           created_at?: string
           currency: string
           description?: string | null
@@ -487,6 +492,7 @@ export type Database = {
         }
         Update: {
           amount?: number
+          amount_cents?: number
           created_at?: string
           currency?: string
           description?: string | null
@@ -909,7 +915,9 @@ export type Database = {
           quantity: number
           sku: string
           total_price: number
+          total_price_cents: number
           unit_price: number
+          unit_price_cents: number
         }
         Insert: {
           created_at?: string
@@ -920,7 +928,9 @@ export type Database = {
           quantity?: number
           sku?: string
           total_price?: number
+          total_price_cents?: number
           unit_price?: number
+          unit_price_cents?: number
         }
         Update: {
           created_at?: string
@@ -931,7 +941,9 @@ export type Database = {
           quantity?: number
           sku?: string
           total_price?: number
+          total_price_cents?: number
           unit_price?: number
+          unit_price_cents?: number
         }
         Relationships: [
           {
@@ -960,6 +972,7 @@ export type Database = {
           status: string
           synced_at: string
           total_amount: number
+          total_amount_cents: number
           tracking_number: string
         }
         Insert: {
@@ -978,6 +991,7 @@ export type Database = {
           status: string
           synced_at?: string
           total_amount?: number
+          total_amount_cents?: number
           tracking_number?: string
         }
         Update: {
@@ -996,6 +1010,7 @@ export type Database = {
           status?: string
           synced_at?: string
           total_amount?: number
+          total_amount_cents?: number
           tracking_number?: string
         }
         Relationships: [
@@ -1018,6 +1033,7 @@ export type Database = {
       payments: {
         Row: {
           amount: number
+          amount_cents: number
           created_at: string
           currency: string
           description: string
@@ -1025,7 +1041,9 @@ export type Database = {
           id: string
           integration_id: string
           marketplace_fee: number
+          marketplace_fee_cents: number
           net_amount: number
+          net_amount_cents: number
           order_id: string | null
           payment_method: string
           status: string
@@ -1034,6 +1052,7 @@ export type Database = {
         }
         Insert: {
           amount: number
+          amount_cents?: number
           created_at?: string
           currency?: string
           description?: string
@@ -1041,7 +1060,9 @@ export type Database = {
           id?: string
           integration_id: string
           marketplace_fee?: number
+          marketplace_fee_cents?: number
           net_amount?: number
+          net_amount_cents?: number
           order_id?: string | null
           payment_method?: string
           status?: string
@@ -1050,6 +1071,7 @@ export type Database = {
         }
         Update: {
           amount?: number
+          amount_cents?: number
           created_at?: string
           currency?: string
           description?: string
@@ -1057,7 +1079,9 @@ export type Database = {
           id?: string
           integration_id?: string
           marketplace_fee?: number
+          marketplace_fee_cents?: number
           net_amount?: number
+          net_amount_cents?: number
           order_id?: string | null
           payment_method?: string
           status?: string
@@ -1091,6 +1115,7 @@ export type Database = {
       payouts: {
         Row: {
           amount: number
+          amount_cents: number
           bank_account: string | null
           completed_at: string | null
           created_at: string
@@ -1105,6 +1130,7 @@ export type Database = {
         }
         Insert: {
           amount: number
+          amount_cents?: number
           bank_account?: string | null
           completed_at?: string | null
           created_at?: string
@@ -1119,6 +1145,7 @@ export type Database = {
         }
         Update: {
           amount?: number
+          amount_cents?: number
           bank_account?: string | null
           completed_at?: string | null
           created_at?: string
@@ -1332,6 +1359,7 @@ export type Database = {
           seen_at: string | null
           status: string
           total_amount: number
+          total_amount_cents: number
           user_id: string
         }
         Insert: {
@@ -1349,6 +1377,7 @@ export type Database = {
           seen_at?: string | null
           status: string
           total_amount?: number
+          total_amount_cents?: number
           user_id: string
         }
         Update: {
@@ -1366,6 +1395,7 @@ export type Database = {
           seen_at?: string | null
           status?: string
           total_amount?: number
+          total_amount_cents?: number
           user_id?: string
         }
         Relationships: [
