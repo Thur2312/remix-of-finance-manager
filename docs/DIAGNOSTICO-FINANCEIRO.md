@@ -1,8 +1,9 @@
 # Diagnóstico Financeiro — Seller Finance
 
-> **Status:** Commit 1 (captação Shopee) feito e deployado. Falta Commit 3
-> (agregação) e Commit 2 (frete visual, baixa prioridade).
-> **Data:** 27/08/2026 · revisado 28/08/2026 (Commit 1 + validação do número correto)
+> **Status:** Commit 1 (captação) e Commit 3 (agregação unificada) feitos.
+> Falta: Commit 2 (frete no detalhamento, cosmético), BUG-01 (imposto), BUG-15
+> (dono desconecta conexão lixo), backfill histórico (`days:180`).
+> **Data:** 27/08/2026 · revisado 28/08/2026 (Commits 1 + 3a/3b/3c)
 > **Escopo:** cálculo financeiro da Gestão Shopee (dashboard) e da Calculadora de Precificação.
 >
 > **Revisão 27/08 (sync Shopee):** seção 5 resolvida (sem bug de sinal — cliente
@@ -698,14 +699,13 @@ a:
 | 2 | Levantamento do código (seção 9) | sync Shopee concluído; schema (tipos de coluna) e Calculadora pendentes |
 | 3 | **Decisão do Thur:** base do imposto (BUG-01) | trava BUG-02 e migrations |
 | ~~4~~ | ~~**Captação — Commit 1:** BUG-11 + BUG-13 + BUG-14 + BUG-10~~ | ✅ **feito e deployado 28/08** (`3272f29`). BUG-03b saiu daqui (rebaixado → Commit 2). |
-| 5 | **Backfill histórico:** sync ampla (`days: 180`) da `efbd3b5b` (2637 fees órfãs) + dono desconecta `929c33cc` (BUG-15) | melhora telas de histórico; não bloqueia o card de 15d |
-| 6 | Fixture: congelar o JSON do `get_escrow_detail` pós-correção (seção 12) | opcional agora |
-| **7** | **Agregação — Commit 3:** `computeShopeeSyncStats` por `order_id` / coorte (a) / três estados / rótulos (seção 7.1) + rotear `IntegrationDashboard.tsx` (BUG-16) e `useDREData.ts` pela mesma função | **PRÓXIMO** — número validado: R$ 6.473 líquido |
-| 8 | Calculadora: BUG-04, BUG-05, BUG-07, BUG-08, BUG-09 | — |
-| 9 | Dashboard: BUG-02 (guard imposto sobre negativo) — só depois do BUG-01 | depende de 3 |
-| 10 | Commit 2: frete líquido no "Detalhamento de Taxas" (BUG-03b, cosmético) | — |
-| 11 | Padronização em centavos (seção 6) | depende de 3 |
-| 12 | Proposta de frete na precificação (BUG-06) | depende de 8 |
+| ~~5~~ | ~~**Agregação — Commit 3:** função pura única (`computeShopeeFinance`), coorte (a), três estados, rótulos (seção 7.1)~~ | ✅ **feito 28/08** — `8f30f8a` (3a) + `93032f7` (fix) + `29d41fa` (3b) + `d14d8ab` (3c). Migrados: Dashboard, Gestão, Unificado, Comparativo, DRE. `IntegrationDashboard.tsx` (BUG-16) deletado (órfão). Card na Maluth: `−R$ 44` → `+R$ 6.473`. |
+| 6 | **Backfill histórico:** sync ampla (`days: 180`) da `efbd3b5b` (2637 fees órfãs) + dono desconecta `929c33cc` (BUG-15) | melhora telas de histórico; não bloqueia o card de 15d |
+| 7 | Calculadora: BUG-04, BUG-05, BUG-07, BUG-08, BUG-09 | — |
+| 8 | Dashboard: BUG-02 (guard imposto sobre negativo) — só depois do BUG-01 | depende de 3 |
+| 9 | Commit 2: frete líquido no "Detalhamento de Taxas" (BUG-03b, cosmético) | — |
+| 10 | Padronização em centavos (seção 6) | depende de 3 |
+| 11 | Proposta de frete na precificação (BUG-06) | depende de 8 |
 
 > Não iniciar a padronização em centavos antes da decisão do imposto (BUG-01).
 > Migration em cima de regra de imposto errada custa caro para desfazer.
