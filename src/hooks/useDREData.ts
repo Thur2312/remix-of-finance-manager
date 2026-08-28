@@ -26,6 +26,7 @@ interface ShopeeOrder {
   external_order_id: string;
   status: string;
   total_amount: number;
+  total_amount_cents: number;
   order_created_at: string;
 }
 
@@ -34,6 +35,7 @@ interface ShopeeFee {
   integration_id: string;
   fee_type: string;
   amount: number;
+  amount_cents: number;
   fee_date: string;
 }
 
@@ -43,6 +45,7 @@ interface ShopeePayment {
   order_id: string | null;
   payment_method: string;
   net_amount: number;
+  net_amount_cents: number;
 }
 
 // Classificação de status compartilhada com useShopeeSync/IntegrationDashboard
@@ -93,7 +96,7 @@ export function useDREData(): UseDREDataResult {
     while (true) {
       const { data, error } = await supabase
         .from('orders')
-        .select('id, integration_id, external_order_id, status, total_amount, order_created_at')
+        .select('id, integration_id, external_order_id, status, total_amount, total_amount_cents, order_created_at')
         .eq('integration_id', integrationId)
         .range(page * PAGE_SIZE, (page + 1) * PAGE_SIZE - 1)
         .order('order_created_at', { ascending: false });
@@ -113,7 +116,7 @@ export function useDREData(): UseDREDataResult {
     while (true) {
       const { data, error } = await supabase
         .from('fees')
-        .select('id, integration_id, fee_type, amount, fee_date')
+        .select('id, integration_id, fee_type, amount, amount_cents, fee_date')
         .eq('integration_id', integrationId)
         .range(page * PAGE_SIZE, (page + 1) * PAGE_SIZE - 1);
       if (error) { console.warn('[DRE] Shopee fees error:', error); break; }
@@ -132,7 +135,7 @@ export function useDREData(): UseDREDataResult {
     while (true) {
       const { data, error } = await supabase
         .from('payments')
-        .select('id, integration_id, order_id, payment_method, net_amount')
+        .select('id, integration_id, order_id, payment_method, net_amount, net_amount_cents')
         .eq('integration_id', integrationId)
         .eq('payment_method', 'escrow')
         .range(page * PAGE_SIZE, (page + 1) * PAGE_SIZE - 1);
@@ -345,11 +348,13 @@ export function useDREData(): UseDREDataResult {
       .filter(o => isShopeeRevenueStatus(o.status))
       .map(
         (o): ShopeeOrderDRE => ({
-          id:             o.id,
-          total_faturado: Number(o.total_amount),
-          custo_unitario: 0,
-          quantidade:     1,
-          data_pedido:    o.order_created_at,
+          id:                   o.id,
+          total_faturado:       Number(o.total_amount),
+          total_faturado_cents: Number(o.total_amount_cents),
+          custo_unitario:       0,
+          custo_unitario_cents: 0,
+          quantidade:           1,
+          data_pedido:          o.order_created_at,
         }),
       );
 

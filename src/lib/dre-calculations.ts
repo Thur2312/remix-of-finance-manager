@@ -1,4 +1,5 @@
 import { differenceInDays } from 'date-fns';
+import { toCents, type Cents } from './money';
 
 // ============= INTERFACES =============
 
@@ -34,7 +35,9 @@ export interface DREAlerta {
 export interface ShopeeOrderDRE {
   id: string;
   total_faturado: number;
+  total_faturado_cents: number;
   custo_unitario: number;
+  custo_unitario_cents: number;
   quantidade: number;
   data_pedido: string | null;
 }
@@ -48,11 +51,17 @@ export interface MlOrder {
   variacao: string | null;
   quantidade: number;
   total_faturado: number;
+  total_faturado_cents?: number | null;
   desconto_plataforma: number;
+  desconto_plataforma_cents?: number | null;
   desconto_vendedor: number;
+  desconto_vendedor_cents?: number | null;
   custo_unitario: number;
+  custo_unitario_cents?: number | null;
   taxa_ml: number;
+  taxa_ml_cents?: number | null;
   frete_ml: number;
+  frete_ml_cents?: number | null;
   status_pedido: string;
   data_pedido: string;
   updated_at: string;
@@ -64,6 +73,7 @@ export interface CashFlowEntry {
   user_id: string;
   description: string;
   amount: number;
+  amount_cents?: number | null;
   type: 'income' | 'expense';
   status: 'pending' | 'received' | 'paid' | 'overdue';
   due_date: string;
@@ -130,6 +140,58 @@ export interface DREData {
   margemLiquida: number;
 
   alertas: DREAlerta[];
+
+  // Equivalentes em centavos (Fase 4, aditivo — ver
+  // docs/DIAGNOSTICO-FINANCEIRO.md seção 6). Percentuais (margens) não têm
+  // versão em centavos — são razões, não dinheiro.
+  receitaBrutaShopeeCents: Cents;
+  receitaBrutaTikTokCents: Cents;
+  receitaBrutaMercadoLivreCents: Cents;
+  receitaBrutaExtraCents: Cents;
+  receitaBrutaTotalCents: Cents;
+
+  icmsCents: Cents;
+  issSimplesCents: Cents;
+  impostosSobreVendasTotalCents: Cents;
+
+  cancelamentosCents: Cents;
+  devolucoesCents: Cents;
+  deducoesTotalCents: Cents;
+
+  receitaLiquidaCents: Cents;
+
+  custoProdutosCents: Cents;
+  custoEmbalagemCents: Cents;
+  custoFreteEnvioCents: Cents;
+  nfEntradaCents: Cents;
+  cogsTotalCents: Cents;
+
+  lucroBrutoCents: Cents;
+
+  comissoesMarketplaceCents: Cents;
+  comissoesAfiliadosCents: Cents;
+  adsMarketingCents: Cents;
+  taxasGatewayCents: Cents;
+  taxasServicosCents: Cents;
+  custosVariaveisTotalCents: Cents;
+
+  margemContribuicaoCents: Cents;
+
+  custosFixosPorCategoriaCents: Record<string, Cents>;
+  custosFixosTotalCents: Cents;
+  custosFixosProrrateadosCents: Cents;
+
+  lucroOperacionalCents: Cents;
+
+  jurosMultasCents: Cents;
+  impostosSobreLucroCents: Cents;
+  despesasFinanceirasTotalCents: Cents;
+
+  outrasReceitasFluxoCents: Cents;
+  outrasDespesasFluxoCents: Cents;
+  outrasDespesasFluxoPorCategoriaCents: Record<string, Cents>;
+
+  lucroLiquidoCents: Cents;
 }
 
 export interface TikTokSettlement {
@@ -146,39 +208,73 @@ export interface TikTokSettlement {
   type: string | null;
   status: string | null;
   total_settlement_amount: number | null;
+  total_settlement_amount_cents?: number | null;
   net_sales: number | null;
+  net_sales_cents?: number | null;
   subtotal_before_discounts: number | null;
+  subtotal_before_discounts_cents?: number | null;
   customer_payment: number | null;
+  customer_payment_cents?: number | null;
   customer_refund: number | null;
+  customer_refund_cents?: number | null;
   refund_subtotal: number | null;
+  refund_subtotal_cents?: number | null;
   seller_discounts: number | null;
+  seller_discounts_cents?: number | null;
   refund_seller_discounts: number | null;
+  refund_seller_discounts_cents?: number | null;
   platform_discounts: number | null;
+  platform_discounts_cents?: number | null;
   platform_discounts_refund: number | null;
+  platform_discounts_refund_cents?: number | null;
   seller_cofunded_discount: number | null;
+  seller_cofunded_discount_cents?: number | null;
   seller_cofunded_discount_refund: number | null;
+  seller_cofunded_discount_refund_cents?: number | null;
   platform_cofunded_discount: number | null;
+  platform_cofunded_discount_cents?: number | null;
   tiktok_shipping_fee: number | null;
+  tiktok_shipping_fee_cents?: number | null;
   customer_shipping_fee: number | null;
+  customer_shipping_fee_cents?: number | null;
   refunded_shipping: number | null;
+  refunded_shipping_cents?: number | null;
   shipping_incentive: number | null;
+  shipping_incentive_cents?: number | null;
   shipping_incentive_refund: number | null;
+  shipping_incentive_refund_cents?: number | null;
   shipping_subsidy: number | null;
+  shipping_subsidy_cents?: number | null;
   shipping_total: number | null;
+  shipping_total_cents?: number | null;
   actual_return_shipping_fee: number | null;
+  actual_return_shipping_fee_cents?: number | null;
   total_fees: number | null;
+  total_fees_cents?: number | null;
   tiktok_commission_fee: number | null;
+  tiktok_commission_fee_cents?: number | null;
   affiliate_commission: number | null;
+  affiliate_commission_cents?: number | null;
   affiliate_partner_commission: number | null;
+  affiliate_partner_commission_cents?: number | null;
   affiliate_shop_ads_commission: number | null;
+  affiliate_shop_ads_commission_cents?: number | null;
   sfp_service_fee: number | null;
+  sfp_service_fee_cents?: number | null;
   fee_per_item: number | null;
+  fee_per_item_cents?: number | null;
   voucher_xtra_fee: number | null;
+  voucher_xtra_fee_cents?: number | null;
   live_specials_fee: number | null;
+  live_specials_fee_cents?: number | null;
   bonus_cashback_fee: number | null;
+  bonus_cashback_fee_cents?: number | null;
   icms_difal: number | null;
+  icms_difal_cents?: number | null;
   icms_penalty: number | null;
+  icms_penalty_cents?: number | null;
   adjustment_amount: number | null;
+  adjustment_amount_cents?: number | null;
   adjustment_reason: string | null;
 }
 
@@ -191,11 +287,15 @@ export interface TikTokOrder {
   sku: string | null;
   quantidade: number | null;
   total_faturado: number | null;
+  total_faturado_cents?: number | null;
   custo_unitario: number | null;
+  custo_unitario_cents?: number | null;
   data_pedido: string | null;
   status_pedido: string | null;
   desconto_plataforma: number | null;
+  desconto_plataforma_cents?: number | null;
   desconto_vendedor: number | null;
+  desconto_vendedor_cents?: number | null;
 }
 
 export interface FixedCost {
@@ -204,6 +304,7 @@ export interface FixedCost {
   category: string;
   name: string;
   amount: number;
+  amount_cents?: number | null;
   is_recurring: boolean;
 }
 
@@ -339,6 +440,11 @@ export function calculateDRE(
   const diasPeriodo       = differenceInDays(period.end, period.start) + 1;
   const proporcaoPeriodo  = Math.min(diasPeriodo / 30, 1);
 
+  // Settings não têm coluna _cents no banco — converte uma vez aqui.
+  const gastoShopeeAdsCents = toCents(Number(shopeeSettings?.gasto_shopee_ads) || 0);
+  const gastoTiktokAdsCents = toCents(Number(tiktokSettings?.gasto_tiktok_ads) || 0);
+  const adicionalPorItemShopeeCents = toCents(Number(shopeeSettings?.adicional_por_item) || 0);
+
   // 1. RECEITA BRUTA
   const receitaBrutaShopee = filteredShopeeOrders.reduce((s, o) => s + (o.total_faturado || 0), 0);
   const receitaBrutaTikTok = filteredTikTokOrders.reduce((s, o) => s + (o.total_faturado || 0), 0);
@@ -348,12 +454,27 @@ export function calculateDRE(
     .reduce((s, e) => s + (e.amount || 0), 0);
   const receitaBrutaTotal = receitaBrutaShopee + receitaBrutaTikTok + receitaBrutaMercadoLivre + receitaBrutaExtra;
 
+  const receitaBrutaShopeeCents = filteredShopeeOrders.reduce((s, o) => s + Number(o.total_faturado_cents || 0), 0);
+  const receitaBrutaTikTokCents = filteredTikTokOrders.reduce((s, o) => s + Number(o.total_faturado_cents || 0), 0);
+  const receitaBrutaMercadoLivreCents = filteredMlOrders.reduce((s, o) => s + Number(o.total_faturado_cents ?? 0), 0);
+  const receitaBrutaExtraCents = filteredCashFlow
+    .filter(e => e.type === 'income' && e.status === 'received')
+    .reduce((s, e) => s + Number(e.amount_cents || 0), 0);
+  const receitaBrutaTotalCents = receitaBrutaShopeeCents + receitaBrutaTikTokCents + receitaBrutaMercadoLivreCents + receitaBrutaExtraCents;
+
   // 2. IMPOSTOS
   const icms = filteredSettlements.reduce((s, x) => s + Math.abs(x.icms_difal || 0) + Math.abs(x.icms_penalty || 0), 0);
   const issShopee  = receitaBrutaShopee * ((shopeeSettings?.imposto_nf_saida || 0) / 100);
   const issTikTok  = receitaBrutaTikTok * ((tiktokSettings?.imposto_nf_saida || 0) / 100);
   const issSimples = issShopee + issTikTok;
   const impostosSobreVendasTotal = icms + issSimples;
+
+  const icmsCents = filteredSettlements.reduce((s, x) =>
+    s + Math.abs(Number(x.icms_difal_cents || 0)) + Math.abs(Number(x.icms_penalty_cents || 0)), 0);
+  const issShopeeCents = Math.round(receitaBrutaShopeeCents * ((shopeeSettings?.imposto_nf_saida || 0) / 100));
+  const issTikTokCents = Math.round(receitaBrutaTikTokCents * ((tiktokSettings?.imposto_nf_saida || 0) / 100));
+  const issSimplesCents = issShopeeCents + issTikTokCents;
+  const impostosSobreVendasTotalCents = icmsCents + issSimplesCents;
 
   // 3. DEDUÇÕES
   const cancelamentos = 0;
@@ -362,8 +483,15 @@ export function calculateDRE(
     .reduce((s, x) => s + Math.abs(x.refund_subtotal || x.customer_refund || 0), 0);
   const deducoesTotal = cancelamentos + devolucoes;
 
+  const cancelamentosCents = 0 as Cents;
+  const devolucoesCents = filteredSettlements
+    .filter(s => s.type === 'Refund')
+    .reduce((s, x) => s + Math.abs(Number(x.refund_subtotal_cents || x.customer_refund_cents || 0)), 0);
+  const deducoesTotalCents = cancelamentosCents + devolucoesCents;
+
   // 4. RECEITA LÍQUIDA
   const receitaLiquida = receitaBrutaTotal - impostosSobreVendasTotal - deducoesTotal;
+  const receitaLiquidaCents = receitaBrutaTotalCents - impostosSobreVendasTotalCents - deducoesTotalCents;
 
   // 5. COGS
   const custoProdutosShopee = filteredShopeeOrders.reduce((s, o) => s + ((o.custo_unitario || 0) * (o.quantidade || 1)), 0);
@@ -382,9 +510,26 @@ export function calculateDRE(
                   + custoProdutosTikTok * ((tiktokSettings?.percentual_nf_entrada || 0) / 100);
   const cogsTotal = custoProdutos + custoEmbalagem + custoFreteEnvio + nfEntrada;
 
+  const custoProdutosShopeeCents = filteredShopeeOrders.reduce((s, o) => s + (Number(o.custo_unitario_cents || 0) * (o.quantidade || 1)), 0);
+  const custoProdutosTikTokCents = filteredTikTokOrders.reduce((s, o) => s + (Number(o.custo_unitario_cents || 0) * (o.quantidade || 1)), 0);
+  const custoProdutosMlCents     = filteredMlOrders.reduce((s, o) => s + (Number(o.custo_unitario_cents ?? 0) * (o.quantidade ?? 1)), 0);
+  const custoProdutosCents = custoProdutosShopeeCents + custoProdutosTikTokCents + custoProdutosMlCents;
+  const custoEmbalagemCents = 0 as Cents;
+  const custoFreteTikTokCents = filteredSettlements.reduce((s, x) => {
+    const cost   = Math.abs(Number(x.tiktok_shipping_fee_cents || 0));
+    const income = Number(x.customer_shipping_fee_cents || 0) + Number(x.shipping_subsidy_cents || 0) + Number(x.shipping_incentive_cents || 0);
+    return s + Math.max(0, cost - income);
+  }, 0);
+  const custoFreteMlCents = filteredMlOrders.reduce((s, o) => s + Number(o.frete_ml_cents ?? 0), 0);
+  const custoFreteEnvioCents = custoFreteTikTokCents + custoFreteMlCents;
+  const nfEntradaCents = Math.round(custoProdutosShopeeCents * ((shopeeSettings?.percentual_nf_entrada || 0) / 100))
+                        + Math.round(custoProdutosTikTokCents * ((tiktokSettings?.percentual_nf_entrada || 0) / 100));
+  const cogsTotalCents = custoProdutosCents + custoEmbalagemCents + custoFreteEnvioCents + nfEntradaCents;
+
   // 6. LUCRO BRUTO
   const lucroBruto  = receitaLiquida - cogsTotal;
   const margemBruta = receitaLiquida > 0 ? (lucroBruto / receitaLiquida) * 100 : 0;
+  const lucroBrutoCents = receitaLiquidaCents - cogsTotalCents;
 
   // 7. CUSTOS VARIÁVEIS
   const comissaoShopee   = receitaBrutaShopee * ((shopeeSettings?.taxa_comissao_shopee || 0) / 100);
@@ -392,10 +537,20 @@ export function calculateDRE(
   const comissaoMl       = filteredMlOrders.reduce((s, o) => s + (o.taxa_ml ?? 0), 0);
   const comissoesMarketplace = comissaoShopee + comissaoTikTok + comissaoMl;
 
+  const comissaoShopeeCents = Math.round(receitaBrutaShopeeCents * ((shopeeSettings?.taxa_comissao_shopee || 0) / 100));
+  const comissaoTikTokCents = filteredSettlements.reduce((s, x) => s + Math.abs(Number(x.tiktok_commission_fee_cents || 0)), 0);
+  const comissaoMlCents     = filteredMlOrders.reduce((s, o) => s + Number(o.taxa_ml_cents ?? 0), 0);
+  const comissoesMarketplaceCents = comissaoShopeeCents + comissaoTikTokCents + comissaoMlCents;
+
   const comissoesAfiliados = filteredSettlements.reduce((s, x) =>
     s + Math.abs(x.affiliate_commission || 0)
       + Math.abs(x.affiliate_partner_commission || 0)
       + Math.abs(x.affiliate_shop_ads_commission || 0), 0);
+
+  const comissoesAfiliadosCents = filteredSettlements.reduce((s, x) =>
+    s + Math.abs(Number(x.affiliate_commission_cents || 0))
+      + Math.abs(Number(x.affiliate_partner_commission_cents || 0))
+      + Math.abs(Number(x.affiliate_shop_ads_commission_cents || 0)), 0);
 
   const adsMarketing  = (shopeeSettings?.gasto_shopee_ads || 0) + (tiktokSettings?.gasto_tiktok_ads || 0);
   const taxasGateway  = 0;
@@ -410,43 +565,74 @@ export function calculateDRE(
   const taxasServicos = taxasAdicionaisShopee + taxasAdicionaisTikTok;
   const custosVariaveisTotal = comissoesMarketplace + comissoesAfiliados + adsMarketing + taxasGateway + taxasServicos;
 
+  const adsMarketingCents = gastoShopeeAdsCents + gastoTiktokAdsCents;
+  const taxasGatewayCents = 0 as Cents;
+  const taxasAdicionaisShopeeCents = filteredShopeeOrders.reduce((s, o) =>
+    s + (adicionalPorItemShopeeCents * (o.quantidade || 1)), 0);
+  const taxasAdicionaisTikTokCents = filteredSettlements.reduce((s, x) =>
+    s + Math.abs(Number(x.sfp_service_fee_cents || 0))
+      + Math.abs(Number(x.fee_per_item_cents || 0))
+      + Math.abs(Number(x.voucher_xtra_fee_cents || 0))
+      + Math.abs(Number(x.live_specials_fee_cents || 0))
+      + Math.abs(Number(x.bonus_cashback_fee_cents || 0)), 0);
+  const taxasServicosCents = taxasAdicionaisShopeeCents + taxasAdicionaisTikTokCents;
+  const custosVariaveisTotalCents = comissoesMarketplaceCents + comissoesAfiliadosCents + adsMarketingCents + taxasGatewayCents + taxasServicosCents;
+
   // 8. MARGEM DE CONTRIBUIÇÃO
   const margemContribuicao = lucroBruto - custosVariaveisTotal;
   const percentualMargemContribuicao = receitaLiquida > 0 ? (margemContribuicao / receitaLiquida) * 100 : 0;
+  const margemContribuicaoCents = lucroBrutoCents - custosVariaveisTotalCents;
 
   // 9. CUSTOS FIXOS
   const custosFixosPorCategoria: Record<string, number> = {};
+  const custosFixosPorCategoriaCents: Record<string, Cents> = {};
   let custosFixosTotal = 0;
+  let custosFixosTotalCents = 0;
   fixedCosts.forEach(c => {
     custosFixosPorCategoria[c.category] = (custosFixosPorCategoria[c.category] || 0) + c.amount;
     custosFixosTotal += c.amount;
+    const amountCents = Number(c.amount_cents ?? 0);
+    custosFixosPorCategoriaCents[c.category] = ((custosFixosPorCategoriaCents[c.category] ?? 0) + amountCents) as Cents;
+    custosFixosTotalCents += amountCents;
   });
   const custosFixosProrrateados = custosFixosTotal * proporcaoPeriodo;
+  const custosFixosProrrateadosCents = Math.round(custosFixosTotalCents * proporcaoPeriodo);
 
   // 10. LUCRO OPERACIONAL
   const lucroOperacional  = margemContribuicao - custosFixosProrrateados;
   const margemOperacional = receitaLiquida > 0 ? (lucroOperacional / receitaLiquida) * 100 : 0;
+  const lucroOperacionalCents = margemContribuicaoCents - custosFixosProrrateadosCents;
 
   // 11. DESPESAS FINANCEIRAS
   const jurosMultas = 0;
   const impostosSobreLucro = 0;
   const despesasFinanceirasTotal = jurosMultas + impostosSobreLucro;
+  const jurosMultasCents = 0 as Cents;
+  const impostosSobreLucroCents = 0 as Cents;
+  const despesasFinanceirasTotalCents = jurosMultasCents + impostosSobreLucroCents;
 
   // Outras despesas do fluxo de caixa (type=expense, status=paid)
   const outrasReceitasFluxo = receitaBrutaExtra;
+  const outrasReceitasFluxoCents = receitaBrutaExtraCents;
   const outrasDespesasFluxoPorCategoria: Record<string, number> = {};
+  const outrasDespesasFluxoPorCategoriaCents: Record<string, Cents> = {};
   let outrasDespesasFluxo = 0;
+  let outrasDespesasFluxoCents = 0;
   filteredCashFlow
     .filter(e => e.type === 'expense' && e.status === 'paid')
     .forEach(e => {
       const cat = e.category_id || 'Sem categoria';
       outrasDespesasFluxoPorCategoria[cat] = (outrasDespesasFluxoPorCategoria[cat] || 0) + e.amount;
       outrasDespesasFluxo += e.amount;
+      const amountCents = Number(e.amount_cents ?? 0);
+      outrasDespesasFluxoPorCategoriaCents[cat] = ((outrasDespesasFluxoPorCategoriaCents[cat] ?? 0) + amountCents) as Cents;
+      outrasDespesasFluxoCents += amountCents;
     });
 
   // 12. LUCRO LÍQUIDO
   const lucroLiquido  = lucroOperacional - despesasFinanceirasTotal - outrasDespesasFluxo;
   const margemLiquida = receitaLiquida > 0 ? (lucroLiquido / receitaLiquida) * 100 : 0;
+  const lucroLiquidoCents = lucroOperacionalCents - despesasFinanceirasTotalCents - outrasDespesasFluxoCents;
 
   const alertas = gerarAlertas({ receitaBrutaTotal, receitaBrutaExtra, impostosSobreVendasTotal, cogsTotal, margemContribuicao, lucroOperacional, custosFixosTotal });
 
@@ -466,6 +652,43 @@ export function calculateDRE(
     outrasReceitasFluxo, outrasDespesasFluxo, outrasDespesasFluxoPorCategoria,
     lucroLiquido, margemLiquida,
     alertas,
+
+    receitaBrutaShopeeCents: receitaBrutaShopeeCents as Cents,
+    receitaBrutaTikTokCents: receitaBrutaTikTokCents as Cents,
+    receitaBrutaMercadoLivreCents: receitaBrutaMercadoLivreCents as Cents,
+    receitaBrutaExtraCents: receitaBrutaExtraCents as Cents,
+    receitaBrutaTotalCents: receitaBrutaTotalCents as Cents,
+    icmsCents: icmsCents as Cents,
+    issSimplesCents: issSimplesCents as Cents,
+    impostosSobreVendasTotalCents: impostosSobreVendasTotalCents as Cents,
+    cancelamentosCents,
+    devolucoesCents: devolucoesCents as Cents,
+    deducoesTotalCents: deducoesTotalCents as Cents,
+    receitaLiquidaCents: receitaLiquidaCents as Cents,
+    custoProdutosCents: custoProdutosCents as Cents,
+    custoEmbalagemCents,
+    custoFreteEnvioCents: custoFreteEnvioCents as Cents,
+    nfEntradaCents: nfEntradaCents as Cents,
+    cogsTotalCents: cogsTotalCents as Cents,
+    lucroBrutoCents: lucroBrutoCents as Cents,
+    comissoesMarketplaceCents: comissoesMarketplaceCents as Cents,
+    comissoesAfiliadosCents: comissoesAfiliadosCents as Cents,
+    adsMarketingCents: adsMarketingCents as Cents,
+    taxasGatewayCents,
+    taxasServicosCents: taxasServicosCents as Cents,
+    custosVariaveisTotalCents: custosVariaveisTotalCents as Cents,
+    margemContribuicaoCents: margemContribuicaoCents as Cents,
+    custosFixosPorCategoriaCents,
+    custosFixosTotalCents: custosFixosTotalCents as Cents,
+    custosFixosProrrateadosCents: custosFixosProrrateadosCents as Cents,
+    lucroOperacionalCents: lucroOperacionalCents as Cents,
+    jurosMultasCents,
+    impostosSobreLucroCents,
+    despesasFinanceirasTotalCents: despesasFinanceirasTotalCents as Cents,
+    outrasReceitasFluxoCents: outrasReceitasFluxoCents as Cents,
+    outrasDespesasFluxoCents: outrasDespesasFluxoCents as Cents,
+    outrasDespesasFluxoPorCategoriaCents,
+    lucroLiquidoCents: lucroLiquidoCents as Cents,
   };
 }
 
