@@ -19,6 +19,7 @@ export interface SyncedOrder {
   external_order_id: string;
   status: string;
   total_amount: number;
+  total_amount_cents: number;
   currency: string;
   buyer_username: string;
   shipping_carrier: string;
@@ -38,6 +39,7 @@ export interface SyncedPayment {
   amount: number;
   marketplace_fee: number;
   net_amount: number;
+  net_amount_cents: number;
   currency: string;
   payment_method: string;
   status: string;
@@ -53,6 +55,7 @@ export interface SyncedFee {
   order_id: string | null;
   fee_type: string;
   amount: number;
+  amount_cents: number;
   currency: string;
   description: string | null;
   fee_date: string;
@@ -106,7 +109,7 @@ export function useShopeeSync(connectionId: string | null, days: number = 15) {
       while (true) {
         const { data, error } = await supabase
           .from('orders')
-          .select('id, status, total_amount, order_created_at, order_updated_at')
+          .select('id, status, total_amount, total_amount_cents, order_created_at, order_updated_at')
           .eq('integration_id', connectionId!)
           .gte('order_updated_at', prevStartIso)
           .lt('order_updated_at', prevEndIso)

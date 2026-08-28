@@ -5,6 +5,7 @@ import {
   type ShopeeFinancePaymentLike,
   type ShopeeFinanceFeeLike,
 } from './shopee-sync-status';
+import { toCents } from './money';
 
 // ── Builders ─────────────────────────────────────────────────────────────────
 // Janela padrão dos testes: 15/01 00:00 → agora (sem `untilIso`, salvo indicado).
@@ -14,19 +15,21 @@ let seq = 0;
 function order(p: Partial<ShopeeFinanceOrderLike> = {}): ShopeeFinanceOrderLike {
   seq++;
   const created = p.order_created_at ?? '2026-01-20T10:00:00.000Z';
+  const total_amount = p.total_amount ?? 100;
   return {
     id: p.id ?? `o${seq}`,
     status: p.status ?? 'COMPLETED',
-    total_amount: p.total_amount ?? 100,
+    total_amount,
+    total_amount_cents: p.total_amount_cents ?? Math.round(total_amount * 100),
     order_created_at: created,
     order_updated_at: p.order_updated_at ?? created,
   };
 }
 function payment(order_id: string, net_amount: number, method = 'escrow'): ShopeeFinancePaymentLike {
-  return { order_id, payment_method: method, net_amount };
+  return { order_id, payment_method: method, net_amount, net_amount_cents: Math.round(net_amount * 100) };
 }
 function fee(order_id: string | null, fee_type: string, amount: number, fee_date = '2026-01-20T10:00:00.000Z'): ShopeeFinanceFeeLike {
-  return { order_id, fee_type, amount, fee_date };
+  return { order_id, fee_type, amount, amount_cents: Math.round(amount * 100), fee_date };
 }
 
 const run = (
@@ -175,8 +178,8 @@ describe('computeShopeeFinance', () => {
     ];
     const r = run([naCoorte, foraCoorte], [payment('in', 70)], fees);
     expect(r.feeBreakdown).toEqual([
-      { type: 'commission', label: 'Comissão Shopee', amount: 20 },
-      { type: 'service_fee', label: 'Taxa de serviço', amount: 5 },
+      { type: 'commission', label: 'Comissão Shopee', amount: 20, amountCents: 2000 },
+      { type: 'service_fee', label: 'Taxa de serviço', amount: 5, amountCents: 500 },
     ]);
   });
 
@@ -187,8 +190,8 @@ describe('computeShopeeFinance', () => {
     const r = run([d20a, d20b, d22], [payment('a', 60), payment('b', 30), payment('c', 120)]);
 
     expect(r.porDia).toEqual([
-      { date: '2026-01-20', faturamento: 150, liquido: 90 },
-      { date: '2026-01-22', faturamento: 200, liquido: 120 },
+      { date: '2026-01-20', faturamento: 150, liquido: 90, faturamentoCents: 15000, liquidoCents: 9000 },
+      { date: '2026-01-22', faturamento: 200, liquido: 120, faturamentoCents: 20000, liquidoCents: 12000 },
     ]);
   });
 
@@ -211,5 +214,52 @@ describe('computeShopeeFinance', () => {
     const r = run([shipped], [payment('s', 50)]);
     expect(r.pedidos).toBe(0);
     expect(r.valorLiquido).toBe(0);
+  });
+
+  // ── Equivalência Fase 4 (aditivo): os campos *Cents somam os inteiros
+  // _cents direto, sem nunca passar por ponto flutuante. Precisam bater com
+  // toCents() dos campos em reais — provando que a versão em centavos não
+  // diverge da versão já validada em produção, antes de qualquer tela migrar.
+  describe('campos *Cents batem com toCents() dos campos em reais', () => {
+    it('coorte básica com repasse total', () => {
+      const o1 = order({ id: 'a', total_amount: 100, order_updated_at: '2026-01-20T10:00:00Z' });
+      const o2 = order({ id: 'b', total_amount: 200, order_updated_at: '2026-01-21T10:00:00Z' });
+      const r = run([o1, o2], [payment('a', 62), payment('b', 138)]);
+
+      expect(r.faturamentoCents).toBe(toCents(r.faturamento));
+      expect(r.liberadoCents).toBe(toCents(r.liberado));
+      expect(r.valorLiquidoCents).toBe(toCents(r.valorLiquido));
+      expect(r.aLiberarCents).toBe(0);
+    });
+
+    it('regressão do −R$44: líquido em centavos também vem do escrow, não de faturamento − taxas', () => {
+      const o = order({ id: 'x', total_amount: 100, order_updated_at: '2026-01-20T10:00:00Z' });
+      const fees = [fee('x', 'commission', 15), fee('x', 'service_fee', 10), fee('x', 'shipping_fee', 90)];
+      const r = run([o], [payment('x', 70)], fees);
+
+      expect(r.valorLiquidoCents).toBe(7000); // não 100 − 115 = −15
+      expect(r.feeBreakdown.find(f => f.type === 'shipping_fee')?.amountCents).toBe(9000);
+    });
+
+    it('aLiberar estimado: arredondamento em centavos fecha com a versão em reais', () => {
+      // Liberado: R$ 200 → R$ 120 de escrow (margem 60%). Sem repasse: R$ 100,
+      // estimado 60% = R$ 60,00 exato — mas o teste importa porque a divisão
+      // 120/200 é feita duas vezes (uma em reais, outra em centavos) e as duas
+      // precisam convergir pro mesmo centavo final.
+      const liberado = order({ id: 'lib', total_amount: 200, order_updated_at: '2026-01-20T00:00:00Z' });
+      const semRepasse = order({ id: 'pend', total_amount: 100, order_updated_at: '2026-01-21T00:00:00Z' });
+      const r = run([liberado, semRepasse], [payment('lib', 120)]);
+
+      expect(r.aLiberarCents).toBe(6000);
+      expect(r.valorLiquidoCents).toBe(toCents(r.valorLiquido));
+    });
+
+    it('entrada vazia → tudo zero em centavos também', () => {
+      const r = run([]);
+      expect(r.faturamentoCents).toBe(0);
+      expect(r.valorLiquidoCents).toBe(0);
+      expect(r.liberadoCents).toBe(0);
+      expect(r.aLiberarCents).toBe(0);
+    });
   });
 });

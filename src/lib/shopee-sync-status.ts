@@ -50,10 +50,14 @@ export function isShopeeCancelledStatus(status: string): boolean {
 }
 
 // ─── Entradas ────────────────────────────────────────────────────────────────
+// Os campos `_cents` (Fase 2 da padronização em centavos, ver
+// docs/DIAGNOSTICO-FINANCEIRO.md seção 6) chegam via trigger no banco a partir
+// da coluna float — mesma fonte, sem risco de divergir do valor em reais.
 export interface ShopeeFinanceOrderLike {
   id: string;
   status: string;
   total_amount: number;
+  total_amount_cents: number;
   order_created_at: string;
   order_updated_at: string;
 }
@@ -62,12 +66,14 @@ export interface ShopeeFinancePaymentLike {
   order_id: string | null;
   payment_method: string;
   net_amount: number;
+  net_amount_cents: number;
 }
 
 export interface ShopeeFinanceFeeLike {
   order_id: string | null;
   fee_type: string;
   amount: number;
+  amount_cents: number;
   fee_date: string;
 }
 
@@ -87,8 +93,16 @@ export interface ShopeeFinance {
   cancelados: number;           // CANCELLED-like na janela
 
   // Decomposição visual (não entra no líquido — ver BUG-03b)
-  feeBreakdown: { type: string; label: string; amount: number }[];
-  porDia: { date: string; faturamento: number; liquido: number }[];
+  feeBreakdown: { type: string; label: string; amount: number; amountCents: number }[];
+  porDia: { date: string; faturamento: number; liquido: number; faturamentoCents: number; liquidoCents: number }[];
+
+  // Equivalentes em centavos dos campos acima (Fase 4, aditivo — ainda não
+  // usados por nenhuma tela). Somam os inteiros `_cents` diretamente, sem
+  // passar por ponto flutuante em nenhum momento.
+  faturamentoCents: number;
+  valorLiquidoCents: number;
+  liberadoCents: number;
+  aLiberarCents: number;
 }
 
 export function computeShopeeFinance(
@@ -109,9 +123,11 @@ export function computeShopeeFinance(
 
   // Repasse (escrow_amount) por pedido — casado por order_id.
   const netByOrder = new Map<string, number>();
+  const netByOrderCents = new Map<string, number>();
   for (const p of payments) {
     if (p.payment_method !== "escrow" || !p.order_id) continue;
     netByOrder.set(p.order_id, (netByOrder.get(p.order_id) ?? 0) + Number(p.net_amount || 0));
+    netByOrderCents.set(p.order_id, (netByOrderCents.get(p.order_id) ?? 0) + Number(p.net_amount_cents || 0));
   }
 
   // ── Coorte de competência ──────────────────────────────────────────────────
@@ -125,16 +141,26 @@ export function computeShopeeFinance(
   let faturamentoLiberado = 0;
   let faturamentoSemRepasse = 0;
   let pedidosSemRepasse = 0;
+  let faturamentoCents = 0;
+  let liberadoCents = 0;
+  let faturamentoLiberadoCents = 0;
+  let faturamentoSemRepasseCents = 0;
   for (const o of cohort) {
     const amt = Number(o.total_amount || 0);
+    const amtCents = Number(o.total_amount_cents || 0);
     faturamento += amt;
+    faturamentoCents += amtCents;
     const net = netByOrder.get(o.id);
+    const netCents = netByOrderCents.get(o.id);
     if (net === undefined) {
       pedidosSemRepasse++;
       faturamentoSemRepasse += amt;
+      faturamentoSemRepasseCents += amtCents;
     } else {
       liberado += net;
+      liberadoCents += netCents ?? 0;
       faturamentoLiberado += amt;
+      faturamentoLiberadoCents += amtCents;
     }
   }
   // Estimativa do que ainda não liberou: aplica a margem observada nos liberados.
@@ -142,6 +168,10 @@ export function computeShopeeFinance(
   const aLiberar = faturamentoSemRepasse * margemLiberados;
   const valorLiquido = liberado + aLiberar;
   const margemPct = faturamento > 0 ? (valorLiquido / faturamento) * 100 : 0;
+
+  const margemLiberadosCents = faturamentoLiberadoCents > 0 ? liberadoCents / faturamentoLiberadoCents : 0;
+  const aLiberarCents = Math.round(faturamentoSemRepasseCents * margemLiberadosCents);
+  const valorLiquidoCents = liberadoCents + aLiberarCents;
 
   const emTransito = orders.filter(
     o => isShopeeShippedStatus(o.status) && inWindow(o.order_created_at),
@@ -153,22 +183,31 @@ export function computeShopeeFinance(
 
   // ── Decomposição de taxas (visual) — só da coorte ──────────────────────────
   const feeMap = new Map<string, number>();
+  const feeMapCents = new Map<string, number>();
   for (const f of fees) {
     if (!f.order_id || !cohortIds.has(f.order_id)) continue;
     feeMap.set(f.fee_type, (feeMap.get(f.fee_type) ?? 0) + Number(f.amount || 0));
+    feeMapCents.set(f.fee_type, (feeMapCents.get(f.fee_type) ?? 0) + Number(f.amount_cents || 0));
   }
   const feeBreakdown = [...feeMap.entries()]
-    .map(([type, amount]) => ({ type, label: SHOPEE_FEE_LABELS[type] ?? type, amount }))
+    .map(([type, amount]) => ({
+      type,
+      label: SHOPEE_FEE_LABELS[type] ?? type,
+      amount,
+      amountCents: feeMapCents.get(type) ?? 0,
+    }))
     .sort((a, b) => b.amount - a.amount);
 
   // ── Série por dia (competência: por order_updated_at) ──────────────────────
-  const dayMap = new Map<string, { faturamento: number; liquido: number }>();
+  const dayMap = new Map<string, { faturamento: number; liquido: number; faturamentoCents: number; liquidoCents: number }>();
   for (const o of cohort) {
     const d = (o.order_updated_at ?? "").substring(0, 10);
     if (!d) continue;
-    const e = dayMap.get(d) ?? { faturamento: 0, liquido: 0 };
+    const e = dayMap.get(d) ?? { faturamento: 0, liquido: 0, faturamentoCents: 0, liquidoCents: 0 };
     e.faturamento += Number(o.total_amount || 0);
+    e.faturamentoCents += Number(o.total_amount_cents || 0);
     e.liquido += netByOrder.get(o.id) ?? 0;
+    e.liquidoCents += netByOrderCents.get(o.id) ?? 0;
     dayMap.set(d, e);
   }
   const porDia = [...dayMap.entries()]
@@ -187,5 +226,9 @@ export function computeShopeeFinance(
     cancelados,
     feeBreakdown,
     porDia,
+    faturamentoCents,
+    valorLiquidoCents,
+    liberadoCents,
+    aLiberarCents,
   };
 }
