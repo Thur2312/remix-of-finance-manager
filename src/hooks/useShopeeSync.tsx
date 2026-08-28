@@ -99,6 +99,8 @@ export function useShopeeSync(connectionId: string | null, days: number = 15) {
         page++;
       }
 
+      // Coorte do período anterior = pedido concluído na janela [prevStart, prevEnd).
+      // (`emTransito`/`cancelados` do período anterior não são exibidos.)
       const prevOrders: SyncedOrder[] = [];
       let prevPage = 0;
       while (true) {
@@ -106,10 +108,8 @@ export function useShopeeSync(connectionId: string | null, days: number = 15) {
           .from('orders')
           .select('id, status, total_amount, order_created_at, order_updated_at')
           .eq('integration_id', connectionId!)
-          .or(
-            `and(order_updated_at.gte.${prevStartIso},order_updated_at.lt.${prevEndIso}),` +
-            `and(order_created_at.gte.${prevStartIso},order_created_at.lt.${prevEndIso})`,
-          )
+          .gte('order_updated_at', prevStartIso)
+          .lt('order_updated_at', prevEndIso)
           .range(prevPage * pageSize, (prevPage + 1) * pageSize - 1);
         if (error) throw error;
         if (!data || data.length === 0) break;
