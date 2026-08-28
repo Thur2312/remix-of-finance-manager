@@ -5,18 +5,26 @@ import { useIntegrations } from '@/hooks/useIntegrations';
 import { useActiveShopeeConnection } from '@/hooks/useActiveShopeeConnection';
 import { useMercadolivreData } from '@/hooks/useMercadolivreData';
 import { formatCurrency } from '@/lib/calculations';
+import type { Cents } from '@/lib/money';
 
 export type Marketplace = 'shopee' | 'tiktok' | 'mercadolivre' | 'todos';
 
 export interface MarketplaceStats {
   totalOrders: number;
-  grossRevenue: number;   
-  netRevenue: number;   
-  fees: number;          
-  profit: number;        
+  grossRevenue: number;
+  netRevenue: number;
+  fees: number;
+  profit: number;
   isLoading: boolean;
   hasData: boolean;
-  unavailable?: boolean; 
+  unavailable?: boolean;
+
+  // Equivalentes em centavos (Fase 4, aditivo). TikTok fica sem eles enquanto
+  // `unavailable` — não tem hook de sync alimentando Unificado ainda.
+  grossRevenueCents?: Cents;
+  netRevenueCents?: Cents;
+  feesCents?: Cents;
+  profitCents?: Cents;
 }
 
 export interface DashboardData {
@@ -60,6 +68,8 @@ export function useDashboardData(syncPeriod: number = 15) {
     // Competência: faturamento e líquido da mesma coorte de pedidos concluídos.
     const gross = syncData.stats.faturamento;
     const net = syncData.stats.valorLiquido;
+    const grossCents = syncData.stats.faturamentoCents;
+    const netCents = syncData.stats.valorLiquidoCents;
     return {
       totalOrders: syncData.stats.pedidos,
       grossRevenue: gross,
@@ -68,6 +78,10 @@ export function useDashboardData(syncPeriod: number = 15) {
       profit: net,
       isLoading: syncLoading,
       hasData: syncData.stats.pedidos > 0 || syncData.stats.emTransito > 0,
+      grossRevenueCents: grossCents,
+      netRevenueCents: netCents,
+      feesCents: (grossCents - netCents) as Cents,
+      profitCents: netCents,
     };
   }, [syncData, syncLoading, isShopeeConnected]);
 
@@ -86,6 +100,10 @@ export function useDashboardData(syncPeriod: number = 15) {
     profit: mlStats.profit,
     isLoading: mlStats.isLoading,
     hasData: mlStats.hasData,
+    grossRevenueCents: mlStats.grossRevenueCents,
+    netRevenueCents: mlStats.netRevenueCents,
+    feesCents: mlStats.feesCents,
+    profitCents: mlStats.profitCents,
   }), [mlStats]);
 
   // ── Combined (Shopee + ML — TikTok excluído enquanto indisponível) ────────
@@ -101,6 +119,10 @@ export function useDashboardData(syncPeriod: number = 15) {
       profit: active.reduce((a, s) => a + s.profit, 0),
       isLoading,
       hasData,
+      grossRevenueCents: active.reduce((a, s) => a + (s.grossRevenueCents ?? 0), 0) as Cents,
+      netRevenueCents: active.reduce((a, s) => a + (s.netRevenueCents ?? 0), 0) as Cents,
+      feesCents: active.reduce((a, s) => a + (s.feesCents ?? 0), 0) as Cents,
+      profitCents: active.reduce((a, s) => a + (s.profitCents ?? 0), 0) as Cents,
     };
   }, [shopeeStats, mercadolivreStats]);
 

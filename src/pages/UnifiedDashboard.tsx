@@ -21,6 +21,7 @@ import { OnboardingChecklist } from '@/components/dashboard/OnboardingChecklist'
 import { TaxSummaryRow } from '@/hooks/useIntegrationTax';
 import { Company } from '@/hooks/useCompanies';
 import { formatCurrency } from '@/lib/calculations';
+import { formatCents, type Cents } from '@/lib/money';
 import { Link } from 'react-router-dom';
 
 import logoShopee from '@/assets/logo-shopee.jpg';
@@ -585,10 +586,10 @@ function UnifiedDashboardContent() {
             <StatCard title="Pedidos" value={stats.totalOrders.toString()} description="Concluídos no período"
               icon={ShoppingCart} iconColor="text-blue-500" iconBg="bg-blue-500/10" isLoading={stats.isLoading}
               delta={makeDelta(stats.totalOrders, prevStats?.pedidos)} />
-            <StatCard title="Faturamento" value={formatCurrency(stats.grossRevenue)} description="Vendas concluídas no período"
+            <StatCard title="Faturamento" value={formatCents((stats.grossRevenueCents ?? 0) as Cents)} description="Vendas concluídas no período"
               icon={DollarSign} iconColor="text-emerald-500" iconBg="bg-emerald-500/10" isLoading={stats.isLoading}
               delta={makeDelta(stats.grossRevenue, prevStats?.faturamento)} />
-            <StatCard title="Valor Líquido" value={formatCurrency(stats.netRevenue)} description="Repasses dos marketplaces"
+            <StatCard title="Valor Líquido" value={formatCents((stats.netRevenueCents ?? 0) as Cents)} description="Repasses dos marketplaces"
               icon={TrendingUp} iconColor="text-primary" iconBg="bg-primary/10" isLoading={stats.isLoading}
               delta={makeDelta(stats.netRevenue, prevStats?.valorLiquido)}
             >
@@ -602,7 +603,7 @@ function UnifiedDashboardContent() {
                 />
               )}
             </StatCard>
-            <StatCard title="Retido pelos marketplaces" value={formatCurrency(stats.fees)} description="Comissão, serviço, frete e descontos"
+            <StatCard title="Retido pelos marketplaces" value={formatCents((stats.feesCents ?? 0) as Cents)} description="Comissão, serviço, frete e descontos"
               icon={Percent} iconColor="text-orange-500" iconBg="bg-orange-500/10" isLoading={stats.isLoading}
               delta={makeDelta(stats.fees, prevStats ? prevStats.faturamento - prevStats.valorLiquido : undefined)
                 ? { ...makeDelta(stats.fees, prevStats ? prevStats.faturamento - prevStats.valorLiquido : undefined)!, invert: true } : undefined} />
@@ -648,9 +649,9 @@ function UnifiedDashboardContent() {
                         <div className="space-y-1.5">
                           {[
                             { label: 'Pedidos', value: s.totalOrders.toString() },
-                            { label: 'Bruto',   value: formatCurrency(s.grossRevenue) },
-                            { label: 'Líquido', value: formatCurrency(s.netRevenue),  className: 'text-primary' },
-                            { label: 'Taxas',   value: formatCurrency(s.fees),        className: 'text-orange-600' },
+                            { label: 'Bruto',   value: formatCents((s.grossRevenueCents ?? 0) as Cents) },
+                            { label: 'Líquido', value: formatCents((s.netRevenueCents ?? 0) as Cents),  className: 'text-primary' },
+                            { label: 'Taxas',   value: formatCents((s.feesCents ?? 0) as Cents),        className: 'text-orange-600' },
                           ].map(row => (
                             <div key={row.label} className="flex justify-between text-sm">
                               <span className="text-muted-foreground">{row.label}</span>
