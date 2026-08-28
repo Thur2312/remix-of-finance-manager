@@ -337,9 +337,12 @@ export function useCashFlowEntries(filters?: {
 
   const updateEntry = useMutation({
     mutationFn: async ({ id, ...updates }: Partial<CashFlowEntry> & { id: string }) => {
+      // `category` é a relação joinada (não é coluna) — mandar pro .update()
+      // quebra em runtime e no typecheck. Só as colunas reais seguem.
+      const { category: _category, ...dbUpdates } = updates;
       const { data, error } = await supabase
         .from('cash_flow_entries')
-        .update(updates)
+        .update(dbUpdates)
         .eq('id', id)
         .select()
         .single();

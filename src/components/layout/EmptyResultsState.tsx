@@ -1,4 +1,5 @@
-import { type ReactNode, type LucideIcon } from 'lucide-react';
+import { type ReactNode } from 'react';
+import { type LucideIcon } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { GrowthEcho } from '@/components/brand/GrowthEcho';
 
