@@ -105,13 +105,18 @@ Organizado em faixas paralelas. Ordem sugerida dentro de cada faixa. `[ ]` a faz
 
 - [x] **`src/lib/format.ts`** (`05f3b9e`) — `formatCurrency` (opt `{whole}`) / `formatCurrencyCompact` / `formatPercent`. 3 libs reexportam (imports antigos intactos), 11 cópias inline removidas + 2 one-offs. `format.test.ts`. `ExportSection` fora (CSV cru, de propósito).
 - [x] **Deletar os 9 componentes UI órfãos** (`1e30129`) — + `tsc_out.txt` + gitignore. typecheck 11 → 6.
-- [x] **Zerar erros de typecheck** (`e11f4ba`) — `EmptyResultsState` (ReactNode de 'react'), `DisconnectDialog` (MouseEvent), `useCashFlow` (strip `category` do `.update()` — era bug latente). Restam **3** em `useProdutos` (Calculadora, tela protegida — deixados de propósito).
+- [x] **Zerar erros de typecheck** (`e11f4ba` + `cf1f88d`) — **11 → 0**. `EmptyResultsState` (ReactNode de 'react'), `DisconnectDialog` (MouseEvent), `useCashFlow` (strip `category` do `.update()` — era bug latente), `useProdutos` (helper `toAnuncioRow()` p/ a ponte jsonb↔shape concreto).
 - [x] **`package.json`** — `typecheck` + `test` + `test:watch` já adicionados (sessão anterior, Vitest).
 - [ ] **`tsconfig.app.json`** — ligar `strict: true` **incrementalmente** (arquivo a arquivo com `// @ts-nocheck` temporário nos que não passam, ou por pasta). Começar por `src/lib/` e `src/hooks/`.
 - [x] **Vitest** — instalado, 7 arquivos / 65 testes (`money`, `tax`, `calculations`, `dre-calculations`, `tiktok-calculations`, `shopee-sync-status`, `format`). Falta: fixture com JSON real da Maluth congelado.
 - [x] **Limpar `console.log`** (`2c00176`) — `src/lib/logger.ts` (`logger.debug`, só em dev); 30 viraram `logger.debug`, 3 de debug puro removidos. Bônus: `import { types } from 'util'` morto removido de `tiktok-settlement-helpers`. `tsc_out.txt` → `1e30129`.
 - [x] **`components/assistente` → `assistente-anuncio`** (`fccf19b`) — NÃO era dup do `assistant/` (chat financeiro); features diferentes. Renomeado pra bater com a página/rota (`AssistenteAnuncio` / `/assistente-anuncio`). +2 órfãos deletados (`GeneratedImageGrid`, `ImageGenerationSection`, 0 imports desde fev/2026).
 - [ ] **`supabase gen types`** — regenerar `types.ts` (depois de confirmar migrations no ar).
+
+**Estado da Faixa B (28/08):** essencialmente fechada. Restam só (a) `strict: true`
+incremental — trabalho grande, melhor sessão dedicada; (b) `supabase gen types` —
+tarefa do usuário (Git Bash). typecheck 0, 65 testes, build limpo. Pré-requisito
+da Faixa C satisfeito.
 
 ### Faixa C — Design system + layout das telas internas (o redesign)
 
