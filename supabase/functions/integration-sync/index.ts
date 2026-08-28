@@ -295,8 +295,9 @@ if (!step || step === 'orders') {
     let cursor = ""
     let hasMore = true
     let safetyLimit = 0
+    const ORDERS_MAX_PAGES = 40   // 40 × 50 = 2000 pedidos/janela — trava de segurança, não teto de produto
 
-    while (hasMore && safetyLimit < 1) {
+    while (hasMore && safetyLimit < ORDERS_MAX_PAGES) {
       console.log(`📦 Sync orders cursor="${cursor}" page ${safetyLimit + 1}...`)
       const orderList = await shopeeGet<{
         order_list: { order_sn: string }[]
@@ -466,6 +467,9 @@ if (!step || step === 'orders') {
       if (hasMore) await new Promise(r => setTimeout(r, 100))
     }
 
+    if (hasMore && safetyLimit >= ORDERS_MAX_PAGES) {
+      console.warn(`⚠️ get_order_list bateu o teto de ${ORDERS_MAX_PAGES} páginas — janela grande demais, fatie mais fino`)
+    }
     console.log(`✅ Total de pedidos sincronizados: ${ordersCount}`)
   } catch (orderError) {
     console.error("❌ Orders sync error:", orderError)
@@ -474,34 +478,165 @@ if (!step || step === 'orders') {
     // ✅ SYNC PAYMENTS
     if (!step || step === 'payments') {
       try {
-    const escrowOrders: { order_sn: string; escrow_release_time: number; payout_amount: number }[] = []
-      let escrowHasMore = true
-      let escrowSafetyLimit = 0
-      let escrowPage = 1
+        // ── Fase 1 · coletar TODOS os repasses da janela (sem teto de 30) ──
+        const escrowOrders: { order_sn: string; escrow_release_time: number; payout_amount: number }[] = []
+        let escrowPage = 1
+        const ESCROW_MAX_PAGES = 40   // 40 × 100 = 4000 repasses/janela — trava de segurança, não teto de produto
+        while (escrowPage <= ESCROW_MAX_PAGES) {
+          const escrowList = await shopeeGet<{
+            escrow_list: { order_sn: string; escrow_release_time: number; payout_amount: number }[]
+            more: boolean
+          }>(BASE_URL, "/api/v2/payment/get_escrow_list", {
+            release_time_from: timeFrom,
+            release_time_to: timeTo,
+            page_size: 100,
+            page_no: escrowPage,
+          }, PARTNER_ID, PARTNER_KEY, accessToken, shopId)
 
-      while (escrowHasMore && escrowSafetyLimit < 3) {
-        const escrowList = await shopeeGet<{
-          escrow_list: { order_sn: string; escrow_release_time: number; payout_amount: number }[]
-          more: boolean
-        }>(BASE_URL, "/api/v2/payment/get_escrow_list", {
-          release_time_from: timeFrom,
-          release_time_to: timeTo,
-          page_size: 50,
-          page_no: escrowPage,
-        }, PARTNER_ID, PARTNER_KEY, accessToken, shopId)
+          const page = escrowList?.escrow_list ?? []
+          escrowOrders.push(...page)
+          console.log(`💰 Página ${escrowPage}: ${page.length} repasses`)
+          if (!escrowList?.more || page.length === 0) break
+          escrowPage++
+          await new Promise(r => setTimeout(r, 100))
+        }
+        if (escrowPage > ESCROW_MAX_PAGES) {
+          console.warn(`⚠️ get_escrow_list bateu o teto de ${ESCROW_MAX_PAGES} páginas — janela grande demais, fatie mais fino`)
+        }
+        console.log(`💰 Total de repasses na janela: ${escrowOrders.length}`)
 
-        const page = escrowList?.escrow_list ?? []
-        escrowOrders.push(...page)
-        escrowHasMore = Boolean(escrowList?.more)
-        escrowPage++
-        escrowSafetyLimit++
-        console.log(`💰 Página ${escrowPage - 1}: ${page.length} escrows | hasMore: ${escrowHasMore}`)
-        if (escrowHasMore) await new Promise(r => setTimeout(r, 100))
-      }
+        // O caminho do cron roda orders+payments+wallet numa invocação só, com a
+        // janela inteira — limita o trabalho de escrow por execução pra não
+        // estourar o timeout; os crons seguintes completam (upsert é idempotente).
+        // O caminho manual (janelas de 1 dia) não precisa: cada fatia já é pequena.
+        const escrowBudget = (customTimeFrom || customTimeTo) ? Infinity : 150
+        const escrowToProcess = escrowOrders.length > escrowBudget
+          ? [...escrowOrders].sort((a, b) => b.escrow_release_time - a.escrow_release_time).slice(0, escrowBudget)
+          : escrowOrders
+        if (escrowToProcess.length < escrowOrders.length) {
+          console.warn(`⚠️ ${escrowOrders.length} repasses na janela — processando os ${escrowBudget} mais recentes nesta execução (cron completa no próximo ciclo)`)
+        }
 
-      console.log(`💰 Total de escrows encontrados: ${escrowOrders.length}`)
+        const allOrderSns = [...new Set(escrowToProcess.map(e => e.order_sn))]
 
-        for (const escrowOrder of escrowOrders.slice(0, 30)) {
+        // ── Fase 2 · garantir que todo pedido referenciado existe em `orders` ──
+        // Repasse que cai hoje pode ser de um pedido criado há meses, fora da
+        // janela que o step `orders` varre. Sem buscar o pedido aqui, a fee/
+        // payment fica com order_id nulo pra sempre (BUG-14).
+        const existingSns = new Set<string>()
+        for (let i = 0; i < allOrderSns.length; i += 200) {
+          const { data } = await supabaseAdmin.from("orders")
+            .select("external_order_id")
+            .eq("integration_id", connection_id)
+            .in("external_order_id", allOrderSns.slice(i, i + 200))
+          for (const r of data ?? []) existingSns.add(String(r.external_order_id))
+        }
+        const missingSns = allOrderSns.filter(sn => !existingSns.has(sn))
+        console.log(`🧩 ${missingSns.length}/${allOrderSns.length} pedidos ausentes — recuperando via get_order_detail`)
+
+        for (let i = 0; i < missingSns.length; i += 50) {
+          const chunk = missingSns.slice(i, i + 50)
+          try {
+            const od = await shopeeGet<{
+              order_list: {
+                order_sn: string
+                order_status: string
+                total_amount: string
+                currency: string
+                buyer_username?: string
+                shipping_carrier?: string
+                tracking_no?: string
+                pay_time?: number
+                create_time?: number
+                update_time?: number
+                item_list?: {
+                  item_id: number
+                  item_name: string
+                  item_sku: string
+                  model_name: string
+                  model_sku: string
+                  model_quantity_purchased: number
+                  model_original_price: number
+                  model_discounted_price: number
+                }[]
+              }[]
+            }>(BASE_URL, "/api/v2/order/get_order_detail", {
+              order_sn_list: chunk.join(","),
+              response_optional_fields: "buyer_username,pay_time,tracking_no,shipping_carrier,total_amount,currency,create_time,update_time,item_list",
+            }, PARTNER_ID, PARTNER_KEY, accessToken, shopId)
+
+            const detailList = od.order_list ?? []
+            // NÃO dispara sale_events: são pedidos históricos recuperados, não vendas novas.
+            const { data: inserted } = await supabaseAdmin.from("orders").upsert(
+              detailList.map(o => ({
+                integration_id: connection_id,
+                external_order_id: o.order_sn,
+                status: o.order_status || "UNKNOWN",
+                total_amount: Number(o.total_amount) || 0,
+                currency: o.currency || "BRL",
+                buyer_username: o.buyer_username ?? "",
+                shipping_carrier: o.shipping_carrier ?? "",
+                tracking_number: o.tracking_no ?? "",
+                paid_at: safeShopeeDate(o.pay_time ?? null),
+                order_created_at: safeShopeeDate(o.create_time ?? null),
+                order_updated_at: safeShopeeDate(o.update_time ?? null),
+                synced_at: now.toISOString(),
+              })),
+              { onConflict: "integration_id,external_order_id" },
+            ).select("id, external_order_id")
+
+            const itemsToUpsert: {
+              order_id: string
+              external_item_id: string
+              item_name: string
+              sku: string
+              quantity: number
+              unit_price: number
+              total_price: number
+            }[] = []
+            for (const o of detailList) {
+              const savedId = String(inserted?.find(r => r.external_order_id === o.order_sn)?.id ?? "")
+              if (!savedId) continue
+              for (const it of o.item_list ?? []) {
+                const price = Number(it.model_discounted_price) || Number(it.model_original_price) || 0
+                itemsToUpsert.push({
+                  order_id: savedId,
+                  external_item_id: String(it.item_id),
+                  item_name: it.item_name || it.model_name || "Produto sem nome",
+                  sku: it.model_sku || it.item_sku || "",
+                  quantity: it.model_quantity_purchased || 1,
+                  unit_price: price,
+                  total_price: price * (it.model_quantity_purchased || 1),
+                })
+              }
+            }
+            const dedupedItems = new Map<string, typeof itemsToUpsert[number]>()
+            for (const it of itemsToUpsert) {
+              dedupedItems.set(`${it.order_id}_${it.external_item_id}`, it)
+            }
+            const uniqItems = Array.from(dedupedItems.values())
+            if (uniqItems.length > 0) {
+              await supabaseAdmin.from("order_items").upsert(uniqItems, { onConflict: "order_id,external_item_id" })
+            }
+            console.log(`🧩 lote ${Math.floor(i / 50) + 1}: ${detailList.length} pedidos + ${uniqItems.length} itens recuperados`)
+          } catch (e) {
+            console.error(`❌ Erro recuperando pedidos (${chunk[0]}…):`, e instanceof Error ? e.message : String(e))
+          }
+          await new Promise(r => setTimeout(r, 100))
+        }
+
+        // ── Fase 3 · mapa order_sn → order_id (agora completo) ──────────────
+        const orderIdBySn = new Map<string, string>()
+        for (let i = 0; i < allOrderSns.length; i += 200) {
+          const { data } = await supabaseAdmin.from("orders")
+            .select("id, external_order_id")
+            .eq("integration_id", connection_id)
+            .in("external_order_id", allOrderSns.slice(i, i + 200))
+          for (const r of data ?? []) orderIdBySn.set(String(r.external_order_id), String(r.id))
+        }
+
+        // ── Fase 4 · escrow detail → payments + fees ────────────────────────
+        for (const escrowOrder of escrowToProcess) {
           try {
             await new Promise(r => setTimeout(r, 100))
             const escrowDetail = await shopeeGet<{
@@ -525,20 +660,23 @@ if (!step || step === 'orders') {
             const orderSn = escrowDetail?.order_sn
             if (!income || !orderSn) continue
 
-            const { data: orderRow } = await supabaseAdmin.from("orders").select("id").eq("integration_id", connection_id).eq("external_order_id", orderSn).single()
+            const orderId = orderIdBySn.get(orderSn) ?? null
+            if (!orderId) console.warn(`⚠️ Pedido ${orderSn} inacessível na Shopee — fee/payment fica sem order_id`)
+
+            const releaseDate = safeShopeeDate(escrowOrder.escrow_release_time) ?? now.toISOString()
 
             const { error: paymentError } = await supabaseAdmin.from("payments").upsert({
               integration_id: connection_id,
               external_transaction_id: orderSn,
-              order_id: orderRow?.id ?? null,
+              order_id: orderId,
               amount: Number(income.buyer_total_amount) || 0,
-              marketplace_fee: Number(income.commission_fee) + Number(income.net_service_fee) || 0,
+              marketplace_fee: (Number(income.commission_fee) || 0) + (Number(income.net_service_fee) || 0),
               net_amount: Number(income.escrow_amount) || 0,
               currency: "BRL",
               payment_method: "escrow",
               status: "released",
               description: `Escrow liberado - Pedido ${orderSn}`,
-              transaction_date: now.toISOString(),
+              transaction_date: releaseDate,
               synced_at: now.toISOString(),
             }, { onConflict: "external_transaction_id" })
 
@@ -559,16 +697,15 @@ if (!step || step === 'orders') {
               const { error: feeError } = await supabaseAdmin.from("fees").upsert({
                 integration_id: connection_id,
                 external_fee_id: `${orderSn}_${fee.key}`,
-                order_id: orderRow?.id ?? null,
+                order_id: orderId,
                 fee_type: fee.type,
                 amount: Number(fee.amount),
                 currency: "BRL",
                 description: fee.description,
-                fee_date: safeShopeeDate(escrowOrder.escrow_release_time) ?? now.toISOString(),
+                fee_date: releaseDate,
                 synced_at: now.toISOString(),
               }, { onConflict: "external_fee_id" })
               if (feeError) console.error("❌ Erro ao salvar fee:", fee.key, JSON.stringify(feeError))
-              else console.log("✅ Fee salva:", fee.key, orderSn)
             }
 
             paymentsCount++

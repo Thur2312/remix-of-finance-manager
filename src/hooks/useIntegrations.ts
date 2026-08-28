@@ -100,38 +100,41 @@ export function useIntegrations() {
         return data;
       }
 
-      // Shopee / TikTok — lógica original com janelas
+      // Shopee / TikTok — janelas de 1 dia, tanto para `orders` (por create_time)
+      // quanto para `payments` (por release_time). Antes o step `payments` era
+      // 1 chamada só com `days`, o que estourava o timeout do edge function e,
+      // junto com o `.slice(0, 30)` interno, truncava os repasses.
       const windowSize = 1;
       const windows = Math.ceil(daysToSync / windowSize);
 
-      for (let i = 0; i < windows; i++) {
+      const windowRange = (i: number) => {
         const timeTo = new Date();
         timeTo.setDate(timeTo.getDate() - i * windowSize);
         const timeFrom = new Date();
         timeFrom.setDate(timeFrom.getDate() - (i + 1) * windowSize);
+        return { time_from: timeFrom.toISOString(), time_to: timeTo.toISOString() };
+      };
 
-        console.log(`🔄 Janela ${i + 1}/${windows}: ${timeFrom.toISOString()} → ${timeTo.toISOString()}`);
-
+      for (let i = 0; i < windows; i++) {
+        const { time_from, time_to } = windowRange(i);
+        console.log(`🔄 Orders janela ${i + 1}/${windows}: ${time_from} → ${time_to}`);
         const { data, error } = await supabase.functions.invoke('integration-sync', {
-          body: {
-            connection_id: connectionId,
-            time_from: timeFrom.toISOString(),
-            time_to: timeTo.toISOString(),
-            step: 'orders',
-          },
+          body: { connection_id: connectionId, time_from, time_to, step: 'orders' },
         });
-
-        console.log(`✅ Janela ${i + 1} resultado:`, data, 'erro:', error);
+        console.log(`✅ Orders janela ${i + 1} resultado:`, data, 'erro:', error);
         if (error) throw error;
       }
 
-    try {
-      await supabase.functions.invoke('integration-sync', {
-        body: { connection_id: connectionId, days: daysToSync, step: 'payments' },
-      });
-    } catch (e) {
-      console.warn('Payments sync timeout ou erro, continuando...', e);
-    }
+      for (let i = 0; i < windows; i++) {
+        const { time_from, time_to } = windowRange(i);
+        try {
+          await supabase.functions.invoke('integration-sync', {
+            body: { connection_id: connectionId, time_from, time_to, step: 'payments' },
+          });
+        } catch (e) {
+          console.warn(`Payments janela ${i + 1}/${windows} erro, continuando...`, e);
+        }
+      }
 
     // Wallet
     const { data: walletData, error: walletError } = await supabase.functions.invoke('integration-sync', {
