@@ -712,10 +712,14 @@ export type Database = {
         Row: {
           created_at: string | null
           custo_unitario: number | null
+          custo_unitario_cents: number | null
           data_pedido: string | null
           desconto_plataforma: number | null
+          desconto_plataforma_cents: number | null
           desconto_vendedor: number | null
+          desconto_vendedor_cents: number | null
           frete_ml: number | null
+          frete_ml_cents: number | null
           id: string
           nome_produto: string | null
           order_id: string
@@ -723,7 +727,9 @@ export type Database = {
           sku: string | null
           status_pedido: string | null
           taxa_ml: number | null
+          taxa_ml_cents: number | null
           total_faturado: number | null
+          total_faturado_cents: number | null
           updated_at: string | null
           user_id: string
           variacao: string | null
@@ -731,10 +737,14 @@ export type Database = {
         Insert: {
           created_at?: string | null
           custo_unitario?: number | null
+          custo_unitario_cents?: number | null
           data_pedido?: string | null
           desconto_plataforma?: number | null
+          desconto_plataforma_cents?: number | null
           desconto_vendedor?: number | null
+          desconto_vendedor_cents?: number | null
           frete_ml?: number | null
+          frete_ml_cents?: number | null
           id?: string
           nome_produto?: string | null
           order_id: string
@@ -742,7 +752,9 @@ export type Database = {
           sku?: string | null
           status_pedido?: string | null
           taxa_ml?: number | null
+          taxa_ml_cents?: number | null
           total_faturado?: number | null
+          total_faturado_cents?: number | null
           updated_at?: string | null
           user_id: string
           variacao?: string | null
@@ -750,10 +762,14 @@ export type Database = {
         Update: {
           created_at?: string | null
           custo_unitario?: number | null
+          custo_unitario_cents?: number | null
           data_pedido?: string | null
           desconto_plataforma?: number | null
+          desconto_plataforma_cents?: number | null
           desconto_vendedor?: number | null
+          desconto_vendedor_cents?: number | null
           frete_ml?: number | null
+          frete_ml_cents?: number | null
           id?: string
           nome_produto?: string | null
           order_id?: string
@@ -761,7 +777,9 @@ export type Database = {
           sku?: string | null
           status_pedido?: string | null
           taxa_ml?: number | null
+          taxa_ml_cents?: number | null
           total_faturado?: number | null
+          total_faturado_cents?: number | null
           updated_at?: string | null
           user_id?: string
           variacao?: string | null
@@ -1296,15 +1314,18 @@ export type Database = {
         Row: {
           created_at: string | null
           custo_unitario: number | null
+          custo_unitario_cents: number | null
           data_pedido: string | null
           id: string
           nome_produto: string | null
           order_id: string
           quantidade: number | null
           rebate_shopee: number | null
+          rebate_shopee_cents: number | null
           sku: string | null
           status_pedido: string | null
           total_faturado: number | null
+          total_faturado_cents: number | null
           updated_at: string | null
           user_id: string
           variacao: string | null
@@ -1312,15 +1333,18 @@ export type Database = {
         Insert: {
           created_at?: string | null
           custo_unitario?: number | null
+          custo_unitario_cents?: number | null
           data_pedido?: string | null
           id?: string
           nome_produto?: string | null
           order_id: string
           quantidade?: number | null
           rebate_shopee?: number | null
+          rebate_shopee_cents?: number | null
           sku?: string | null
           status_pedido?: string | null
           total_faturado?: number | null
+          total_faturado_cents?: number | null
           updated_at?: string | null
           user_id: string
           variacao?: string | null
@@ -1328,15 +1352,18 @@ export type Database = {
         Update: {
           created_at?: string | null
           custo_unitario?: number | null
+          custo_unitario_cents?: number | null
           data_pedido?: string | null
           id?: string
           nome_produto?: string | null
           order_id?: string
           quantidade?: number | null
           rebate_shopee?: number | null
+          rebate_shopee_cents?: number | null
           sku?: string | null
           status_pedido?: string | null
           total_faturado?: number | null
+          total_faturado_cents?: number | null
           updated_at?: string | null
           user_id?: string
           variacao?: string | null
@@ -1628,9 +1655,12 @@ export type Database = {
         Row: {
           created_at: string | null
           custo_unitario: number | null
+          custo_unitario_cents: number | null
           data_pedido: string | null
           desconto_plataforma: number | null
+          desconto_plataforma_cents: number | null
           desconto_vendedor: number | null
+          desconto_vendedor_cents: number | null
           id: string
           nome_produto: string | null
           order_id: string
@@ -1638,6 +1668,7 @@ export type Database = {
           sku: string | null
           status_pedido: string | null
           total_faturado: number | null
+          total_faturado_cents: number | null
           updated_at: string | null
           user_id: string
           variacao: string | null
@@ -1645,9 +1676,12 @@ export type Database = {
         Insert: {
           created_at?: string | null
           custo_unitario?: number | null
+          custo_unitario_cents?: number | null
           data_pedido?: string | null
           desconto_plataforma?: number | null
+          desconto_plataforma_cents?: number | null
           desconto_vendedor?: number | null
+          desconto_vendedor_cents?: number | null
           id?: string
           nome_produto?: string | null
           order_id: string
@@ -1655,6 +1689,7 @@ export type Database = {
           sku?: string | null
           status_pedido?: string | null
           total_faturado?: number | null
+          total_faturado_cents?: number | null
           updated_at?: string | null
           user_id: string
           variacao?: string | null
@@ -1662,9 +1697,12 @@ export type Database = {
         Update: {
           created_at?: string | null
           custo_unitario?: number | null
+          custo_unitario_cents?: number | null
           data_pedido?: string | null
           desconto_plataforma?: number | null
+          desconto_plataforma_cents?: number | null
           desconto_vendedor?: number | null
+          desconto_vendedor_cents?: number | null
           id?: string
           nome_produto?: string | null
           order_id?: string
@@ -1672,6 +1710,7 @@ export type Database = {
           sku?: string | null
           status_pedido?: string | null
           total_faturado?: number | null
+          total_faturado_cents?: number | null
           updated_at?: string | null
           user_id?: string
           variacao?: string | null
