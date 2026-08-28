@@ -46,6 +46,16 @@ update public.integration_connections
 set external_shop_id = 'legacy-' || id::text
 where external_shop_id is null or external_shop_id = '';
 
-alter table public.integration_connections
-  add constraint integration_connections_user_provider_shop_key
-  unique (user_id, provider, external_shop_id);
+-- guard: o baseline (20260106232520) já cria essa constraint numa base limpa;
+-- em produção ela veio desta migration. `if not exists` cobre os dois casos.
+do $$ begin
+  if not exists (
+    select 1 from pg_constraint
+    where conname = 'integration_connections_user_provider_shop_key'
+      and conrelid = 'public.integration_connections'::regclass
+  ) then
+    alter table public.integration_connections
+      add constraint integration_connections_user_provider_shop_key
+      unique (user_id, provider, external_shop_id);
+  end if;
+end $$;

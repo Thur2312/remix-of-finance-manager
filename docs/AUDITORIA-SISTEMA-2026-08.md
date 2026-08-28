@@ -165,7 +165,7 @@ da Faixa C satisfeito.
 
 ### Faixa F — Backend / dados / segurança
 
-- [ ] **Capturar as tabelas em migration** — `pg_dump` do schema atual (`orders`/`fees`/`payments`/`order_items`/`integration_connections` + RLS + constraints) → migration de baseline no repo. Sem isso não dá pra auditar nem versionar mudança de schema.
+- [x] **Capturar as tabelas em migration** — `20260106232520_baseline_integration_core_tables.sql` (snapshot por introspecção, sem Docker — ver `docs/schema-introspection-queries.sql`). Cobre as 5 tabelas + colunas `_cents` + triggers + índices + RLS. **Falta o usuário rodar** `supabase migration repair --status applied 20260106232520 --linked` (marca como aplicada sem executar; prod já tem tudo). Guard defensivo add em `20260826160000` p/ replay em base limpa. Achados: constraints/policies duplicadas (`uq_order_items_order_item`, `uq_payments_integration_transaction`, policy `"users can manage own connections"`) e uniques single-column arriscados p/ multi-loja (`fees_external_fee_id_key`, `payments_external_transaction_id_key`) — cleanup em migration própria depois.
 - [ ] **Confirmar `SUPABASE-SECURITY-AUDIT-2026-08-06.md`** — checar se todos os itens foram fechados; virar checklist com status.
 - [ ] **`integration-sync`** — janelar o caminho do cron de verdade (hoje `escrowBudget=150` por invocação é paliativo) OU migrar pra um job resumível.
 - [ ] **Fixture do `get_escrow_detail`** — patch de log temporário (só campos financeiros), capturar 1 pedido liberado + 1 `COMPLETED` não liberado, congelar JSON, reverter o log. Responde a Pergunta 1 do `DIAGNOSTICO`.
