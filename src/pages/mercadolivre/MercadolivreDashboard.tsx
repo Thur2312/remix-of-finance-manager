@@ -14,7 +14,7 @@ import { TaxSummaryRow } from '@/hooks/useIntegrationTax';
 import { Company } from '@/hooks/useCompanies';
 import { useMercadolivreData } from '@/hooks/useMercadolivreData';
 import { useIntegrations } from '@/hooks/useIntegrations';
-import { formatCurrency } from '@/lib/calculations';
+import { formatCents, type Cents } from '@/lib/money';
 // ─── Info Popover ─────────────────────────────────────────────────────────────
 function InfoPopover({ title, children }: { title: string; children: React.ReactNode }) {
   return (
@@ -110,7 +110,7 @@ export function MercadolivreDashboardContent() {
     },
     {
       title: 'Faturamento',
-      value: loading ? '...' : formatCurrency(stats.grossRevenue),
+      value: loading ? '...' : formatCents((stats.grossRevenueCents ?? 0) as Cents),
       description: 'Receita bruta sincronizada',
       icon: DollarSign,
       color: 'text-success',
@@ -118,7 +118,7 @@ export function MercadolivreDashboardContent() {
     },
     {
       title: 'Valor Líquido',
-      value: loading ? '...' : formatCurrency(stats.netRevenue),
+      value: loading ? '...' : formatCents((stats.netRevenueCents ?? 0) as Cents),
       description: 'Após taxas e descontos ML',
       icon: TrendingUp,
       color: 'text-primary',
@@ -126,7 +126,7 @@ export function MercadolivreDashboardContent() {
     },
     {
       title: 'Taxas ML',
-      value: loading ? '...' : formatCurrency(stats.fees),
+      value: loading ? '...' : formatCents((stats.feesCents ?? 0) as Cents),
       description: 'Comissão + frete ML',
       icon: Package,
       color: 'text-warning',

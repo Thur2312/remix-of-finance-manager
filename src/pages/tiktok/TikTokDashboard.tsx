@@ -10,6 +10,7 @@ import {
   ArrowRight, TrendingUp, DollarSign, ShoppingCart,
 } from 'lucide-react';
 import { TikTokSettingsData, TikTokOrder, calculateTikTokResults, formatCurrency } from '@/lib/tiktok-calculations';
+import { formatCents, type Cents } from '@/lib/money';
 import { fetchAllTikTokOrders } from '@/lib/tiktok-helpers';
 import { DashboardCharts } from '@/components/charts/DashboardCharts';
 import { TopVariationsSection } from '@/components/charts/TopVariationsSection';
@@ -59,6 +60,8 @@ export function TikTokDashboardContent() {
   const totalOrders = orders.length;
   const totalRevenue = calculatedResults?.totals.total_faturado || 0;
   const totalProfit = calculatedResults?.totals.lucro_reais || 0;
+  const totalRevenueCents = (calculatedResults?.totals.total_faturado_cents ?? 0) as Cents;
+  const totalProfitCents = (calculatedResults?.totals.lucro_reais_cents ?? 0) as Cents;
 
   const chartData = useMemo(() => {
     if (!calculatedResults) return [];
@@ -92,7 +95,7 @@ export function TikTokDashboardContent() {
     },
     {
       title: 'Faturamento',
-      value: isLoading ? '...' : formatCurrency(totalRevenue),
+      value: isLoading ? '...' : formatCents(totalRevenueCents),
       description: 'Total faturado',
       icon: DollarSign,
       color: 'text-success',
@@ -101,7 +104,7 @@ export function TikTokDashboardContent() {
     },
     {
       title: 'Lucro Estimado',
-      value: isLoading ? '...' : formatCurrency(totalProfit),
+      value: isLoading ? '...' : formatCents(totalProfitCents),
       description: settings ? 'Após taxas e custos' : 'Configure as taxas primeiro',
       icon: TrendingUp,
       color: 'text-primary',
