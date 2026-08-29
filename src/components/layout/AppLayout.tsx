@@ -39,8 +39,14 @@ export function AppLayout({ children, title }: AppLayoutProps) {
               <NotificationBell />
             </header>
             <TrialBanner />
-            <main className="flex-1 p-8 bg-background">
-              {children}
+            {/* Container único da área interna: todas as páginas herdam a
+                mesma largura máxima e o mesmo respiro. Antes cada tela definia
+                (ou não) seu próprio max-w-*, então elas pulavam entre
+                full-bleed / 1024 centrado / 896 à esquerda em telas largas. */}
+            <main className="flex-1 bg-background">
+              <div className="mx-auto w-full max-w-[1400px] p-8">
+                {children}
+              </div>
             </main>
           </SidebarInset>
         </div>
