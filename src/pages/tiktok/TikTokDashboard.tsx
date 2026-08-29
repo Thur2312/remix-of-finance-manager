@@ -59,9 +59,19 @@ export function TikTokDashboardContent() {
 
   const totalOrders = orders.length;
   const totalRevenue = calculatedResults?.totals.total_faturado || 0;
-  const totalProfit = calculatedResults?.totals.lucro_reais || 0;
   const totalRevenueCents = (calculatedResults?.totals.total_faturado_cents ?? 0) as Cents;
-  const totalProfitCents = (calculatedResults?.totals.lucro_reais_cents ?? 0) as Cents;
+
+  // Quando a empresa tem imposto configurado, o TaxSummaryRow (applyTax, por
+  // empresa) é a fonte de verdade do imposto — então o card mostra o lucro
+  // ANTES do imposto, senão o imposto de settings.imposto_nf_saida embutido em
+  // lucro_reais seria contado de novo pelo TaxSummaryRow (dupla tributação).
+  const hasCompanyTax = (selectedCompany?.tax_rate ?? 0) > 0;
+  const totalProfit = hasCompanyTax
+    ? (calculatedResults?.totals.lucro_antes_imposto ?? 0)
+    : (calculatedResults?.totals.lucro_reais ?? 0);
+  const totalProfitCents = (hasCompanyTax
+    ? (calculatedResults?.totals.lucro_antes_imposto_cents ?? 0)
+    : (calculatedResults?.totals.lucro_reais_cents ?? 0)) as Cents;
 
   const chartData = useMemo(() => {
     if (!calculatedResults) return [];
@@ -105,7 +115,9 @@ export function TikTokDashboardContent() {
     {
       title: 'Lucro Estimado',
       value: isLoading ? '...' : formatCents(totalProfitCents),
-      description: settings ? 'Após taxas e custos' : 'Configure as taxas primeiro',
+      description: !settings
+        ? 'Configure as taxas primeiro'
+        : hasCompanyTax ? 'Após taxas e custos, antes do imposto' : 'Após taxas e custos',
       icon: TrendingUp,
       color: 'text-primary',
       bgColor: 'bg-primary/10',

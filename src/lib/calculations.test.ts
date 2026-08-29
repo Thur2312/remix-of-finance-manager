@@ -105,6 +105,16 @@ describe('calculateResults — campos *Cents batem com toCents() dos campos em r
     const r = calculateResults([], settings());
     expect(r.totals.total_faturado_cents).toBe(0);
     expect(r.totals.lucro_reais_cents).toBe(0);
+    expect(r.totals.lucro_antes_imposto_cents).toBe(0);
     expect(Number.isNaN(r.totals.lucro_percentual_medio)).toBe(false);
+  });
+
+  it('lucro_antes_imposto = lucro_reais + imposto (evita dupla tributação no TaxSummaryRow)', () => {
+    const orders = [order({ total_faturado: 400, custo_unitario: 50, quantidade: 2 })];
+    const r = calculateResults(orders, settings({ imposto_nf_saida: 0.06, gasto_shopee_ads: 10 }));
+
+    expect(r.totals.imposto).toBeGreaterThan(0);
+    expect(r.totals.lucro_antes_imposto).toBeCloseTo(r.totals.lucro_reais + r.totals.imposto, 6);
+    expect(r.totals.lucro_antes_imposto_cents).toBe(r.totals.lucro_reais_cents + r.totals.imposto_cents);
   });
 });

@@ -82,6 +82,12 @@ export interface CalculationResult {
     gasto_ads: number;
     lucro_bruto: number;
     lucro_reais: number;
+    // lucro_reais + imposto — o resultado ANTES do imposto de saída. Existe pra
+    // as telas alimentarem o TaxSummaryRow (imposto por empresa, applyTax) sem
+    // contar o imposto duas vezes: o `lucro_reais` já embute o
+    // settings.imposto_nf_saida, então passá-lo pro TaxSummaryRow tributava de
+    // novo. Aditivo — nenhum consumidor atual muda.
+    lucro_antes_imposto: number;
     lucro_percentual_medio: number;
 
     total_faturado_cents: Cents;
@@ -95,6 +101,7 @@ export interface CalculationResult {
     gasto_ads_cents: Cents;
     lucro_bruto_cents: Cents;
     lucro_reais_cents: Cents;
+    lucro_antes_imposto_cents: Cents;
   };
 }
 
@@ -227,6 +234,11 @@ export function calculateResults(
   const lucro_liquido_cents = lucro_bruto_cents - gastoAdsCents;
   const total_a_receber_cents = results.reduce((sum, r) => sum + r.total_a_receber_cents, 0);
 
+  const imposto_total = results.reduce((sum, r) => sum + r.imposto, 0);
+  const imposto_total_cents = results.reduce((sum, r) => sum + Number(r.imposto_cents ?? 0), 0);
+  const lucro_antes_imposto = lucro_liquido + imposto_total;
+  const lucro_antes_imposto_cents = lucro_liquido_cents + imposto_total_cents;
+
   const totals = {
     itens_vendidos: results.reduce((sum, r) => sum + r.itens_vendidos, 0),
     total_faturado: results.reduce((sum, r) => sum + r.total_faturado, 0),
@@ -235,11 +247,12 @@ export function calculateResults(
     taxa_adicional_itens: results.reduce((sum, r) => sum + r.taxa_adicional_itens, 0),
     total_a_receber,
     total_gasto_produtos: results.reduce((sum, r) => sum + r.total_gasto_produtos, 0),
-    imposto: results.reduce((sum, r) => sum + r.imposto, 0),
+    imposto: imposto_total,
     nf_entrada: results.reduce((sum, r) => sum + r.nf_entrada, 0),
     gasto_ads,
     lucro_bruto,
     lucro_reais: lucro_liquido,
+    lucro_antes_imposto,
     lucro_percentual_medio: total_a_receber > 0
       ? (lucro_liquido / total_a_receber) * 100
       : 0,
@@ -255,6 +268,7 @@ export function calculateResults(
     gasto_ads_cents: gastoAdsCents,
     lucro_bruto_cents: lucro_bruto_cents as Cents,
     lucro_reais_cents: lucro_liquido_cents as Cents,
+    lucro_antes_imposto_cents: lucro_antes_imposto_cents as Cents,
   };
 
   return { groups: results, totals };

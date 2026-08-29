@@ -99,5 +99,23 @@ describe('calculateTikTokResults — campos *Cents batem com toCents() dos campo
     const r = calculateTikTokResults([], settings());
     expect(r.totals.total_faturado_cents).toBe(0);
     expect(r.totals.lucro_reais_cents).toBe(0);
+    expect(r.totals.lucro_antes_imposto_cents).toBe(0);
+  });
+
+  it('lucro_antes_imposto = lucro_reais + imposto (pra alimentar o TaxSummaryRow sem dupla tributação)', () => {
+    const orders = [order({ total_faturado: 300, custo_unitario: 40, quantidade: 2 })];
+    const r = calculateTikTokResults(orders, settings({ imposto_nf_saida: 0.08, gasto_tiktok_ads: 5 }));
+
+    expect(r.totals.imposto).toBeGreaterThan(0);
+    expect(r.totals.lucro_antes_imposto).toBeCloseTo(r.totals.lucro_reais + r.totals.imposto, 6);
+    expect(r.totals.lucro_antes_imposto_cents).toBe(r.totals.lucro_reais_cents + r.totals.imposto_cents);
+  });
+
+  it('sem imposto de saída → lucro_antes_imposto == lucro_reais', () => {
+    const orders = [order({ total_faturado: 200, custo_unitario: 25, quantidade: 3 })];
+    const r = calculateTikTokResults(orders, settings({ imposto_nf_saida: 0 }));
+
+    expect(r.totals.imposto).toBe(0);
+    expect(r.totals.lucro_antes_imposto).toBeCloseTo(r.totals.lucro_reais, 6);
   });
 });
