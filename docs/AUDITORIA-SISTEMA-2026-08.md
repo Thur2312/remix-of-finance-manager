@@ -170,7 +170,7 @@ da Faixa C satisfeito.
 - [ ] **`integration-sync`** — janelar o caminho do cron de verdade (hoje `escrowBudget=150` por invocação é paliativo) OU migrar pra um job resumível.
 - [ ] **Fixture do `get_escrow_detail`** — patch de log temporário (só campos financeiros), capturar 1 pedido liberado + 1 `COMPLETED` não liberado, congelar JSON, reverter o log. Responde a Pergunta 1 do `DIAGNOSTICO`.
 - [ ] **`transaction_date` retroativo** — o backfill `days:180` (Faixa A) já corrige, confirmar depois.
-- [ ] **Aplicar o padrão `computeShopeeFinance` a TikTok e ML** — hoje cada um tem lib própria; a agregação por competência + escrow/settlement casado por pedido deveria valer pros três (o `DIAGNOSTICO` seção 7 pede "as mesmas primitivas").
+- [~] **Aplicar o padrão `computeShopeeFinance` a TikTok e ML** — reavaliado 28/08: os 3 marketplaces têm dados estruturalmente diferentes (Shopee OAuth = escrow + fees itemizadas; ML = taxa/frete já em R$ absoluto no pedido; TikTok = estimativa por config, settlements num upload à parte). Forçar 1 função só = adaptadores pesados + risco em 3 telas de cliente pagante. **Feito no lugar:** varredura de correção real — achado e corrigido em `31ed3d3` a **dupla tributação** nos dashboards Shopee (path manual) e TikTok (`lucro_reais` embutia `settings.imposto_nf_saida` E o `TaxSummaryRow` tributava de novo por empresa). ML e path sync do Shopee já estavam limpos. **Resta:** retirar `settings.imposto_nf_saida` de vez (TikTokResultados/Variacoes ainda usam) — modelo de imposto antigo vs `companies.tax_rate`/`applyTax`.
 
 ---
 
