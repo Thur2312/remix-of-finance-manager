@@ -46,7 +46,7 @@ export default function IntegrationManage() {
   const { connectionId } = useParams<{ connectionId: string }>();
   const navigate = useNavigate();
   const { getConnectionById, getLogsForConnection, syncNow, disconnect, updateSyncSettings } = useIntegrations();
-  const [syncPeriod, setSyncPeriod] = useState<'7' | '15' | '30' | '60'>('15');
+  const [syncPeriod, setSyncPeriod] = useState<'7' | '15' | '30' | '60' | '90' | '180'>('15');
 
   const connection = getConnectionById(connectionId || '');
   const logs = connection ? getLogsForConnection(connection.id) : [];
@@ -173,6 +173,8 @@ export default function IntegrationManage() {
                     <SelectItem value="15">15 dias</SelectItem>
                     <SelectItem value="30">30 dias</SelectItem>
                     <SelectItem value="60">60 dias</SelectItem>
+                    <SelectItem value="90">90 dias</SelectItem>
+                    <SelectItem value="180">180 dias (backfill)</SelectItem>
                   </SelectContent>
                 </Select>
                 <Button
