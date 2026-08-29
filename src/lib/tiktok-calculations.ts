@@ -1,4 +1,5 @@
 import { toCents, type Cents } from './money';
+import type { Database } from '@/integrations/supabase/types';
 
 export interface TikTokSettingsData {
   id: string;
@@ -14,6 +15,28 @@ export interface TikTokSettingsData {
   desconto_nf_saida: number;
   gasto_tiktok_ads: number;
   is_default: boolean;
+}
+
+// Colunas numéricas de `tiktok_settings` são nullable no banco — normaliza
+// null→0 na fronteira de leitura. Ver normalizeShopeeSettings em calculations.ts.
+export function normalizeTikTokSettings(
+  row: Database['public']['Tables']['tiktok_settings']['Row'],
+): TikTokSettingsData {
+  return {
+    id: row.id,
+    user_id: row.user_id,
+    name: row.name,
+    taxa_comissao_tiktok: row.taxa_comissao_tiktok ?? 0,
+    taxa_afiliado: row.taxa_afiliado ?? 0,
+    adicional_por_item: row.adicional_por_item ?? 0,
+    percentual_valor_antecipado: row.percentual_valor_antecipado ?? 0,
+    taxa_antecipacao: row.taxa_antecipacao ?? 0,
+    imposto_nf_saida: row.imposto_nf_saida ?? 0,
+    percentual_nf_entrada: row.percentual_nf_entrada ?? 0,
+    desconto_nf_saida: row.desconto_nf_saida ?? 0,
+    gasto_tiktok_ads: row.gasto_tiktok_ads ?? 0,
+    is_default: row.is_default ?? false,
+  };
 }
 
 export interface TikTokOrder {

@@ -1,4 +1,5 @@
 import { toCents, type Cents } from './money';
+import type { Database } from '@/integrations/supabase/types';
 
 export interface SettingsData {
   id: string;
@@ -13,6 +14,29 @@ export interface SettingsData {
   desconto_nf_saida: number;
   gasto_shopee_ads: number;
   is_default: boolean;
+}
+
+// As colunas numéricas de `settings` são nullable no banco (config parcial).
+// O cálculo trabalha com número — normaliza null→0 na fronteira de leitura,
+// um lugar só, em vez de `Number(x)` espalhado (que também dava NaN pra
+// undefined). Ver docs/DIAGNOSTICO seção 7 (fronteira de captação).
+export function normalizeShopeeSettings(
+  row: Database['public']['Tables']['settings']['Row'],
+): SettingsData {
+  return {
+    id: row.id,
+    user_id: row.user_id,
+    name: row.name,
+    taxa_comissao_shopee: row.taxa_comissao_shopee ?? 0,
+    adicional_por_item: row.adicional_por_item ?? 0,
+    percentual_valor_antecipado: row.percentual_valor_antecipado ?? 0,
+    taxa_antecipacao: row.taxa_antecipacao ?? 0,
+    imposto_nf_saida: row.imposto_nf_saida ?? 0,
+    percentual_nf_entrada: row.percentual_nf_entrada ?? 0,
+    desconto_nf_saida: row.desconto_nf_saida ?? 0,
+    gasto_shopee_ads: row.gasto_shopee_ads ?? 0,
+    is_default: row.is_default ?? false,
+  };
 }
 
 export interface RawOrder {
@@ -230,9 +254,12 @@ export function calculateResults(
   const lucro_liquido = lucro_bruto - gasto_ads;
   const total_a_receber = results.reduce((sum, r) => sum + r.total_a_receber, 0);
 
-  const lucro_bruto_cents = results.reduce((sum, r) => sum + r.lucro_reais_cents, 0);
+  // `?? 0`: os campos *_cents de GroupedResult são opcionais no tipo (outros
+  // lugares constroem o shape sem eles — ver ResultsCharts), mas calculateResults
+  // sempre os preenche no push acima. Não é coalesce de dado monetário faltando.
+  const lucro_bruto_cents = results.reduce((sum, r) => sum + (r.lucro_reais_cents ?? 0), 0);
   const lucro_liquido_cents = lucro_bruto_cents - gastoAdsCents;
-  const total_a_receber_cents = results.reduce((sum, r) => sum + r.total_a_receber_cents, 0);
+  const total_a_receber_cents = results.reduce((sum, r) => sum + (r.total_a_receber_cents ?? 0), 0);
 
   const imposto_total = results.reduce((sum, r) => sum + r.imposto, 0);
   const imposto_total_cents = results.reduce((sum, r) => sum + Number(r.imposto_cents ?? 0), 0);
@@ -257,14 +284,14 @@ export function calculateResults(
       ? (lucro_liquido / total_a_receber) * 100
       : 0,
 
-    total_faturado_cents: results.reduce((sum, r) => sum + r.total_faturado_cents, 0) as Cents,
-    rebates_shopee_cents: results.reduce((sum, r) => sum + r.rebates_shopee_cents, 0) as Cents,
-    taxa_shopee_reais_cents: results.reduce((sum, r) => sum + r.taxa_shopee_reais_cents, 0) as Cents,
-    taxa_adicional_itens_cents: results.reduce((sum, r) => sum + r.taxa_adicional_itens_cents, 0) as Cents,
+    total_faturado_cents: results.reduce((sum, r) => sum + (r.total_faturado_cents ?? 0), 0) as Cents,
+    rebates_shopee_cents: results.reduce((sum, r) => sum + (r.rebates_shopee_cents ?? 0), 0) as Cents,
+    taxa_shopee_reais_cents: results.reduce((sum, r) => sum + (r.taxa_shopee_reais_cents ?? 0), 0) as Cents,
+    taxa_adicional_itens_cents: results.reduce((sum, r) => sum + (r.taxa_adicional_itens_cents ?? 0), 0) as Cents,
     total_a_receber_cents: total_a_receber_cents as Cents,
-    total_gasto_produtos_cents: results.reduce((sum, r) => sum + r.total_gasto_produtos_cents, 0) as Cents,
-    imposto_cents: results.reduce((sum, r) => sum + r.imposto_cents, 0) as Cents,
-    nf_entrada_cents: results.reduce((sum, r) => sum + r.nf_entrada_cents, 0) as Cents,
+    total_gasto_produtos_cents: results.reduce((sum, r) => sum + (r.total_gasto_produtos_cents ?? 0), 0) as Cents,
+    imposto_cents: results.reduce((sum, r) => sum + (r.imposto_cents ?? 0), 0) as Cents,
+    nf_entrada_cents: results.reduce((sum, r) => sum + (r.nf_entrada_cents ?? 0), 0) as Cents,
     gasto_ads_cents: gastoAdsCents,
     lucro_bruto_cents: lucro_bruto_cents as Cents,
     lucro_reais_cents: lucro_liquido_cents as Cents,

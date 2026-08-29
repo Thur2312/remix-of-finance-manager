@@ -25,7 +25,7 @@ import {
   X,
   Megaphone,
 } from 'lucide-react';
-import { TikTokSettingsData, TikTokOrder, calculateTikTokResults, formatCurrency, formatPercent } from '@/lib/tiktok-calculations';
+import { TikTokSettingsData, TikTokOrder, calculateTikTokResults, formatCurrency, formatPercent, normalizeTikTokSettings } from '@/lib/tiktok-calculations';
 import { fetchAllTikTokOrders } from '@/lib/tiktok-helpers';
 import { EditableCostCell } from '@/components/EditableCostCell';
 import { ResultsCharts } from '@/components/charts/ResultsCharts';
@@ -71,11 +71,12 @@ function TikTokResultadosContent() {
         return;
       }
 
-      setAllSettings(data || []);
-      
-      if (data && data.length > 0) {
-        const defaultSettings = data.find(s => s.is_default) || data[0];
-        setSettings(defaultSettings as TikTokSettingsData);
+      const normalized = (data || []).map(normalizeTikTokSettings);
+      setAllSettings(normalized);
+
+      if (normalized.length > 0) {
+        const defaultSettings = normalized.find(s => s.is_default) || normalized[0];
+        setSettings(defaultSettings);
         setSelectedSettingsId(defaultSettings.id);
       }
     } finally {
@@ -107,7 +108,7 @@ function TikTokResultadosContent() {
   const handleSettingsChange = (settingsId: string) => {
     const selected = allSettings.find(s => s.id === settingsId);
     if (selected) {
-      setSettings(selected as TikTokSettingsData);
+      setSettings(selected);
       setSelectedSettingsId(settingsId);
     }
   };

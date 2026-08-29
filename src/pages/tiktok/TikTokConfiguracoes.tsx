@@ -21,7 +21,7 @@ import {
   AlertDialogTrigger,
 } from '@/components/ui/alert-dialog';
 import { z } from 'zod';
-import { TikTokSettingsData } from '@/lib/tiktok-calculations';
+import { TikTokSettingsData, normalizeTikTokSettings } from '@/lib/tiktok-calculations';
 import { tiktokNavTabs } from '@/components/layout/InPageNav';
 import { PageHeader } from '@/components/layout/PageHeader';
 
@@ -53,10 +53,7 @@ const defaultSettings = {
   is_default: true,
 };
 
-interface SettingsRow extends TikTokSettingsData {
-  created_at: string;
-  updated_at: string;
-}
+type SettingsRow = TikTokSettingsData;
 
 function TikTokConfiguracoesContent() {
   const { user } = useAuth();
@@ -82,9 +79,10 @@ function TikTokConfiguracoesContent() {
       toast.error('Erro ao carregar configurações');
       console.error(error);
     } else {
-      setSettings(data || []);
-      if (data && data.length > 0) {
-        const defaultSetting = data.find(s => s.is_default) || data[0];
+      const normalized = (data || []).map(normalizeTikTokSettings);
+      setSettings(normalized);
+      if (normalized.length > 0) {
+        const defaultSetting = normalized.find(s => s.is_default) || normalized[0];
         selectSettings(defaultSetting);
       } else {
         setIsCreating(true);
@@ -240,7 +238,7 @@ function TikTokConfiguracoesContent() {
         
         toast.success('Configuração criada com sucesso!');
         await fetchSettings();
-        if (data) selectSettings(data);
+        if (data) selectSettings(normalizeTikTokSettings(data));
       } else if (selectedSettings) {
         const { error } = await supabase
           .from('tiktok_settings')

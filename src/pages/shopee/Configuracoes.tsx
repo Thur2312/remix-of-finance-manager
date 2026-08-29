@@ -23,23 +23,7 @@ import {
 import { z } from 'zod';
 import { shopeeNavTabs } from '@/components/layout/InPageNav';
 import { PageHeader } from '@/components/layout/PageHeader';
-
-interface SettingsData {
-  id: string;
-  user_id: string;
-  name: string;
-  taxa_comissao_shopee: number;
-  adicional_por_item: number;
-  percentual_valor_antecipado: number;
-  taxa_antecipacao: number;
-  imposto_nf_saida: number;
-  percentual_nf_entrada: number;
-  desconto_nf_saida: number;
-  gasto_shopee_ads: number;
-  is_default: boolean;
-  created_at: string;
-  updated_at: string;
-}
+import { normalizeShopeeSettings, type SettingsData } from '@/lib/calculations';
 
 const settingsSchema = z.object({
   name: z.string().min(1, 'Nome é obrigatório').max(100, 'Nome muito longo'),
@@ -92,9 +76,10 @@ function ConfiguracoesContent() {
       toast.error('Erro ao carregar configurações');
       console.error(error);
     } else {
-      setSettings(data || []);
-      if (data && data.length > 0) {
-        const defaultSetting = data.find(s => s.is_default) || data[0];
+      const normalized = (data || []).map(normalizeShopeeSettings);
+      setSettings(normalized);
+      if (normalized.length > 0) {
+        const defaultSetting = normalized.find(s => s.is_default) || normalized[0];
         selectSettings(defaultSetting);
       } else {
         setIsCreating(true);
@@ -250,7 +235,7 @@ function ConfiguracoesContent() {
         
         toast.success('Configuração criada com sucesso!');
         await fetchSettings();
-        if (data) selectSettings(data);
+        if (data) selectSettings(normalizeShopeeSettings(data));
       } else if (selectedSettings) {
         const { error } = await supabase
           .from('settings')

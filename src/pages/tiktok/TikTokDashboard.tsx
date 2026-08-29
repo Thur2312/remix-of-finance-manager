@@ -9,7 +9,7 @@ import {
   Loader2, Upload, Settings, FileSpreadsheet, Package,
   ArrowRight, TrendingUp, DollarSign, ShoppingCart,
 } from 'lucide-react';
-import { TikTokSettingsData, TikTokOrder, calculateTikTokResults, formatCurrency } from '@/lib/tiktok-calculations';
+import { TikTokSettingsData, TikTokOrder, calculateTikTokResults, formatCurrency, normalizeTikTokSettings } from '@/lib/tiktok-calculations';
 import { formatCents, type Cents } from '@/lib/money';
 import { fetchAllTikTokOrders } from '@/lib/tiktok-helpers';
 import { DashboardCharts } from '@/components/charts/DashboardCharts';
@@ -40,7 +40,7 @@ export function TikTokDashboardContent() {
           supabase.from('tiktok_settings').select('*').eq('is_default', true).maybeSingle(),
           fetchAllTikTokOrders(user.id),
         ]);
-        if (settingsResult.data) setSettings(settingsResult.data);
+        if (settingsResult.data) setSettings(normalizeTikTokSettings(settingsResult.data));
         setOrders(ordersData);
       } catch (error) {
         console.error('Error fetching data:', error);

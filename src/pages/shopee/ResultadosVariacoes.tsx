@@ -33,6 +33,7 @@ import {
   formatCurrency,
   formatPercent,
   SettingsData,
+  normalizeShopeeSettings,
   RawOrder,
   CalculationResult,
 } from '@/lib/calculations';
@@ -92,11 +93,12 @@ function ResultadosVariacoesContent() {
         return;
       }
 
-      setAllSettings(data || []);
-      
-      if (data && data.length > 0) {
-        const defaultSettings = data.find(s => s.is_default) || data[0];
-        setSettings(defaultSettings as SettingsData);
+      const normalized = (data || []).map(normalizeShopeeSettings);
+      setAllSettings(normalized);
+
+      if (normalized.length > 0) {
+        const defaultSettings = normalized.find(s => s.is_default) || normalized[0];
+        setSettings(defaultSettings);
         setSelectedSettingsId(defaultSettings.id);
       }
     } finally {
@@ -122,7 +124,7 @@ function ResultadosVariacoesContent() {
   const handleSettingsChange = (settingsId: string) => {
     const selected = allSettings.find(s => s.id === settingsId);
     if (selected) {
-      setSettings(selected as SettingsData);
+      setSettings(selected);
       setSelectedSettingsId(settingsId);
     }
   };
