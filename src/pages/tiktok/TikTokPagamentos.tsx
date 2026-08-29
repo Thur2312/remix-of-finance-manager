@@ -159,8 +159,10 @@ function TikTokPagamentosContent() {
         fetchAllTikTokStatements(user.id),
         fetchTikTokOrdersCosts(user.id),
       ]);
-      setSettlements(settlementsData);
-      setStatements(statementsData);
+      // Os tipos locais Settlement/Statement são um subconjunto do que o
+      // helper devolve (ParsedSettlementRow/ParsedStatementRow).
+      setSettlements(settlementsData as unknown as Settlement[]);
+      setStatements(statementsData as unknown as Statement[]);
       setOrderCosts(costsData);
       setLoading(false);
     }

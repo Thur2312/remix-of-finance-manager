@@ -131,7 +131,7 @@ function normalizeColumnName(name: string): string {
 }
 
 // Find matching column in row based on aliases (case-insensitive, flexible)
-function findColumnValue(row: Record<string, string>, aliases: string[]): string {
+function findColumnValue(row: Record<string, string>, aliases: string[]): string | undefined {
   // First try exact match
   for (const alias of aliases) {
     if (row[alias] !== undefined) {
@@ -339,7 +339,7 @@ export function parseSettlementRowWithDiagnostics(row: Record<string, string>): 
       order_id: cleanOrderId,
       related_order_id: findColumnValue(row, settlementColumnMapping.related_order_id)?.toString().trim() || null,
       sku_id: findColumnValue(row, settlementColumnMapping.sku_id)?.toString().trim() || null,
-      quantidade: parseInt(findColumnValue(row, settlementColumnMapping.quantidade)) || 1,
+      quantidade: parseInt(findColumnValue(row, settlementColumnMapping.quantidade) ?? '') || 1,
       nome_produto: findColumnValue(row, settlementColumnMapping.nome_produto)?.toString().trim() || null,
       variacao: findColumnValue(row, settlementColumnMapping.variacao)?.toString().trim() || null,
       
@@ -603,7 +603,9 @@ export async function fetchAllTikTokStatements(userId: string) {
         refund_subtotal: 0,
         adjustment_amount: row.adjustments, // Map adjustments to adjustment_amount
       }));
-      allStatements.push(...mappedData);
+      // As colunas de tiktok_statements são nullable no banco; ParsedStatementRow
+      // as trata como não-null. Consumidor (calculateDRE) já faz `|| 0` em tudo.
+      allStatements.push(...(mappedData as unknown as ParsedStatementRow[]));
       page++;
       hasMore = data.length === pageSize;
     } else {
@@ -635,7 +637,9 @@ export async function fetchAllTikTokSettlements(userId: string) {
     }
 
     if (data && data.length > 0) {
-      allSettlements.push(...data);
+      // idem fetchAllTikTokStatements: colunas nullable no banco vs
+      // ParsedSettlementRow não-null; DRE já faz `|| 0`.
+      allSettlements.push(...(data as unknown as ParsedSettlementRow[]));
       page++;
       hasMore = data.length === pageSize;
     } else {

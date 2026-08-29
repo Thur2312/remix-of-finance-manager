@@ -148,7 +148,7 @@ export function ProductCosts() {
         user_id: user.id,
         external_item_id: newCost.external_item_id || null,
         item_name: newCost.item_name || null,
-        sku: newCost.sku || null,
+        sku: newCost.sku || '',
         cost: Number(newCost.cost) || 0,
         packaging_cost: Number(newCost.packaging_cost) || 0,
         other_costs: Number(newCost.other_costs) || 0,

@@ -137,7 +137,7 @@ function UploadContent() {
         return;
       }
 
-      const fileHeaders = jsonData[0].map((h:string) => String(h || '').trim());
+      const fileHeaders = jsonData[0].map((h) => String(h ?? '').trim());
       setHeaders(fileHeaders);
       
       // Auto-map columns based on common names

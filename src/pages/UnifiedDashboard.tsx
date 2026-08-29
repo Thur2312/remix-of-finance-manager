@@ -623,7 +623,7 @@ function UnifiedDashboardContent() {
                 total={syncData.stats.pedidos + syncData.stats.emTransito + syncData.stats.cancelados}
               />
             )}
-            {syncData?.orders?.length > 0 && <TopProductsCard orders={syncData.orders} />}
+            {(syncData?.orders?.length ?? 0) > 0 && <TopProductsCard orders={syncData!.orders} />}
             {feeBreakdown.length > 0 && <FeesBarChart breakdown={feeBreakdown} />}
             <RecentSalesActivityCard />
           </div>

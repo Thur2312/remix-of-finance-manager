@@ -95,7 +95,7 @@ export function ExportSection() {
           'SKU': o.sku || '-',
           'Produto': o.nome_produto || '-',
           'Variação': o.variacao || '-',
-          'Quantidade': o.quantidade,
+          'Quantidade': o.quantidade ?? 0,
           'Total Faturado (R$)': formatCurrency(Number(o.total_faturado)),
           'Rebate Shopee (R$)': formatCurrency(Number(o.rebate_shopee)),
           'Custo Unitário (R$)': formatCurrency(Number(o.custo_unitario)),

@@ -120,7 +120,7 @@ function TikTokPagamentosUploadContent() {
         
         if (matrix.length >= 2) {
           // 2) Processar headers únicos
-          const rawHeaders = matrix[0].map((h: number) => (h ?? "").toString().trim());
+          const rawHeaders = (matrix[0] ?? []).map((h) => (h ?? "").toString().trim());
           const headers = makeHeadersUnique(rawHeaders);
           const duplicateCount = rawHeaders.length - new Set(rawHeaders.filter((h: string) => h)).size;
           
@@ -131,7 +131,7 @@ function TikTokPagamentosUploadContent() {
           for (let i = 1; i < matrix.length; i++) {
             const row = matrix[i];
             // pula linhas completamente vazias
-            if (!row || row.every((c: number) => (c ?? "").toString().trim() === "")) continue;
+            if (!row || row.every((c) => (c ?? "").toString().trim() === "")) continue;
             
             const obj: Record<string, string | number | boolean> = {};
             for (let j = 0; j < headers.length; j++) {

@@ -52,7 +52,7 @@ export default function IntegrationManage() {
   const logs = connection ? getLogsForConnection(connection.id) : [];
   const provider = connection?.provider;
   const Icon = providerIcons[provider || ''] || Store;
-  const name = providerNames[provider || ''] || provider;
+  const name = providerNames[provider || ''] || provider || 'integração';
 
   useTopbarTitle(`Gerenciar ${name}`);
 

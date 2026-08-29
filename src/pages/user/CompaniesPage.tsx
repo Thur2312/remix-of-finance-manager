@@ -3,7 +3,7 @@ import {
   Building2, Plus, Pencil, Trash2, Link2, AlertTriangle,
   TrendingDown, Percent, Store, RefreshCw
 } from 'lucide-react';
-import { useCompanies, Company } from '../../hooks/useCompanies';
+import { useCompanies, Company, type CompanyFormData } from '../../hooks/useCompanies';
 import { applyTax } from '../../lib/tax';
 import { CompanyModal } from '../../components/settings/CompanyModal';
 
@@ -168,7 +168,7 @@ export default function CompaniesPage() {
   const handleNew = () => { setEditingCompany(null); setModalOpen(true); };
   const handleEdit = (c: Company) => { setEditingCompany(c); setModalOpen(true); };
 
-  const handleSave = async (data) => {
+  const handleSave = async (data: CompanyFormData) => {
     if (editingCompany) {
       await updateCompany(editingCompany.id, data);
     } else {
