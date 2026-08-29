@@ -35,11 +35,6 @@ interface CostumTooltipProps {
   label?: string;
 }
 
-interface CustomPayloadEntry {
-  color: string;
-  name: string;
-  value: number;
-}
 
 
 const CHART_COLORS = [
@@ -149,9 +144,9 @@ export function CashFlowCharts({ entries, categories, isLoading }: CashFlowChart
       return (
         <div className="bg-background border border-border rounded-lg p-3 shadow-lg">
           <p className="font-medium mb-2">{label}</p>
-          {payload.map((entry: CustomPayloadEntry, index: number) => (
+          {payload.map((entry, index) => (
             <p key={index} style={{ color: entry.color }} className="text-sm">
-              {entry.name}: {formatCurrency(entry.value)}
+              {entry.name}: {formatCurrency(typeof entry.value === 'number' ? entry.value : 0)}
             </p>
           ))}
         </div>
@@ -165,8 +160,8 @@ export function CashFlowCharts({ entries, categories, isLoading }: CashFlowChart
       const data = payload[0];
       return (
         <div className="bg-background border border-border rounded-lg p-3 shadow-lg">
-          <p className="font-medium">{data.name}</p>
-          <p className="text-sm text-muted-foreground">{formatCurrency(data.value)}</p>
+          <p className="font-medium">{data?.name}</p>
+          <p className="text-sm text-muted-foreground">{formatCurrency(typeof data?.value === 'number' ? data.value : 0)}</p>
         </div>
       );
     }

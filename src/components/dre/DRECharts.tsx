@@ -56,11 +56,12 @@ export function DRECharts({ data }: DREChartsProps) {
 
   const CustomTooltip = ({ active, payload, label }:   TooltipProps<number, string>) => {
     if (active && payload && payload.length) {
+      const value = payload[0]?.value ?? 0;
       return (
         <div className="bg-background border border-border rounded-lg p-3 shadow-lg">
           <p className="font-medium text-sm">{label}</p>
-          <p className={`text-sm font-mono ${payload[0].value >= 0 ? 'text-emerald-600' : 'text-red-600'}`}>
-            {formatCurrency(payload[0].value)}
+          <p className={`text-sm font-mono ${value >= 0 ? 'text-emerald-600' : 'text-red-600'}`}>
+            {formatCurrency(value)}
           </p>
         </div>
       );
@@ -70,12 +71,14 @@ export function DRECharts({ data }: DREChartsProps) {
 
   const PieTooltip = ({ active, payload }: TooltipProps<number, string>) => {
     if (active && payload && payload.length) {
-      const total = payload[0].payload.total || data.receitaBrutaTotal;
-      const percent = ((payload[0].value / total) * 100).toFixed(1);
+      const entry = payload[0];
+      const value = entry?.value ?? 0;
+      const total = (entry?.payload as { total?: number } | undefined)?.total || data.receitaBrutaTotal;
+      const percent = total > 0 ? ((value / total) * 100).toFixed(1) : '0.0';
       return (
         <div className="bg-background border border-border rounded-lg p-3 shadow-lg">
-          <p className="font-medium text-sm">{payload[0].name}</p>
-          <p className="text-sm font-mono">{formatCurrency(payload[0].value)}</p>
+          <p className="font-medium text-sm">{entry?.name}</p>
+          <p className="text-sm font-mono">{formatCurrency(value)}</p>
           <p className="text-xs text-muted-foreground">{percent}%</p>
         </div>
       );

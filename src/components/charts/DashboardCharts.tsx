@@ -21,9 +21,9 @@ const CustomTooltip = ({ active, payload }: TooltipProps<number, string>) => {
   if (active && payload && payload.length) {
     return (
       <div className="rounded-lg border bg-background p-2 shadow-sm">
-        <p className="font-medium text-sm">{payload[0].name}</p>
+        <p className="font-medium text-sm">{payload[0]?.name}</p>
         <p className="text-sm text-muted-foreground">
-          {formatCurrency(payload[0].value)}
+          {formatCurrency(typeof payload[0]?.value === 'number' ? payload[0].value : 0)}
         </p>
       </div>);
 

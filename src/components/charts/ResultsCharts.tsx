@@ -17,20 +17,14 @@ const COLORS = [
   'hsl(var(--chart-5))',
 ];
 
-interface CustomPayloadEntry {
-  color: string;
-  name: string;
-  value: number;
-}
-
 const CustomTooltip = ({ active, payload, label }: TooltipProps<number, string>) => {
   if (active && payload && payload.length) {
     return (
       <div className="bg-popover border rounded-lg shadow-lg p-3 text-sm">
         <p className="font-medium mb-1">{payload[0]?.payload?.nome || label}</p>
-        {payload.map((entry: CustomPayloadEntry, index: number) => (
+        {payload.map((entry, index) => (
           <p key={index} style={{ color: entry.color }}>
-            {entry.name}: {formatCurrency(entry.value)}
+            {entry.name}: {formatCurrency(typeof entry.value === 'number' ? entry.value : 0)}
           </p>
         ))}
       </div>
