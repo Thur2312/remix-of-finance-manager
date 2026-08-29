@@ -1,6 +1,24 @@
 # Seller Finance — Supabase Security Audit (Static, Read-Only)
 
 Data: 2026-08-06
+
+## Status (revisão 2026-08-28)
+
+| # | Achado | Status |
+|---|---|---|
+| 1 | RPCs `process_green_payment*` / `trigger_auto_sync` com EXECUTE público | ✅ `20260806230000` + `20260826120000` + `20260826120100` revogaram de `public/anon/authenticated` |
+| 2 | `protect_paywall_columns` só em UPDATE | ✅ `20260806230100_protect_paywall_columns_on_insert.sql` |
+| 3 | ~25 tabelas fora de migration / RLS não verificável | 🟡 As 5 core (`orders`/`fees`/`payments`/`order_items`/`integration_connections`) versionadas em `20260106232520_baseline_integration_core_tables.sql` — RLS **confirmado habilitado** nas 5, policies escopadas por `auth.uid()`. Faltam ~15 tabelas menos sensíveis. |
+| 4 | `send-password-reset` vaza existência de conta pela mensagem | ✅ mensagem idêntica nos dois casos (`index.ts:57` = `:184`) |
+| 5 | `profiles.email` sem UNIQUE | ✅ `20260806230200_profiles_email_unique.sql` |
+| 6 | Branch Shopee morto em `integration-auth-start` | ✅ removido 2026-08-28 (função só aceita `tiktok` agora) — **precisa deploy** |
+| 7 | `mercadolivre-webhook` sem assinatura | ℹ️ por design (API do ML não suporta HMAC); mitigado — handler sempre rebusca da API real |
+
+Original abaixo (inalterado).
+
+---
+
+Data original: 2026-08-06
 Escopo: todas as 14 migrations em `supabase/migrations/`, todas as edge functions em `supabase/functions/*/index.ts` + `_shared/{cors,plan-guard,plans,validation}.ts`, e o inventário completo de tabelas/RPCs em `database.types.ts`. Sem chamadas de rede, sem escrita no banco real.
 
 ## Achados críticos/altos
