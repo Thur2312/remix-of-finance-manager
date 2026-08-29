@@ -159,7 +159,7 @@ da Faixa C satisfeito.
 
 - [ ] **Push** dos commits `007a30c` + `60f710b` (multi-loja Shopee).
 - [ ] **Commit + push** da notificação de venda (`/vendas`) — e validar os links externos de pedido (Seller Center Shopee / "Minhas vendas" ML).
-- [ ] **Publicar o aviso** `/admin/notificacoes` da multi-loja (segmento "Shopee conectada").
+- [x] **Publicar o aviso** da multi-loja — migration `20260828180000_notice_multi_shopee.sql` (segmento `shopee_connected`, type `feature`). Aplica no próximo `db push`.
 - [ ] **Landing** — decidir: mergear `design/landing-redesign` em `main`, e se implementa o Addendum 5 (P1–P6 craft) do `DESIGN-DIRECTION`.
 - [ ] **Deletar branch remota** `feature/shopee-webhook` se morta.
 
