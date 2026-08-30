@@ -35,6 +35,16 @@ import {
 } from "@/components/ui/popover";
 import { useAnuncios, AnuncioInput, CustoAdicionalDB, TipoProduto, KitItemDB } from "@/hooks/useProdutos";
 import { formatCurrency, formatPercent } from "@/lib/format";
+import {
+  TAXAS_VERIFICADAS_EM,
+  getShopeeRates,
+  getTiktokRates,
+  getMercadoLivreRates,
+  calcComissaoTaxaReais,
+  isAutoMarketplace as isAutoPlataforma,
+  type Marketplace as Plataforma,
+  type MLTipoAnuncio,
+} from "@/lib/marketplace-fees";
 import { toast } from "sonner";
 
 // ─── Helpers ────────────────────────────────────────────────────────────────
@@ -45,89 +55,6 @@ const parseInput = (val: string): number => {
   const parsed = parseFloat(normalized);
   return isNaN(parsed) ? 0 : parsed;
 };
-
-// Data em que as tabelas de comissão abaixo foram conferidas pela última vez
-// contra a Central do Vendedor de cada marketplace. As plataformas mudam
-// essas faixas sem aviso — sem essa data visível na tela, o usuário não tinha
-// como saber se o valor calculado ainda reflete a taxa real.
-const TAXAS_VERIFICADAS_EM = "26/08/2026";
-
-// ─── Tabela de taxas Shopee ───────────────────────────────────────────────────
-// Faixas vigentes em TAXAS_VERIFICADAS_EM (ver acima) — conferir na Central
-// do Vendedor Shopee antes de decisões de precificação importantes.
-function getShopeeRates(preco: number): { comissao: number; taxaFixa: number } {
-  if (preco <= 79.99)  return { comissao: 20, taxaFixa: 4  };
-  if (preco <= 99.99)  return { comissao: 14, taxaFixa: 16 };
-  if (preco <= 199.99) return { comissao: 14, taxaFixa: 20 };
-  if (preco <= 499.99) return { comissao: 14, taxaFixa: 26 };
-  return                      { comissao: 14, taxaFixa: 26 };
-}
-
-// ─── Calcula comissão em R$ para Shopee ──────────────────────────────────────
-function calcShopeeComissaoReais(valorVenda: number): number {
-  if (valorVenda <= 0) return 0;
-  const { comissao, taxaFixa } = getShopeeRates(valorVenda);
-  return valorVenda * (comissao / 100) + taxaFixa;
-}
-
-// ─── Tabela de taxas TikTok Shop ──────────────────────────────────────────────
-// Estrutura por faixa de preço vigente em 2026:
-//   < R$50:  comissão 10% + taxa fixa R$4,00 por item
-//   ≥ R$50:  comissão  6% + taxa fixa R$6,00 por item
-// Pode variar conforme campanhas/promoções — confirmar na Central do Vendedor.
-function getTiktokRates(preco: number): { comissao: number; taxaFixa: number } {
-  if (preco < 50) return { comissao: 10, taxaFixa: 4 };
-  return { comissao: 6, taxaFixa: 6 };
-}
-
-// ─── Tabela de taxas Mercado Livre ────────────────────────────────────────────
-// Tipo de anúncio define a comissão (varia por categoria — usamos a média típica):
-//   Clássico (Simples): ~12% (faixa 10%–14%)
-//   Premium:            ~17% (faixa 15%–19%)
-type MLTipoAnuncio = "classico" | "premium";
-const ML_COMISSAO: Record<MLTipoAnuncio, number> = { classico: 12, premium: 17 };
-
-// Taxa fixa por unidade: cobrada apenas em produtos abaixo de R$79.
-// O valor escala conforme o preço do anúncio (faixa R$5,50 a R$10,00);
-// a partir de R$79 não há taxa fixa (frete grátis obrigatório).
-function getMercadoLivreTaxaFixa(preco: number): number {
-  if (preco <= 0 || preco >= 79) return 0;
-  if (preco < 30) return 5.5;
-  if (preco < 50) return 6.5;
-  if (preco < 65) return 8;
-  return 10; // R$65 a R$78,99
-}
-
-function getMercadoLivreRates(preco: number, tipo: MLTipoAnuncio): { comissao: number; taxaFixa: number } {
-  return { comissao: ML_COMISSAO[tipo], taxaFixa: getMercadoLivreTaxaFixa(preco) };
-}
-
-// ─── Plataforma selector ─────────────────────────────────────────────────────
-type Plataforma = "Shopee" | "TiktokShop" | "MercadoLivre";
-
-// ─── Comissão + taxa fixa (em R$) automática por plataforma ───────────────────
-function calcComissaoTaxaReais(
-  plataforma: Plataforma | "",
-  preco: number,
-  mlTipo: MLTipoAnuncio,
-): number {
-  if (preco <= 0) return 0;
-  if (plataforma === "Shopee") return calcShopeeComissaoReais(preco);
-  if (plataforma === "TiktokShop") {
-    const { comissao, taxaFixa } = getTiktokRates(preco);
-    return preco * (comissao / 100) + taxaFixa;
-  }
-  if (plataforma === "MercadoLivre") {
-    const { comissao, taxaFixa } = getMercadoLivreRates(preco, mlTipo);
-    return preco * (comissao / 100) + taxaFixa;
-  }
-  return 0;
-}
-
-// Plataformas que preenchem comissão/taxa automaticamente
-const AUTO_PLATAFORMAS: Plataforma[] = ["Shopee", "TiktokShop", "MercadoLivre"];
-const isAutoPlataforma = (p: Plataforma | ""): p is Plataforma =>
-  AUTO_PLATAFORMAS.includes(p as Plataforma);
 
 const PLATAFORMA_OPTIONS: { value: Plataforma; label: string; color: string; bg: string }[] = [
   { value: "Shopee",       label: "Shopee",        color: "text-orange-600", bg: "bg-orange-500/10 border-orange-500/30 hover:bg-orange-500/20" },
