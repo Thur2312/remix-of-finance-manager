@@ -33,8 +33,16 @@ import {
 import {
   Popover, PopoverContent, PopoverTrigger,
 } from "@/components/ui/popover";
-import { useAnuncios, AnuncioInput, CustoAdicionalDB, TipoProduto, KitItemDB } from "@/hooks/useProdutos";
+import { useAnuncios, Anuncio, AnuncioInput, CustoAdicionalDB, TipoProduto, KitItemDB } from "@/hooks/useProdutos";
 import { formatCurrency, formatPercent } from "@/lib/format";
+import {
+  precoPorMargem,
+  precoPorLucro,
+  apurar,
+  apurarAnuncio,
+  type PricingInputs,
+  type AnuncioApuravel,
+} from "@/lib/pricing";
 import {
   TAXAS_VERIFICADAS_EM,
   getShopeeRates,
@@ -88,6 +96,18 @@ const somaCustosAdicionais = (lista: CustoAdicional[], custoBase: number): numbe
 // Soma de custos adicionais já persistidos (forma do banco) em R$.
 const somaCustosAdicionaisDB = (lista: CustoAdicionalDB[] | null | undefined, custoBase: number): number =>
   (lista ?? []).reduce((acc, c) => acc + (c.tipo === "percent" ? custoBase * (c.valor / 100) : c.valor), 0);
+
+// Anúncio salvo (forma do banco) → entrada da apuração pura (src/lib/pricing.ts).
+const anuncioParaApuracao = (a: Anuncio): AnuncioApuravel => ({
+  valorVenda: a.valor_venda,
+  custo: a.custo,
+  custosAdicionaisReais: somaCustosAdicionaisDB(a.custos_adicionais, a.custo),
+  custoVar: a.custo_var,
+  comissaoTaxaReais: parseFloat(String(a.comissao_taxa) || "0"), // já inclui taxa fixa
+  antecipado: a.antecipado,
+  afiliadosPct: a.afiliados,
+  impostoPct: a.imposto_pct,
+});
 
 // ── Conversão UI ⇄ banco ─────────────────────────────────────────────────────
 const serializeCustos = (lista: CustoAdicional[]): CustoAdicionalDB[] =>
@@ -350,19 +370,8 @@ function CalculadoraPrecificacaoContent() {
 
   const mediaMargemPortfolio = useMemo(() => {
     if (!anuncios || anuncios.length === 0) return null;
-
-    const margens = anuncios.map(a => {
-      const comissaoTaxa = parseFloat(String(a.comissao_taxa) || "0"); // já inclui taxa fixa
-      const impostoVal   = a.valor_venda * (a.imposto_pct / 100);
-      const afiliadosVal = a.valor_venda * (a.afiliados / 100);
-      const adicionais   = somaCustosAdicionaisDB(a.custos_adicionais, a.custo);
-      const totalCustos  = a.custo + adicionais + a.custo_var + comissaoTaxa + a.antecipado + afiliadosVal + impostoVal;
-      const margem       = a.valor_venda > 0 ? ((a.valor_venda - totalCustos) / a.valor_venda) * 100 : 0;
-      return margem;
-    });
-
-    const soma = margens.reduce((acc, m) => acc + m, 0);
-    return soma / margens.length;
+    const soma = anuncios.reduce((acc, a) => acc + apurarAnuncio(anuncioParaApuracao(a)).margemPct, 0);
+    return soma / anuncios.length;
   }, [anuncios]);
 
   // ── Auto-fill comissão/taxa por plataforma (calculadora principal) ────────
@@ -479,29 +488,31 @@ function CalculadoraPrecificacaoContent() {
     papelProduto === "avancado" ? absorpcaoManual : ABSORCAO_PADRAO[papelProduto],
   [papelProduto, absorpcaoManual]);
 
+  // ── Entradas puras da precificação (src/lib/pricing.ts) ───────────────────
+  const pricingInputs = useMemo<PricingInputs>(() => ({
+    custo:        parseInput(custoProduto) + totalCustosAdicionais,
+    custoVar:     parseInput(embalagemEtiqueta),
+    taxaFixa:     parseInput(taxaFixa),
+    comissaoPct:  parseInput(comissaoPlataforma),
+    impostoPct:   parseInput(aliquotaImposto),
+    afiliadosPct: parseInput(comissaoAfiliados),
+  }), [custoProduto, totalCustosAdicionais, embalagemEtiqueta, taxaFixa, comissaoPlataforma, aliquotaImposto, comissaoAfiliados]);
+
   // ── Cálculos do produto atual ─────────────────────────────────────────────
   const results = useMemo(() => {
     const _custoBase = parseInput(custoProduto);
-    const _custo     = _custoBase + totalCustosAdicionais;
-    const _custoVar  = parseInput(embalagemEtiqueta);
+    const _custoVar  = pricingInputs.custoVar;
     const _preco     = parseInput(precoPromocional);
     const _desc      = parseInput(desconto);
-    const _comissao  = parseInput(comissaoPlataforma);
-    const _taxaFixa  = parseInput(taxaFixa);
-    const _imposto   = parseInput(aliquotaImposto);
-    const _afiliados = parseInput(comissaoAfiliados);
+    const _taxaFixa  = pricingInputs.taxaFixa;
 
     const volume     = volumeMensal > 0 ? volumeMensal : 1;
     const volumeProd = volumeEsperadoProduto > 0 ? volumeEsperadoProduto : 1;
 
-    const precoCheio   = _desc > 0 ? _preco / (1 - _desc / 100) : _preco;
-    const comissaoVal  = _preco * (_comissao / 100);
-    const impostoVal   = _preco * (_imposto / 100);
-    const afiliadosVal = _preco * (_afiliados / 100);
-
-    const totalCustosVar = _custo + _custoVar + comissaoVal + _taxaFixa + impostoVal + afiliadosVal;
-    const lucro          = _preco - totalCustosVar;
-    const margemReal     = _preco > 0 ? (lucro / _preco) * 100 : 0;
+    const {
+      precoCheio, comissaoVal, impostoVal, afiliadosVal,
+      custoTotal: totalCustosVar, lucro, margemPct: margemReal,
+    } = apurar(pricingInputs, _preco, _desc);
 
     const custoFixoAlocado  = totalRecurringCosts * (percentualAbsorcao / 100);
     const custoFixoPorItem  = custoFixoAlocado / volumeProd;
@@ -509,47 +520,28 @@ function CalculadoraPrecificacaoContent() {
     const margemAbsorcao    = _preco > 0 ? (lucroLiquido / _preco) * 100 : 0;
     const custoFixo100      = totalRecurringCosts / volumeProd;
 
-    const taxasPct           = (_comissao + _imposto + _afiliados + margemDesejada) / 100;
-    const denom              = 1 - taxasPct;
-    const precoIdeal         = denom > 0 ? (_custo + _custoVar + _taxaFixa) / denom : 0;
-    const precoNecessario100 = denom > 0 ? (_custo + _custoVar + _taxaFixa + custoFixo100) / denom : 0;
+    const ideal  = precoPorMargem(pricingInputs, margemDesejada);
+    const nec100 = precoPorMargem({ ...pricingInputs, custo: pricingInputs.custo + custoFixo100 }, margemDesejada);
 
     return {
       precoCheio, totalCustosVar, lucro, margemReal, produtoViavel: lucro > 0,
       margemContribuicao: lucro, margemContribuicaoPercent: margemReal,
       custoFixoDiluido: totalRecurringCosts > 0 ? totalRecurringCosts / volume : 0,
       custoFixoAlocado, custoFixoPorItem, lucroLiquido, margemRealAbsorcao: margemAbsorcao,
-      custoFixo100Percent: custoFixo100, precoNecessario100Percent: precoNecessario100,
-      precoIdeal, margemInviavel: denom <= 0,
+      custoFixo100Percent: custoFixo100, precoNecessario100Percent: nec100.preco,
+      precoIdeal: ideal.preco, margemInviavel: ideal.inviavel,
       custosVariaveis: { produto: _custoBase, custosAdicionais: totalCustosAdicionais, variavel: _custoVar, comissao: comissaoVal, imposto: impostoVal, afiliados: afiliadosVal, taxaFixa: _taxaFixa },
     };
-  }, [custoProduto, totalCustosAdicionais, embalagemEtiqueta, precoPromocional, desconto, comissaoPlataforma, taxaFixa, aliquotaImposto, comissaoAfiliados, margemDesejada, totalRecurringCosts, volumeMensal, volumeEsperadoProduto, percentualAbsorcao]);
+  }, [pricingInputs, custoProduto, totalCustosAdicionais, precoPromocional, desconto, margemDesejada, totalRecurringCosts, volumeMensal, volumeEsperadoProduto, percentualAbsorcao]);
 
   // ── Preço sugerido conforme modo de cálculo ───────────────────────────────
   const precoSugerido = useMemo(() => {
-    const _custo     = parseInput(custoProduto) + totalCustosAdicionais;
-    const _custoVar  = parseInput(embalagemEtiqueta);
-    const _taxaFixa  = parseInput(taxaFixa);
-    const _comissao  = parseInput(comissaoPlataforma);
-    const _imposto   = parseInput(aliquotaImposto);
-    const _afiliados = parseInput(comissaoAfiliados);
-
-    const taxasPct = (_comissao + _imposto + _afiliados) / 100;
-    const denom    = 1 - taxasPct;
-
-    if (modoCalculo === "margem") {
-      const margem = parseInput(margemDesejadaSlider) / 100;
-      const d = 1 - taxasPct - margem;
-      return d > 0 ? (_custo + _custoVar + _taxaFixa) / d : 0;
-    }
-
-    if (modoCalculo === "lucro") {
-      const lucroAlvo = parseInput(lucroDesejado);
-      return denom > 0 ? (_custo + _custoVar + _taxaFixa + lucroAlvo) / denom : 0;
-    }
-
+    if (modoCalculo === "margem")
+      return precoPorMargem(pricingInputs, parseInput(margemDesejadaSlider)).preco;
+    if (modoCalculo === "lucro")
+      return precoPorLucro(pricingInputs, parseInput(lucroDesejado)).preco;
     return 0;
-  }, [modoCalculo, margemDesejadaSlider, lucroDesejado, custoProduto, totalCustosAdicionais, embalagemEtiqueta, taxaFixa, comissaoPlataforma, aliquotaImposto, comissaoAfiliados]);
+  }, [modoCalculo, margemDesejadaSlider, lucroDesejado, pricingInputs]);
 
   // ── Espelho: nos modos "margem" e "lucro" o preço sugerido vira o Preço ────
   //    Promocional, fazendo Margem Real, Lucro e demais análises recalcularem.
@@ -602,11 +594,7 @@ function CalculadoraPrecificacaoContent() {
 
   // ── Simulador de cenários: mesmo produto/preço nos 3 marketplaces ──────────
   const cenarios = useMemo(() => {
-    const _custo     = parseInput(custoProduto) + totalCustosAdicionais;
-    const _custoVar  = parseInput(embalagemEtiqueta);
     const _preco     = parseInput(precoPromocional);
-    const _imposto   = parseInput(aliquotaImposto);
-    const _afiliados = parseInput(comissaoAfiliados);
 
     const defs: { key: string; label: string; plataforma: Plataforma; mlTipo?: MLTipoAnuncio; color: string; bar: string }[] = [
       { key: "shopee",      label: "Shopee",       plataforma: "Shopee",       color: "text-orange-600", bar: "bg-orange-500" },
@@ -622,12 +610,17 @@ function CalculadoraPrecificacaoContent() {
         d.plataforma === "TiktokShop" ? getTiktokRates(_preco) :
                                         getMercadoLivreRates(_preco, mlTipo);
       const comissaoTaxa = calcComissaoTaxaReais(d.plataforma, _preco, mlTipo);
-      const impostoVal   = _preco * (_imposto / 100);
-      const afiliadosVal = _preco * (_afiliados / 100);
-      const totalCustos  = _custo + _custoVar + comissaoTaxa + impostoVal + afiliadosVal;
-      const lucro        = _preco - totalCustos;
-      const margem       = _preco > 0 ? (lucro / _preco) * 100 : 0;
-      const detalhe      = `${rates.comissao}% + ${formatCurrency(rates.taxaFixa)}`;
+      const { lucro, margemPct: margem } = apurarAnuncio({
+        valorVenda: _preco,
+        custo: pricingInputs.custo,
+        custosAdicionaisReais: 0, // pricingInputs.custo já inclui os adicionais
+        custoVar: pricingInputs.custoVar,
+        comissaoTaxaReais: comissaoTaxa,
+        antecipado: 0,
+        afiliadosPct: pricingInputs.afiliadosPct,
+        impostoPct: pricingInputs.impostoPct,
+      });
+      const detalhe = `${rates.comissao}% + ${formatCurrency(rates.taxaFixa)}`;
       return { ...d, comissaoTaxa, lucro, margem, viavel: lucro > 0, detalhe };
     });
 
@@ -635,7 +628,7 @@ function CalculadoraPrecificacaoContent() {
     const melhor    = _preco > 0 ? ordenadas[0] : null;
     const lucroMax  = Math.max(...linhas.map(l => Math.abs(l.lucro)), 1);
     return { linhas: ordenadas, melhor, preco: _preco, lucroMax };
-  }, [custoProduto, totalCustosAdicionais, embalagemEtiqueta, precoPromocional, aliquotaImposto, comissaoAfiliados]);
+  }, [precoPromocional, pricingInputs]);
 
   // ── Abrir dialog para novo anúncio pré-preenchido ─────────────────────────
   const openNovoAnuncio = () => {
@@ -1849,13 +1842,9 @@ function CalculadoraPrecificacaoContent() {
                     <tbody>
                       {anunciosFiltrados.map(a => {
                         const comissaoTaxa = parseFloat(String(a.comissao_taxa) || "0"); // já inclui taxa fixa
-                        const impostoVal   = a.valor_venda * (a.imposto_pct / 100);
-                        const afiliadosVal = a.valor_venda * (a.afiliados / 100);
                         const adicionaisList = a.custos_adicionais ?? [];
                         const adicionais   = somaCustosAdicionaisDB(adicionaisList, a.custo);
-                        const totalCustos  = a.custo + adicionais + a.custo_var + comissaoTaxa + a.antecipado + afiliadosVal + impostoVal;
-                        const lucro        = a.valor_venda - totalCustos;
-                        const margem       = a.valor_venda > 0 ? (lucro / a.valor_venda) * 100 : 0;
+                        const { lucro, margemPct: margem } = apurarAnuncio(anuncioParaApuracao(a));
 
                         const kitItensList  = a.tipo_produto === "kit" ? (a.kit_itens ?? []) : [];
                         const temAdicionais = adicionaisList.length > 0;
