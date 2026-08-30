@@ -678,7 +678,7 @@ if (!step || step === 'orders') {
               description: `Escrow liberado - Pedido ${orderSn}`,
               transaction_date: releaseDate,
               synced_at: now.toISOString(),
-            }, { onConflict: "external_transaction_id" })
+            }, { onConflict: "integration_id,external_transaction_id" })
 
             if (paymentError) { console.error("❌ Erro ao salvar payment:", orderSn, paymentError); continue }
 
@@ -704,7 +704,7 @@ if (!step || step === 'orders') {
                 description: fee.description,
                 fee_date: releaseDate,
                 synced_at: now.toISOString(),
-              }, { onConflict: "external_fee_id" })
+              }, { onConflict: "integration_id,external_fee_id" })
               if (feeError) console.error("❌ Erro ao salvar fee:", fee.key, JSON.stringify(feeError))
             }
 
@@ -766,7 +766,7 @@ if (!step || step === 'orders') {
             description: tx.description || `Transação carteira #${tx.transaction_id}`,
             transaction_date: safeShopeeDate(tx.create_time) ?? now.toISOString(),
             synced_at: now.toISOString(),
-          }, { onConflict: "external_transaction_id" })
+          }, { onConflict: "integration_id,external_transaction_id" })
 
           walletCount++
         }
