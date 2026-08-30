@@ -340,16 +340,13 @@ input[type="number"] {
     pointer-events: none;
   }
 
-  /* Cartão da área interna (dashboards) — substitui o antigo .app-card
-     ("Fintech Precisa", borda quase invisível + sombra achatada). Sombra
-     tingida de navy (não preto puro) é a assinatura de marca discreta;
-     .panel-interactive é a única situação em que a cor "atua" no estado de
-     repouso das telas densas, via hover, pra não pintar permanentemente uma
-     tabela de resultados. .app-card/.app-card-quiet seguem funcionando como
-     alias durante a migração (páginas trocam a classe fase a fase) — ver
-     plano de redesenho, fase de limpeza remove os aliases no final. */
-  .panel,
-  .app-card {
+  /* Cartão da área interna (dashboards). Sombra tingida de navy (não preto
+     puro) é a assinatura de marca discreta; .panel-interactive é a única
+     situação em que a cor "atua" no estado de repouso das telas densas, via
+     hover, pra não pintar permanentemente uma tabela de resultados. Os
+     aliases .app-card/.app-card-quiet foram removidos (Faixa C.1 item 4 —
+     todas as páginas usam .panel agora). */
+  .panel {
     position: relative;
     border-radius: var(--radius);
     background: hsl(var(--card));
@@ -359,8 +356,7 @@ input[type="number"] {
       transform 180ms cubic-bezier(0.16, 1, 0.3, 1);
   }
 
-  .panel::before,
-  .app-card::before {
+  .panel::before {
     content: "";
     position: absolute;
     inset: 0;
@@ -387,8 +383,7 @@ input[type="number"] {
   /* Variante "quieta" — pra conteúdo de segundo plano (detalhe, não a
      informação principal da tela). Mesma borda fina, sem sombra nenhuma,
      reforça a hierarquia em vez de competir com o card principal. */
-  .panel-quiet,
-  .app-card-quiet {
+  .panel-quiet {
     box-shadow: none;
   }
 

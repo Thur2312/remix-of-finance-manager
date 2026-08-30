@@ -122,7 +122,7 @@ function NotificacoesAdminContent() {
     <div className="max-w-3xl mx-auto space-y-6">
       <PageHeader icon={Shield} title="Avisos e novidades" subtitle="Crie comunicados pra todos os usuários ou só pra um grupo específico" />
 
-      <Card className="app-card bg-card border-transparent">
+      <Card className="panel bg-card border-transparent">
         <CardHeader>
           <CardTitle>Novo aviso</CardTitle>
           <CardDescription>Publicado imediatamente — aparece no sininho de quem for destinatário.</CardDescription>
@@ -192,7 +192,7 @@ function NotificacoesAdminContent() {
         </CardContent>
       </Card>
 
-      <Card className="app-card bg-card border-transparent">
+      <Card className="panel bg-card border-transparent">
         <CardHeader>
           <CardTitle>Avisos publicados</CardTitle>
         </CardHeader>

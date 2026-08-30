@@ -27,8 +27,8 @@ import { EmptyResultsState } from '@/components/layout/EmptyResultsState';
 import { useMercadolivreData } from '@/hooks/useMercadolivreData';
 
 // Superfície de cartão da área interna — mesma família visual do .glass-card
-// da landing, calibrada pra densidade (ver .app-card em index.css).
-const CARD = 'app-card bg-card border-transparent';
+// da landing, calibrada pra densidade (ver .panel em index.css).
+const CARD = 'panel bg-card border-transparent';
 
 function VariacoesContent() {
   const { orders, stats, loading } = useMercadolivreData();

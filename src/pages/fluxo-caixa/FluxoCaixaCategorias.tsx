@@ -35,8 +35,8 @@ import {
 } from '@/components/ui/select';
 
 // Superfície de cartão da área interna — mesma família visual do .glass-card
-// da landing, calibrada pra densidade (ver .app-card em index.css).
-const CARD = 'app-card bg-card border-transparent';
+// da landing, calibrada pra densidade (ver .panel em index.css).
+const CARD = 'panel bg-card border-transparent';
 
 const PRESET_COLORS = [
   '#10B981', '#3B82F6', '#8B5CF6', '#EC4899', 

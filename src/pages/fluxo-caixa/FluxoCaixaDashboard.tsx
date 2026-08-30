@@ -14,9 +14,9 @@ import { HandCoins } from 'lucide-react';
 import { formatCurrency } from '@/lib/format';
 
 // Superfície de cartão da área interna — mesma família visual do .glass-card
-// da landing, calibrada pra densidade (ver .app-card em index.css). bg-card
+// da landing, calibrada pra densidade (ver .panel em index.css). bg-card
 // (não bg-white) pra herdar o navy do tema em vez de forçar branco.
-const CARD = 'app-card bg-card border-transparent';
+const CARD = 'panel bg-card border-transparent';
 
 function FluxoCaixaDashboardContent() {
   const navigate = useNavigate();

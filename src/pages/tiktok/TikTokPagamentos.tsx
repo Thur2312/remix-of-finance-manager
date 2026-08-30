@@ -50,8 +50,8 @@ import { tiktokNavTabs } from '@/components/layout/InPageNav';
 import { PageHeader } from '@/components/layout/PageHeader';
 
 // Superfície de cartão da área interna — mesma família visual do .glass-card
-// da landing, calibrada pra densidade (ver .app-card em index.css).
-const CARD = 'app-card bg-card border-transparent';
+// da landing, calibrada pra densidade (ver .panel em index.css).
+const CARD = 'panel bg-card border-transparent';
 
 
 const fadeInUp = {
