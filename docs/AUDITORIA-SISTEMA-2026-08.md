@@ -131,21 +131,47 @@ da Faixa C satisfeito.
 
 ### Faixa C — Design system + layout das telas internas (o redesign)
 
-> Pré-requisito: Faixa B feita (senão mexer no layout com typecheck quebrado é às cegas).
+> Pré-requisito: Faixa B feita. **Decisões travadas (29/08):** dark mode **removido**
+> (app light-only); chrome (sidebar+topbar) vira **navy `#0A1628`**; escopo desta
+> rodada = **C.1 + C.2** (DataTable fica de fora). Sequência: C.1 inteiro (1-6),
+> validar rodando, depois C.2. Indicador forte de item ativo da sidebar +
+> tipografia dos rótulos de grupo + estado colapsado → **Faixa D**.
 
-**C.1 — Fundação (tokens + primitivas)**
-- [ ] **Fechar a migração `.app-card` → `.panel`** — trocar os 16 arquivos, remover os aliases do `index.css`. Uma classe só.
-- [ ] **`Space Mono` sistemático em valores monetários** — criar `<Money>` / `<Stat>` (ou uma classe `.tabular`) e aplicar em todo KPI/saldo/valor de tabela: DRE, Fluxo de Caixa, Calculadora, os dashboards de marketplace, `computeShopeeFinance` cards. (Item da Fase 2 do `DESIGN-DIRECTION` 2.1/3.)
-- [ ] **`AppLayout` com container** — `<main>` ganha `max-w-[1400px] mx-auto` (ou o valor decidido) + responsivo. Remover os `max-w-*` soltos de cada página.
-- [ ] **Escala de espaçamento** — decidir 1 ritmo vertical (ex.: seções `space-y-8`, blocos `space-y-4`, campos `space-y-2`) e aplicar. Hoje: `space-y-2` 98×, `space-y-4` 54×, `space-y-6` 46×… sem regra.
-- [ ] **`accent` âmbar/dourado** já está nos tokens (`--accent-gold`, `--gold`) — aplicar onde faz sentido no app (margem/lucro positivo em destaque, CTA de maior hierarquia) — hoje só a landing usa.
-- [ ] **Dark mode** — decidir: liga de verdade (`enableSystem`, testar as 48 rotas) ou remove o toggle. Meio-termo (toggle que às vezes quebra) é pior que os dois.
+**C.1 — Fundação (6 commits atômicos, ordem por risco)**
+- [ ] **1. Remover dark mode** — apaga `.dark {}` do `index.css` (~60 linhas);
+  `main.tsx` sem `<ThemeProvider>`; `AppSidebar` sem o toggle (+ imports
+  `useTheme`/`Moon`/`Sun`); `sonner.tsx` `theme="light"` fixo. Os ~10 arquivos
+  com classe `dark:` ficam inertes (limpar quando passar em cada tela).
+- [ ] **2. Chrome navy** — `--sidebar-*` do `:root` viram navy (`bg 216 55% 9%`,
+  `fg 214 20% 82%`, `accent 215 45% 15%`, `border 215 35% 18%`, `--sidebar-primary`
+  mantém azul de marca). Topbar segue sozinho (já usa `bg-sidebar`). Revisar
+  contraste no navy: `PlanBadge`, `AvatarFallback`, badge "Vendas", divisórias,
+  `SidebarTrigger`. Logo já funciona em navy (Footer/AuthShell). **Item ativo
+  continua só `bg` nesta rodada** — barra lateral é Faixa D.
+- [ ] **3. Fraunces no app** — `.app-shell .font-display` para de forçar Inter →
+  vira **Fraunces** (Space Grotesk fica landing/auth). Aplica `font-display` só
+  em heading (topbar h1, PageHeader, títulos de card selecionados). Nunca em
+  corpo/tabela/número.
+- [ ] **4. `.app-card` → `.panel`** — 16 arquivos, `app-card`→`panel` /
+  `app-card-quiet`→`panel-quiet`; remove o alias dos seletores no `index.css`.
+- [ ] **5. `<Money>` + Space Mono** — `src/components/ui/money.tsx`
+  (`<Money reais={} />` / `<Money cents={} />` / `size="lg"`, envolve o
+  `formatCurrency`/`formatCents` do `src/lib`). Aplica tela a tela (1 commit por
+  grupo): DRE, Fluxo de Caixa, Calculadora, 3 dashboards de marketplace,
+  cards do `computeShopeeFinance`.
+- [ ] **6. Escala de espaçamento** — seção `space-y-8`, bloco `space-y-4`, campo
+  `space-y-2`. Aplica deliberado nas telas principais, não find/replace global.
+- [~] **`AppLayout` container** — FEITO (`c627a65`): `<main>` com
+  `max-w-[1400px] mx-auto p-8`.
+- [~] **accent dourado no app** — tokens (`--gold`, `--accent-gold`) já existem;
+  aplicar no item 5/6 (margem/lucro positivo em destaque) e no que a Faixa D pedir.
 
 **C.2 — Componentes de página**
 - [ ] **`PageShell`** — um wrapper único: `<PageShell title icon action tabs>{children}</PageShell>` que resolve container + `PageHeader` + `InPageNav` + espaçamento. Migrar as 19 páginas sem header.
 - [ ] **`StatCard` / `KpiRow`** — hoje cada dashboard monta os cards à mão (`shopee/Dashboard.tsx`, `IntegrationManage.tsx`, `UnifiedDashboard.tsx` — 3 layouts diferentes de "4 cards de número"). Um componente só, com slot de delta e de nota.
 - [ ] **Empty-state** — consolidar em `<EmptyState variant="onboarding" | "no-data" | "no-connection" action={}>`. Absorver o card bespoke do `UnifiedDashboard`.
-- [ ] **`DataTable`** — as telas de Resultados/Variações/Pagamentos (Shopee/TikTok/ML — ~730 linhas cada, muita repetição) compartilham pouco. Extrair a tabela + filtros + paginação num componente. (Grande — pode virar sub-projeto próprio.)
+- [ ] ~~**`DataTable`**~~ — **fora desta rodada** (vira sub-projeto próprio):
+  Resultados/Variações/Pagamentos (Shopee/TikTok/ML — ~730 linhas cada).
 - [ ] **`SectionCard`** — padronizar o "card com título + descrição + conteúdo" (hoje `<Card><CardHeader><CardTitle>` repetido com espaçamentos diferentes).
 
 **C.3 — Motion (vocabulário, só Framer — sem GSAP no app)**
