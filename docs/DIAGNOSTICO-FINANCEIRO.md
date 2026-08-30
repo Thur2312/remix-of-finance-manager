@@ -317,16 +317,23 @@ líquido — vira apenas decomposição visual. Mas a decomposição precisa est
 certa, senão engana o usuário. Corrigir a **captação** para trazer os campos e
 gravar o frete líquido.
 
-### BUG-04 — Painel "MARGEM REAL" é tautológico no modo "Por Margem"
+### BUG-04 — Painel "MARGEM REAL" é tautológico no modo "Por Margem" · ✅ RESOLVIDO por BUG-05 (`9442f1b`)
 
-Em modo "Por Margem", a margem é **entrada** (slider), não resultado. O painel
-apenas ecoa o slider — sempre exibirá 20,0%, mexa o usuário no que mexer. Chamar
-de "real" (apuração) algo que é input torna o indicador vazio.
+Era tautológico **porque** um `useEffect` sobrescrevia o Preço Promocional com o
+preço sugerido — aí `margemReal = apurar(preço sugerido)` colapsava no slider
+(verificado algebricamente). Com o BUG-05 corrigido (o preço só muda no botão
+"Aplicar"), o chip volta a apurar o **preço realmente digitado**: enquanto o
+usuário arrasta o slider sem aplicar, a margem exibida é a do preço atual, não a
+do slider. Depois de "Aplicar", `margemReal ≈ slider` — mas isso é feedback
+correto ("pediu 20%, ficou 20%"), não indicador vazio. Rótulo "Margem Real"
+mantido — agora é apuração de verdade nos 3 modos.
 
-Verificar: existe **algum** caso em que "Margem real" difere de "Margem desejada"
-dentro desse modo? Se não, o painel precisa sair dali.
+### BUG-05 — A ferramenta escolhe uma decisão de negócio em silêncio · ✅ RESOLVIDO (`9442f1b`)
 
-### BUG-05 — A ferramenta escolhe uma decisão de negócio em silêncio
+Abordagem escolhida pelo usuário: **desacoplar**. Removido o `useEffect` que
+espelhava `precoSugerido → precoPromocional`. O preço sugerido de cada modo agora
+é só sugestão, com botão **"Aplicar"**. Com o preço parado, quando um custo cai a
+margem sobe visível — que era a leitura que o cliente esperava.
 
 Origem da queixa do cliente. Quando um custo desaparece (afiliados 10% → 0%), há
 duas saídas legítimas:
@@ -347,28 +354,37 @@ de custo de envio na precificação. Enquanto isso existir, planejado e realizad
 Propor (não implementar) como incorporar: campo manual, média histórica da loja
 sincronizada, ou tabela por faixa de peso.
 
-### BUG-07 — Divisão por zero no modo "Por Margem"
+### BUG-07 — Divisão por zero no modo "Por Margem" · ✅ RESOLVIDO (`9442f1b`)
 
-`preço = custo / (1 − margem − Σ taxas%)`. Com margem desejada 60% + comissão 6% +
-imposto 6% + afiliados 10% + campanha, o denominador vai a zero ou negativo →
-preço infinito ou negativo. Não há guard.
+O guard `denom > 0 ? x : 0` já existia (em `precoPorMargem`/`precoPorLucro` de
+`src/lib/pricing.ts` depois do refactor), mas falhava **mudo** — a linha "Preço
+sugerido" só sumia. Agora: slider de margem com `max` dinâmico
+(`floor(margemMaxViavelPct) − 1`); quando o alvo estoura o denominador, aparece
+"As taxas já consomem X% do preço — a margem máxima possível é Y%" no lugar do
+preço; efeito recolhe o slider pro teto se as taxas subirem depois.
 
-### BUG-08 — Regra de comissão do TikTok está hardcoded
+### BUG-08 — Regra de comissão do TikTok está hardcoded · ✅ RESOLVIDO (`34f7a92`)
 
-"Abaixo de R$ 50: 10% + R$ 4,00; a partir de R$ 50: 6% + R$ 6,00" está no código.
-O próprio texto da UI admite que varia em campanha. Extrair para configuração por
-plataforma, versionada por data de vigência.
+As 3 tabelas (Shopee/TikTok/ML) saíram de `CalculadoraPrecificacao.tsx` para
+`src/lib/marketplace-fees.ts` — módulo puro, `TAXAS_VERIFICADAS_EM` co-localizada,
+14 testes cobrindo as fronteiras de faixa. Config **versionada por data de
+vigência** foi avaliada e descartada como over-engineering: as faixas já são
+conferidas na mão (constante + nota na UICtrl), e o app é efetivamente
+single-tenant. Se um dia precisar, o módulo puro é o lugar.
 
-Verificar também se o tier é decidido pelo **preço promocional** ou pelo **preço
-cheio** — muda a faixa e ninguém percebe.
+**Tier decidido pelo preço promocional** (`getTiktokRates(precoPromocional)`) —
+documentado no comentário do módulo. Se estiver errado (deveria ser preço cheio),
+é 1 linha.
 
-### BUG-09 — UI, menores
+### BUG-09 — UI, menores · ✅ RESOLVIDO
 
-- **Tela A:** seletor diz "Período: 7 dias" mas os cards dizem "Últimos 15 dias
-  (sync)". Ou o filtro não repropaga para as queries, ou o label está hardcoded.
-- **Tela B:** o valor de "Preço Cheio (calculado)" aparenta renderizar na coluna
-  da direita, alinhado ao campo Desconto, enquanto seu label fica órfão na coluna
-  da esquerda. Verificar o grid.
+- **Tela A:** já estava quase todo resolvido — o seletor `syncPeriod` (7/15/30/60)
+  é reativo (`useShopeeSync(id, Number(syncPeriod))` re-filtra) e os 3 rótulos
+  usam `${syncPeriod}`. Só o InfoPopover de "Total de Pedidos" dizia "últimos 15
+  dias" fixo (`statInfo` é const de módulo) — trocado por "do período
+  sincronizado (seletor acima)" (`0dd8eaf`).
+- **Tela B:** o grid quebrado **não existe mais** — "Preço Cheio (calculado)" hoje
+  é uma linha `flex justify-between` de largura total abaixo do grid. Nada a fazer.
 
 ### BUG-10 — Perda de dado silenciosa no sync (truncagem) · ✅ CORRIGIDO — Commit 1 (`3272f29`)
 
@@ -701,7 +717,7 @@ a:
 | ~~4~~ | ~~**Captação — Commit 1:** BUG-11 + BUG-13 + BUG-14 + BUG-10~~ | ✅ **feito e deployado 28/08** (`3272f29`). BUG-03b saiu daqui (rebaixado → Commit 2). |
 | ~~5~~ | ~~**Agregação — Commit 3:** função pura única (`computeShopeeFinance`), coorte (a), três estados, rótulos (seção 7.1)~~ | ✅ **feito 28/08** — `8f30f8a` (3a) + `93032f7` (fix) + `29d41fa` (3b) + `d14d8ab` (3c). Migrados: Dashboard, Gestão, Unificado, Comparativo, DRE. `IntegrationDashboard.tsx` (BUG-16) deletado (órfão). Card na Maluth: `−R$ 44` → `+R$ 6.473`. |
 | 6 | **Backfill histórico:** sync ampla (`days: 180`) da `efbd3b5b` (2637 fees órfãs) + dono desconecta `929c33cc` (BUG-15) | melhora telas de histórico; não bloqueia o card de 15d |
-| 7 | Calculadora: BUG-04, BUG-05, BUG-07, BUG-08, BUG-09 | — |
+| ~~7~~ | ~~Calculadora: BUG-04, BUG-05, BUG-07, BUG-08, BUG-09~~ | ✅ **feito 29/08** — `34f7a92` (extrai `marketplace-fees.ts` + `pricing.ts`, 29 testes), `8803071` (calc roteada pelas libs), `8d4dab8` (remove cards mortos de absorção), `9442f1b` (BUG-05 desacopla + BUG-07 aviso; BUG-04 cai junto), `0dd8eaf` (BUG-09 tooltip). BUG-06 continua fora (precisa decisão). |
 | 8 | Dashboard: BUG-02 (guard imposto sobre negativo) — só depois do BUG-01 | depende de 3 |
 | 9 | Commit 2: frete líquido no "Detalhamento de Taxas" (BUG-03b, cosmético) | — |
 | 10 | Padronização em centavos (seção 6) | depende de 3 |

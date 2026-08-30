@@ -93,12 +93,23 @@ Organizado em faixas paralelas. Ordem sugerida dentro de cada faixa. `[ ]` a faz
 - [ ] **Backfill histórico** — sync `days:180` repetido (religa ~2600 fees órfãs).
 - [ ] **Commit 2** — BUG-03b: frete real no "Detalhamento de Taxas" (`shopee/Dashboard.tsx` + captação de `actual_shipping_fee`/`buyer_paid_shipping_fee`).
 - [ ] **BUG-02** — guard: `applyTaxRate` não aplica imposto sobre resultado ≤ 0 (`useCompanies.ts`). *Depende de BUG-01.*
-- [ ] **Calculadora (Tela B)** — nunca tocada. Um commit atômico por bug:
-  - [ ] BUG-04 — "MARGEM REAL" tautológico no modo "Por Margem" (tirar ou renomear).
-  - [ ] BUG-05 — quando um custo some, mostrar as **duas** saídas (manter preço vs manter margem). *Origem da queixa do cliente.*
-  - [ ] BUG-07 — guard de divisão por zero no modo "Por Margem".
-  - [ ] BUG-08 — comissão TikTok hardcoded → config por plataforma versionada por data.
-  - [ ] BUG-09 (Tela B) — grid do "Preço Cheio (calculado)".
+- [x] **Calculadora (Tela B)** — FECHADA 29/08 (5 commits `34f7a92`..`0dd8eaf`):
+  - [x] BUG-08 — `getShopeeRates`/`getTiktokRates`/`getMercadoLivreRates` +
+    `calcComissaoTaxaReais` → `src/lib/marketplace-fees.ts` (puro, 14 testes).
+    Config versionada-por-data avaliada e descartada (over-engineering).
+  - [x] Refactor: `src/lib/pricing.ts` (`apurar`/`precoPorMargem`/`precoPorLucro`/
+    `apurarAnuncio`, 15 testes) — mata os cálculos inline + 2 cópias da fórmula
+    de apuração de anúncio (critério de aceite "zero cálculo inline em React").
+  - [x] Controles mortos: `papelProduto`/`volumeEsperadoProduto`/`margemDesejada`
+    não tinham UI. Decisão do usuário: **remover** os cards "Absorção Parcial" e
+    "Portfólio Maduro" (+ callout educacional) que rodavam em constantes fixas.
+  - [x] BUG-05 — abordagem "desacoplar": preço sugerido vira sugestão + botão
+    "Aplicar" (não sobrescreve mais o Preço Promocional sozinho). *Queixa do cliente.*
+  - [x] BUG-07 — slider com `max` dinâmico + aviso de margem inviável (era guard mudo).
+  - [x] BUG-04 — cai junto do BUG-05 (era tautológico *porque* o preço era auto-escrito).
+  - [x] BUG-09 (Tela B) — grid do "Preço Cheio" já tinha sido consertado antes; só
+    restava 1 string "15 dias" fixa no tooltip da Tela A (`0dd8eaf`).
+  - [ ] BUG-06 (frete na precificação) — continua fora; precisa decisão de como incorporar.
 - [ ] **Padronização em centavos** (seção 6 do `DIAGNOSTICO`) — `bigint` do banco à UI, branded type `Cents`, migration **escrita não rodada**. *Depende de BUG-01.*
 
 ### Faixa B — Higiene técnica (rápido, sem impacto visual, destrava o resto)
