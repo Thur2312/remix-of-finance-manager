@@ -141,7 +141,7 @@ export function AppSidebar() {
         {sidebarGroups.map((group) => (
           <SidebarGroup key={group.label} className="py-0">
             {!collapsed && (
-              <div className="px-2.5 pt-4 pb-2 text-[10px] font-bold uppercase tracking-wider text-muted-foreground/70">
+              <div className="px-2.5 pt-4 pb-2 text-[10px] font-bold uppercase tracking-wider text-sidebar-foreground/45">
                 {group.label}
               </div>
             )}
@@ -156,7 +156,7 @@ export function AppSidebar() {
             <div className="mx-2.5 my-3 h-px bg-sidebar-border" />
             <SidebarGroup className="py-0">
               {!collapsed && (
-                <div className="px-2.5 pt-0 pb-2 text-[10px] font-bold uppercase tracking-wider text-muted-foreground/70">
+                <div className="px-2.5 pt-0 pb-2 text-[10px] font-bold uppercase tracking-wider text-sidebar-foreground/45">
                   Admin
                 </div>
               )}
