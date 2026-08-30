@@ -37,6 +37,7 @@ export interface Anuncio {
   afiliados: number;
   imposto_pct: number;
   custo_var: number;
+  frete: number;
   custos_adicionais: CustoAdicionalDB[];
   tipo_produto: TipoProduto;
   kit_itens: KitItemDB[];
@@ -55,6 +56,7 @@ export interface AnuncioInput {
   afiliados: number;
   imposto_pct: number;
   custo_var: number;
+  frete: number;
   custos_adicionais: CustoAdicionalDB[];
   tipo_produto: TipoProduto;
   kit_itens: KitItemDB[];

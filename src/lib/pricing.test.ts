@@ -15,6 +15,7 @@ import {
 const base = (afiliadosPct: number): PricingInputs => ({
   custo: 45,
   custoVar: 0.3,
+  frete: 0,
   taxaFixa: 6,
   comissaoPct: 6,
   impostoPct: 6,
@@ -99,26 +100,43 @@ describe('apurar — desconto e preço zero', () => {
 });
 
 describe('apurarAnuncio — forma do anúncio salvo (comissão já em R$, tem antecipado)', () => {
-  it('soma antecipado e custos adicionais na apuração', () => {
+  it('soma antecipado, frete e custos adicionais na apuração', () => {
     const r = apurarAnuncio({
       valorVenda: 100,
       custo: 40,
       custosAdicionaisReais: 5,
       custoVar: 1,
+      frete: 3,
       comissaoTaxaReais: 20,
       antecipado: 2,
       afiliadosPct: 0,
       impostoPct: 6,
     });
-    // custoTotal = 40 + 5 + 1 + 20 + 2 + 0 + 6 = 74
-    expect(r.custoTotal).toBeCloseTo(74, 6);
-    expect(r.lucro).toBeCloseTo(26, 6);
-    expect(r.margemPct).toBeCloseTo(26, 6);
+    // custoTotal = 40 + 5 + 1 + 3 + 20 + 2 + 0 + 6 = 77
+    expect(r.custoTotal).toBeCloseTo(77, 6);
+    expect(r.lucro).toBeCloseTo(23, 6);
+    expect(r.margemPct).toBeCloseTo(23, 6);
   });
   it('valorVenda 0 → margem 0', () => {
     expect(apurarAnuncio({
-      valorVenda: 0, custo: 10, custosAdicionaisReais: 0, custoVar: 0,
+      valorVenda: 0, custo: 10, custosAdicionaisReais: 0, custoVar: 0, frete: 0,
       comissaoTaxaReais: 0, antecipado: 0, afiliadosPct: 0, impostoPct: 0,
     }).margemPct).toBe(0);
+  });
+});
+
+describe('BUG-06 — frete entra como custo que não escala com o preço', () => {
+  it('R$8 de frete reduz o lucro em R$8 no modo "Por Preço"', () => {
+    const semFrete = apurar(base(10), 88.45);
+    const comFrete = apurar({ ...base(10), frete: 8 }, 88.45);
+    expect(semFrete.lucro - comFrete.lucro).toBeCloseTo(8, 6);
+    expect(comFrete.freteVal).toBe(8);
+  });
+  it('o preço sugerido "Por Margem" sobe pra absorver o frete', () => {
+    const semFrete = precoPorMargem(base(10), 20).preco;
+    const comFrete = precoPorMargem({ ...base(10), frete: 8 }, 20).preco;
+    expect(comFrete).toBeGreaterThan(semFrete);
+    // a margem-alvo continua batendo depois de aplicada
+    expect(apurar({ ...base(10), frete: 8 }, comFrete).margemPct).toBeCloseTo(20, 10);
   });
 });
