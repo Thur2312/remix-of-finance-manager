@@ -127,12 +127,12 @@ export function AppSidebar() {
 
   return (
     <Sidebar collapsible="icon">
-      <SidebarHeader className="border-b border-sidebar-border bg-inherit">
-        <div className="flex items-center justify-center px-3 py-4">
+      <SidebarHeader className="border-b border-sidebar-border bg-inherit p-0">
+        <div className="flex h-16 items-center justify-center px-3">
           <img
             src={logo}
             alt="Seller Finance"
-            className={collapsed ? 'h-8 w-auto object-contain' : 'h-12 w-auto object-contain'}
+            className={collapsed ? 'h-6 w-auto object-contain' : 'h-7 w-auto object-contain'}
           />
         </div>
       </SidebarHeader>
