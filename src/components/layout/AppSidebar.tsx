@@ -1,11 +1,12 @@
+import { useCallback, useEffect, useState } from 'react';
 import { useLocation } from 'react-router-dom';
-import { Link } from 'react-router-dom';
 import { NavLink } from '@/components/NavLink';
 import { useAuth } from '@/contexts/AuthContext';
 import { Sidebar, SidebarContent, SidebarFooter, SidebarGroup, SidebarGroupContent, SidebarHeader, SidebarMenu, SidebarMenuButton, SidebarMenuItem, useSidebar } from '@/components/ui/sidebar';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { User, ChevronUp, LogOut, TrendingUp, Calculator, Receipt, Sparkles, BarChart3, HandCoins, Wallet, Plug, LayoutDashboard, Shield, Zap, type LucideIcon } from 'lucide-react';
+import { User, ChevronUp, ChevronRight, LogOut, TrendingUp, Calculator, Receipt, Sparkles, BarChart3, HandCoins, Wallet, Plug, LayoutDashboard, Shield, Zap, type LucideIcon } from 'lucide-react';
 import { useSaleEventsUnseenCount } from '@/hooks/useSaleEvents';
 import logo from '@/assets/logo-new.svg';
 import { useNavigate } from 'react-router-dom';
@@ -56,8 +57,26 @@ const sidebarGroups: SidebarGroup[] = [
   },
 ];
 
-const planosItem: SidebarItem = { title: 'Planos', url: '/planos', icon: Wallet };
 const adminItem: SidebarItem = { title: 'Avisos', url: '/admin/notificacoes', icon: Shield };
+
+// Grupo "Conta" no rodapé da navegação (antes ficava: Planos solto + Perfil
+// escondido no dropdown do rodapé). Configurações ainda não tem rota própria.
+const contaItems: SidebarItem[] = [
+  { title: 'Planos', url: '/planos', icon: Wallet },
+  { title: 'Perfil', url: '/perfil', icon: User },
+];
+
+// Estado aberto/fechado dos grupos, lembrado entre sessões. Ausência da chave =
+// grupo aberto (default); só guardamos quando o usuário fecha explicitamente.
+const GROUPS_STORAGE_KEY = 'sidebar-groups-collapsed';
+
+function loadCollapsed(): Record<string, boolean> {
+  try {
+    return JSON.parse(localStorage.getItem(GROUPS_STORAGE_KEY) || '{}');
+  } catch {
+    return {};
+  }
+}
 
 // Rotas que pertencem a cada seção (para highlight ativo)
 const sectionRoutes: Record<string, string[]> = {
@@ -83,6 +102,16 @@ export function AppSidebar() {
   const getInitials = (email: string) => email.slice(0, 2).toUpperCase();
   const { data: unseenSalesCount } = useSaleEventsUnseenCount();
 
+  const [collapsedGroups, setCollapsedGroups] = useState<Record<string, boolean>>(loadCollapsed);
+
+  const setGroupOpen = useCallback((label: string, open: boolean) => {
+    setCollapsedGroups((prev) => {
+      const next = { ...prev, [label]: !open };
+      try { localStorage.setItem(GROUPS_STORAGE_KEY, JSON.stringify(next)); } catch { /* private mode */ }
+      return next;
+    });
+  }, []);
+
   const isItemActive = (url: string) => {
     // /integrations/:provider é dinâmica (shopee/tiktok/mercadolivre) — uma
     // lista fixa de strings sempre ficava desatualizada (faltava
@@ -93,6 +122,17 @@ export function AppSidebar() {
     if (routes) return routes.includes(location.pathname);
     return location.pathname === url;
   };
+
+  // Ao navegar, abre o grupo do item ativo (pra nunca perder de vista onde
+  // você está); não fecha os outros.
+  useEffect(() => {
+    const allGroups = [...sidebarGroups, { label: 'Conta', items: contaItems }, { label: 'Admin', items: [adminItem] }];
+    const activeGroup = allGroups.find((g) => g.items.some((i) => isItemActive(i.url)));
+    if (activeGroup && collapsedGroups[activeGroup.label]) {
+      setGroupOpen(activeGroup.label, true);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [location.pathname]);
 
   const renderItem = (item: SidebarItem) => {
     const active = isItemActive(item.url);
@@ -125,6 +165,37 @@ export function AppSidebar() {
     );
   };
 
+  // Grupo recolhível: o rótulo vira botão (chevron gira). Estado lembrado no
+  // localStorage. No modo ícone (sidebar colapsada) o grupo fica sempre aberto
+  // e o rótulo some.
+  const renderGroup = (label: string, items: SidebarItem[]) => (
+    <Collapsible
+      key={label}
+      open={collapsed ? true : !collapsedGroups[label]}
+      onOpenChange={(o) => setGroupOpen(label, o)}
+      className="group/nav"
+    >
+      <SidebarGroup className="py-0">
+        {!collapsed && (
+          <CollapsibleTrigger asChild>
+            <button
+              type="button"
+              className="flex w-full items-center gap-1.5 px-2.5 pt-3.5 pb-2 text-[10px] font-bold uppercase tracking-wider text-muted-foreground/70 transition-colors hover:text-foreground"
+            >
+              <ChevronRight className="h-3 w-3 shrink-0 transition-transform duration-200 group-data-[state=open]/nav:rotate-90" />
+              {label}
+            </button>
+          </CollapsibleTrigger>
+        )}
+        <CollapsibleContent className="overflow-hidden data-[state=closed]:animate-collapsible-up data-[state=open]:animate-collapsible-down">
+          <SidebarGroupContent>
+            <SidebarMenu className="gap-0.5">{items.map(renderItem)}</SidebarMenu>
+          </SidebarGroupContent>
+        </CollapsibleContent>
+      </SidebarGroup>
+    </Collapsible>
+  );
+
   return (
     <Sidebar collapsible="icon">
       <SidebarHeader className="border-b border-sidebar-border bg-inherit p-0">
@@ -138,42 +209,13 @@ export function AppSidebar() {
       </SidebarHeader>
 
       <SidebarContent className="gap-1">
-        {sidebarGroups.map((group) => (
-          <SidebarGroup key={group.label} className="py-0">
-            {!collapsed && (
-              <div className="px-2.5 pt-4 pb-2 text-[10px] font-bold uppercase tracking-wider text-muted-foreground/70">
-                {group.label}
-              </div>
-            )}
-            <SidebarGroupContent>
-              <SidebarMenu className="gap-0.5">{group.items.map(renderItem)}</SidebarMenu>
-            </SidebarGroupContent>
-          </SidebarGroup>
-        ))}
+        {sidebarGroups.map((group) => renderGroup(group.label, group.items))}
 
-        {profile?.is_admin && (
-          <>
-            <div className="mx-2.5 my-3 h-px bg-sidebar-border" />
-            <SidebarGroup className="py-0">
-              {!collapsed && (
-                <div className="px-2.5 pt-0 pb-2 text-[10px] font-bold uppercase tracking-wider text-muted-foreground/70">
-                  Admin
-                </div>
-              )}
-              <SidebarGroupContent>
-                <SidebarMenu className="gap-0.5">{renderItem(adminItem)}</SidebarMenu>
-              </SidebarGroupContent>
-            </SidebarGroup>
-          </>
-        )}
+        {profile?.is_admin && renderGroup('Admin', [adminItem])}
 
         <div className="mx-2.5 my-3 h-px bg-sidebar-border" />
 
-        <SidebarGroup className="py-0">
-          <SidebarGroupContent>
-            <SidebarMenu>{renderItem(planosItem)}</SidebarMenu>
-          </SidebarGroupContent>
-        </SidebarGroup>
+        {renderGroup('Conta', contaItems)}
       </SidebarContent>
 
       <SidebarFooter className="border-t border-sidebar-border">
@@ -209,13 +251,6 @@ export function AppSidebar() {
               <DropdownMenuContent side="top" className="w-[--radix-popper-anchor-width]">
                 <DropdownMenuItem disabled className="flex flex-col items-start">
                   <span className="font-medium">{user?.email}</span>
-                </DropdownMenuItem>
-                <DropdownMenuSeparator />
-                <DropdownMenuItem asChild>
-                  <Link to="/perfil" className="flex items-center">
-                    <User className="mr-2 h-4 w-4" />
-                    Perfil
-                  </Link>
                 </DropdownMenuItem>
                 <DropdownMenuSeparator />
                 <DropdownMenuItem
