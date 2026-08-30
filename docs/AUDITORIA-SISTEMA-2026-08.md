@@ -137,30 +137,32 @@ da Faixa C satisfeito.
 > validar rodando, depois C.2. Indicador forte de item ativo da sidebar +
 > tipografia dos rótulos de grupo + estado colapsado → **Faixa D**.
 
-**C.1 — Fundação (6 commits atômicos, ordem por risco)**
-- [ ] **1. Remover dark mode** — apaga `.dark {}` do `index.css` (~60 linhas);
-  `main.tsx` sem `<ThemeProvider>`; `AppSidebar` sem o toggle (+ imports
-  `useTheme`/`Moon`/`Sun`); `sonner.tsx` `theme="light"` fixo. Os ~10 arquivos
-  com classe `dark:` ficam inertes (limpar quando passar em cada tela).
-- [ ] **2. Chrome navy** — `--sidebar-*` do `:root` viram navy (`bg 216 55% 9%`,
-  `fg 214 20% 82%`, `accent 215 45% 15%`, `border 215 35% 18%`, `--sidebar-primary`
-  mantém azul de marca). Topbar segue sozinho (já usa `bg-sidebar`). Revisar
-  contraste no navy: `PlanBadge`, `AvatarFallback`, badge "Vendas", divisórias,
-  `SidebarTrigger`. Logo já funciona em navy (Footer/AuthShell). **Item ativo
-  continua só `bg` nesta rodada** — barra lateral é Faixa D.
-- [ ] **3. Fraunces no app** — `.app-shell .font-display` para de forçar Inter →
-  vira **Fraunces** (Space Grotesk fica landing/auth). Aplica `font-display` só
-  em heading (topbar h1, PageHeader, títulos de card selecionados). Nunca em
-  corpo/tabela/número.
-- [ ] **4. `.app-card` → `.panel`** — 16 arquivos, `app-card`→`panel` /
-  `app-card-quiet`→`panel-quiet`; remove o alias dos seletores no `index.css`.
-- [ ] **5. `<Money>` + Space Mono** — `src/components/ui/money.tsx`
-  (`<Money reais={} />` / `<Money cents={} />` / `size="lg"`, envolve o
-  `formatCurrency`/`formatCents` do `src/lib`). Aplica tela a tela (1 commit por
-  grupo): DRE, Fluxo de Caixa, Calculadora, 3 dashboards de marketplace,
-  cards do `computeShopeeFinance`.
+**C.1 — Fundação (commits atômicos, ordem por risco)**
+- [x] **1. Remover dark mode** (`f68ebdc`) — `.dark {}` fora do `index.css`;
+  `main.tsx` sem `<ThemeProvider>`; `AppSidebar` sem toggle; `sonner.tsx`
+  `theme="light"`. `next-themes` vira dep não usada. ~10 arquivos com `dark:`
+  ficam inertes (limpar tela a tela).
+- [x] **2. Chrome navy** (`ac6a0a7`) — `--sidebar-*` do `:root` navy
+  (`bg 216 58% 9%`, `fg 214 20% 76%`, `accent 214 42% 16%`, `primary 211 90% 62%`).
+  Topbar + shadcn Sidebar seguem sozinhos; `SidebarInset` mantém `bg-background`.
+  Rótulos de grupo: `text-muted-foreground/70` → `text-sidebar-foreground/45`.
+  PlanBadge/NotificationBell já eram navy-ready. **Item ativo = só `bg` (barra
+  lateral é Faixa D). Verificação visual pendente.**
+- [x] **3. Fraunces no app** (`79674a6`) — `.app-shell .font-display` = Fraunces
+  (Space Grotesk fica landing/auth). PageHeader título → `font-semibold
+  text-[1.65rem] leading-tight`.
+- [x] **4. `.app-card` → `.panel`** (`5d74552`) — 15 páginas + aliases fora do CSS.
+- [~] **5. `<Money>` + Space Mono** — **5a FEITO** (`14c4eb7`):
+  `src/components/ui/money.tsx` (props `reais`/`cents`/`whole`/`compact`/`sign`/
+  `size`). **5b (rollout tela a tela) PENDENTE** — DRE/Fluxo/Calc/dashboards.
+  Nota: DRESummaryCards e KPIs do shopee/Dashboard já usam `font-mono` ad-hoc;
+  o rollout troca por `<Money>` pra consistência + tabular-nums.
 - [ ] **6. Escala de espaçamento** — seção `space-y-8`, bloco `space-y-4`, campo
-  `space-y-2`. Aplica deliberado nas telas principais, não find/replace global.
+  `space-y-2`. Deliberado nas telas principais.
+
+> **Checkpoint 29/08:** itens 1-4 + 5a feitos (6 commits `f68ebdc`..`14c4eb7`).
+> Navy chrome + Fraunces são mudanças visuais grandes — **usuário precisa dar
+> pull + rodar + olhar** antes de 5b/6/C.2.
 - [~] **`AppLayout` container** — FEITO (`c627a65`): `<main>` com
   `max-w-[1400px] mx-auto p-8`.
 - [~] **accent dourado no app** — tokens (`--gold`, `--accent-gold`) já existem;
