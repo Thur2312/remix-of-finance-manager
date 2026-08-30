@@ -27,8 +27,8 @@ export function PageHeader({ icon, title, subtitle, action, tabs }: PageHeaderPr
             {icon && <IconBadge icon={icon} />}
             {title && (
               <div>
-                <h1 className="font-display text-xl font-bold text-foreground">{title}</h1>
-                {subtitle && <p className="text-sm text-muted-foreground mt-0.5">{subtitle}</p>}
+                <h1 className="font-display text-[1.65rem] font-semibold leading-tight text-foreground">{title}</h1>
+                {subtitle && <p className="text-sm text-muted-foreground mt-1">{subtitle}</p>}
               </div>
             )}
           </div>
