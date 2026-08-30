@@ -40,6 +40,7 @@ import {
   precoPorLucro,
   apurar,
   apurarAnuncio,
+  margemMaxViavelPct,
   type PricingInputs,
   type AnuncioApuravel,
 } from "@/lib/pricing";
@@ -506,25 +507,32 @@ function CalculadoraPrecificacaoContent() {
   }, [pricingInputs, custoProduto, totalCustosAdicionais, precoPromocional, desconto]);
 
   // ── Preço sugerido conforme modo de cálculo ───────────────────────────────
-  const precoSugerido = useMemo(() => {
+  // BUG-05: o preço sugerido é só uma sugestão — não sobrescreve mais o Preço
+  // Promocional sozinho (antes um useEffect fazia isso e a ferramenta "escolhia"
+  // segurar a margem quando um custo caía, sem avisar). O usuário aplica no
+  // botão. BUG-07: `inviavel` quando as taxas + alvo estouram o denominador.
+  const precoSugerido = useMemo<{ preco: number; inviavel: boolean }>(() => {
     if (modoCalculo === "margem")
-      return precoPorMargem(pricingInputs, parseInput(margemDesejadaSlider)).preco;
+      return precoPorMargem(pricingInputs, parseInput(margemDesejadaSlider));
     if (modoCalculo === "lucro")
-      return precoPorLucro(pricingInputs, parseInput(lucroDesejado)).preco;
-    return 0;
+      return precoPorLucro(pricingInputs, parseInput(lucroDesejado));
+    return { preco: 0, inviavel: false };
   }, [modoCalculo, margemDesejadaSlider, lucroDesejado, pricingInputs]);
 
-  // ── Espelho: nos modos "margem" e "lucro" o preço sugerido vira o Preço ────
-  //    Promocional, fazendo Margem Real, Lucro e demais análises recalcularem.
+  // Teto de margem que as taxas atuais ainda permitem (BUG-07).
+  const margemMax = useMemo(() => margemMaxViavelPct(pricingInputs), [pricingInputs]);
+  const margemMaxSlider = Math.max(1, Math.floor(margemMax) - 1);
+
+  // Se as taxas subirem e deixarem o slider fora do teto, recolhe pro máximo.
   useEffect(() => {
-    if (precoSugerido <= 0) return;
-    const aplicar =
-      modoCalculo === "margem" ||
-      (modoCalculo === "lucro" && parseInput(lucroDesejado) > 0);
-    if (!aplicar) return;
-    const novoPreco = precoSugerido.toFixed(2).replace(".", ",");
-    setPrecoPromocional(prev => (prev === novoPreco ? prev : novoPreco));
-  }, [precoSugerido, modoCalculo, lucroDesejado]);
+    if (parseInput(margemDesejadaSlider) > margemMaxSlider)
+      setMargemDesejadaSlider(String(margemMaxSlider));
+  }, [margemMaxSlider, margemDesejadaSlider]);
+
+  const aplicarPrecoSugerido = () => {
+    if (precoSugerido.preco <= 0) return;
+    setPrecoPromocional(precoSugerido.preco.toFixed(2).replace(".", ","));
+  };
 
   // ── Panorama / Break-even ─────────────────────────────────────────────────
   const panorama = useMemo(() => {
@@ -1404,35 +1412,57 @@ function CalculadoraPrecificacaoContent() {
                   )}
 
                   {modoCalculo === "margem" && (
-                    <div className="space-y-1">
+                    <div className="space-y-1.5">
                       <div className="flex items-center justify-between">
                         <span className="text-xs text-muted-foreground">Margem desejada</span>
                         <span className="text-xs font-bold font-mono text-primary">{margemDesejadaSlider}%</span>
                       </div>
-                      <input type="range" min="1" max="90" step="1"
+                      <input type="range" min="1" max={margemMaxSlider} step="1"
                         value={margemDesejadaSlider}
                         onChange={e => setMargemDesejadaSlider(e.target.value)}
                         className="w-full accent-primary" />
-                      {precoSugerido > 0 && (
-                        <p className="text-xs text-muted-foreground">
-                          Preço sugerido: <span className="font-bold font-mono text-primary">{formatCurrency(precoSugerido)}</span>
+                      {precoSugerido.inviavel ? (
+                        <p className="text-xs text-destructive">
+                          As taxas já consomem {formatPercent(100 - margemMax)} do preço — a margem máxima possível é {formatPercent(margemMax)}.
                         </p>
+                      ) : precoSugerido.preco > 0 && (
+                        <div className="flex items-center gap-2">
+                          <span className="text-xs text-muted-foreground">
+                            Preço sugerido: <span className="font-bold font-mono text-primary">{formatCurrency(precoSugerido.preco)}</span>
+                          </span>
+                          <Button type="button" size="sm" variant="outline" className="h-6 px-2 text-xs"
+                            onClick={aplicarPrecoSugerido}>
+                            Aplicar
+                          </Button>
+                        </div>
                       )}
                     </div>
                   )}
 
                   {modoCalculo === "lucro" && (
-                    <div className="flex items-center gap-3">
+                    <div className="flex flex-wrap items-center gap-3">
                       <Input
                         id="lucroDesejado" type="text" inputMode="decimal"
                         value={lucroDesejado}
                         onChange={e => handleDecimalInput(e.target.value, setLucroDesejado)}
                         placeholder="Lucro desejado (R$)" className="h-8 text-sm max-w-[180px]"
                       />
-                      {precoSugerido > 0 && parseInput(lucroDesejado) > 0 && (
-                        <p className="text-xs text-muted-foreground">
-                          Preço sugerido: <span className="font-bold font-mono text-primary">{formatCurrency(precoSugerido)}</span>
-                        </p>
+                      {parseInput(lucroDesejado) > 0 && (
+                        precoSugerido.inviavel ? (
+                          <p className="text-xs text-destructive">
+                            As taxas somam {formatPercent(100 - margemMax)} do preço — não há preço que feche esse lucro.
+                          </p>
+                        ) : precoSugerido.preco > 0 && (
+                          <div className="flex items-center gap-2">
+                            <span className="text-xs text-muted-foreground">
+                              Preço sugerido: <span className="font-bold font-mono text-primary">{formatCurrency(precoSugerido.preco)}</span>
+                            </span>
+                            <Button type="button" size="sm" variant="outline" className="h-6 px-2 text-xs"
+                              onClick={aplicarPrecoSugerido}>
+                              Aplicar
+                            </Button>
+                          </div>
+                        )
                       )}
                     </div>
                   )}
