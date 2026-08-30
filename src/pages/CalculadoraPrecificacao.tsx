@@ -8,9 +8,9 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Skeleton } from "@/components/ui/skeleton";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import {
-  AlertTriangle, Calculator, ExternalLink, Info, Target,
-  ShoppingBag, Lightbulb, TrendingUp, CheckCircle2, XCircle,
-  HelpCircle, AlertCircle, BarChart3, DollarSign, Tag,
+  Calculator, ExternalLink, Info, Target,
+  ShoppingBag, TrendingUp, CheckCircle2, XCircle,
+  HelpCircle, BarChart3, DollarSign, Tag,
   Percent, Package, Trash2, Pencil, Plus, X, ChevronRight, ChevronDown,
   Trophy, Crown,
 } from "lucide-react";
@@ -69,10 +69,6 @@ const PLATAFORMA_OPTIONS: { value: Plataforma; label: string; color: string; bg:
   { value: "TiktokShop",   label: "TikTok Shop",   color: "text-pink-600",   bg: "bg-pink-500/10 border-pink-500/30 hover:bg-pink-500/20" },
   { value: "MercadoLivre", label: "Mercado Livre", color: "text-blue-600",   bg: "bg-blue-500/10 border-blue-500/30 hover:bg-blue-500/20" },
 ];
-
-// ─── Absorção ────────────────────────────────────────────────────────────────
-const ABSORCAO_PADRAO = { novo: 10, complementar: 30, principal: 60 } as const;
-type PapelProduto = "novo" | "complementar" | "principal" | "avancado";
 
 // ─── Modo de cálculo ─────────────────────────────────────────────────────────
 type ModoCalculo = "margem" | "preco" | "lucro";
@@ -343,10 +339,6 @@ function CalculadoraPrecificacaoContent() {
   const [taxaFixa,              setTaxaFixa]              = useState("4");
   const [aliquotaImposto,       setAliquotaImposto]       = useState("6");
   const [comissaoAfiliados,     setComissaoAfiliados]     = useState("0");
-  const [margemDesejada]                                  = useState<number>(30);
-  const [papelProduto,          setPapelProduto]          = useState<PapelProduto>("novo");
-  const [absorpcaoManual]                                 = useState<number>(10);
-  const [volumeEsperadoProduto, setVolumeEsperadoProduto] = useState<number>(50);
   const [faturamentoTotal,      setFaturamentoTotal]      = useState("");
   const [plataformaSelecionada, setPlataformaSelecionada] = useState<Plataforma | "">("");
   const [mlTipoAnuncio,         setMlTipoAnuncio]         = useState<MLTipoAnuncio>("classico");
@@ -364,9 +356,8 @@ function CalculadoraPrecificacaoContent() {
   const [filtroMarketplace, setFiltroMarketplace] = useState<Plataforma | "todos">("todos");
 
   // ── Hooks ─────────────────────────────────────────────────────────────────
-  const { totalRecurringCosts, isLoading: isLoadingCosts, settings: fixedCostsSettings, costs } = useFixedCosts();
+  const { totalRecurringCosts, isLoading: isLoadingCosts, costs } = useFixedCosts();
   const { anuncios, isLoading: isLoadingAnuncios, addAnuncio, updateAnuncio, deleteAnuncio } = useAnuncios();
-  const volumeMensal = fixedCostsSettings?.monthly_products_sold || 100;
 
   const mediaMargemPortfolio = useMemo(() => {
     if (!anuncios || anuncios.length === 0) return null;
@@ -484,10 +475,6 @@ function CalculadoraPrecificacaoContent() {
   const removeCustoAdicional = (id: string) =>
     setCustosAdicionais(prev => prev.filter(c => c.id !== id));
 
-  const percentualAbsorcao = useMemo(() =>
-    papelProduto === "avancado" ? absorpcaoManual : ABSORCAO_PADRAO[papelProduto],
-  [papelProduto, absorpcaoManual]);
-
   // ── Entradas puras da precificação (src/lib/pricing.ts) ───────────────────
   const pricingInputs = useMemo<PricingInputs>(() => ({
     custo:        parseInput(custoProduto) + totalCustosAdicionais,
@@ -506,33 +493,17 @@ function CalculadoraPrecificacaoContent() {
     const _desc      = parseInput(desconto);
     const _taxaFixa  = pricingInputs.taxaFixa;
 
-    const volume     = volumeMensal > 0 ? volumeMensal : 1;
-    const volumeProd = volumeEsperadoProduto > 0 ? volumeEsperadoProduto : 1;
-
     const {
       precoCheio, comissaoVal, impostoVal, afiliadosVal,
       custoTotal: totalCustosVar, lucro, margemPct: margemReal,
     } = apurar(pricingInputs, _preco, _desc);
 
-    const custoFixoAlocado  = totalRecurringCosts * (percentualAbsorcao / 100);
-    const custoFixoPorItem  = custoFixoAlocado / volumeProd;
-    const lucroLiquido      = lucro - custoFixoPorItem;
-    const margemAbsorcao    = _preco > 0 ? (lucroLiquido / _preco) * 100 : 0;
-    const custoFixo100      = totalRecurringCosts / volumeProd;
-
-    const ideal  = precoPorMargem(pricingInputs, margemDesejada);
-    const nec100 = precoPorMargem({ ...pricingInputs, custo: pricingInputs.custo + custoFixo100 }, margemDesejada);
-
     return {
       precoCheio, totalCustosVar, lucro, margemReal, produtoViavel: lucro > 0,
       margemContribuicao: lucro, margemContribuicaoPercent: margemReal,
-      custoFixoDiluido: totalRecurringCosts > 0 ? totalRecurringCosts / volume : 0,
-      custoFixoAlocado, custoFixoPorItem, lucroLiquido, margemRealAbsorcao: margemAbsorcao,
-      custoFixo100Percent: custoFixo100, precoNecessario100Percent: nec100.preco,
-      precoIdeal: ideal.preco, margemInviavel: ideal.inviavel,
       custosVariaveis: { produto: _custoBase, custosAdicionais: totalCustosAdicionais, variavel: _custoVar, comissao: comissaoVal, imposto: impostoVal, afiliados: afiliadosVal, taxaFixa: _taxaFixa },
     };
-  }, [pricingInputs, custoProduto, totalCustosAdicionais, precoPromocional, desconto, margemDesejada, totalRecurringCosts, volumeMensal, volumeEsperadoProduto, percentualAbsorcao]);
+  }, [pricingInputs, custoProduto, totalCustosAdicionais, precoPromocional, desconto]);
 
   // ── Preço sugerido conforme modo de cálculo ───────────────────────────────
   const precoSugerido = useMemo(() => {
@@ -579,18 +550,7 @@ function CalculadoraPrecificacaoContent() {
     };
   }, [faturamentoTotal, mediaMargemPortfolio, results.margemContribuicaoPercent, totalRecurringCosts, anuncios.length]);
 
-  const alertas = useMemo(() => {
-    const lista: { tipo: "critico" | "alerta" | "aviso" | "info"; mensagem: string }[] = [];
-    if (results.margemContribuicao <= 0 && results.precoCheio > 0)
-      lista.push({ tipo: "critico", mensagem: "Produto INVIÁVEL: não cobre nem os custos variáveis! Revise o preço ou os custos." });
-    if (papelProduto === "novo" && percentualAbsorcao > 20)
-      lista.push({ tipo: "alerta", mensagem: "Atenção: produto novo não deve absorver mais de 20% dos custos fixos." });
-    if (results.custoFixoPorItem > results.precoCheio * 0.3 && results.precoCheio > 0)
-      lista.push({ tipo: "aviso", mensagem: "O custo fixo alocado representa mais de 30% do preço de venda. Avalie o volume esperado." });
-    if (results.lucroLiquido < 0 && results.margemContribuicao > 0 && results.precoCheio > 0)
-      lista.push({ tipo: "info", mensagem: "O produto contribui para os custos fixos, mas não gera lucro líquido no cenário atual." });
-    return lista;
-  }, [results, papelProduto, percentualAbsorcao]);
+  const produtoInviavel = results.margemContribuicao <= 0 && results.precoCheio > 0;
 
   // ── Simulador de cenários: mesmo produto/preço nos 3 marketplaces ──────────
   const cenarios = useMemo(() => {
@@ -1497,31 +1457,14 @@ function CalculadoraPrecificacaoContent() {
             </CardContent>
           </Card>
 
-          {/* ── Alertas ──────────────────────────────────────────────────── */}
-          {alertas.length > 0 && (
-            <div className="space-y-3">
-              {alertas.map((alerta, index) => (
-                <Alert key={index}
-                  variant={alerta.tipo === "critico" ? "destructive" : "default"}
-                  className={
-                    alerta.tipo === "alerta" ? "border-yellow-500/50 bg-yellow-500/10" :
-                    alerta.tipo === "aviso"  ? "border-orange-500/50 bg-orange-500/10" :
-                    alerta.tipo === "info"   ? "border-blue-500/50 bg-blue-500/10" : ""
-                  }>
-                  {alerta.tipo === "critico"  ? <XCircle className="h-4 w-4" /> :
-                   alerta.tipo === "alerta"   ? <AlertTriangle className="h-4 w-4 text-yellow-600" /> :
-                   alerta.tipo === "aviso"    ? <AlertCircle className="h-4 w-4 text-orange-600" /> :
-                   <Lightbulb className="h-4 w-4 text-blue-600" />}
-                  <AlertDescription className={
-                    alerta.tipo === "alerta" ? "text-yellow-800" :
-                    alerta.tipo === "aviso"  ? "text-orange-800" :
-                    alerta.tipo === "info"   ? "text-blue-800" : ""
-                  }>
-                    {alerta.mensagem}
-                  </AlertDescription>
-                </Alert>
-              ))}
-            </div>
+          {/* ── Alerta de inviabilidade ──────────────────────────────────── */}
+          {produtoInviavel && (
+            <Alert variant="destructive">
+              <XCircle className="h-4 w-4" />
+              <AlertDescription>
+                Produto INVIÁVEL: não cobre nem os custos variáveis! Revise o preço ou os custos.
+              </AlertDescription>
+            </Alert>
           )}
 
           {/* ── Simulador de Cenários ─────────────────────────────────────── */}
@@ -1610,9 +1553,8 @@ function CalculadoraPrecificacaoContent() {
             </CardContent>
           </Card>
 
-          {/* ── Três análises ─────────────────────────────────────────────── */}
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-            <Card className={`border-2 ${results.produtoViavel ? "border-success/30 bg-success/5" : "border-destructive/30 bg-destructive/5"}`}>
+          {/* ── Análise de viabilidade (margem de contribuição) ──────────── */}
+          <Card className={`border-2 ${results.produtoViavel ? "border-success/30 bg-success/5" : "border-destructive/30 bg-destructive/5"}`}>
               <CardHeader className="pb-3">
                 <div className="flex items-center gap-2">
                   {results.produtoViavel ? <CheckCircle2 className="h-5 w-5 text-success" /> : <XCircle className="h-5 w-5 text-destructive" />}
@@ -1655,84 +1597,6 @@ function CalculadoraPrecificacaoContent() {
                 </div>
               </CardContent>
             </Card>
-
-            <Card className="border-2 border-blue-500/30 bg-blue-500/5">
-              <CardHeader className="pb-3">
-                <div className="flex items-center gap-2">
-                  <BarChart3 className="h-5 w-5 text-blue-600" />
-                  <CardTitle className="text-base">Absorção Parcial</CardTitle>
-                  <Badge variant="outline" className="text-xs">{percentualAbsorcao}%</Badge>
-                </div>
-                <CardDescription className="text-xs">Cenário justo para este produto</CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="space-y-2 text-sm">
-                  <div className="flex justify-between">
-                    <span className="text-muted-foreground">Custo Fixo Alocado:</span>
-                    <span className="font-medium">{formatCurrency(results.custoFixoPorItem)}/item</span>
-                  </div>
-                  <div className="flex justify-between text-xs text-muted-foreground">
-                    <span>({formatCurrency(totalRecurringCosts)} × {percentualAbsorcao}% ÷ {volumeEsperadoProduto})</span>
-                  </div>
-                </div>
-                <div className="border-t pt-4 text-center">
-                  <p className="text-xs text-muted-foreground mb-1">Lucro Líquido</p>
-                  <p className={`text-2xl font-bold font-mono ${results.lucroLiquido >= 0 ? "text-blue-600" : "text-destructive"}`}>
-                    {formatCurrency(results.lucroLiquido)}
-                  </p>
-                  <Badge variant={results.lucroLiquido >= 0 ? "default" : "destructive"} className={results.lucroLiquido >= 0 ? "bg-blue-600 hover:bg-blue-700 mt-1" : "mt-1"}>
-                    Margem: {formatPercent(results.margemRealAbsorcao)}
-                  </Badge>
-                </div>
-                <div className="p-3 bg-blue-500/10 rounded-lg">
-                  <p className="text-xs text-center text-blue-700">
-                    💡 Cenário realista para produto {papelProduto === "novo" ? "novo/teste" : papelProduto === "complementar" ? "complementar" : "principal"}.
-                  </p>
-                </div>
-              </CardContent>
-            </Card>
-
-            <Card className="border-2 border-muted bg-muted/30">
-              <CardHeader className="pb-3">
-                <div className="flex items-center gap-2">
-                  <AlertCircle className="h-5 w-5 text-muted-foreground" />
-                  <CardTitle className="text-base">Portfólio Maduro</CardTitle>
-                  <Badge variant="outline" className="text-xs">100%</Badge>
-                </div>
-                <CardDescription className="text-xs">Se fosse o único produto</CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="space-y-2 text-sm">
-                  <div className="flex justify-between">
-                    <span className="text-muted-foreground">Custo Fixo Total/Item:</span>
-                    <span className="font-medium">{formatCurrency(results.custoFixo100Percent)}</span>
-                  </div>
-                </div>
-                <div className="border-t pt-4 text-center">
-                  <p className="text-xs text-muted-foreground mb-1">Preço Necessário</p>
-                  <p className="text-2xl font-bold font-mono text-muted-foreground">
-                    {results.margemInviavel ? "Inviável" : formatCurrency(results.precoNecessario100Percent)}
-                  </p>
-                  <p className="text-xs text-muted-foreground mt-1">Para {formatPercent(margemDesejada)} de margem</p>
-                </div>
-                <div className="p-3 bg-muted/50 rounded-lg">
-                  <p className="text-xs text-center text-muted-foreground">⚠️ Válido apenas se o produto representar toda a operação.</p>
-                </div>
-              </CardContent>
-            </Card>
-          </div>
-
-          {/* ── Dica educacional ──────────────────────────────────────────── */}
-          <div className="flex items-start gap-3 p-4 bg-primary/5 border border-primary/20 rounded-lg">
-            <Lightbulb className="h-5 w-5 text-primary flex-shrink-0 mt-0.5" />
-            <div className="text-sm">
-              <p className="font-medium mb-1">Entendendo os custos fixos:</p>
-              <p className="text-muted-foreground">
-                Custos fixos pertencem à empresa, não a um produto isolado. A <strong>Margem de Contribuição</strong> mostra
-                quanto cada venda ajuda a pagar os custos fixos do portfólio.
-              </p>
-            </div>
-          </div>
 
           {/* ── Detalhamento custos variáveis ─────────────────────────────── */}
           <Card>
