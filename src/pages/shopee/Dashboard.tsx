@@ -55,7 +55,7 @@ const statInfo: Record<string, { title: string; description: React.ReactNode }> 
       <>
         Quantidade de pedidos registrados no período.
         <br /><br />
-        <span className="font-medium text-foreground">Com integração ativa:</span> considera apenas os pedidos dos últimos 15 dias sincronizados automaticamente da Shopee.
+        <span className="font-medium text-foreground">Com integração ativa:</span> considera apenas os pedidos do período sincronizado da Shopee (seletor acima).
         <br /><br />
         <span className="font-medium text-foreground">Sem integração:</span> conta os pedidos importados manualmente via planilha XLSX.
       </>
