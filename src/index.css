@@ -93,66 +93,10 @@
     --shadow-2xl: 0 25px 50px -12px hsl(0 0% 0% / 0.15);
   }
 
-  .dark {
-    --background: 222 47% 11%;
-    --foreground: 210 40% 98%;
-
-    --card: 217 33% 17%;
-    --card-foreground: 210 40% 98%;
-
-    --popover: 217 33% 17%;
-    --popover-foreground: 210 40% 98%;
-
-    --primary: 211 87% 57%;
-    --primary-foreground: 0 0% 100%;
-
-    --secondary: 217 33% 17%;
-    --secondary-foreground: 210 40% 98%;
-
-    --muted: 217 33% 17%;
-    --muted-foreground: 215 20% 65%;
-
-    --accent: 217 33% 17%;
-    --accent-foreground: 210 40% 98%;
-
-    --destructive: 0 84% 60%;
-    --destructive-foreground: 0 0% 100%;
-
-    --border: 217 33% 25%;
-    --input: 217 33% 25%;
-    --ring: 211 87% 57%;
-
-    --sidebar-background: 222 47% 11%;
-    --sidebar-foreground: 210 40% 98%;
-    --sidebar-primary: 217 91% 60%;
-    --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 217 33% 17%;
-    --sidebar-accent-foreground: 210 40% 98%;
-    --sidebar-border: 217 33% 25%;
-    --sidebar-ring: 217 91% 60%;
-
-    --finance-blue: 217 91% 60%;
-    --finance-blue-light: 217 91% 20%;
-    --finance-blue-dark: 217 91% 70%;
-    --success: 142 72% 29%;
-    --success-foreground: 0 0% 100%;
-    --warning: 38 92% 50%;
-    --warning-foreground: 0 0% 15%;
-
-    --chart-1: 217 91% 60%;
-    --chart-2: 142 72% 29%;
-    --chart-3: 258 90% 66%;
-    --chart-4: 0 84% 60%;
-    --chart-5: 215 20% 65%;
-
-    --shadow-2xs: 0 1px 2px 0 hsl(0 0% 0% / 0.1);
-    --shadow-xs: 0 1px 2px 0 hsl(0 0% 0% / 0.15);
-    --shadow-sm: 0 1px 3px 0 hsl(0 0% 0% / 0.2), 0 1px 2px -1px hsl(0 0% 0% / 0.2);
-    --shadow-md: 0 4px 6px -1px hsl(0 0% 0% / 0.15), 0 2px 4px -2px hsl(0 0% 0% / 0.15);
-    --shadow-lg: 0 10px 15px -3px hsl(0 0% 0% / 0.15), 0 4px 6px -4px hsl(0 0% 0% / 0.15);
-    --shadow-xl: 0 20px 25px -5px hsl(0 0% 0% / 0.15), 0 8px 10px -6px hsl(0 0% 0% / 0.15);
-    --shadow-2xl: 0 25px 50px -12px hsl(0 0% 0% / 0.35);
-  }
+  /* Dark mode removido (29/08): o app é light-only. O bloco `.dark` e o toggle
+     na conta saíram — o meio-termo (toggle que às vezes quebrava telas com hex
+     hardcoded) era pior que assumir um tema só. Landing/auth têm superfícies
+     navy próprias via `.section-dark`, sem relação com next-themes. */
 
   /* Escopo do app interno — raio um pouco mais contido (14px) que o resto
      do site (1rem), sem mexer no --radius global. Ponto médio deliberado:

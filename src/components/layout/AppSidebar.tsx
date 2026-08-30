@@ -1,12 +1,11 @@
 import { useLocation } from 'react-router-dom';
 import { Link } from 'react-router-dom';
-import { useTheme } from 'next-themes';
 import { NavLink } from '@/components/NavLink';
 import { useAuth } from '@/contexts/AuthContext';
 import { Sidebar, SidebarContent, SidebarFooter, SidebarGroup, SidebarGroupContent, SidebarHeader, SidebarMenu, SidebarMenuButton, SidebarMenuItem, useSidebar } from '@/components/ui/sidebar';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { User, ChevronUp, LogOut, TrendingUp, Calculator, Receipt, Sparkles, BarChart3, HandCoins, Wallet, Plug, LayoutDashboard, Moon, Sun, Shield, Zap, type LucideIcon } from 'lucide-react';
+import { User, ChevronUp, LogOut, TrendingUp, Calculator, Receipt, Sparkles, BarChart3, HandCoins, Wallet, Plug, LayoutDashboard, Shield, Zap, type LucideIcon } from 'lucide-react';
 import { useSaleEventsUnseenCount } from '@/hooks/useSaleEvents';
 import logo from '@/assets/logo-new.svg';
 import { useNavigate } from 'react-router-dom';
@@ -80,7 +79,6 @@ export function AppSidebar() {
   const { user, signOut, profile } = useAuth();
   const collapsed = state === 'collapsed';
   const navigate = useNavigate();
-  const { theme, setTheme } = useTheme();
 
   const getInitials = (email: string) => email.slice(0, 2).toUpperCase();
   const { data: unseenSalesCount } = useSaleEventsUnseenCount();
@@ -218,18 +216,6 @@ export function AppSidebar() {
                     <User className="mr-2 h-4 w-4" />
                     Perfil
                   </Link>
-                </DropdownMenuItem>
-                <DropdownMenuSeparator />
-                <DropdownMenuItem
-                  onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
-                  className="flex items-center cursor-pointer"
-                >
-                  {theme === 'dark' ? (
-                    <Sun className="mr-2 h-4 w-4" />
-                  ) : (
-                    <Moon className="mr-2 h-4 w-4" />
-                  )}
-                  {theme === 'dark' ? 'Modo claro' : 'Modo escuro'}
                 </DropdownMenuItem>
                 <DropdownMenuSeparator />
                 <DropdownMenuItem
