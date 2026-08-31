@@ -1,6 +1,7 @@
 import { Card, CardContent } from '@/components/ui/card';
 import { DREData, formatPercent } from '@/lib/dre-calculations';
 import { formatCents } from '@/lib/money';
+import { Money } from '@/components/ui/money';
 import { TrendingUp, TrendingDown, DollarSign, Percent, Package, Calculator, Wallet, Target, Info } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import {
@@ -16,7 +17,7 @@ interface DRESummaryCardsProps {
 
 interface CardConfig {
   title: string;
-  value: string;
+  valueCents: number;
   subtitle?: string;
   icon: React.ComponentType<{className?: string;}>;
   color: string;
@@ -52,7 +53,7 @@ export function DRESummaryCards({ data }: DRESummaryCardsProps) {
   const cards: CardConfig[] = [
   {
     title: 'Receita Bruta',
-    value: formatCents(data.receitaBrutaTotalCents),
+    valueCents: data.receitaBrutaTotalCents,
     icon: DollarSign,
     color: 'text-blue-600',
     bgColor: 'bg-blue-50',
@@ -60,7 +61,7 @@ export function DRESummaryCards({ data }: DRESummaryCardsProps) {
   },
   {
     title: 'Receita Líquida',
-    value: formatCents(data.receitaLiquidaCents),
+    valueCents: data.receitaLiquidaCents,
     subtitle: receitasDiferencaPequena ?
     'Baixa dedução de impostos/ajustes' :
     data.impostosSobreVendasTotal > 0 ?
@@ -76,7 +77,7 @@ export function DRESummaryCards({ data }: DRESummaryCardsProps) {
   },
   {
     title: 'Lucro Bruto',
-    value: formatCents(data.lucroBrutoCents),
+    valueCents: data.lucroBrutoCents,
     subtitle: `Margem: ${formatPercent(data.margemBruta)}`,
     icon: Package,
     color: data.lucroBruto >= 0 ? 'text-emerald-600' : 'text-red-600',
@@ -85,7 +86,7 @@ export function DRESummaryCards({ data }: DRESummaryCardsProps) {
   },
   {
     title: 'Margem Contribuição',
-    value: formatCents(data.margemContribuicaoCents),
+    valueCents: data.margemContribuicaoCents,
     subtitle: `${formatPercent(data.percentualMargemContribuicao)} da receita`,
     icon: Target,
     color: data.margemContribuicao >= 0 ? 'text-teal-600' : 'text-red-600',
@@ -98,7 +99,7 @@ export function DRESummaryCards({ data }: DRESummaryCardsProps) {
   },
   {
     title: 'Custos Fixos',
-    value: formatCents(data.custosFixosProrrateadosCents),
+    valueCents: data.custosFixosProrrateadosCents,
     subtitle: data.diasPeriodo !== 30 ?
     `${data.diasPeriodo} dias (prorrateado)` :
     'Mensal',
@@ -110,7 +111,7 @@ export function DRESummaryCards({ data }: DRESummaryCardsProps) {
   {
     // Regra 3: Lucro Operacional é a métrica PRINCIPAL
     title: 'Lucro Operacional',
-    value: formatCents(data.lucroOperacionalCents),
+    valueCents: data.lucroOperacionalCents,
     subtitle: lucroLiquidoIgualOperacional ?
     'Resultado final do período' :
     `Margem: ${formatPercent(data.margemOperacional)}`,
@@ -127,7 +128,7 @@ export function DRESummaryCards({ data }: DRESummaryCardsProps) {
   {
     // Regra 1: Só exibe se for DIFERENTE do Lucro Operacional
     title: 'Lucro Líquido',
-    value: formatCents(data.lucroLiquidoCents),
+    valueCents: data.lucroLiquidoCents,
     subtitle: `Margem: ${formatPercent(data.margemLiquida)}`,
     icon: data.lucroLiquido >= 0 ? TrendingUp : TrendingDown,
     color: data.lucroLiquido >= 0 ? 'text-emerald-600' : 'text-red-600',
@@ -182,13 +183,11 @@ export function DRESummaryCards({ data }: DRESummaryCardsProps) {
 
 
               </div>
-              <div className={cn(
-              'font-bold font-mono',
-              card.color,
-              card.isPrimary ? 'text-xl' : 'text-lg' // Regra 3: Tamanho maior para métrica principal
-            )}>
-                {card.value}
-              </div>
+              <Money
+                cents={card.valueCents}
+                className={cn('block font-bold', card.color, card.isPrimary ? 'text-xl' : 'text-lg')}
+              />
+
               {card.subtitle &&
             <p className="text-xs text-muted-foreground mt-1">
                   {card.subtitle}

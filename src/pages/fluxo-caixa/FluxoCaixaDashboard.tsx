@@ -12,6 +12,7 @@ import { format, startOfMonth, endOfMonth, isAfter, isBefore, parseISO, subYears
 import { ptBR } from 'date-fns/locale';
 import { HandCoins } from 'lucide-react';
 import { formatCurrency } from '@/lib/format';
+import { Money } from '@/components/ui/money';
 
 // Superfície de cartão da área interna — mesma família visual do .glass-card
 // da landing, calibrada pra densidade (ver .panel em index.css). bg-card
@@ -92,9 +93,9 @@ function FluxoCaixaDashboardContent() {
               
             </CardHeader>
             <CardContent>
-              {isLoading ? <Skeleton className="h-8 w-24" /> : <div className={`text-2xl font-bold font-mono ${currentBalance >= 0 ? 'text-success' : 'text-destructive'}`}>
-                  {formatCurrency(currentBalance)}
-                </div>}
+              {isLoading ? <Skeleton className="h-8 w-24" /> : (
+                <Money reais={currentBalance} className={`text-2xl font-bold ${currentBalance >= 0 ? 'text-success' : 'text-destructive'}`} />
+              )}
               <p className="text-xs text-muted-foreground">Acumulado</p>
             </CardContent>
           </Card>
@@ -105,9 +106,9 @@ function FluxoCaixaDashboardContent() {
               
             </CardHeader>
             <CardContent>
-              {isLoading ? <Skeleton className="h-8 w-24" /> : <div className="text-2xl font-bold font-mono text-success">
-                  {formatCurrency(totalIncome)}
-                </div>}
+              {isLoading ? <Skeleton className="h-8 w-24" /> : (
+                <Money reais={totalIncome} className="text-2xl font-bold text-success" />
+              )}
               <p className="text-xs text-muted-foreground">Recebido este mês</p>
             </CardContent>
           </Card>
@@ -118,9 +119,9 @@ function FluxoCaixaDashboardContent() {
               
             </CardHeader>
             <CardContent>
-              {isLoading ? <Skeleton className="h-8 w-24" /> : <div className="text-2xl font-bold font-mono text-destructive">
-                  {formatCurrency(totalExpense)}
-                </div>}
+              {isLoading ? <Skeleton className="h-8 w-24" /> : (
+                <Money reais={totalExpense} className="text-2xl font-bold text-destructive" />
+              )}
               <p className="text-xs text-muted-foreground">Pago este mês</p>
             </CardContent>
           </Card>
@@ -131,9 +132,9 @@ function FluxoCaixaDashboardContent() {
               
             </CardHeader>
             <CardContent>
-              {isLoading ? <Skeleton className="h-8 w-24" /> : <div className="text-2xl font-bold font-mono text-primary">
-                  {formatCurrency(pendingReceivables)}
-                </div>}
+              {isLoading ? <Skeleton className="h-8 w-24" /> : (
+                <Money reais={pendingReceivables} className="text-2xl font-bold text-primary" />
+              )}
               <p className="text-xs text-muted-foreground">Pendente</p>
             </CardContent>
           </Card>
@@ -144,9 +145,9 @@ function FluxoCaixaDashboardContent() {
               
             </CardHeader>
             <CardContent>
-              {isLoading ? <Skeleton className="h-8 w-24" /> : <div className={`text-2xl font-bold font-mono ${overdueTotal > 0 ? 'text-warning' : 'text-muted-foreground'}`}>
-                  {formatCurrency(overdueTotal)}
-                </div>}
+              {isLoading ? <Skeleton className="h-8 w-24" /> : (
+                <Money reais={overdueTotal} className={`text-2xl font-bold ${overdueTotal > 0 ? 'text-warning' : 'text-muted-foreground'}`} />
+              )}
               <p className="text-xs text-muted-foreground">
                 {overduePayables.length} {overduePayables.length === 1 ? 'conta' : 'contas'}
               </p>

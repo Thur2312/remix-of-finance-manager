@@ -10,7 +10,7 @@ export function DRETable({ sections }: DRETableProps) {
   const renderLineItem = (item: DRELineItem, index: number) => {
     const isPositive = item.value >= 0;
     const valueClass = cn(
-      'text-right font-mono',
+      'text-right font-mono tabular-nums tracking-[-0.01em]',
       item.isTotal && 'font-bold text-base',
       item.isSubtotal && 'font-semibold',
       item.isHighlight && (isPositive ? 'text-emerald-600' : 'text-red-600'),
