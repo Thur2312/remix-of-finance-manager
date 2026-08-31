@@ -49,7 +49,6 @@ export type Database = {
           custo: number
           custo_var: number
           custos_adicionais: Json
-          frete: number
           id: string
           imposto_pct: number
           kit_itens: Json
@@ -69,7 +68,6 @@ export type Database = {
           custo: number
           custo_var: number
           custos_adicionais?: Json
-          frete?: number
           id?: string
           imposto_pct: number
           kit_itens?: Json
@@ -89,7 +87,6 @@ export type Database = {
           custo?: number
           custo_var?: number
           custos_adicionais?: Json
-          frete?: number
           id?: string
           imposto_pct?: number
           kit_itens?: Json

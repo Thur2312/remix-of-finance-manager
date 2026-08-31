@@ -36,11 +36,8 @@ import {
 import { useAnuncios, Anuncio, AnuncioInput, CustoAdicionalDB, TipoProduto, KitItemDB } from "@/hooks/useProdutos";
 import { formatCurrency, formatPercent } from "@/lib/format";
 import {
-  precoPorMargem,
-  precoPorLucro,
   apurar,
   apurarAnuncio,
-  margemMaxViavelPct,
   type PricingInputs,
   type AnuncioApuravel,
 } from "@/lib/pricing";
@@ -71,9 +68,6 @@ const PLATAFORMA_OPTIONS: { value: Plataforma; label: string; color: string; bg:
   { value: "MercadoLivre", label: "Mercado Livre", color: "text-blue-600",   bg: "bg-blue-500/10 border-blue-500/30 hover:bg-blue-500/20" },
 ];
 
-// ─── Modo de cálculo ─────────────────────────────────────────────────────────
-type ModoCalculo = "margem" | "preco" | "lucro";
-
 // ─── Custos adicionais ───────────────────────────────────────────────────────
 // Custos extras que compõem o custo do produto (ex: frete de compra, imposto de
 // importação, despachante, comissão de compra). Somam ao Custo do Produto em
@@ -100,7 +94,6 @@ const anuncioParaApuracao = (a: Anuncio): AnuncioApuravel => ({
   custo: a.custo,
   custosAdicionaisReais: somaCustosAdicionaisDB(a.custos_adicionais, a.custo),
   custoVar: a.custo_var,
-  frete: a.frete ?? 0,
   comissaoTaxaReais: parseFloat(String(a.comissao_taxa) || "0"), // já inclui taxa fixa
   antecipado: a.antecipado,
   afiliadosPct: a.afiliados,
@@ -156,7 +149,7 @@ const deserializeKitItens = (lista: KitItemDB[] | null | undefined): KitItem[] =
 // ─── Form anúncio ────────────────────────────────────────────────────────────
 const EMPTY_FORM = {
   nome_anuncio: "", custo: "", valor_venda: "", comissao_taxa: "",
-  antecipado: "", afiliados: "", imposto_pct: "", custo_var: "", frete: "",
+  antecipado: "", afiliados: "", imposto_pct: "", custo_var: "",
   marketplace: "" as Plataforma | "",
   custos_adicionais: [] as CustoAdicional[],
   tipo_produto: "individual" as TipoProduto,
@@ -335,7 +328,6 @@ function CalculadoraPrecificacaoContent() {
   const [tipoProdutoCalc,       setTipoProdutoCalc]       = useState<TipoProduto>("individual");
   const [kitItensCalc,          setKitItensCalc]          = useState<KitItem[]>([]);
   const [embalagemEtiqueta,     setEmbalagemEtiqueta]     = useState("");
-  const [freteVendedor,         setFreteVendedor]         = useState("");
   const [precoPromocional,      setPrecoPromocional]      = useState("");
   const [desconto,              setDesconto]              = useState("");
   const [comissaoPlataforma,    setComissaoPlataforma]    = useState("20");
@@ -345,11 +337,6 @@ function CalculadoraPrecificacaoContent() {
   const [faturamentoTotal,      setFaturamentoTotal]      = useState("");
   const [plataformaSelecionada, setPlataformaSelecionada] = useState<Plataforma | "">("");
   const [mlTipoAnuncio,         setMlTipoAnuncio]         = useState<MLTipoAnuncio>("classico");
-
-  // ── Modo de cálculo ───────────────────────────────────────────────────────
-  const [modoCalculo,        setModoCalculo]        = useState<ModoCalculo>("preco");
-  const [margemDesejadaSlider, setMargemDesejadaSlider] = useState("30");
-  const [lucroDesejado,      setLucroDesejado]      = useState("");
 
   // ── Dialog state ──────────────────────────────────────────────────────────
   const [isDialogOpen, setIsDialogOpen] = useState(false);
@@ -482,12 +469,11 @@ function CalculadoraPrecificacaoContent() {
   const pricingInputs = useMemo<PricingInputs>(() => ({
     custo:        parseInput(custoProduto) + totalCustosAdicionais,
     custoVar:     parseInput(embalagemEtiqueta),
-    frete:        parseInput(freteVendedor),
     taxaFixa:     parseInput(taxaFixa),
     comissaoPct:  parseInput(comissaoPlataforma),
     impostoPct:   parseInput(aliquotaImposto),
     afiliadosPct: parseInput(comissaoAfiliados),
-  }), [custoProduto, totalCustosAdicionais, embalagemEtiqueta, freteVendedor, taxaFixa, comissaoPlataforma, aliquotaImposto, comissaoAfiliados]);
+  }), [custoProduto, totalCustosAdicionais, embalagemEtiqueta, taxaFixa, comissaoPlataforma, aliquotaImposto, comissaoAfiliados]);
 
   // ── Cálculos do produto atual ─────────────────────────────────────────────
   const results = useMemo(() => {
@@ -498,44 +484,16 @@ function CalculadoraPrecificacaoContent() {
     const _taxaFixa  = pricingInputs.taxaFixa;
 
     const {
-      precoCheio, comissaoVal, impostoVal, afiliadosVal, freteVal,
+      precoCheio, comissaoVal, impostoVal, afiliadosVal,
       custoTotal: totalCustosVar, lucro, margemPct: margemReal,
     } = apurar(pricingInputs, _preco, _desc);
 
     return {
       precoCheio, totalCustosVar, lucro, margemReal, produtoViavel: lucro > 0,
       margemContribuicao: lucro, margemContribuicaoPercent: margemReal,
-      custosVariaveis: { produto: _custoBase, custosAdicionais: totalCustosAdicionais, variavel: _custoVar, frete: freteVal, comissao: comissaoVal, imposto: impostoVal, afiliados: afiliadosVal, taxaFixa: _taxaFixa },
+      custosVariaveis: { produto: _custoBase, custosAdicionais: totalCustosAdicionais, variavel: _custoVar, comissao: comissaoVal, imposto: impostoVal, afiliados: afiliadosVal, taxaFixa: _taxaFixa },
     };
   }, [pricingInputs, custoProduto, totalCustosAdicionais, precoPromocional, desconto]);
-
-  // ── Preço sugerido conforme modo de cálculo ───────────────────────────────
-  // BUG-05: o preço sugerido é só uma sugestão — não sobrescreve mais o Preço
-  // Promocional sozinho (antes um useEffect fazia isso e a ferramenta "escolhia"
-  // segurar a margem quando um custo caía, sem avisar). O usuário aplica no
-  // botão. BUG-07: `inviavel` quando as taxas + alvo estouram o denominador.
-  const precoSugerido = useMemo<{ preco: number; inviavel: boolean }>(() => {
-    if (modoCalculo === "margem")
-      return precoPorMargem(pricingInputs, parseInput(margemDesejadaSlider));
-    if (modoCalculo === "lucro")
-      return precoPorLucro(pricingInputs, parseInput(lucroDesejado));
-    return { preco: 0, inviavel: false };
-  }, [modoCalculo, margemDesejadaSlider, lucroDesejado, pricingInputs]);
-
-  // Teto de margem que as taxas atuais ainda permitem (BUG-07).
-  const margemMax = useMemo(() => margemMaxViavelPct(pricingInputs), [pricingInputs]);
-  const margemMaxSlider = Math.max(1, Math.floor(margemMax) - 1);
-
-  // Se as taxas subirem e deixarem o slider fora do teto, recolhe pro máximo.
-  useEffect(() => {
-    if (parseInput(margemDesejadaSlider) > margemMaxSlider)
-      setMargemDesejadaSlider(String(margemMaxSlider));
-  }, [margemMaxSlider, margemDesejadaSlider]);
-
-  const aplicarPrecoSugerido = () => {
-    if (precoSugerido.preco <= 0) return;
-    setPrecoPromocional(precoSugerido.preco.toFixed(2).replace(".", ","));
-  };
 
   // ── Panorama / Break-even ─────────────────────────────────────────────────
   const panorama = useMemo(() => {
@@ -586,7 +544,6 @@ function CalculadoraPrecificacaoContent() {
         custo: pricingInputs.custo,
         custosAdicionaisReais: 0, // pricingInputs.custo já inclui os adicionais
         custoVar: pricingInputs.custoVar,
-        frete: pricingInputs.frete,
         comissaoTaxaReais: comissaoTaxa,
         antecipado: 0,
         afiliadosPct: pricingInputs.afiliadosPct,
@@ -626,7 +583,6 @@ function CalculadoraPrecificacaoContent() {
       afiliados:     comissaoAfiliados,
       imposto_pct:   aliquotaImposto,
       custo_var:     embalagemEtiqueta,
-      frete:         freteVendedor,
       marketplace:   marketplace,
       // leva os custos adicionais e o kit montados na calculadora (clonando os ids)
       custos_adicionais: custosAdicionais.map(c => ({ ...c, id: crypto.randomUUID() })),
@@ -648,7 +604,6 @@ function CalculadoraPrecificacaoContent() {
       afiliados:     String(a.afiliados),
       imposto_pct:   String(a.imposto_pct),
       custo_var:     String(a.custo_var),
-      frete:         String(a.frete ?? 0),
       marketplace:   (a.marketplace ?? "") as Plataforma,
       custos_adicionais: deserializeCustos(a.custos_adicionais),
       tipo_produto: a.tipo_produto ?? "individual",
@@ -681,7 +636,6 @@ function CalculadoraPrecificacaoContent() {
       afiliados:     parseInput(anuncioForm.afiliados),
       imposto_pct:   parseInput(anuncioForm.imposto_pct),
       custo_var:     parseInput(anuncioForm.custo_var),
-      frete:         parseInput(anuncioForm.frete),
       marketplace:   anuncioForm.marketplace,
       custos_adicionais: serializeCustos(anuncioForm.custos_adicionais),
       tipo_produto:  anuncioForm.tipo_produto,
@@ -850,11 +804,6 @@ function CalculadoraPrecificacaoContent() {
             <Label className="text-sm">Custo Variável (R$)</Label>
             <Input type="text" inputMode="decimal" value={anuncioForm.custo_var}
               onChange={setFormField("custo_var")} placeholder="0,00" />
-          </div>
-          <div className="space-y-2">
-            <Label className="text-sm">Frete (R$)</Label>
-            <Input type="text" inputMode="decimal" value={anuncioForm.frete}
-              onChange={setFormField("frete")} placeholder="0,00" />
           </div>
           <div className="space-y-2">
             <Label className="text-sm">Imposto (%)</Label>
@@ -1305,14 +1254,6 @@ function CalculadoraPrecificacaoContent() {
                     <Input id="embalagemEtiqueta" type="text" inputMode="decimal" value={embalagemEtiqueta}
                       onChange={e => handleDecimalInput(e.target.value, setEmbalagemEtiqueta)} placeholder="0,00" className="h-10" />
                   </div>
-                  <div className="space-y-1.5 sm:col-span-2">
-                    <Label htmlFor="freteVendedor" className="text-sm">Frete que você paga (R$ por venda)</Label>
-                    <Input id="freteVendedor" type="text" inputMode="decimal" value={freteVendedor}
-                      onChange={e => handleDecimalInput(e.target.value, setFreteVendedor)} placeholder="0,00" className="h-10" />
-                    <p className="text-[11px] text-muted-foreground">
-                      Deixe 0 se o comprador paga o frete ou o marketplace subsidia. É o que sai do seu bolso por venda.
-                    </p>
-                  </div>
                 </div>
               </div>
 
@@ -1406,86 +1347,13 @@ function CalculadoraPrecificacaoContent() {
                   </div>
                 </div>
 
-                {/* Centro: tabs + conteúdo do modo */}
-                <div className="flex-1 flex flex-col gap-2 p-4 bg-muted/30 rounded-lg border">
-
-                  {/* Tabs */}
-                  <div className="flex gap-2">
-                    {(["preco", "margem", "lucro"] as const).map(modo => (
-                      <button key={modo} type="button"
-                        onClick={() => setModoCalculo(modo)}
-                        className={`px-3 py-1 rounded-md border text-xs font-medium transition-all ${
-                          modoCalculo === modo
-                            ? "bg-primary text-primary-foreground border-primary"
-                            : "border-border bg-background text-muted-foreground hover:bg-muted"
-                        }`}>
-                        {modo === "preco" ? "Por Preço" : modo === "margem" ? "Por Margem" : "Por Lucro"}
-                      </button>
-                    ))}
-                  </div>
-
-                  {/* Conteúdo do modo selecionado */}
-                  {modoCalculo === "preco" && (
-                    <p className="text-xs text-muted-foreground">
-                      Informe o preço no campo "Preço Promocional" acima para ver a margem calculada.
-                    </p>
-                  )}
-
-                  {modoCalculo === "margem" && (
-                    <div className="space-y-1.5">
-                      <div className="flex items-center justify-between">
-                        <span className="text-xs text-muted-foreground">Margem desejada</span>
-                        <span className="text-xs font-bold font-mono text-primary">{margemDesejadaSlider}%</span>
-                      </div>
-                      <input type="range" min="1" max={margemMaxSlider} step="1"
-                        value={margemDesejadaSlider}
-                        onChange={e => setMargemDesejadaSlider(e.target.value)}
-                        className="w-full accent-primary" />
-                      {precoSugerido.inviavel ? (
-                        <p className="text-xs text-destructive">
-                          As taxas já consomem {formatPercent(100 - margemMax)} do preço — a margem máxima possível é {formatPercent(margemMax)}.
-                        </p>
-                      ) : precoSugerido.preco > 0 && (
-                        <div className="flex items-center gap-2">
-                          <span className="text-xs text-muted-foreground">
-                            Preço sugerido: <span className="font-bold font-mono text-primary">{formatCurrency(precoSugerido.preco)}</span>
-                          </span>
-                          <Button type="button" size="sm" variant="outline" className="h-6 px-2 text-xs"
-                            onClick={aplicarPrecoSugerido}>
-                            Aplicar
-                          </Button>
-                        </div>
-                      )}
-                    </div>
-                  )}
-
-                  {modoCalculo === "lucro" && (
-                    <div className="flex flex-wrap items-center gap-3">
-                      <Input
-                        id="lucroDesejado" type="text" inputMode="decimal"
-                        value={lucroDesejado}
-                        onChange={e => handleDecimalInput(e.target.value, setLucroDesejado)}
-                        placeholder="Lucro desejado (R$)" className="h-8 text-sm max-w-[180px]"
-                      />
-                      {parseInput(lucroDesejado) > 0 && (
-                        precoSugerido.inviavel ? (
-                          <p className="text-xs text-destructive">
-                            As taxas somam {formatPercent(100 - margemMax)} do preço — não há preço que feche esse lucro.
-                          </p>
-                        ) : precoSugerido.preco > 0 && (
-                          <div className="flex items-center gap-2">
-                            <span className="text-xs text-muted-foreground">
-                              Preço sugerido: <span className="font-bold font-mono text-primary">{formatCurrency(precoSugerido.preco)}</span>
-                            </span>
-                            <Button type="button" size="sm" variant="outline" className="h-6 px-2 text-xs"
-                              onClick={aplicarPrecoSugerido}>
-                              Aplicar
-                            </Button>
-                          </div>
-                        )
-                      )}
-                    </div>
-                  )}
+                {/* Dica: a Calculadora trabalha só "Por Preço" — você digita o
+                    Preço Promocional acima e ela mostra o resultado real. */}
+                <div className="flex-1 flex flex-col justify-center gap-2 p-4 bg-muted/30 rounded-lg border">
+                  <p className="text-xs text-muted-foreground">
+                    Informe o preço no campo <span className="font-medium text-foreground">"Preço Promocional"</span> acima
+                    para ver a margem, o lucro e o detalhamento de custos. Tirou uma taxa? O lucro sobe na hora.
+                  </p>
                 </div>
 
                 {/* Botão Cadastrar */}
@@ -1659,7 +1527,6 @@ function CalculadoraPrecificacaoContent() {
                   { label: "Custo do Produto",                                        value: results.custosVariaveis.produto,  negative: false },
                   ...(results.custosVariaveis.custosAdicionais > 0 ? [{ label: "Custos Adicionais", value: results.custosVariaveis.custosAdicionais, negative: false }] : []),
                   { label: "Custos Variáveis (embalagem etc.)",                        value: results.custosVariaveis.variavel, negative: false },
-                  ...(results.custosVariaveis.frete > 0 ? [{ label: "Frete (você paga)", value: results.custosVariaveis.frete, negative: false }] : []),
                   { label: `Comissão Plataforma (${parseInput(comissaoPlataforma)}%)`, value: results.custosVariaveis.comissao, negative: true  },
                   { label: "Taxa Fixa por Venda",                                      value: results.custosVariaveis.taxaFixa, negative: true  },
                   { label: `Impostos (${parseInput(aliquotaImposto)}%)`,               value: results.custosVariaveis.imposto,  negative: true  },
@@ -1749,7 +1616,6 @@ function CalculadoraPrecificacaoContent() {
                         <th className="pb-2 px-2 text-right w-[84px]">Afiliados</th>
                         <th className="pb-2 px-2 text-right w-[76px]">Imposto</th>
                         <th className="pb-2 px-2 text-right w-[96px]">Custo Var.</th>
-                        <th className="pb-2 px-2 text-right w-[84px]">Frete</th>
                         <th className="pb-2 px-2 text-right w-[78px]">Margem</th>
                         <th className="pb-2 px-2 text-right w-[88px]">Lucro</th>
                         <th className="pb-2 pl-1 pr-2 w-[64px]" />
@@ -1840,11 +1706,6 @@ function CalculadoraPrecificacaoContent() {
                             <td className="pt-2 w-[96px]">
                               <div className={`${cellBase} px-2 justify-end tabular-nums whitespace-nowrap`}>
                                 {formatCurrency(a.custo_var)}
-                              </div>
-                            </td>
-                            <td className="pt-2 w-[84px]">
-                              <div className={`${cellBase} px-2 justify-end tabular-nums whitespace-nowrap ${(a.frete ?? 0) > 0 ? "" : "text-muted-foreground"}`}>
-                                {formatCurrency(a.frete ?? 0)}
                               </div>
                             </td>
                             <td className="pt-2 w-[78px]">

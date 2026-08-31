@@ -14,9 +14,6 @@ export interface PricingInputs {
   custo: number;
   /** custo variável (embalagem/etiqueta), em R$ */
   custoVar: number;
-  /** frete que o vendedor paga por venda, em R$ (0 se o comprador paga ou o
-   *  marketplace subsidia) */
-  frete: number;
   /** taxa fixa por venda, em R$ */
   taxaFixa: number;
   /** comissão da plataforma, em % */
@@ -31,9 +28,9 @@ export interface PricingInputs {
 export const somaTaxasPct = (i: PricingInputs): number =>
   (i.comissaoPct + i.impostoPct + i.afiliadosPct) / 100;
 
-/** Custo unitário que NÃO escala com o preço: produto + variável + frete + taxa fixa. */
+/** Custo unitário que NÃO escala com o preço: produto + variável + taxa fixa. */
 export const custoFixoUnitario = (i: PricingInputs): number =>
-  i.custo + i.custoVar + i.frete + i.taxaFixa;
+  i.custo + i.custoVar + i.taxaFixa;
 
 /**
  * Margem máxima teoricamente alcançável (%): o que sobra do preço depois das
@@ -69,7 +66,6 @@ export interface Apuracao {
   impostoVal: number;
   afiliadosVal: number;
   taxaFixaVal: number;
-  freteVal: number;
   /** custo total variável da venda (= "totalCustosVar" no componente) */
   custoTotal: number;
   lucro: number;
@@ -87,7 +83,7 @@ export function apurar(i: PricingInputs, preco: number, descontoPct = 0): Apurac
   const impostoVal = preco * (i.impostoPct / 100);
   const afiliadosVal = preco * (i.afiliadosPct / 100);
   const custoTotal =
-    i.custo + i.custoVar + i.frete + comissaoVal + i.taxaFixa + impostoVal + afiliadosVal;
+    i.custo + i.custoVar + comissaoVal + i.taxaFixa + impostoVal + afiliadosVal;
   const lucro = preco - custoTotal;
   const margemPct = preco > 0 ? (lucro / preco) * 100 : 0;
   return {
@@ -96,7 +92,6 @@ export function apurar(i: PricingInputs, preco: number, descontoPct = 0): Apurac
     impostoVal,
     afiliadosVal,
     taxaFixaVal: i.taxaFixa,
-    freteVal: i.frete,
     custoTotal,
     lucro,
     margemPct,
@@ -115,8 +110,6 @@ export interface AnuncioApuravel {
   /** custos adicionais já convertidos pra R$ */
   custosAdicionaisReais: number;
   custoVar: number;
-  /** frete que o vendedor paga por venda, em R$ */
-  frete: number;
   /** comissão + taxa fixa, já em R$ */
   comissaoTaxaReais: number;
   antecipado: number;
@@ -132,7 +125,7 @@ export function apurarAnuncio(a: AnuncioApuravel): {
   const impostoVal = a.valorVenda * (a.impostoPct / 100);
   const afiliadosVal = a.valorVenda * (a.afiliadosPct / 100);
   const custoTotal =
-    a.custo + a.custosAdicionaisReais + a.custoVar + a.frete + a.comissaoTaxaReais + a.antecipado + afiliadosVal + impostoVal;
+    a.custo + a.custosAdicionaisReais + a.custoVar + a.comissaoTaxaReais + a.antecipado + afiliadosVal + impostoVal;
   const lucro = a.valorVenda - custoTotal;
   const margemPct = a.valorVenda > 0 ? (lucro / a.valorVenda) * 100 : 0;
   return { custoTotal, lucro, margemPct };
