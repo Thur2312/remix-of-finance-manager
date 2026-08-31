@@ -229,13 +229,18 @@ da Faixa C satisfeito.
 - [x] **Transição de rota** — fade + slide leve (`y:6`) com o easing; a chave
   passou a ser grossa em `/gestao/*` (a casca de Gestão não dá mais fade a cada
   troca de aba — só o painel, via Suspense).
-- [~] **Hover-lift** — `.panel-interactive` melhorado (-2px + `:active` + guard
-  reduced-motion no CSS), mas **ainda opt-in / pouco usado**. Aplicar nos cards
-  navegáveis (quick-actions, IntegrationCard) + `scale` no `:active` dos botões
-  → depois da revisão visual (é "taste").
-- [ ] **Contador animado** nos KPIs (`useSpring`/`useCountUp` — já existe em
-  `landing/hooks.ts`) — muda a API do `<StatCard>` (valor vira número, não
-  string formatada). Adiado.
+- [x] **Hover-lift** — `.panel-interactive` (-2px + `:active` + guard
+  reduced-motion + `transition` própria) aplicado aos **2 únicos cards de fato
+  navegáveis** do app (quick-actions TikTok, cards "Por marketplace" do
+  unificado). Botões já tinham `hover:-translate-y-0.5` + `active:scale` (passada
+  anterior). `IntegrationCard` não é navegável (botão "Gerenciar" dentro).
+- [x] ~~**Contador animado**~~ — **descartado.** Count-up a cada abertura de um
+  dashboard (visto N× por dia) irrita mais do que agrega — "animação serve à
+  narrativa" (CLAUDE.md); num tool interno não há narrativa aqui. A cascata do
+  `<KpiRow>` já dá a entrada polida.
+
+**C.3 essencialmente fechada.** Falta só o sweep mecânico de
+`easeOut`/`duration-300` → easing de assinatura (baixa prio).
 
 ### Faixa D — Sidebar
 
