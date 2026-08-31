@@ -10,6 +10,7 @@ import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { MedidasProdutoSection } from '@/components/assistente-anuncio/MedidasProdutoSection';
+import { PageShell } from '@/components/layout/PageShell';
 
 interface MedidaLinha {
   id: string;
@@ -240,17 +241,12 @@ const AssistenteAnuncio = () => {
   };
 
   return (
-    <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold text-foreground flex items-center gap-2">
-          <Sparkles className="h-6 w-6 text-primary" />
-          Assistente de Anúncio
-        </h1>
-        <p className="text-muted-foreground">
-          Crie títulos e descrições otimizados para seus produtos na Shopee
-        </p>
-      </div>
-
+    <PageShell
+      icon={Sparkles}
+      title="Assistente de Anúncio"
+      subtitle="Crie títulos e descrições otimizados para seus produtos na Shopee"
+      className="space-y-6"
+    >
         <Card>
           <CardHeader>
             <CardTitle>Informações do Produto</CardTitle>
@@ -401,7 +397,7 @@ const AssistenteAnuncio = () => {
             </Card>
           </div>
         )}
-    </div>
+    </PageShell>
   );
 };
 

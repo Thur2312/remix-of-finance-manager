@@ -178,8 +178,17 @@ da Faixa C satisfeito.
   `PageHeader`** migradas (marketplace Resultados/Variações/Pagamentos/Config/
   Upload, Fluxo ×3, DRE, Calculadora, Custos, Vendas, Avisos admin) +
   `animate-fade-in`/`-up` dos wrappers removidos (o `InternalLayout` já faz o
-  fade de rota). typecheck 0, 99 testes, build ok. **Falta:** dar `PageShell`
-  às ~10 telas sem header (dashboards + forms) — rodada 2.
+  fade de rota). typecheck 0, 99 testes, build ok.
+  **Rodada 2 FEITA (31/08):** 4 telas com cabeçalho ad-hoc → `PageShell` com
+  header (`IntegrationsOverview` `Plug`/Integrações · `AssistenteAnuncio`
+  `Sparkles` · `Planos` `Sparkles` · `UnifiedDashboard` title "Dashboard" +
+  controles no slot `action`) + 4 telas headerless-por-design envolvidas sem
+  header, só p/ padronizar o wrapper e tirar `animate-fade-in`
+  (`shopee/Dashboard`, `tiktok/TikTokDashboard`, `mercadolivre/Mercadolivre­Dashboard`,
+  `Gestao`). **Falta (rodada 3):** `Perfil` (cabeçalho preso num Card + cores
+  hardcoded + `dark:` — precisa mini-redesign) e `IntegrationManage` (botão
+  voltar + card de status, `max-w-4xl`). `SetupPayments` fica fora (paywall
+  centralizado).
 - [ ] **`StatCard` / `KpiRow`** — hoje cada dashboard monta os cards à mão (`shopee/Dashboard.tsx`, `IntegrationManage.tsx`, `UnifiedDashboard.tsx` — 3 layouts diferentes de "4 cards de número"). Um componente só, com slot de delta e de nota.
 - [ ] **Empty-state** — consolidar em `<EmptyState variant="onboarding" | "no-data" | "no-connection" action={}>`. Absorver o card bespoke do `UnifiedDashboard`.
 - [ ] ~~**`DataTable`**~~ — **fora desta rodada** (vira sub-projeto próprio):

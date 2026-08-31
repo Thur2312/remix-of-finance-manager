@@ -10,6 +10,7 @@ import {
 } from 'lucide-react';
 import { CompanySelector } from '@/components/dashboard/CompanySelector';
 import { OnboardingChecklist } from '@/components/dashboard/OnboardingChecklist';
+import { PageShell } from '@/components/layout/PageShell';
 import { TaxSummaryRow } from '@/hooks/useIntegrationTax';
 import { Company } from '@/hooks/useCompanies';
 import { useMercadolivreData } from '@/hooks/useMercadolivreData';
@@ -135,7 +136,7 @@ export function MercadolivreDashboardContent() {
   ];
 
   return (
-    <div className="space-y-8 animate-fade-in">
+    <PageShell className="space-y-8">
 
       {/* Título/subtítulo já vêm do topbar (AppLayout, via Gestao.tsx) — não
          repetir aqui. Só o seletor de empresa, que é funcional. */}
@@ -332,7 +333,7 @@ export function MercadolivreDashboardContent() {
           ]}
         />
       )}
-    </div>
+    </PageShell>
   );
 }
 

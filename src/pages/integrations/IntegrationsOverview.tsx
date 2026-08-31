@@ -8,6 +8,7 @@ import { useToast } from '@/hooks/use-toast';
 import { useQueryClient } from '@tanstack/react-query';
 import { Plug } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
+import { PageShell } from '@/components/layout/PageShell';
 
 type Provider = 'shopee' | 'tiktok' | 'mercadolivre';
 
@@ -86,18 +87,12 @@ export default function IntegrationsOverview() {
   };
 
   return (
-    <>
-      <div className="space-y-6 max-w">
-        <div>
-          <div className="flex items-center gap-2 mb-1">
-            <Plug className="h-5 w-5 text-primary" />
-            <h2 className="text-xl font-semibold">Integrações</h2>
-          </div>
-          <p className="text-sm text-muted-foreground">
-            Conecte seus marketplaces para sincronização automática de pedidos, produtos, pagamentos e taxas.
-          </p>
-        </div>
-
+    <PageShell
+      icon={Plug}
+      title="Integrações"
+      subtitle="Conecte seus marketplaces para sincronização automática de pedidos, produtos, pagamentos e taxas."
+      className="space-y-6"
+    >
         <div className="grid gap-3 md:grid-cols-2">
           {shopeeConnections.length === 0 ? (
             <IntegrationCard
@@ -168,7 +163,6 @@ export default function IntegrationsOverview() {
             if (firstConnected) navigate(`/integrations/manage/${firstConnected.id}`);
           }}
         />
-      </div>
 
       <ConnectDialog
         provider={connectProvider || 'shopee'}
@@ -213,6 +207,6 @@ export default function IntegrationsOverview() {
         isLoading={startAuth.isPending}
         isManualLoading={manualAuth.isPending}
       />
-    </>
+    </PageShell>
   );
 }

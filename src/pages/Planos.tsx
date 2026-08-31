@@ -18,6 +18,7 @@ import {
   AlertCircle,
 } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
+import { PageShell } from '@/components/layout/PageShell';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { usePaymentCheckout } from "@/hooks/usePaymentCheckout";
 import { useEffect, useState } from 'react';
@@ -273,16 +274,12 @@ const { handleCheckout, handleCancel: cancelSubscription, loadingCancel, loading
   };
 
   return (
-    <div className="space-y-8 animate-fade-in">
-      {/* Header */}
-      <div>
-        <div className="flex items-center gap-2 mb-1">
-          <Sparkles className="h-5 w-5 text-primary" />
-          <h1 className="text-2xl font-bold">Planos e Preços</h1>
-        </div>
-        <p className="text-muted-foreground">Escolha o plano ideal para o seu negócio</p>
-      </div>
-
+    <PageShell
+      icon={Sparkles}
+      title="Planos e Preços"
+      subtitle="Escolha o plano ideal para o seu negócio"
+      className="space-y-8"
+    >
       {/* Aviso de checkout cancelado */}
       {canceledFromCheckout && (
         <div className="flex items-center gap-3 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800 dark:border-amber-800 dark:bg-amber-950/30 dark:text-amber-400">
@@ -481,7 +478,7 @@ const { handleCheckout, handleCancel: cancelSubscription, loadingCancel, loading
       <p className="text-center text-xs text-muted-foreground pb-4">
         Todos os planos incluem criptografia de dados e suporte técnico. Cancele a qualquer momento, sem multas.
       </p>
-    </div>
+    </PageShell>
   );
 }
 

@@ -17,6 +17,7 @@ import { useDashboardData, Marketplace, MarketplaceStats } from '@/hooks/useDash
 import { useActiveShopeeConnection } from '@/hooks/useActiveShopeeConnection';
 import { useRecentSaleEvents } from '@/hooks/useSaleEvents';
 import { CompanySelector } from '@/components/dashboard/CompanySelector';
+import { PageShell } from '@/components/layout/PageShell';
 import { OnboardingChecklist } from '@/components/dashboard/OnboardingChecklist';
 import { TaxSummaryRow } from '@/hooks/useIntegrationTax';
 import { Company } from '@/hooks/useCompanies';
@@ -511,14 +512,11 @@ function UnifiedDashboardContent() {
   const makeDelta = (cur: number, prev?: number) => prev !== undefined ? { current: cur, previous: prev } : undefined;
 
   return (
-    <div className="space-y-6 animate-fade-in">
-
-      {/* ── Header ───────────────────────────────────────────────── */}
-      <div className="flex items-center justify-between flex-wrap gap-4">
-        <div>
-          <h2 className="text-lg font-semibold">Dashboard</h2>
-          <p className="text-sm text-muted-foreground">Visão consolidada dos seus marketplaces.</p>
-        </div>
+    <PageShell
+      title="Dashboard"
+      subtitle="Visão consolidada dos seus marketplaces."
+      className="space-y-6"
+      action={
         <div className="flex items-center gap-3 flex-wrap">
           <div className="flex items-center gap-1 bg-muted/60 rounded-lg p-1">
             {MARKETPLACE_OPTIONS.map(opt => (
@@ -534,7 +532,8 @@ function UnifiedDashboardContent() {
           </div>
           <CompanySelector selectedCompany={selectedCompany} onSelect={setSelectedCompany} />
         </div>
-      </div>
+      }
+    >
 
       {/* ── Sync Shopee ───────────────────────────────────────────── */}
       {(marketplace === 'shopee' || marketplace === 'todos') && isShopeeConnected && (
@@ -670,7 +669,7 @@ function UnifiedDashboardContent() {
           )}
         </>
       )}
-    </div>
+    </PageShell>
   );
 }
 

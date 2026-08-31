@@ -11,6 +11,7 @@ import {
   CheckCircle2, Clock, XCircle, HelpCircle,
 } from 'lucide-react';
 import { DashboardCharts } from '@/components/charts/DashboardCharts';
+import { PageShell } from '@/components/layout/PageShell';
 import { TopVariationsSection } from '@/components/charts/TopVariationsSection';
 import { OnboardingChecklist } from '@/components/dashboard/OnboardingChecklist';
 import { supabase } from '@/integrations/supabase/client';
@@ -256,7 +257,7 @@ export function ShopeeDashboardContent() {
   ];
 
   return (
-    <div className="space-y-8 animate-fade-in">
+    <PageShell className="space-y-8">
 
       {/* Título/subtítulo já vêm do topbar (AppLayout, via Gestao.tsx) — não
          repetir aqui. Seletor de loja só aparece com 2+ lojas Shopee
@@ -558,7 +559,7 @@ export function ShopeeDashboardContent() {
           ]}
         />
       )}
-    </div>
+    </PageShell>
   );
 }
 

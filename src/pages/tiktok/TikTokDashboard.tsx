@@ -13,6 +13,7 @@ import { TikTokSettingsData, TikTokOrder, calculateTikTokResults, formatCurrency
 import { formatCents, type Cents } from '@/lib/money';
 import { fetchAllTikTokOrders } from '@/lib/tiktok-helpers';
 import { DashboardCharts } from '@/components/charts/DashboardCharts';
+import { PageShell } from '@/components/layout/PageShell';
 import { TopVariationsSection } from '@/components/charts/TopVariationsSection';
 import { OnboardingChecklist } from '@/components/dashboard/OnboardingChecklist';
 import { CompanySelector } from '@/components/dashboard/CompanySelector';
@@ -134,7 +135,7 @@ export function TikTokDashboardContent() {
   }
 
   return (
-    <div className="space-y-8 animate-fade-in">
+    <PageShell className="space-y-8">
 
       {/* Título/subtítulo já vêm do topbar (AppLayout, via Gestao.tsx) — não
          repetir aqui. Só o seletor de empresa, que é funcional. */}
@@ -234,7 +235,7 @@ export function TikTokDashboardContent() {
           ]}
         />
       )}
-    </div>
+    </PageShell>
   );
 }
 

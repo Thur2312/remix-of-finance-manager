@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { useTopbarTitle } from '@/components/layout/TopbarTitleContext';
+import { PageShell } from '@/components/layout/PageShell';
 import { InPageNav, shopeeNavTabs, tiktokNavTabs } from '@/components/layout/InPageNav';
 import { mercadolivreNavTabs } from '@/components/layout/InPageNav';
 
@@ -60,7 +61,7 @@ interface GestaoContentProps {
 // marketplace já é autoexplicativo (ícone + nome de cada um).
 function GestaoContent({ selected, onSelect }: GestaoContentProps) {
   return (
-    <div className="space-y-8 animate-fade-in">
+    <PageShell className="space-y-8">
 
       <div className="flex items-center gap-1 bg-muted/60 rounded-full p-1 w-fit">
         {OPTIONS.map(opt => (
@@ -105,7 +106,7 @@ function GestaoContent({ selected, onSelect }: GestaoContentProps) {
           <MercadolivreDashboardContent />
         </div>
       )}
-    </div>
+    </PageShell>
   );
 }
 
