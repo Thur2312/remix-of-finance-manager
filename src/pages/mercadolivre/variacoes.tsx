@@ -21,7 +21,7 @@ import {
 } from '@/components/ui/table';
 import { formatCurrency, formatPercent } from '@/lib/calculations';
 import { FiltersCard } from '@/components/layout/FiltersCard';
-import { EmptyResultsState } from '@/components/layout/EmptyResultsState';
+import { EmptyState } from '@/components/ui/empty-state';
 import { useMercadolivreData } from '@/hooks/useMercadolivreData';
 
 // Superfície de cartão da área interna — mesma família visual do .glass-card
@@ -174,7 +174,7 @@ export function VariacoesContent() {
 
     if (groups.length === 0) {
       return (
-        <EmptyResultsState description="Sincronize seus pedidos do Mercado Livre para visualizar as variações." />
+        <EmptyState description="Sincronize seus pedidos do Mercado Livre para visualizar as variações." />
       );
     }
 

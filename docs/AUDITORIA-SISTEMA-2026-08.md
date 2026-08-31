@@ -202,10 +202,21 @@ da Faixa C satisfeito.
   local deletado), shopee/tiktok/ml Dashboard (`stats.map` → arrays com
   `variant`), IntegrationManage (linha "Resumo"). `DRESummaryCards` fica fora
   (grid adaptativo por contagem + ring de destaque — bespoke).
-- [ ] **Empty-state** — consolidar em `<EmptyState variant="onboarding" | "no-data" | "no-connection" action={}>`. Absorver o card bespoke do `UnifiedDashboard`.
+- [x] **Empty-state (31/08, `<hash>`)** — `EmptyResultsState` (que já era o
+  compartilhado, 8 telas) renomeado → `<EmptyState>` em
+  `src/components/ui/empty-state.tsx`, defaults genéricos, prop `className`.
+  Absorveu o card bespoke do TikTok Pagamentos ("Nenhum pagamento importado").
+  `OnboardingChecklist` fica separado — é uma **lista de passos**, não uma
+  mensagem; é o "variant onboarding" na prática. Não vale forçar os dois no
+  mesmo componente.
 - [ ] ~~**`DataTable`**~~ — **fora desta rodada** (vira sub-projeto próprio):
   Resultados/Variações/Pagamentos (Shopee/TikTok/ML — ~730 linhas cada).
-- [ ] **`SectionCard`** — padronizar o "card com título + descrição + conteúdo" (hoje `<Card><CardHeader><CardTitle>` repetido com espaçamentos diferentes).
+- [~] **`SectionCard`** — **adiado.** São **81 `<CardHeader>`** no app, com muita
+  variação por sítio (ícone no título, ação no header, `pb-3` vs default,
+  `text-base` vs `text-lg`). Migração mecânica de 81 pontos em tela de cliente
+  pagante = custo alto pra economizar ~4 linhas por uso. `<Card>` do shadcn já é
+  composável. Revisitar se um padrão específico doer (princípio N3: "só onde
+  dói, COM teste").
 
 **C.3 — Motion (vocabulário, só Framer — sem GSAP no app)**
 - [ ] **Easing de assinatura** — `[0.16, 1, 0.3, 1]` (expo-out) como padrão único, substituindo `easeOut` / `transition-all duration-300` (mesmo P1 do `DESIGN-DIRECTION` addendum, aplicado ao app).

@@ -28,7 +28,7 @@ import { fetchAllTikTokOrders } from '@/lib/tiktok-helpers';
 import { EditableCostCell } from '@/components/EditableCostCell';
 import { ResultsCharts } from '@/components/charts/ResultsCharts';
 import { FiltersCard } from '@/components/layout/FiltersCard';
-import { EmptyResultsState } from '@/components/layout/EmptyResultsState';
+import { EmptyState } from '@/components/ui/empty-state';
 
 // Superfície de cartão da área interna — mesma família visual do .glass-card
 // da landing, calibrada pra densidade (ver .panel em index.css).
@@ -406,7 +406,7 @@ export function TikTokVariacoesContent() {
 
   const renderResultsTable = () => {
     if (!calculatedResults || calculatedResults.groups.length === 0) {
-      return <EmptyResultsState />;
+      return <EmptyState />;
     }
 
     const { groups, totals } = calculatedResults;

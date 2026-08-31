@@ -44,6 +44,7 @@ import {
 import { Link } from 'react-router-dom';
 import { fetchAllTikTokSettlements, fetchAllTikTokStatements, fetchTikTokOrdersCosts } from '@/lib/tiktok-settlement-helpers';
 import { SettlementDetailModal } from '@/components/tiktok/SettlementDetailModal';
+import { EmptyState } from '@/components/ui/empty-state';
 import { PaymentCharts } from '@/components/tiktok/PaymentCharts';
 import { FeatureGate } from '@/components/FeatureGate';
 
@@ -348,25 +349,19 @@ function TikTokPagamentosContent() {
 
   if (settlements.length === 0 && statements.length === 0) {
     return (
-      <motion.div initial="hidden" animate="visible" variants={staggerContainer}>
-        <motion.div variants={fadeInUp}>
-          <Card className={CARD}>
-            <CardContent className="flex flex-col items-center justify-center py-16">
-              <FileSpreadsheet className="h-16 w-16 text-muted-foreground mb-4" />
-              <h3 className="font-semibold text-lg text-foreground">Nenhum pagamento importado</h3>
-              <p className="text-muted-foreground mb-6 text-center max-w-md">
-                Importe o relatório de pagamentos (Income) do TikTok Shop para visualizar o detalhamento completo de recebimentos por pedido
-              </p>
-              <Button asChild>
-                <Link to="/gestao/tiktok/pagamentos-upload">
-                  <Upload className="h-4 w-4 mr-2" />
-                  Importar Pagamentos
-                </Link>
-              </Button>
-            </CardContent>
-          </Card>
-        </motion.div>
-      </motion.div>
+      <EmptyState
+        icon={FileSpreadsheet}
+        title="Nenhum pagamento importado"
+        description="Importe o relatório de pagamentos (Income) do TikTok Shop para visualizar o detalhamento completo de recebimentos por pedido."
+        action={
+          <Button asChild>
+            <Link to="/gestao/tiktok/pagamentos-upload">
+              <Upload className="h-4 w-4 mr-2" />
+              Importar Pagamentos
+            </Link>
+          </Button>
+        }
+      />
     );
   }
 

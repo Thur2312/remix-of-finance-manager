@@ -24,7 +24,7 @@ import {
 } from '@/components/ui/table';
 import { formatCurrency } from '@/lib/calculations';
 import { FiltersCard } from '@/components/layout/FiltersCard';
-import { EmptyResultsState } from '@/components/layout/EmptyResultsState';
+import { EmptyState } from '@/components/ui/empty-state';
 import { useMercadolivreData } from '@/hooks/useMercadolivreData';
 
 // Superfície de cartão da área interna — mesma família visual do .glass-card
@@ -263,7 +263,7 @@ export function PagamentosContent() {
 
     if (orders.length === 0) {
       return (
-        <EmptyResultsState
+        <EmptyState
           title="Nenhum pagamento encontrado"
           description="Sincronize seus pedidos do Mercado Livre para visualizar os pagamentos."
         />

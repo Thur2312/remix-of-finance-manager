@@ -39,7 +39,7 @@ import {
 } from '@/lib/calculations';
 import { ResultsCharts } from '@/components/charts/ResultsCharts';
 import { FiltersCard } from '@/components/layout/FiltersCard';
-import { EmptyResultsState } from '@/components/layout/EmptyResultsState';
+import { EmptyState } from '@/components/ui/empty-state';
 
 // Superfície de cartão da área interna — mesma família visual do .glass-card
 // da landing, calibrada pra densidade (ver .panel em index.css).
@@ -276,7 +276,7 @@ export function ResultadosVariacoesContent() {
 
   const renderResultsTable = () => {
     if (!results || results.groups.length === 0) {
-      return <EmptyResultsState />;
+      return <EmptyState />;
     }
 
     const { groups, totals } = results;

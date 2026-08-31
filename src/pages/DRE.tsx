@@ -15,7 +15,7 @@ import { FileSpreadsheet, RefreshCw, Download, Calendar, BarChart3, AlertCircle,
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { PageShell } from '@/components/layout/PageShell';
-import { EmptyResultsState } from '@/components/layout/EmptyResultsState';
+import { EmptyState } from '@/components/ui/empty-state';
 import { Link } from 'react-router-dom';
 
 function DREContent() {
@@ -89,7 +89,7 @@ function DREContent() {
 
   if (!dreData) {
     return (
-      <EmptyResultsState
+      <EmptyState
         title="Nenhum dado disponível"
         description="O DRE é calculado a partir dos seus pedidos. Conecte uma loja ou importe um relatório para começar."
         icon={FileSpreadsheet}
