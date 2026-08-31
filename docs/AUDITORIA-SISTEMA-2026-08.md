@@ -103,11 +103,12 @@ Organizado em faixas paralelas. Ordem sugerida dentro de cada faixa. `[ ]` a faz
   - [x] Controles mortos: `papelProduto`/`volumeEsperadoProduto`/`margemDesejada`
     não tinham UI. Decisão do usuário: **remover** os cards "Absorção Parcial" e
     "Portfólio Maduro" (+ callout educacional) que rodavam em constantes fixas.
-  - [~] BUG-04/05/07 — **REVERTIDOS 31/08 (`3313017`) a pedido do cliente.** Os
-    modos "Por Margem"/"Por Lucro" foram removidos inteiros (com eles o botão
-    "Aplicar", o aviso de inviabilidade, o slider). A Calculadora ficou só "Por
-    Preço". `precoPorMargem`/`precoPorLucro`/`margemMaxViavelPct` ficam na lib
-    (puros, testados) — só não são mais usados pela UI.
+  - [x] BUG-04/05/07 — idas e voltas 31/08: `3313017` removeu os modos "Por
+    Margem"/"Por Lucro" inteiros → cliente quis de volta (a queixa real era a
+    **Margem Real travando** ao tirar taxa) → `b8cbd60` traz os modos + slider
+    **sem o botão "Aplicar"** e sem auto-preenchimento. Sem nada copiando o
+    preço, Margem Real = `1 − custosFixos/preço − Σtaxas%` (3 testes novos
+    travam a proporção inversa). "Preço para essa margem/lucro" fica como texto.
   - [x] BUG-09 (Tela B) — grid do "Preço Cheio" já tinha sido consertado antes; só
     restava 1 string "15 dias" fixa no tooltip da Tela A (`0dd8eaf`).
   - [~] BUG-06 (frete) — implementado (`e2ec795`) e **REVERTIDO 31/08 (`3313017`)**;

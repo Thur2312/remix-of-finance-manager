@@ -317,17 +317,20 @@ líquido — vira apenas decomposição visual. Mas a decomposição precisa est
 certa, senão engana o usuário. Corrigir a **captação** para trazer os campos e
 gravar o frete líquido.
 
-> **⚠️ REVERTIDO 31/08 (`3313017`) — a pedido do cliente.** Os modos
-> "Por Margem" e "Por Lucro" foram **removidos inteiros** da Calculadora (com
-> eles: BUG-04, BUG-05 botão "Aplicar", BUG-07 aviso de inviabilidade). O cliente
-> não quis a mecânica de "escolha a margem → resolve o preço" — a Calculadora
-> ficou só **"Por Preço"** (digita o preço, vê o resultado real). O campo de
-> **frete (BUG-06)** também saiu (UI + coluna `anuncios.frete`). As funções
-> `precoPorMargem`/`precoPorLucro`/`margemMaxViavelPct` continuam em
-> `src/lib/pricing.ts` (puras, testadas, fórmula validada §3.1) — só não são mais
-> usadas pela UI. Os BUGs abaixo ficam de registro histórico.
+> **⚠️ Idas e voltas 31/08 (`3313017` revert → `b8cbd60` fix).** Sequência:
+> 1. Cliente não gostou do frete (BUG-06) nem do botão "Aplicar" (BUG-05).
+> 2. `3313017` removeu frete + os modos "Por Margem"/"Por Lucro" inteiros.
+> 3. Cliente quis os modos + slider **de volta** — a queixa real era outra:
+>    ao tirar % de taxa, a **Margem Real travava** em vez de subir.
+> 4. `b8cbd60`: modos + slider de volta, **sem o botão "Aplicar"** e sem
+>    auto-preenchimento. Causa da trava: o botão/useEffect copiava o "preço
+>    sugerido" pro Preço Promocional → `apurar(preço sugerido)` colapsava no
+>    slider. Sem nada copiando o preço, Margem Real = `1 − custosFixos/preço −
+>    Σtaxas%`, inversamente proporcional às taxas ponto a ponto (3 testes novos
+>    travam isso).
+> **Frete (BUG-06) continua removido** (migration `20260831120000_drop_anuncios_frete.sql`).
 
-### BUG-04 — Painel "MARGEM REAL" é tautológico no modo "Por Margem" · ✅ RESOLVIDO por BUG-05 (`9442f1b`) · ⚠️ modo removido 31/08
+### BUG-04 — Painel "MARGEM REAL" é tautológico no modo "Por Margem" · ✅ RESOLVIDO por BUG-05 (`9442f1b`), reforçado em `b8cbd60` (sem botão)
 
 Era tautológico **porque** um `useEffect` sobrescrevia o Preço Promocional com o
 preço sugerido — aí `margemReal = apurar(preço sugerido)` colapsava no slider
@@ -338,12 +341,15 @@ do slider. Depois de "Aplicar", `margemReal ≈ slider` — mas isso é feedback
 correto ("pediu 20%, ficou 20%"), não indicador vazio. Rótulo "Margem Real"
 mantido — agora é apuração de verdade nos 3 modos.
 
-### BUG-05 — A ferramenta escolhe uma decisão de negócio em silêncio · ✅ RESOLVIDO (`9442f1b`)
+### BUG-05 — A ferramenta escolhe uma decisão de negócio em silêncio · ✅ RESOLVIDO (`9442f1b` → `b8cbd60`)
 
-Abordagem escolhida pelo usuário: **desacoplar**. Removido o `useEffect` que
-espelhava `precoSugerido → precoPromocional`. O preço sugerido de cada modo agora
-é só sugestão, com botão **"Aplicar"**. Com o preço parado, quando um custo cai a
-margem sobe visível — que era a leitura que o cliente esperava.
+Abordagem: **desacoplar**. `9442f1b` removeu o `useEffect` que espelhava
+`precoSugerido → precoPromocional` e pôs um botão **"Aplicar"** no lugar. O
+cliente não gostou nem do botão (re-clicava e a margem travava de novo). `b8cbd60`:
+**tirou o botão**. O preço sugerido de cada modo é só um texto de referência
+("Preço para essa margem: R$ X — digite no Preço Promocional se quiser usar");
+nada copia o preço automaticamente. Com o preço parado, tirar uma taxa faz a
+Margem Real subir ponto a ponto.
 
 Origem da queixa do cliente. Quando um custo desaparece (afiliados 10% → 0%), há
 duas saídas legítimas:
@@ -363,7 +369,7 @@ coluna `anuncios.frete`. **O cliente não quis** — removido inteiro em 31/08
 realizado por causa do frete volta a existir; se um dia reativar, o histórico
 está em `e2ec795`.
 
-### BUG-07 — Divisão por zero no modo "Por Margem" · ✅ RESOLVIDO (`9442f1b`)
+### BUG-07 — Divisão por zero no modo "Por Margem" · ✅ RESOLVIDO (`9442f1b`, mantido em `b8cbd60`)
 
 O guard `denom > 0 ? x : 0` já existia (em `precoPorMargem`/`precoPorLucro` de
 `src/lib/pricing.ts` depois do refactor), mas falhava **mudo** — a linha "Preço
