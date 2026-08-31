@@ -195,7 +195,13 @@ da Faixa C satisfeito.
   **Fora:** `SetupPayments` (paywall centralizado, não é página normal — mantém
   `animate-fade-in`). Indentação profunda pré-existente do corpo do
   `IntegrationManage` não foi mexida (evitar rewrite de 250 linhas).
-- [ ] **`StatCard` / `KpiRow`** — hoje cada dashboard monta os cards à mão (`shopee/Dashboard.tsx`, `IntegrationManage.tsx`, `UnifiedDashboard.tsx` — 3 layouts diferentes de "4 cards de número"). Um componente só, com slot de delta e de nota.
+- [x] **`StatCard` / `KpiRow` (31/08, `90aac70`)** — `src/components/ui/stat-card.tsx`.
+  `<StatCard>` (title/value/description/icon+`variant`/loading/`delta` de
+  comparação/slot `info` e `children`) + `<KpiRow>` (grid responsivo). Valor em
+  `font-mono tabular-nums` (avança C.1 5b). Migrados: UnifiedDashboard (StatCard
+  local deletado), shopee/tiktok/ml Dashboard (`stats.map` → arrays com
+  `variant`), IntegrationManage (linha "Resumo"). `DRESummaryCards` fica fora
+  (grid adaptativo por contagem + ring de destaque — bespoke).
 - [ ] **Empty-state** — consolidar em `<EmptyState variant="onboarding" | "no-data" | "no-connection" action={}>`. Absorver o card bespoke do `UnifiedDashboard`.
 - [ ] ~~**`DataTable`**~~ — **fora desta rodada** (vira sub-projeto próprio):
   Resultados/Variações/Pagamentos (Shopee/TikTok/ML — ~730 linhas cada).
