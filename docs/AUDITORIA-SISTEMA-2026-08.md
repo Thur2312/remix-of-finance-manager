@@ -103,13 +103,16 @@ Organizado em faixas paralelas. Ordem sugerida dentro de cada faixa. `[ ]` a faz
   - [x] Controles mortos: `papelProduto`/`volumeEsperadoProduto`/`margemDesejada`
     não tinham UI. Decisão do usuário: **remover** os cards "Absorção Parcial" e
     "Portfólio Maduro" (+ callout educacional) que rodavam em constantes fixas.
-  - [x] BUG-05 — abordagem "desacoplar": preço sugerido vira sugestão + botão
-    "Aplicar" (não sobrescreve mais o Preço Promocional sozinho). *Queixa do cliente.*
-  - [x] BUG-07 — slider com `max` dinâmico + aviso de margem inviável (era guard mudo).
-  - [x] BUG-04 — cai junto do BUG-05 (era tautológico *porque* o preço era auto-escrito).
+  - [~] BUG-04/05/07 — **REVERTIDOS 31/08 (`3313017`) a pedido do cliente.** Os
+    modos "Por Margem"/"Por Lucro" foram removidos inteiros (com eles o botão
+    "Aplicar", o aviso de inviabilidade, o slider). A Calculadora ficou só "Por
+    Preço". `precoPorMargem`/`precoPorLucro`/`margemMaxViavelPct` ficam na lib
+    (puros, testados) — só não são mais usados pela UI.
   - [x] BUG-09 (Tela B) — grid do "Preço Cheio" já tinha sido consertado antes; só
     restava 1 string "15 dias" fixa no tooltip da Tela A (`0dd8eaf`).
-  - [ ] BUG-06 (frete na precificação) — continua fora; precisa decisão de como incorporar.
+  - [~] BUG-06 (frete) — implementado (`e2ec795`) e **REVERTIDO 31/08 (`3313017`)**;
+    cliente não quis. Campo + coluna `anuncios.frete` removidos (migration
+    `20260831120000_drop_anuncios_frete.sql`).
 - [ ] **Padronização em centavos** (seção 6 do `DIAGNOSTICO`) — `bigint` do banco à UI, branded type `Cents`, migration **escrita não rodada**. *Depende de BUG-01.*
 
 ### Faixa B — Higiene técnica (rápido, sem impacto visual, destrava o resto)

@@ -317,7 +317,17 @@ líquido — vira apenas decomposição visual. Mas a decomposição precisa est
 certa, senão engana o usuário. Corrigir a **captação** para trazer os campos e
 gravar o frete líquido.
 
-### BUG-04 — Painel "MARGEM REAL" é tautológico no modo "Por Margem" · ✅ RESOLVIDO por BUG-05 (`9442f1b`)
+> **⚠️ REVERTIDO 31/08 (`3313017`) — a pedido do cliente.** Os modos
+> "Por Margem" e "Por Lucro" foram **removidos inteiros** da Calculadora (com
+> eles: BUG-04, BUG-05 botão "Aplicar", BUG-07 aviso de inviabilidade). O cliente
+> não quis a mecânica de "escolha a margem → resolve o preço" — a Calculadora
+> ficou só **"Por Preço"** (digita o preço, vê o resultado real). O campo de
+> **frete (BUG-06)** também saiu (UI + coluna `anuncios.frete`). As funções
+> `precoPorMargem`/`precoPorLucro`/`margemMaxViavelPct` continuam em
+> `src/lib/pricing.ts` (puras, testadas, fórmula validada §3.1) — só não são mais
+> usadas pela UI. Os BUGs abaixo ficam de registro histórico.
+
+### BUG-04 — Painel "MARGEM REAL" é tautológico no modo "Por Margem" · ✅ RESOLVIDO por BUG-05 (`9442f1b`) · ⚠️ modo removido 31/08
 
 Era tautológico **porque** um `useEffect` sobrescrevia o Preço Promocional com o
 preço sugerido — aí `margemReal = apurar(preço sugerido)` colapsava no slider
@@ -345,14 +355,13 @@ A calculadora aplica a segunda caladamente. O cliente esperava a primeira e leu 
 queda de R$ 17,69 → R$ 15,09 como prejuízo. **Nenhuma das duas é errada; a
 ferramenta é que precisa mostrar ambas.**
 
-### BUG-06 — A calculadora precifica sem frete
+### BUG-06 — A calculadora precifica sem frete · ⚠️ implementado (`e2ec795`) e REVERTIDO (`3313017`)
 
-A Tela B projeta 20% de margem; a Tela A mostra a mesma loja em −7%. Não há campo
-de custo de envio na precificação. Enquanto isso existir, planejado e realizado
-**nunca** vão reconciliar.
-
-Propor (não implementar) como incorporar: campo manual, média histórica da loja
-sincronizada, ou tabela por faixa de peso.
+Foi implementado como campo manual ("Frete que você paga (R$ por venda)") +
+coluna `anuncios.frete`. **O cliente não quis** — removido inteiro em 31/08
+(migration `20260831120000_drop_anuncios_frete.sql`). A dessincronia planejado ×
+realizado por causa do frete volta a existir; se um dia reativar, o histórico
+está em `e2ec795`.
 
 ### BUG-07 — Divisão por zero no modo "Por Margem" · ✅ RESOLVIDO (`9442f1b`)
 
