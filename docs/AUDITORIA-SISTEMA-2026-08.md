@@ -202,7 +202,7 @@ da Faixa C satisfeito.
   local deletado), shopee/tiktok/ml Dashboard (`stats.map` → arrays com
   `variant`), IntegrationManage (linha "Resumo"). `DRESummaryCards` fica fora
   (grid adaptativo por contagem + ring de destaque — bespoke).
-- [x] **Empty-state (31/08, `<hash>`)** — `EmptyResultsState` (que já era o
+- [x] **Empty-state (31/08, `cf90457`)** — `EmptyResultsState` (que já era o
   compartilhado, 8 telas) renomeado → `<EmptyState>` em
   `src/components/ui/empty-state.tsx`, defaults genéricos, prop `className`.
   Absorveu o card bespoke do TikTok Pagamentos ("Nenhum pagamento importado").
