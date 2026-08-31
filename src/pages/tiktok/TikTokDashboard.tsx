@@ -13,6 +13,7 @@ import { TikTokSettingsData, TikTokOrder, calculateTikTokResults, formatCurrency
 import { formatCents, type Cents } from '@/lib/money';
 import { fetchAllTikTokOrders } from '@/lib/tiktok-helpers';
 import { DashboardCharts } from '@/components/charts/DashboardCharts';
+import { StatCard, KpiRow } from '@/components/ui/stat-card';
 import { TopVariationsSection } from '@/components/charts/TopVariationsSection';
 import { OnboardingChecklist } from '@/components/dashboard/OnboardingChecklist';
 import { CompanySelector } from '@/components/dashboard/CompanySelector';
@@ -87,40 +88,44 @@ export function TikTokDashboardContent() {
   }, [orders]);
 
   const quickActions = [
-    { title: 'Upload de Relatório', description: 'Importe seu relatório CSV do TikTok', icon: Upload, href: '/tiktok/upload', color: 'bg-blue-500' },
-    { title: 'Configurações', description: 'Configure taxas, impostos e parâmetros', icon: Settings, href: '/tiktok/configuracoes', color: 'bg-primary' },
-    { title: 'Resultados Simplificados', description: 'Visualize resultados por produto', icon: FileSpreadsheet, href: '/tiktok/resultados', color: 'bg-green-500' },
-    { title: 'Resultados com Variações', description: 'Análise detalhada por variação', icon: Package, href: '/tiktok/variacoes', color: 'bg-purple-500' },
+    { title: 'Upload de Relatório', description: 'Importe seu relatório CSV do TikTok', icon: Upload, href: '/gestao/tiktok/upload', color: 'bg-blue-500' },
+    { title: 'Configurações', description: 'Configure taxas, impostos e parâmetros', icon: Settings, href: '/gestao/tiktok/configuracoes', color: 'bg-primary' },
+    { title: 'Resultados Simplificados', description: 'Visualize resultados por produto', icon: FileSpreadsheet, href: '/gestao/tiktok/resultados', color: 'bg-green-500' },
+    { title: 'Resultados com Variações', description: 'Análise detalhada por variação', icon: Package, href: '/gestao/tiktok/variacoes', color: 'bg-purple-500' },
   ];
 
-  const stats = [
+  const stats: {
+    title: string;
+    value: string;
+    description: string;
+    icon: typeof ShoppingCart;
+    variant: 'brand' | 'success';
+    isProfit: boolean;
+  }[] = [
     {
       title: 'Total de Pedidos',
-      value: isLoading ? '...' : totalOrders.toString(),
+      value: totalOrders.toString(),
       description: 'Pedidos importados',
       icon: ShoppingCart,
-      color: 'text-primary',
-      bgColor: 'bg-primary/10',
+      variant: 'brand',
       isProfit: false,
     },
     {
       title: 'Faturamento',
-      value: isLoading ? '...' : formatCents(totalRevenueCents),
+      value: formatCents(totalRevenueCents),
       description: 'Total faturado',
       icon: DollarSign,
-      color: 'text-success',
-      bgColor: 'bg-success/10',
+      variant: 'success',
       isProfit: false,
     },
     {
       title: 'Lucro Estimado',
-      value: isLoading ? '...' : formatCents(totalProfitCents),
+      value: formatCents(totalProfitCents),
       description: !settings
         ? 'Configure as taxas primeiro'
         : hasCompanyTax ? 'Após taxas e custos, antes do imposto' : 'Após taxas e custos',
       icon: TrendingUp,
-      color: 'text-primary',
-      bgColor: 'bg-primary/10',
+      variant: 'brand',
       isProfit: true,
     },
   ];
@@ -153,31 +158,29 @@ export function TikTokDashboardContent() {
       </Card>
 
       {/* ── Stats Cards ──────────────────────────────────────────── */}
-      <div className="grid gap-4 md:grid-cols-3">
+      <KpiRow className="lg:grid-cols-3">
         {stats.map((stat) => (
-          <Card key={stat.title} className={`${CARD} transition-shadow hover:shadow-md`}>
-            <CardHeader className="flex flex-row items-start justify-between pb-3 space-y-0">
-              <span className="text-sm font-medium text-muted-foreground">{stat.title}</span>
-              <div className={`h-8 w-8 rounded-lg ${stat.bgColor} flex items-center justify-center shrink-0`}>
-                <stat.icon className={`h-4 w-4 ${stat.color}`} />
-              </div>
-            </CardHeader>
-            <CardContent className="pt-0">
-              <div className="text-[28px] font-semibold">{stat.value}</div>
-              <p className="text-xs text-muted-foreground mt-1">{stat.description}</p>
-              {stat.isProfit && !isLoading && selectedCompany && selectedCompany.tax_rate > 0 && (
-                <TaxSummaryRow
-                  netProfit={totalProfit}
-                  revenue={totalRevenue}
-                  taxRate={selectedCompany.tax_rate}
-                  taxBase={selectedCompany.tax_base}
-                  companyName={selectedCompany.name}
-                />
-              )}
-            </CardContent>
-          </Card>
+          <StatCard
+            key={stat.title}
+            title={stat.title}
+            value={stat.value}
+            description={stat.description}
+            icon={stat.icon}
+            variant={stat.variant}
+            loading={isLoading}
+          >
+            {stat.isProfit && !isLoading && selectedCompany && selectedCompany.tax_rate > 0 && (
+              <TaxSummaryRow
+                netProfit={totalProfit}
+                revenue={totalRevenue}
+                taxRate={selectedCompany.tax_rate}
+                taxBase={selectedCompany.tax_base}
+                companyName={selectedCompany.name}
+              />
+            )}
+          </StatCard>
         ))}
-      </div>
+      </KpiRow>
 
       {/* ── Gráficos ─────────────────────────────────────────────── */}
       {chartData.length > 0 && <DashboardCharts data={chartData} />}

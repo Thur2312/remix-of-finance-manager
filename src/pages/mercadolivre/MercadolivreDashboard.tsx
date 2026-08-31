@@ -10,6 +10,7 @@ import {
 } from 'lucide-react';
 import { CompanySelector } from '@/components/dashboard/CompanySelector';
 import { OnboardingChecklist } from '@/components/dashboard/OnboardingChecklist';
+import { StatCard, KpiRow } from '@/components/ui/stat-card';
 import { TaxSummaryRow } from '@/hooks/useIntegrationTax';
 import { Company } from '@/hooks/useCompanies';
 import { useMercadolivreData } from '@/hooks/useMercadolivreData';
@@ -99,38 +100,40 @@ export function MercadolivreDashboardContent() {
   ).length;
   const totalOrdersAll = orders.length;
 
-  const statCards = [
+  const statCards: {
+    title: string;
+    value: string;
+    description: string;
+    icon: typeof ShoppingCart;
+    variant: 'brand' | 'success' | 'warning';
+  }[] = [
     {
       title: 'Total de Pedidos',
-      value: loading ? '...' : stats.totalOrders.toString(),
+      value: stats.totalOrders.toString(),
       description: 'Pedidos pagos/entregues',
       icon: ShoppingCart,
-      color: 'text-primary',
-      bgColor: 'bg-primary/10',
+      variant: 'brand',
     },
     {
       title: 'Faturamento',
-      value: loading ? '...' : formatCents((stats.grossRevenueCents ?? 0) as Cents),
+      value: formatCents((stats.grossRevenueCents ?? 0) as Cents),
       description: 'Receita bruta sincronizada',
       icon: DollarSign,
-      color: 'text-success',
-      bgColor: 'bg-success/10',
+      variant: 'success',
     },
     {
       title: 'Valor Líquido',
-      value: loading ? '...' : formatCents((stats.netRevenueCents ?? 0) as Cents),
+      value: formatCents((stats.netRevenueCents ?? 0) as Cents),
       description: 'Após taxas e descontos ML',
       icon: TrendingUp,
-      color: 'text-primary',
-      bgColor: 'bg-primary/10',
+      variant: 'brand',
     },
     {
       title: 'Taxas ML',
-      value: loading ? '...' : formatCents((stats.feesCents ?? 0) as Cents),
+      value: formatCents((stats.feesCents ?? 0) as Cents),
       description: 'Comissão + frete ML',
       icon: Package,
-      color: 'text-warning',
-      bgColor: 'bg-warning/10',
+      variant: 'warning',
     },
   ];
 
@@ -207,38 +210,34 @@ export function MercadolivreDashboardContent() {
       )}
 
       {/* ── Stats Cards ──────────────────────────────────────────── */}
-      <div className="grid gap-4 md:grid-cols-4">
+      <KpiRow>
         {statCards.map((stat) => {
           const info = statInfo[stat.title];
           const isLiquido = stat.title === 'Valor Líquido';
           return (
-            <Card key={stat.title} className={`${CARD} relative overflow-hidden transition-shadow hover:shadow-md`}>
-              <CardHeader className="flex flex-row items-start justify-between pb-3 space-y-0">
-                <div className="flex items-center gap-1.5">
-                  <span className="text-sm font-medium text-muted-foreground">{stat.title}</span>
-                  {info && <InfoPopover title={info.title}>{info.description}</InfoPopover>}
-                </div>
-                <div className={`h-8 w-8 rounded-lg ${stat.bgColor} flex items-center justify-center shrink-0`}>
-                  <stat.icon className={`h-4 w-4 ${stat.color}`} />
-                </div>
-              </CardHeader>
-              <CardContent className="pt-0">
-                <div className="text-2xl font-bold tracking-tight">{stat.value}</div>
-                <p className="text-xs text-muted-foreground mt-1">{stat.description}</p>
-                {isLiquido && !loading && selectedCompany && selectedCompany.tax_rate > 0 && (
-                  <TaxSummaryRow
-                    netProfit={stats.netRevenue}
-                    revenue={stats.grossRevenue}
-                    taxRate={selectedCompany.tax_rate}
-                    taxBase={selectedCompany.tax_base}
-                    companyName={selectedCompany.name}
-                  />
-                )}
-              </CardContent>
-            </Card>
+            <StatCard
+              key={stat.title}
+              title={stat.title}
+              value={stat.value}
+              description={stat.description}
+              icon={stat.icon}
+              variant={stat.variant}
+              loading={loading}
+              info={info && <InfoPopover title={info.title}>{info.description}</InfoPopover>}
+            >
+              {isLiquido && !loading && selectedCompany && selectedCompany.tax_rate > 0 && (
+                <TaxSummaryRow
+                  netProfit={stats.netRevenue}
+                  revenue={stats.grossRevenue}
+                  taxRate={selectedCompany.tax_rate}
+                  taxBase={selectedCompany.tax_base}
+                  companyName={selectedCompany.name}
+                />
+              )}
+            </StatCard>
           );
         })}
-      </div>
+      </KpiRow>
 
       {/* ── Status dos Pedidos ───────────────────────────────────── */}
       {totalOrdersAll > 0 && (

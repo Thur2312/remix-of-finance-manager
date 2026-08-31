@@ -11,6 +11,7 @@ import {
   CheckCircle2, Clock, XCircle, HelpCircle,
 } from 'lucide-react';
 import { DashboardCharts } from '@/components/charts/DashboardCharts';
+import { StatCard, KpiRow } from '@/components/ui/stat-card';
 import { TopVariationsSection } from '@/components/charts/TopVariationsSection';
 import { OnboardingChecklist } from '@/components/dashboard/OnboardingChecklist';
 import { supabase } from '@/integrations/supabase/client';
@@ -210,30 +211,34 @@ export function ShopeeDashboardContent() {
   const loading = isLoading || (isConnected && syncLoading);
   const profitTitle = usingSyncData ? 'Valor Líquido' : 'Lucro Estimado';
 
-  const stats = [
+  const stats: {
+    title: string;
+    value: string;
+    description: string;
+    icon: typeof ShoppingCart;
+    variant: 'brand' | 'success' | 'warning';
+  }[] = [
     {
       title: 'Total de Pedidos',
-      value: loading ? '...' : totalOrders.toString(),
+      value: totalOrders.toString(),
       description: usingSyncData
         ? (syncData!.stats.emTransito > 0
             ? `Concluídos · +${syncData!.stats.emTransito} em trânsito`
             : `Concluídos nos últimos ${syncPeriod} dias`)
         : 'Pedidos importados',
       icon: ShoppingCart,
-      color: 'text-primary',
-      bgColor: 'bg-primary/10',
+      variant: 'brand',
     },
     {
       title: 'Faturamento',
-      value: loading ? '...' : formatCents(totalRevenueCents),
+      value: formatCents(totalRevenueCents),
       description: usingSyncData ? 'Vendas concluídas no período' : 'Total faturado',
       icon: DollarSign,
-      color: 'text-success',
-      bgColor: 'bg-success/10',
+      variant: 'success',
     },
     {
       title: profitTitle,
-      value: loading ? '...' : formatCents(totalProfitCents),
+      value: formatCents(totalProfitCents),
       description: usingSyncData
         ? (syncData!.stats.pedidosSemRepasse > 0
             ? `${syncData!.stats.pedidosSemRepasse} pedido(s) com repasse ainda estimado`
@@ -242,16 +247,14 @@ export function ShopeeDashboardContent() {
             ? 'Configure as taxas primeiro'
             : hasCompanyTax ? 'Após taxas e custos, antes do imposto' : 'Após taxas e custos'),
       icon: TrendingUp,
-      color: 'text-primary',
-      bgColor: 'bg-primary/10',
+      variant: 'brand',
     },
     ...(usingSyncData ? [{
       title: 'Taxas Shopee',
-      value: loading ? '...' : formatCents(totalFeesCentsCard),
+      value: formatCents(totalFeesCentsCard),
       description: 'Comissão, serviço, frete e descontos',
       icon: Package,
-      color: 'text-warning',
-      bgColor: 'bg-warning/10',
+      variant: 'warning' as const,
     }] : []),
   ];
 
@@ -342,38 +345,34 @@ export function ShopeeDashboardContent() {
       )}
 
       {/* ── Stats Cards ──────────────────────────────────────────── */}
-      <div className={`grid gap-4 ${usingSyncData ? 'md:grid-cols-4' : 'md:grid-cols-3'}`}>
+      <KpiRow className={usingSyncData ? undefined : 'lg:grid-cols-3'}>
         {stats.map((stat) => {
           const info = statInfo[stat.title];
           const isProfit = stat.title === profitTitle;
           return (
-            <Card key={stat.title} className={`${CARD} relative overflow-hidden transition-shadow hover:shadow-md`}>
-              <CardHeader className="flex flex-row items-start justify-between pb-3 space-y-0">
-                <div className="flex items-center gap-1.5">
-                  <span className="text-sm font-medium text-muted-foreground">{stat.title}</span>
-                  {info && <InfoPopover title={info.title}>{info.description}</InfoPopover>}
-                </div>
-                <div className={`h-8 w-8 rounded-lg ${stat.bgColor} flex items-center justify-center shrink-0`}>
-                  <stat.icon className={`h-4 w-4 ${stat.color}`} />
-                </div>
-              </CardHeader>
-              <CardContent className="pt-0">
-                <div className="text-2xl font-bold tracking-tight">{stat.value}</div>
-                <p className="text-xs text-muted-foreground mt-1">{stat.description}</p>
-                {isProfit && !loading && selectedCompany && selectedCompany.tax_rate > 0 && (
-                  <TaxSummaryRow
-                    netProfit={totalProfit}
-                    revenue={totalRevenue}
-                    taxRate={selectedCompany.tax_rate}
-                    taxBase={selectedCompany.tax_base}
-                    companyName={selectedCompany.name}
-                  />
-                )}
-              </CardContent>
-            </Card>
+            <StatCard
+              key={stat.title}
+              title={stat.title}
+              value={stat.value}
+              description={stat.description}
+              icon={stat.icon}
+              variant={stat.variant}
+              loading={loading}
+              info={info && <InfoPopover title={info.title}>{info.description}</InfoPopover>}
+            >
+              {isProfit && !loading && selectedCompany && selectedCompany.tax_rate > 0 && (
+                <TaxSummaryRow
+                  netProfit={totalProfit}
+                  revenue={totalRevenue}
+                  taxRate={selectedCompany.tax_rate}
+                  taxBase={selectedCompany.tax_base}
+                  companyName={selectedCompany.name}
+                />
+              )}
+            </StatCard>
           );
         })}
-      </div>
+      </KpiRow>
 
       {usingSyncData && syncData.prevStats && (
         <PeriodComparison

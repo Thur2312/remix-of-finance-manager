@@ -5,7 +5,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Badge } from '@/components/ui/badge';
 import {
   RefreshCw, ShoppingCart, DollarSign, TrendingUp, Percent,
-  Store, TrendingDown, Minus, Trophy, ArrowRight, Zap,
+  Store, Trophy, ArrowRight, Zap,
 } from 'lucide-react';
 import {
   AreaChart, Area, BarChart, Bar, PieChart, Pie, Cell,
@@ -18,6 +18,7 @@ import { useActiveShopeeConnection } from '@/hooks/useActiveShopeeConnection';
 import { useRecentSaleEvents } from '@/hooks/useSaleEvents';
 import { CompanySelector } from '@/components/dashboard/CompanySelector';
 import { PageShell } from '@/components/layout/PageShell';
+import { StatCard, KpiRow } from '@/components/ui/stat-card';
 import { OnboardingChecklist } from '@/components/dashboard/OnboardingChecklist';
 import { TaxSummaryRow } from '@/hooks/useIntegrationTax';
 import { Company } from '@/hooks/useCompanies';
@@ -110,51 +111,6 @@ function CustomTooltip({ active, payload, label }: CustomTooltipProps) {
   );
 }
 
-// ── StatCard ──────────────────────────────────────────────────────────────────
-interface StatCardProps {
-  title: string;
-  value: string;
-  description: string;
-  icon: React.ElementType;
-  iconColor: string;
-  iconBg: string;
-  isLoading: boolean;
-  delta?: { current: number; previous: number; invert?: boolean };
-  children?: React.ReactNode;
-}
-
-function StatCard({ title, value, description, icon: Icon, iconColor, iconBg, isLoading, delta, children }: StatCardProps) {
-  const pct = delta && delta.previous > 0
-    ? ((delta.current - delta.previous) / delta.previous) * 100
-    : null;
-  const positive = pct !== null ? (delta?.invert ? pct <= 0 : pct >= 0) : null;
-
-  return (
-    <Card className="transition-shadow hover:shadow-md">
-      <CardHeader className="flex flex-row items-start justify-between pb-2 space-y-0">
-        <span className="text-sm font-medium text-muted-foreground">{title}</span>
-        <div className={`h-8 w-8 rounded-lg ${iconBg} flex items-center justify-center shrink-0`}>
-          <Icon className={`h-4 w-4 ${iconColor}`} />
-        </div>
-      </CardHeader>
-      <CardContent className="pt-0">
-        <div className="text-2xl font-bold font-mono tracking-tight tabular-nums">
-          {isLoading ? <span className="text-muted-foreground text-base animate-pulse font-sans">Carregando...</span> : value}
-        </div>
-        <div className="flex items-center gap-2 mt-1 flex-wrap">
-          <p className="text-xs text-muted-foreground">{description}</p>
-          {pct !== null && (
-            <div className={`flex items-center gap-0.5 text-xs font-medium ${positive ? 'text-emerald-500' : 'text-destructive'}`}>
-              {pct === 0 ? <Minus className="h-3 w-3" /> : positive ? <TrendingUp className="h-3 w-3" /> : <TrendingDown className="h-3 w-3" />}
-              <span>{pct > 0 ? '+' : ''}{pct.toFixed(1)}%</span>
-            </div>
-          )}
-        </div>
-        {children}
-      </CardContent>
-    </Card>
-  );
-}
 
 // ── EmptyState ────────────────────────────────────────────────────────────────
 // Primeira tela que um usuário novo vê após o login — por isso usa o mesmo
@@ -581,15 +537,15 @@ function UnifiedDashboardContent() {
       ) : (
         <>
           {/* Stats Cards */}
-          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+          <KpiRow>
             <StatCard title="Pedidos" value={stats.totalOrders.toString()} description="Concluídos no período"
-              icon={ShoppingCart} iconColor="text-blue-500" iconBg="bg-blue-500/10" isLoading={stats.isLoading}
+              icon={ShoppingCart} variant="brand" loading={stats.isLoading}
               delta={makeDelta(stats.totalOrders, prevStats?.pedidos)} />
             <StatCard title="Faturamento" value={formatCents((stats.grossRevenueCents ?? 0) as Cents)} description="Vendas concluídas no período"
-              icon={DollarSign} iconColor="text-emerald-500" iconBg="bg-emerald-500/10" isLoading={stats.isLoading}
+              icon={DollarSign} variant="success" loading={stats.isLoading}
               delta={makeDelta(stats.grossRevenue, prevStats?.faturamento)} />
             <StatCard title="Valor Líquido" value={formatCents((stats.netRevenueCents ?? 0) as Cents)} description="Repasses dos marketplaces"
-              icon={TrendingUp} iconColor="text-primary" iconBg="bg-primary/10" isLoading={stats.isLoading}
+              icon={TrendingUp} variant="brand" loading={stats.isLoading}
               delta={makeDelta(stats.netRevenue, prevStats?.valorLiquido)}
             >
               {!stats.isLoading && selectedCompany && selectedCompany.tax_rate > 0 && (
@@ -603,10 +559,10 @@ function UnifiedDashboardContent() {
               )}
             </StatCard>
             <StatCard title="Retido pelos marketplaces" value={formatCents((stats.feesCents ?? 0) as Cents)} description="Comissão, serviço, frete e descontos"
-              icon={Percent} iconColor="text-orange-500" iconBg="bg-orange-500/10" isLoading={stats.isLoading}
+              icon={Percent} variant="warning" loading={stats.isLoading}
               delta={makeDelta(stats.fees, prevStats ? prevStats.faturamento - prevStats.valorLiquido : undefined)
                 ? { ...makeDelta(stats.fees, prevStats ? prevStats.faturamento - prevStats.valorLiquido : undefined)!, invert: true } : undefined} />
-          </div>
+          </KpiRow>
 
           {/* Gráfico de área */}
           {revenueByDay.length > 0 && <RevenueAreaChart data={revenueByDay} />}

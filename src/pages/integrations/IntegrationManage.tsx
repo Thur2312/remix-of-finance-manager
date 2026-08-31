@@ -1,5 +1,6 @@
 import { useParams, useNavigate } from 'react-router-dom';
 import { PageShell } from '@/components/layout/PageShell';
+import { StatCard, KpiRow } from '@/components/ui/stat-card';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -195,28 +196,23 @@ export default function IntegrationManage() {
               </div>
             </div>
 
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-              {[
-                { label: 'Pedidos concluídos', value: syncLoading ? '...' : pedidos.toString(), icon: ShoppingCart, color: 'text-blue-500', bg: 'bg-blue-500/10' },
-                { label: 'Faturamento', value: syncLoading ? '...' : formatCurrency(totalRevenue), icon: DollarSign, color: 'text-emerald-500', bg: 'bg-emerald-500/10' },
-                { label: `Retido pela ${name}`, value: syncLoading ? '...' : formatCurrency(totalFees), icon: Package, color: 'text-orange-500', bg: 'bg-orange-500/10' },
-                { label: 'Valor Líquido', value: syncLoading ? '...' : formatCurrency(totalNet), icon: TrendingUp, color: 'text-primary', bg: 'bg-primary/10' },
-              ].map((stat) => (
-                <Card key={stat.label} className="hover:shadow-md transition-shadow">
-                  <CardContent className="pt-5 pb-5">
-                    <div className="flex items-center gap-3">
-                      <div className={`h-9 w-9 rounded-lg ${stat.bg} flex items-center justify-center shrink-0`}>
-                        <stat.icon className={`h-4 w-4 ${stat.color}`} />
-                      </div>
-                      <div>
-                        <p className="text-xs text-muted-foreground">{stat.label}</p>
-                        <p className="text-lg font-bold tabular-nums">{stat.value}</p>
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
+            <KpiRow>
+              {([
+                { label: 'Pedidos concluídos', value: pedidos.toString(), icon: ShoppingCart, variant: 'brand' },
+                { label: 'Faturamento', value: formatCurrency(totalRevenue), icon: DollarSign, variant: 'success' },
+                { label: `Retido pela ${name}`, value: formatCurrency(totalFees), icon: Package, variant: 'warning' },
+                { label: 'Valor Líquido', value: formatCurrency(totalNet), icon: TrendingUp, variant: 'brand' },
+              ] as const).map((stat) => (
+                <StatCard
+                  key={stat.label}
+                  title={stat.label}
+                  value={stat.value}
+                  icon={stat.icon}
+                  variant={stat.variant}
+                  loading={syncLoading}
+                />
               ))}
-            </div>
+            </KpiRow>
           </div>
 
           {/* Status dos Pedidos */}
