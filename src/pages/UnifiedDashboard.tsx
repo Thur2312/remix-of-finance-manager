@@ -593,7 +593,7 @@ function UnifiedDashboardContent() {
                   { mp: 'tiktok'       as Marketplace, label: 'TikTok Shop',   s: tiktok,       color: 'border-slate-400/40 bg-slate-500/5'    },
                   { mp: 'mercadolivre' as Marketplace, label: 'Mercado Livre', s: mercadolivre, color: 'border-yellow-400/40 bg-yellow-500/5'  },
                 ].map(({ mp, label, s, color }) => (
-                  <Card key={mp} className={`${color} cursor-pointer hover:shadow-md transition-shadow`} onClick={() => setMarketplace(mp)}>
+                  <Card key={mp} className={`${color} panel-interactive`} onClick={() => setMarketplace(mp)}>
                     <CardContent className="pt-5 pb-5">
                       <div className="flex items-center gap-2 mb-3">
                         <MarketplaceBadge mp={mp} />

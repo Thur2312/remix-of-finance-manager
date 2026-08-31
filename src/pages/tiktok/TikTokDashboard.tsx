@@ -191,7 +191,7 @@ export function TikTokDashboardContent() {
         <h3 className="text-lg font-semibold mb-4">Ações Rápidas</h3>
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
           {quickActions.map((action) => (
-            <Card key={action.title} className={`${CARD} group hover:border-primary transition-colors`}>
+            <Card key={action.title} className={`${CARD} panel-interactive group`}>
               <CardHeader>
                 <div className={`inline-flex h-12 w-12 items-center justify-center rounded-lg ${action.color} text-white mb-3`}>
                   <action.icon className="h-6 w-6" />

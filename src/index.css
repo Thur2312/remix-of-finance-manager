@@ -374,9 +374,13 @@ input[type="number"] {
   }
 
   /* Opt-in — só pra cards clicáveis/navegáveis (não todo .panel por padrão).
-     Hover-lift de -2px + sombra tingida; tap volta pra 0 (feedback de clique). */
+     Hover-lift de -2px + sombra tingida; tap volta pra 0 (feedback de clique).
+     Traz a própria `transition` pra funcionar mesmo sem `.panel` na classe. */
   .panel-interactive {
     cursor: pointer;
+    transition: box-shadow 180ms cubic-bezier(0.16, 1, 0.3, 1),
+      border-color 180ms cubic-bezier(0.16, 1, 0.3, 1),
+      transform 180ms cubic-bezier(0.16, 1, 0.3, 1);
   }
 
   .panel-interactive:hover {
