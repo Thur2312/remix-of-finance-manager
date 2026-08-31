@@ -20,8 +20,6 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { formatCurrency, formatPercent } from '@/lib/calculations';
-import { mercadolivreNavTabs } from '@/components/layout/InPageNav';
-import { PageShell } from '@/components/layout/PageShell';
 import { FiltersCard } from '@/components/layout/FiltersCard';
 import { EmptyResultsState } from '@/components/layout/EmptyResultsState';
 import { useMercadolivreData } from '@/hooks/useMercadolivreData';
@@ -30,7 +28,7 @@ import { useMercadolivreData } from '@/hooks/useMercadolivreData';
 // da landing, calibrada pra densidade (ver .panel em index.css).
 const CARD = 'panel bg-card border-transparent';
 
-function VariacoesContent() {
+export function VariacoesContent() {
   const { orders, stats, loading } = useMercadolivreData();
 
   // Group orders by produto + variação
@@ -273,10 +271,3 @@ function VariacoesContent() {
   );
 }
 
-export default function MercadoLivreVariacoes() {
-  return (
-    <PageShell tabs={mercadolivreNavTabs}>
-      <VariacoesContent />
-    </PageShell>
-  );
-}

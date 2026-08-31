@@ -21,8 +21,7 @@ import {
   AlertDialogTrigger,
 } from '@/components/ui/alert-dialog';
 import { z } from 'zod';
-import { shopeeNavTabs } from '@/components/layout/InPageNav';
-import { PageShell } from '@/components/layout/PageShell';
+import { PageHeader } from '@/components/layout/PageHeader';
 import { normalizeShopeeSettings, type SettingsData } from '@/lib/calculations';
 
 const settingsSchema = z.object({
@@ -300,18 +299,18 @@ function ConfiguracoesContent() {
   }
 
   return (
-    <PageShell
-      icon={Settings}
-      title="Configurações Financeiras"
-      subtitle="Defina os parâmetros de cálculo para suas vendas na Shopee"
-      action={
-        <Button onClick={handleNewSettings}>
-          <Plus className="h-4 w-4 mr-2" />
-          Nova Configuração
-        </Button>
-      }
-      tabs={shopeeNavTabs}
-    >
+    <div className="space-y-6">
+      <PageHeader
+        icon={Settings}
+        title="Configurações Financeiras"
+        subtitle="Defina os parâmetros de cálculo para suas vendas na Shopee"
+        action={
+          <Button onClick={handleNewSettings}>
+            <Plus className="h-4 w-4 mr-2" />
+            Nova Configuração
+          </Button>
+        }
+      />
       <div className="grid gap-6 lg:grid-cols-4">
         {/* Settings List */}
         <Card className="lg:col-span-1">
@@ -608,8 +607,8 @@ function ConfiguracoesContent() {
           </CardContent>
         </Card>
       </div>
-    </PageShell>
+    </div>
   );
 }
 
-export default ConfiguracoesContent;
+export { ConfiguracoesContent };

@@ -22,8 +22,7 @@ import {
 } from '@/components/ui/alert-dialog';
 import { z } from 'zod';
 import { TikTokSettingsData, normalizeTikTokSettings } from '@/lib/tiktok-calculations';
-import { tiktokNavTabs } from '@/components/layout/InPageNav';
-import { PageShell } from '@/components/layout/PageShell';
+import { PageHeader } from '@/components/layout/PageHeader';
 
 const settingsSchema = z.object({
   name: z.string().min(1, 'Nome é obrigatório').max(100, 'Nome muito longo'),
@@ -305,18 +304,18 @@ function TikTokConfiguracoesContent() {
   }
 
   return (
-    <PageShell
-      icon={Settings}
-      title="Configurações TikTok Shop"
-      subtitle="Defina os parâmetros de cálculo para suas vendas no TikTok Shop"
-      action={
-        <Button onClick={handleNewSettings}>
-          <Plus className="h-4 w-4 mr-2" />
-          Nova Configuração
-        </Button>
-      }
-      tabs={tiktokNavTabs}
-    >
+    <div className="space-y-6">
+      <PageHeader
+        icon={Settings}
+        title="Configurações TikTok Shop"
+        subtitle="Defina os parâmetros de cálculo para suas vendas no TikTok Shop"
+        action={
+          <Button onClick={handleNewSettings}>
+            <Plus className="h-4 w-4 mr-2" />
+            Nova Configuração
+          </Button>
+        }
+      />
       <div className="grid gap-6 lg:grid-cols-4">
         <Card className="lg:col-span-1">
           <CardHeader className="pb-3">
@@ -610,8 +609,8 @@ function TikTokConfiguracoesContent() {
           </CardContent>
         </Card>
       </div>
-    </PageShell>
+    </div>
   );
 }
 
-export default TikTokConfiguracoesContent;
+export { TikTokConfiguracoesContent };

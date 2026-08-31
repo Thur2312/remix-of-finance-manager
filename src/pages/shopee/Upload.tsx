@@ -44,8 +44,6 @@ import {
 } from '@/components/ui/alert-dialog';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
-import { shopeeNavTabs } from '@/components/layout/InPageNav';
-import { PageShell } from '@/components/layout/PageShell';
 import { ExportSection } from '@/components/shopee/ExportSection';
 import { isExcludedOrderStatus, EXCLUDED_STATUS_DESCRIPTION } from '@/lib/marketplace-order-status';
 
@@ -92,7 +90,7 @@ const defaultMapping: ColumnMapping = {
 
 const requiredFields: (keyof ColumnMapping)[] = ['order_id', 'nome_produto', 'quantidade', 'total_faturado'];
 
-function UploadContent() {
+export function UploadContent() {
   const { user } = useAuth();
   const [isDragActive, setIsDragActive] = useState(false);
   const [file, setFile] = useState<File | null>(null);
@@ -648,15 +646,7 @@ function UploadContent() {
       {step === 'mapping' && renderMappingStep()}
       {step === 'preview' && renderPreviewStep()}
       {step === 'success' && renderSuccessStep()}
-    </div>
-  );
-}
-
-export default function Upload() {
-  return (
-    <PageShell tabs={shopeeNavTabs} className="space-y-6">
-      <UploadContent />
       <ExportSection />
-    </PageShell>
+    </div>
   );
 }

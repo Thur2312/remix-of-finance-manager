@@ -33,7 +33,7 @@ export default function IntegrationCallback() {
       // Antes voltava pra /integrations — a pessoa conectava a loja e caía numa
       // lista sem próximo passo visível. Agora leva direto pra Gestão já na aba
       // do marketplace recém-conectado, onde a sincronização aparece.
-      const destination = connected in names ? `/gestao?mp=${connected}` : '/integrations';
+      const destination = connected in names ? `/gestao/${connected}/dashboard` : '/integrations';
       navigate(destination, { replace: true });
       return;
     }

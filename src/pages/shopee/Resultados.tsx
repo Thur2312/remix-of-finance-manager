@@ -44,8 +44,6 @@ import {
 } from '@/lib/calculations';
 import { ResultsCharts } from '@/components/charts/ResultsCharts';
 import { EditableCostCell } from '@/components/EditableCostCell';
-import { shopeeNavTabs } from '@/components/layout/InPageNav';
-import { PageShell } from '@/components/layout/PageShell';
 import { FiltersCard } from '@/components/layout/FiltersCard';
 import { EmptyResultsState } from '@/components/layout/EmptyResultsState';
 
@@ -53,7 +51,7 @@ import { EmptyResultsState } from '@/components/layout/EmptyResultsState';
 // da landing, calibrada pra densidade (ver .panel em index.css).
 const CARD = 'panel bg-card border-transparent';
 
-function ResultadosContent() {
+export function ResultadosContent() {
   const { user } = useAuth();
   const [isSettingsLoaded, setIsSettingsLoaded] = useState(false);
   const [isOrdersLoading, setIsOrdersLoading] = useState(false);
@@ -725,13 +723,5 @@ function ResultadosContent() {
       )}
       {renderResultsTable()}
     </div>
-  );
-}
-
-export default function Resultados() {
-  return (
-    <PageShell tabs={shopeeNavTabs}>
-      <ResultadosContent />
-    </PageShell>
   );
 }

@@ -23,8 +23,6 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { formatCurrency } from '@/lib/calculations';
-import { mercadolivreNavTabs } from '@/components/layout/InPageNav';
-import { PageShell } from '@/components/layout/PageShell';
 import { FiltersCard } from '@/components/layout/FiltersCard';
 import { EmptyResultsState } from '@/components/layout/EmptyResultsState';
 import { useMercadolivreData } from '@/hooks/useMercadolivreData';
@@ -78,7 +76,7 @@ function getStatusInfo(status: PaymentStatus) {
   }
 }
 
-function PagamentosContent() {
+export function PagamentosContent() {
   const { orders, stats, loading } = useMercadolivreData();
 
   // Aggregate payment summary by status
@@ -361,10 +359,3 @@ function PagamentosContent() {
   );
 }
 
-export default function MercadoLivrePagamentos() {
-  return (
-    <PageShell tabs={mercadolivreNavTabs}>
-      <PagamentosContent />
-    </PageShell>
-  );
-}

@@ -10,7 +10,6 @@ import {
 } from 'lucide-react';
 import { CompanySelector } from '@/components/dashboard/CompanySelector';
 import { OnboardingChecklist } from '@/components/dashboard/OnboardingChecklist';
-import { PageShell } from '@/components/layout/PageShell';
 import { TaxSummaryRow } from '@/hooks/useIntegrationTax';
 import { Company } from '@/hooks/useCompanies';
 import { useMercadolivreData } from '@/hooks/useMercadolivreData';
@@ -136,10 +135,10 @@ export function MercadolivreDashboardContent() {
   ];
 
   return (
-    <PageShell className="space-y-8">
+    <div className="space-y-8">
 
-      {/* Título/subtítulo já vêm do topbar (AppLayout, via Gestao.tsx) — não
-         repetir aqui. Só o seletor de empresa, que é funcional. */}
+      {/* O título vem do breadcrumb / da casca de Gestão. Só o seletor de
+         empresa aqui. */}
       <div className="flex items-center justify-end">
         <CompanySelector selectedCompany={selectedCompany} onSelect={setSelectedCompany} />
       </div>
@@ -333,7 +332,7 @@ export function MercadolivreDashboardContent() {
           ]}
         />
       )}
-    </PageShell>
+    </div>
   );
 }
 

@@ -36,35 +36,11 @@ export function InPageNav({ tabs }: InPageNavProps) {
   );
 }
 
-// Nav configurations
-export const shopeeNavTabs: NavTab[] = [
-  {label : 'Dashboard', href: '/shopee/dashboard' },
-  { label: 'Resultados', href: '/shopee/resultados' },
-  { label: 'Variações', href: '/shopee/variacoes' },
-  { label: 'Upload', href: '/shopee/upload' },
-  { label: 'Configurações', href: '/shopee/configuracoes' },
-];
-
-export const tiktokNavTabs: NavTab[] = [
-  { label: 'Dashboard', href: '/tiktok/dashboard' },
-  { label: 'Resultados', href: '/tiktok/resultados' },
-  { label: 'Variações', href: '/tiktok/variacoes' },
-  { label: 'Upload', href: '/tiktok/upload' },
-  { label: 'Pagamentos', href: '/tiktok/pagamentos' },
-  { label: 'Upload Pgtos', href: '/tiktok/pagamentos/upload' },
-  { label: 'Configurações', href: '/tiktok/configuracoes' },
-];
-
+// As abas de marketplace agora vivem no modelo da casca de Gestão
+// (src/pages/gestao/marketplaceViews.tsx). Aqui fica só o Fluxo de Caixa,
+// que passa `fluxoCaixaNavTabs` pro <PageShell tabs={...}>.
 export const fluxoCaixaNavTabs: NavTab[] = [
   { label: 'Dashboard', href: '/fluxo-caixa' },
   { label: 'Lançamentos', href: '/fluxo-caixa/lancamentos' },
   { label: 'Categorias', href: '/fluxo-caixa/categorias' },
-];
-
-export const mercadolivreNavTabs: NavTab[] = [
-  { label: 'Dashboard',     href: '/gestao' },
-  { label: 'Resultados',    href: '/mercadolivre/resultados' },
-  { label: 'Variações',     href: '/mercadolivre/variacoes' },
-  { label: 'Pagamentos',    href: '/mercadolivre/pagamentos' },
-  { label: 'Configurações', href: '/mercadolivre/configuracoes' },
 ];

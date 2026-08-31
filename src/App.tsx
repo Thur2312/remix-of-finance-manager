@@ -26,25 +26,8 @@ const IntegrationsOverview      = lazy(() => import("./pages/integrations/Integr
 const IntegrationManage         = lazy(() => import("./pages/integrations/IntegrationManage"));
 
 const UnifiedDashboard          = lazy(() => import("./pages/UnifiedDashboard"));
-const Gestao                    = lazy(() => import("./pages/Gestao"));
+const GestaoShell               = lazy(() => import("./pages/gestao/GestaoShell"));
 const Vendas                    = lazy(() => import("./pages/Vendas"));
-
-const Configuracoes             = lazy(() => import("./pages/shopee/Configuracoes"));
-const Upload                    = lazy(() => import("./pages/shopee/Upload"));
-const Resultados                = lazy(() => import("./pages/shopee/Resultados"));
-const ResultadosVariacoes       = lazy(() => import("./pages/shopee/ResultadosVariacoes"));
-
-const TikTokConfiguracoes       = lazy(() => import("./pages/tiktok/TikTokConfiguracoes"));
-const TikTokUpload              = lazy(() => import("./pages/tiktok/TikTokUpload"));
-const TikTokResultados          = lazy(() => import("./pages/tiktok/TikTokResultados"));
-const TikTokVariacoes           = lazy(() => import("./pages/tiktok/TikTokVariacoes"));
-const TikTokPagamentos          = lazy(() => import("./pages/tiktok/TikTokPagamentos"));
-const TikTokPagamentosUpload    = lazy(() => import("./pages/tiktok/TikTokPagamentosUpload"));
-
-const MercadoLivreResultados    = lazy(() => import("@/pages/mercadolivre/resultados"));
-const MercadoLivreVariacoes     = lazy(() => import("@/pages/mercadolivre/variacoes"));
-const MercadoLivrePagamentos    = lazy(() => import("@/pages/mercadolivre/pagamentos"));
-const MercadoLivreConfiguracoes = lazy(() => import("@/pages/mercadolivre/configuracoes"));
 
 const CalculadoraPrecificacao   = lazy(() => import("./pages/CalculadoraPrecificacao"));
 const CadastroCustos            = lazy(() => import("./pages/precificacao/CadastroCustos"));
@@ -55,6 +38,26 @@ const AssistenteAnuncio         = lazy(() => import("./pages/AssistenteAnuncio")
 const DRE                       = lazy(() => import("./pages/DRE"));
 const Perfil                    = lazy(() => import("./pages/Perfil"));
 const NotificacoesAdmin         = lazy(() => import("./pages/admin/Notificacoes"));
+
+// Rotas antigas por marketplace → nova casca /gestao/:marketplace/:view.
+const LEGACY_GESTAO_REDIRECTS: [string, string][] = [
+  ['/shopee/dashboard', '/gestao/shopee/dashboard'],
+  ['/shopee/resultados', '/gestao/shopee/resultados'],
+  ['/shopee/variacoes', '/gestao/shopee/variacoes'],
+  ['/shopee/upload', '/gestao/shopee/upload'],
+  ['/shopee/configuracoes', '/gestao/shopee/configuracoes'],
+  ['/tiktok/dashboard', '/gestao/tiktok/dashboard'],
+  ['/tiktok/resultados', '/gestao/tiktok/resultados'],
+  ['/tiktok/variacoes', '/gestao/tiktok/variacoes'],
+  ['/tiktok/upload', '/gestao/tiktok/upload'],
+  ['/tiktok/pagamentos', '/gestao/tiktok/pagamentos'],
+  ['/tiktok/pagamentos/upload', '/gestao/tiktok/pagamentos-upload'],
+  ['/tiktok/configuracoes', '/gestao/tiktok/configuracoes'],
+  ['/mercadolivre/resultados', '/gestao/mercadolivre/resultados'],
+  ['/mercadolivre/variacoes', '/gestao/mercadolivre/variacoes'],
+  ['/mercadolivre/pagamentos', '/gestao/mercadolivre/pagamentos'],
+  ['/mercadolivre/configuracoes', '/gestao/mercadolivre/configuracoes'],
+];
 
 const App = () => {
   return (
@@ -83,27 +86,16 @@ const App = () => {
                  rota abaixo troca ao navegar. ── */}
               <Route element={<InternalLayout />}>
                 <Route path="/dashboard" element={<UnifiedDashboard />} />
-                <Route path="/gestao" element={<Gestao />} />
                 <Route path="/vendas" element={<Vendas />} />
 
-                <Route path="/mercadolivre/resultados" element={<MercadoLivreResultados />} />
-                <Route path="/mercadolivre/variacoes" element={<MercadoLivreVariacoes />} />
-                <Route path="/mercadolivre/pagamentos" element={<MercadoLivrePagamentos />} />
-                <Route path="/mercadolivre/configuracoes" element={<MercadoLivreConfiguracoes />} />
-
-                <Route path="/shopee/dashboard" element={<Navigate to="/gestao" replace />} />
-                <Route path="/shopee/configuracoes" element={<Configuracoes />} />
-                <Route path="/shopee/upload" element={<Upload />} />
-                <Route path="/shopee/resultados" element={<Resultados />} />
-                <Route path="/shopee/variacoes" element={<ResultadosVariacoes />} />
-
-                <Route path="/tiktok/dashboard" element={<Navigate to="/gestao" replace />} />
-                <Route path="/tiktok/configuracoes" element={<TikTokConfiguracoes />} />
-                <Route path="/tiktok/upload" element={<TikTokUpload />} />
-                <Route path="/tiktok/resultados" element={<TikTokResultados />} />
-                <Route path="/tiktok/variacoes" element={<TikTokVariacoes />} />
-                <Route path="/tiktok/pagamentos" element={<TikTokPagamentos />} />
-                <Route path="/tiktok/pagamentos/upload" element={<TikTokPagamentosUpload />} />
+                {/* Gestão: casca única marketplace × view */}
+                <Route path="/gestao" element={<Navigate to="/gestao/shopee/dashboard" replace />} />
+                <Route path="/gestao/:marketplace" element={<GestaoShell />} />
+                <Route path="/gestao/:marketplace/:view" element={<GestaoShell />} />
+                {/* Redirects de bookmark das rotas antigas por marketplace */}
+                {LEGACY_GESTAO_REDIRECTS.map(([from, to]) => (
+                  <Route key={from} path={from} element={<Navigate to={to} replace />} />
+                ))}
 
                 <Route path="/calculadora" element={<CalculadoraPrecificacao />} />
                 <Route path="/precificacao/custos" element={<CadastroCustos />} />

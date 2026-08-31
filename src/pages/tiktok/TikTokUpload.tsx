@@ -25,10 +25,8 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { parseTikTokCSVRow, ParsedTikTokRow, excludedStatusesDescription } from '@/lib/tiktok-helpers';
-import { tiktokNavTabs } from '@/components/layout/InPageNav';
-import { PageShell } from '@/components/layout/PageShell';
 
-function TikTokUploadContent() {
+export function TikTokUploadContent() {
   const { user } = useAuth();
   const [isDragActive, setIsDragActive] = useState(false);
   const [file, setFile] = useState<File | null>(null);
@@ -437,10 +435,3 @@ function TikTokUploadContent() {
   );
 }
 
-export default function TikTokUpload() {
-  return (
-    <PageShell tabs={tiktokNavTabs}>
-      <TikTokUploadContent />
-    </PageShell>
-  );
-}

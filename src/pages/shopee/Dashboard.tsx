@@ -11,7 +11,6 @@ import {
   CheckCircle2, Clock, XCircle, HelpCircle,
 } from 'lucide-react';
 import { DashboardCharts } from '@/components/charts/DashboardCharts';
-import { PageShell } from '@/components/layout/PageShell';
 import { TopVariationsSection } from '@/components/charts/TopVariationsSection';
 import { OnboardingChecklist } from '@/components/dashboard/OnboardingChecklist';
 import { supabase } from '@/integrations/supabase/client';
@@ -257,11 +256,10 @@ export function ShopeeDashboardContent() {
   ];
 
   return (
-    <PageShell className="space-y-8">
+    <div className="space-y-8">
 
-      {/* Título/subtítulo já vêm do topbar (AppLayout, via Gestao.tsx) — não
-         repetir aqui. Seletor de loja só aparece com 2+ lojas Shopee
-         conectadas — não faz sentido escolher entre 1 opção só. */}
+      {/* O título vem do breadcrumb / da casca de Gestão. Seletor de loja só
+         aparece com 2+ lojas Shopee conectadas. */}
       <div className="flex items-center justify-end gap-2">
         {shopeeConnections.length > 1 && (
           <Select value={shopeeConnection?.id} onValueChange={setActiveConnectionId}>
@@ -559,7 +557,7 @@ export function ShopeeDashboardContent() {
           ]}
         />
       )}
-    </PageShell>
+    </div>
   );
 }
 

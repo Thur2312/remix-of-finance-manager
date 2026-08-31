@@ -29,8 +29,6 @@ import { TikTokSettingsData, TikTokOrder, calculateTikTokResults, formatCurrency
 import { fetchAllTikTokOrders } from '@/lib/tiktok-helpers';
 import { EditableCostCell } from '@/components/EditableCostCell';
 import { ResultsCharts } from '@/components/charts/ResultsCharts';
-import { tiktokNavTabs } from '@/components/layout/InPageNav';
-import { PageShell } from '@/components/layout/PageShell';
 import { FiltersCard } from '@/components/layout/FiltersCard';
 import { EmptyResultsState } from '@/components/layout/EmptyResultsState';
 
@@ -38,7 +36,7 @@ import { EmptyResultsState } from '@/components/layout/EmptyResultsState';
 // da landing, calibrada pra densidade (ver .panel em index.css).
 const CARD = 'panel bg-card border-transparent';
 
-function TikTokResultadosContent() {
+export function TikTokResultadosContent() {
   const { user } = useAuth();
   const [isSettingsLoaded, setIsSettingsLoaded] = useState(false);
   const [isOrdersLoading, setIsOrdersLoading] = useState(false);
@@ -664,10 +662,3 @@ function TikTokResultadosContent() {
   );
 }
 
-export default function TikTokResultados() {
-  return (
-    <PageShell tabs={tiktokNavTabs}>
-      <TikTokResultadosContent />
-    </PageShell>
-  );
-}

@@ -10,7 +10,7 @@ import { useSaleEventsUnseenCount } from '@/hooks/useSaleEvents';
 import logo from '@/assets/logo-new.svg';
 import { useNavigate } from 'react-router-dom';
 import { PlanCard } from '@/components/PlanCard';
-import { sidebarGroups, adminItem, contaItems, sectionRoutes, type NavItem } from './navModel';
+import { sidebarGroups, adminItem, contaItems, isSectionActive, type NavItem } from './navModel';
 
 // Marca só-ícone pro modo colapsado — as 3 formas do símbolo do logo,
 // extraídas do SVG do wordmark. Assim a sidebar estreita mostra um ícone
@@ -63,16 +63,7 @@ export function AppSidebar() {
     });
   }, []);
 
-  const isItemActive = (url: string) => {
-    // /integrations/:provider é dinâmica (shopee/tiktok/mercadolivre) — uma
-    // lista fixa de strings sempre ficava desatualizada (faltava
-    // mercadolivre, e "/integrations/callback" sem :provider nunca batia
-    // com a rota real "/integrations/callback/:provider").
-    if (url === '/integrations') return location.pathname.startsWith('/integrations');
-    const routes = sectionRoutes[url];
-    if (routes) return routes.includes(location.pathname);
-    return location.pathname === url;
-  };
+  const isItemActive = (url: string) => isSectionActive(url, location.pathname);
 
   // Ao navegar, abre o grupo do item ativo (pra nunca perder de vista onde
   // você está); não fecha os outros.

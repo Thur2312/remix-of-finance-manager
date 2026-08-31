@@ -65,15 +65,19 @@ export const contaItems: NavItem[] = [
   { title: 'Perfil', url: '/perfil', icon: User },
 ];
 
-// Rotas que pertencem a cada seção (para highlight ativo na sidebar e para o
-// breadcrumb saber qual item da nav é o "pai" de uma subpágina).
+// Subpáginas exatas que pertencem a um item da nav (highlight ativo na
+// sidebar + "pai" no breadcrumb). `/gestao` é tratado por prefixo
+// (startsWith) porque virou `/gestao/:marketplace/:view` — ver isSectionActive.
 export const sectionRoutes: Record<string, string[]> = {
   '/dashboard': ['/dashboard'],
-  '/gestao': [
-    '/gestao',
-    '/shopee/dashboard', '/shopee/resultados', '/shopee/variacoes', '/shopee/upload', '/shopee/configuracoes',
-    '/tiktok/dashboard', '/tiktok/resultados', '/tiktok/variacoes', '/tiktok/upload', '/tiktok/pagamentos', '/tiktok/pagamentos/upload', '/tiktok/configuracoes',
-    '/mercadolivre/resultados', '/mercadolivre/variacoes', '/mercadolivre/pagamentos', '/mercadolivre/configuracoes',
-  ],
   '/fluxo-caixa': ['/fluxo-caixa', '/fluxo-caixa/lancamentos', '/fluxo-caixa/categorias'],
 };
+
+// Itens da nav cujo "estar ativo" é por prefixo de rota, não por lista fixa.
+export const PREFIX_MATCH_ITEMS = ['/gestao', '/integrations'];
+
+export function isSectionActive(itemUrl: string, pathname: string): boolean {
+  if (PREFIX_MATCH_ITEMS.includes(itemUrl)) return pathname.startsWith(itemUrl);
+  if (itemUrl === pathname) return true;
+  return sectionRoutes[itemUrl]?.includes(pathname) ?? false;
+}

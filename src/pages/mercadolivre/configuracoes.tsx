@@ -21,8 +21,7 @@ import {
   AlertDialogTrigger,
 } from '@/components/ui/alert-dialog';
 import { z } from 'zod';
-import { mercadolivreNavTabs } from '@/components/layout/InPageNav';
-import { PageShell } from '@/components/layout/PageShell';
+import { PageHeader } from '@/components/layout/PageHeader';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 interface MLSettingsData {
@@ -304,18 +303,18 @@ function ConfiguracoesContent() {
 
   // ── Render ────────────────────────────────────────────────────────────────
   return (
-    <PageShell
-      icon={Settings}
-      title="Configurações Financeiras"
-      subtitle="Defina os parâmetros de cálculo para suas vendas no Mercado Livre"
-      action={
-        <Button onClick={handleNewSettings}>
-          <Plus className="h-4 w-4 mr-2" />
-          Nova Configuração
-        </Button>
-      }
-      tabs={mercadolivreNavTabs}
-    >
+    <div className="space-y-6">
+      <PageHeader
+        icon={Settings}
+        title="Configurações Financeiras"
+        subtitle="Defina os parâmetros de cálculo para suas vendas no Mercado Livre"
+        action={
+          <Button onClick={handleNewSettings}>
+            <Plus className="h-4 w-4 mr-2" />
+            Nova Configuração
+          </Button>
+        }
+      />
       <div className="grid gap-6 lg:grid-cols-4">
         {/* Settings List */}
         <Card className="lg:col-span-1">
@@ -522,8 +521,8 @@ function ConfiguracoesContent() {
           </CardContent>
         </Card>
       </div>
-    </PageShell>
+    </div>
   );
 }
 
-export default ConfiguracoesContent;
+export { ConfiguracoesContent };

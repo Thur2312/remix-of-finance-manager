@@ -1,9 +1,10 @@
 import { Fragment } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { ChevronRight } from 'lucide-react';
-import { sidebarGroups, adminItem, contaItems, sectionRoutes } from './navModel';
-import { shopeeNavTabs, tiktokNavTabs, fluxoCaixaNavTabs, mercadolivreNavTabs } from './InPageNav';
+import { sidebarGroups, adminItem, contaItems, isSectionActive } from './navModel';
+import { fluxoCaixaNavTabs } from './InPageNav';
 import { getPageTitle } from './pageTitles';
+import { MARKETPLACES, isMarketplace, viewLabel } from '@/pages/gestao/marketplaceViews';
 
 export interface Crumb {
   label: string;
@@ -18,22 +19,10 @@ const GROUPS = [
   { label: 'Admin', items: [adminItem] },
 ];
 
-const ALL_TABS = [...shopeeNavTabs, ...tiktokNavTabs, ...fluxoCaixaNavTabs, ...mercadolivreNavTabs];
-
-const MARKETPLACE_NAMES: Record<string, string> = {
-  shopee: 'Shopee',
-  tiktok: 'TikTok',
-  mercadolivre: 'Mercado Livre',
-};
-
 function findItem(pathname: string) {
   for (const group of GROUPS) {
     for (const item of group.items) {
-      if (item.url === pathname) return { group: group.label, item };
-      if (item.url === '/integrations' && pathname.startsWith('/integrations')) {
-        return { group: group.label, item };
-      }
-      if (sectionRoutes[item.url]?.includes(pathname)) return { group: group.label, item };
+      if (isSectionActive(item.url, pathname)) return { group: group.label, item };
     }
   }
   return null;
@@ -42,6 +31,18 @@ function findItem(pathname: string) {
 // Deriva "Grupo › Item (› subpágina)" a partir da rota, usando o mesmo modelo
 // de navegação da sidebar. Substituiu o título solto do topbar.
 function getBreadcrumbs(pathname: string): Crumb[] {
+  // Gestão: /gestao/:marketplace/:view → "Dia a Dia › Gestão › Shopee · Resultados"
+  const gestao = pathname.match(/^\/gestao\/([^/]+)(?:\/([^/]+))?/);
+  if (gestao && isMarketplace(gestao[1])) {
+    const [, mp, view] = gestao;
+    const leaf = view ? viewLabel(mp, view) : undefined;
+    return [
+      { label: 'Dia a Dia' },
+      { label: 'Gestão', href: `/gestao/${mp}/dashboard` },
+      { label: leaf ? `${MARKETPLACES[mp].label} · ${leaf}` : MARKETPLACES[mp].label },
+    ];
+  }
+
   const found = findItem(pathname);
   if (!found) {
     const title = getPageTitle(pathname);
@@ -55,11 +56,8 @@ function getBreadcrumbs(pathname: string): Crumb[] {
   ];
 
   if (!onItemPage) {
-    const tab = ALL_TABS.find((t) => t.href === pathname);
-    const mp = pathname.match(/^\/(shopee|tiktok|mercadolivre)\//)?.[1];
-    if (tab) {
-      crumbs.push({ label: mp ? `${MARKETPLACE_NAMES[mp]} · ${tab.label}` : tab.label });
-    }
+    const tab = fluxoCaixaNavTabs.find((t) => t.href === pathname);
+    if (tab) crumbs.push({ label: tab.label });
   }
 
   return crumbs;

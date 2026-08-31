@@ -46,8 +46,6 @@ import { fetchAllTikTokSettlements, fetchAllTikTokStatements, fetchTikTokOrdersC
 import { SettlementDetailModal } from '@/components/tiktok/SettlementDetailModal';
 import { PaymentCharts } from '@/components/tiktok/PaymentCharts';
 import { FeatureGate } from '@/components/FeatureGate';
-import { tiktokNavTabs } from '@/components/layout/InPageNav';
-import { PageShell } from '@/components/layout/PageShell';
 
 // Superfície de cartão da área interna — mesma família visual do .glass-card
 // da landing, calibrada pra densidade (ver .panel em index.css).
@@ -325,88 +323,74 @@ function TikTokPagamentosContent() {
 
   if (loading) {
     return (
-      <PageShell title="Pagamentos TikTok Shop" tabs={tiktokNavTabs}>
-        <motion.div
-          className="space-y-6"
-          initial="hidden"
-          animate="visible"
-          variants={staggerContainer}
-        >
-          <motion.div variants={fadeInUp}>
-            <Skeleton className="h-8 w-64" />
-          </motion.div>
-          <motion.div variants={fadeInUp}>
-            <div className="grid gap-4 md:grid-cols-3 lg:grid-cols-6">
-              {[...Array(6)].map((_, i) => (
-                <Skeleton key={i} className="h-24" />
-              ))}
-            </div>
-          </motion.div>
-          <motion.div variants={fadeInUp}>
-            <Skeleton className="h-96" />
-          </motion.div>
+      <motion.div
+        className="space-y-6"
+        initial="hidden"
+        animate="visible"
+        variants={staggerContainer}
+      >
+        <motion.div variants={fadeInUp}>
+          <Skeleton className="h-8 w-64" />
         </motion.div>
-      </PageShell>
+        <motion.div variants={fadeInUp}>
+          <div className="grid gap-4 md:grid-cols-3 lg:grid-cols-6">
+            {[...Array(6)].map((_, i) => (
+              <Skeleton key={i} className="h-24" />
+            ))}
+          </div>
+        </motion.div>
+        <motion.div variants={fadeInUp}>
+          <Skeleton className="h-96" />
+        </motion.div>
+      </motion.div>
     );
   }
 
   if (settlements.length === 0 && statements.length === 0) {
     return (
-      <PageShell
-        title="Pagamentos TikTok Shop"
-        subtitle="Visualize o detalhamento completo de recebimentos do TikTok Shop"
-        tabs={tiktokNavTabs}
-      >
-        <motion.div
-          className="space-y-6"
-          initial="hidden"
-          animate="visible"
-          variants={staggerContainer}
-        >
-          <motion.div variants={fadeInUp}>
-            <Card className={CARD}>
-              <CardContent className="flex flex-col items-center justify-center py-16">
-                <FileSpreadsheet className="h-16 w-16 text-muted-foreground mb-4" />
-                <h3 className="font-semibold text-lg text-foreground">Nenhum pagamento importado</h3>
-                <p className="text-muted-foreground mb-6 text-center max-w-md">
-                  Importe o relatório de pagamentos (Income) do TikTok Shop para visualizar o detalhamento completo de recebimentos por pedido
-                </p>
-                <Button asChild>
-                  <Link to="/tiktok/pagamentos/upload">
-                    <Upload className="h-4 w-4 mr-2" />
-                    Importar Pagamentos
-                  </Link>
-                </Button>
-              </CardContent>
-            </Card>
-          </motion.div>
+      <motion.div initial="hidden" animate="visible" variants={staggerContainer}>
+        <motion.div variants={fadeInUp}>
+          <Card className={CARD}>
+            <CardContent className="flex flex-col items-center justify-center py-16">
+              <FileSpreadsheet className="h-16 w-16 text-muted-foreground mb-4" />
+              <h3 className="font-semibold text-lg text-foreground">Nenhum pagamento importado</h3>
+              <p className="text-muted-foreground mb-6 text-center max-w-md">
+                Importe o relatório de pagamentos (Income) do TikTok Shop para visualizar o detalhamento completo de recebimentos por pedido
+              </p>
+              <Button asChild>
+                <Link to="/gestao/tiktok/pagamentos-upload">
+                  <Upload className="h-4 w-4 mr-2" />
+                  Importar Pagamentos
+                </Link>
+              </Button>
+            </CardContent>
+          </Card>
         </motion.div>
-      </PageShell>
+      </motion.div>
     );
   }
 
   const totalDiscounts = summary.totalSellerDiscounts + summary.totalPlatformDiscounts;
 
   return (
-    <PageShell
-      title="Pagamentos TikTok Shop"
-      subtitle={`${summary.recordCount} registros • ${summary.orderCount} vendas • ${summary.refundCount} reembolsos`}
-      action={
-          <div className="flex gap-2">
-            <Button variant="outline" onClick={exportToCSV}>
-              <Download className="h-4 w-4 mr-2" />
-              Exportar CSV
-            </Button>
-            <Button asChild>
-              <Link to="/tiktok/pagamentos/upload">
-                <Upload className="h-4 w-4 mr-2" />
-                Importar
-              </Link>
-            </Button>
-          </div>
-      }
-      tabs={tiktokNavTabs}
-    >
+    <div className="space-y-6">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <p className="text-sm text-muted-foreground">
+          {`${summary.recordCount} registros • ${summary.orderCount} vendas • ${summary.refundCount} reembolsos`}
+        </p>
+        <div className="flex gap-2">
+          <Button variant="outline" onClick={exportToCSV}>
+            <Download className="h-4 w-4 mr-2" />
+            Exportar CSV
+          </Button>
+          <Button asChild>
+            <Link to="/gestao/tiktok/pagamentos-upload">
+              <Upload className="h-4 w-4 mr-2" />
+              Importar
+            </Link>
+          </Button>
+        </div>
+      </div>
       <motion.div
         className="space-y-6"
         initial="hidden"
@@ -811,8 +795,8 @@ function TikTokPagamentosContent() {
           onOpenChange={setModalOpen}
         />
       </motion.div>
-    </PageShell>
+    </div>
   );
 }
 
-export default TikTokPagamentosContent;
+export { TikTokPagamentosContent };

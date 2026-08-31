@@ -32,8 +32,6 @@ import {
   formatCurrency,
   formatPercent,
 } from '@/lib/calculations';
-import { mercadolivreNavTabs } from '@/components/layout/InPageNav';
-import { PageShell } from '@/components/layout/PageShell';
 import { FiltersCard } from '@/components/layout/FiltersCard';
 import { EmptyResultsState } from '@/components/layout/EmptyResultsState';
 import { useMercadolivreData } from '@/hooks/useMercadolivreData';
@@ -42,7 +40,7 @@ import { useMercadolivreData } from '@/hooks/useMercadolivreData';
 // da landing, calibrada pra densidade (ver .panel em index.css).
 const CARD = 'panel bg-card border-transparent';
 
-function ResultadosContent() {
+export function ResultadosContent() {
   const { user } = useAuth();
   const { orders, stats, loading } = useMercadolivreData();
 
@@ -359,10 +357,3 @@ function ResultadosContent() {
   );
 }
 
-export default function MercadoLivreResultados() {
-  return (
-    <PageShell tabs={mercadolivreNavTabs}>
-      <ResultadosContent />
-    </PageShell>
-  );
-}
