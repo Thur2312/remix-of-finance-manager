@@ -152,13 +152,16 @@ da Faixa C satisfeito.
   (Space Grotesk fica landing/auth). PageHeader título → `font-semibold
   text-[1.65rem] leading-tight`.
 - [x] **4. `.app-card` → `.panel`** (`5d74552`) — 15 páginas + aliases fora do CSS.
-- [~] **5. `<Money>` + Space Mono** — **5a FEITO** (`14c4eb7`):
-  `src/components/ui/money.tsx` (props `reais`/`cents`/`whole`/`compact`/`sign`/
-  `size`). **5b (rollout tela a tela) PENDENTE** — DRE/Fluxo/Calc/dashboards.
-  Nota: DRESummaryCards e KPIs do shopee/Dashboard já usam `font-mono` ad-hoc;
-  o rollout troca por `<Money>` pra consistência + tabular-nums.
-- [ ] **6. Escala de espaçamento** — seção `space-y-8`, bloco `space-y-4`, campo
-  `space-y-2`. Deliberado nas telas principais.
+- [x] **5. `<Money>` + Space Mono** — 5a (`14c4eb7`) + **5b FEITO (31/08,
+  `e642b0b`)**: dashboards via `<StatCard>` (font-mono tabular-nums);
+  `DRESummaryCards` (config guarda `valueCents`, renderiza `<Money cents>`);
+  `DRETable` coluna de valor com `tabular-nums`; `FluxoCaixaDashboard` 5 cards →
+  `<Money reais>`. **Calculadora deixada como está** — já é mono-consistente
+  (`cellBase` tem tabular-nums) e é tela protegida.
+- [x] **6. Escala de espaçamento** — satisfeito pelo `<PageShell>` (seção
+  `space-y-8` / header→conteúdo, `PageHeader` `space-y-4` título→abas). Campo
+  `space-y-2` já era o padrão em todo form. Não vale uma passada "deliberada"
+  extra — o ritmo está consistente desde a migração do PageShell.
 
 > **Checkpoint 29/08:** itens 1-4 + 5a feitos (6 commits `f68ebdc`..`14c4eb7`).
 > Navy chrome + Fraunces são mudanças visuais grandes — **usuário precisa dar
