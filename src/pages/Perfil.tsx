@@ -4,11 +4,12 @@ import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { toast } from 'sonner';
 import { Save, Loader2, User, Camera } from 'lucide-react';
 import { motion } from 'framer-motion';
+import { PageShell } from '@/components/layout/PageShell';
 import { validatePhone, formatPhone, validateEmail, validateName } from '@/lib/validations';
 
 interface ProfileData {
@@ -235,25 +236,18 @@ function PerfilContent() {
   }
 
   return (
-    <motion.div
-      className="max-w-2xl mx-auto space-y-6"
-      initial="hidden"
-      animate="visible"
-      variants={staggerContainer}
+    <PageShell
+      icon={User}
+      title="Meu Perfil"
+      subtitle="Gerencie suas informações pessoais"
+      width="narrow"
     >
-      <motion.div variants={fadeInUp}>
-        <Card className="border border-blue-200 shadow-lg bg-white">
-          <CardHeader className="bg-blue-50 border-b border-blue-200">
-            <div className="flex items-center gap-3">
-              <div className="h-10 w-10 rounded-xl bg-gradient-to-br from-blue-600 to-blue-500 flex items-center justify-center shadow-lg shadow-blue-500/25">
-                <User className="h-5 w-5 text-white" />
-              </div>
-              <div>
-                <CardTitle className="text-gray-900">Meu Perfil</CardTitle>
-                <CardDescription className="text-gray-600">Gerencie suas informações pessoais</CardDescription>
-              </div>
-            </div>
-          </CardHeader>
+      <motion.div
+        initial="hidden"
+        animate="visible"
+        variants={staggerContainer}
+      >
+        <Card className="panel bg-card border-transparent">
           <CardContent className="space-y-6 pt-6">
             {/* Avatar Section */}
             <motion.div variants={fadeInUp} className="flex flex-col items-center gap-4">
@@ -290,13 +284,13 @@ function PerfilContent() {
 
             <motion.div variants={fadeInUp} className="grid gap-4 sm:grid-cols-2">
               <div className="space-y-2 sm:col-span-2">
-                <Label htmlFor="full_name" className="text-gray-900">Nome Completo *</Label>
+                <Label htmlFor="full_name">Nome Completo *</Label>
                 <Input
                   id="full_name"
                   value={formData.full_name}
                   onChange={(e) => handleInputChange('full_name', e.target.value)}
                   placeholder="Seu nome completo"
-                  className={`placeholder:text-muted-foreground/50 ${errors.full_name ? 'border-destructive focus-visible:ring-destructive' : 'border-blue-200 focus:border-blue-500'}`}
+                  className={errors.full_name ? 'border-destructive focus-visible:ring-destructive' : undefined}
                 />
                 {errors.full_name && (
                   <p className="text-xs text-destructive">{errors.full_name}</p>
@@ -304,14 +298,14 @@ function PerfilContent() {
               </div>
 
               <div className="space-y-2 sm:col-span-2">
-                <Label htmlFor="email" className="text-gray-900">Email *</Label>
+                <Label htmlFor="email">Email *</Label>
                 <Input
                   id="email"
                   type="email"
                   value={formData.email}
                   onChange={(e) => handleInputChange('email', e.target.value)}
                   placeholder="seu@email.com"
-                  className={`placeholder:text-muted-foreground/50 ${errors.email ? 'border-destructive focus-visible:ring-destructive' : 'border-blue-200 focus:border-blue-500'}`}
+                  className={errors.email ? 'border-destructive focus-visible:ring-destructive' : undefined}
                 />
                 {errors.email && (
                   <p className="text-xs text-destructive">{errors.email}</p>
@@ -319,13 +313,13 @@ function PerfilContent() {
               </div>
 
               <div className="space-y-2 sm:col-span-2">
-                <Label htmlFor="phone" className="text-gray-900">Telefone *</Label>
+                <Label htmlFor="phone">Telefone *</Label>
                 <Input
                   id="phone"
                   value={formData.phone}
                   onChange={(e) => handleInputChange('phone', e.target.value)}
                   placeholder="(XX) XXXXX-XXXX"
-                  className={`placeholder:text-muted-foreground/50 ${errors.phone ? 'border-destructive focus-visible:ring-destructive' : 'border-blue-200 focus:border-blue-500'}`}
+                  className={errors.phone ? 'border-destructive focus-visible:ring-destructive' : undefined}
                 />
                 {errors.phone && (
                   <p className="text-xs text-destructive">{errors.phone}</p>
@@ -334,11 +328,7 @@ function PerfilContent() {
             </motion.div>
 
             <motion.div variants={fadeInUp} className="flex justify-end pt-4">
-              <Button
-                onClick={handleSave}
-                disabled={isSaving}
-                className="bg-gradient-to-r from-blue-600 to-blue-500 hover:from-blue-700 hover:to-blue-600 text-white shadow-xl shadow-blue-500/25"
-              >
+              <Button onClick={handleSave} disabled={isSaving}>
                 {isSaving ? (
                   <Loader2 className="h-4 w-4 mr-2 animate-spin" />
                 ) : (
@@ -350,7 +340,7 @@ function PerfilContent() {
           </CardContent>
         </Card>
       </motion.div>
-    </motion.div>
+    </PageShell>
   );
 }
 

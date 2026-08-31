@@ -1,5 +1,6 @@
 import { useParams, useNavigate } from 'react-router-dom';
 import { useTopbarTitle } from '@/components/layout/TopbarTitleContext';
+import { PageShell } from '@/components/layout/PageShell';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -64,16 +65,18 @@ export default function IntegrationManage() {
 
   if (!connection || connection.status === 'disconnected') {
     return (
-      <div className="space-y-4 max-w-4xl">
-        <Button variant="ghost" onClick={() => navigate('/integrations')}>
-          <ArrowLeft className="mr-2 h-4 w-4" /> Voltar
-        </Button>
-        <Card>
-          <CardContent className="py-12 text-center">
-            <p className="text-muted-foreground">Nenhuma conexão ativa para {name}.</p>
-            <Button className="mt-4" onClick={() => navigate('/integrations')}>Ir para Integrações</Button>
-          </CardContent>
-        </Card>
+      <div className="mx-auto max-w-4xl">
+        <PageShell className="space-y-4">
+          <Button variant="ghost" onClick={() => navigate('/integrations')} className="-ml-2">
+            <ArrowLeft className="mr-2 h-4 w-4" /> Voltar
+          </Button>
+          <Card>
+            <CardContent className="py-12 text-center">
+              <p className="text-muted-foreground">Nenhuma conexão ativa para {name}.</p>
+              <Button className="mt-4" onClick={() => navigate('/integrations')}>Ir para Integrações</Button>
+            </CardContent>
+          </Card>
+        </PageShell>
       </div>
     );
   }
@@ -101,19 +104,20 @@ export default function IntegrationManage() {
   });
 
   return (
-    <div className="space-y-6 max-w-4xl">
+    <div className="mx-auto max-w-4xl">
+      <PageShell className="space-y-6">
 
       <Button variant="ghost" onClick={() => navigate('/integrations')} className="-ml-2">
         <ArrowLeft className="mr-2 h-4 w-4" /> Voltar
       </Button>
 
           {/* Header da loja */}
-          <Card className="border-emerald-500/30 bg-emerald-500/5">
+          <Card className="border-success/30 bg-success/5">
             <CardContent className="py-5">
               <div className="flex items-center justify-between flex-wrap gap-4">
                 <div className="flex items-center gap-4">
-                  <div className="h-12 w-12 rounded-xl bg-emerald-500/15 flex items-center justify-center shrink-0">
-                    <Zap className="h-6 w-6 text-emerald-500" />
+                  <div className="h-12 w-12 rounded-xl bg-success/15 flex items-center justify-center shrink-0">
+                    <Zap className="h-6 w-6 text-success" />
                   </div>
                   <div>
                     <div className="flex items-center gap-2">
@@ -220,28 +224,28 @@ export default function IntegrationManage() {
 
           {/* Status dos Pedidos */}
           <div className="grid grid-cols-3 gap-4">
-            <Card className="border-emerald-500/20 bg-emerald-500/5">
+            <Card className="border-success/20 bg-success/5">
               <CardContent className="pt-5 pb-5">
                 <div className="flex items-center gap-3">
-                  <div className="h-9 w-9 rounded-lg bg-emerald-500/15 flex items-center justify-center shrink-0">
-                    <CheckCircle2 className="h-4 w-4 text-emerald-500" />
+                  <div className="h-9 w-9 rounded-lg bg-success/15 flex items-center justify-center shrink-0">
+                    <CheckCircle2 className="h-4 w-4 text-success" />
                   </div>
                   <div>
                     <p className="text-xs text-muted-foreground">Concluídos</p>
-                    <p className="text-2xl font-bold text-emerald-600">{syncLoading ? '...' : pedidos}</p>
+                    <p className="text-2xl font-bold text-success">{syncLoading ? '...' : pedidos}</p>
                   </div>
                 </div>
               </CardContent>
             </Card>
-            <Card className="border-yellow-500/20 bg-yellow-500/5">
+            <Card className="border-warning/20 bg-warning/5">
               <CardContent className="pt-5 pb-5">
                 <div className="flex items-center gap-3">
-                  <div className="h-9 w-9 rounded-lg bg-yellow-500/15 flex items-center justify-center shrink-0">
-                    <Clock className="h-4 w-4 text-yellow-500" />
+                  <div className="h-9 w-9 rounded-lg bg-warning/15 flex items-center justify-center shrink-0">
+                    <Clock className="h-4 w-4 text-warning" />
                   </div>
                   <div>
                     <p className="text-xs text-muted-foreground">Em andamento</p>
-                    <p className="text-2xl font-bold text-yellow-600">{syncLoading ? '...' : emTransito}</p>
+                    <p className="text-2xl font-bold text-warning">{syncLoading ? '...' : emTransito}</p>
                   </div>
                 </div>
               </CardContent>
@@ -362,6 +366,7 @@ export default function IntegrationManage() {
             </CardContent>
           </Card>
 
+      </PageShell>
     </div>
   );
 }

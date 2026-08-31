@@ -169,7 +169,7 @@ da Faixa C satisfeito.
   aplicar no item 5/6 (margem/lucro positivo em destaque) e no que a Faixa D pedir.
 
 **C.2 — Componentes de página**
-- [~] **`PageShell`** — wrapper único `<PageShell icon iconVariant title subtitle action tabs width>{children}</PageShell>`
+- [x] **`PageShell`** — wrapper único `<PageShell icon iconVariant title subtitle action tabs width>{children}</PageShell>`
   que resolve `PageHeader` + `InPageNav` + ritmo vertical (`space-y-8` seção /
   `space-y-4` header→tabs) + largura (`width="narrow"` = `mx-auto max-w-3xl`).
   `src/components/layout/PageShell.tsx`. `PageHeader`/`InPageNav` perderam as
@@ -185,10 +185,16 @@ da Faixa C satisfeito.
   controles no slot `action`) + 4 telas headerless-por-design envolvidas sem
   header, só p/ padronizar o wrapper e tirar `animate-fade-in`
   (`shopee/Dashboard`, `tiktok/TikTokDashboard`, `mercadolivre/Mercadolivre­Dashboard`,
-  `Gestao`). **Falta (rodada 3):** `Perfil` (cabeçalho preso num Card + cores
-  hardcoded + `dark:` — precisa mini-redesign) e `IntegrationManage` (botão
-  voltar + card de status, `max-w-4xl`). `SetupPayments` fica fora (paywall
-  centralizado).
+  `Gestao`).
+  **Rodada 3 FEITA (31/08):** `Perfil` → `PageShell width="narrow"`; cabeçalho
+  saiu do Card, Card virou `.panel bg-card`, cores hardcoded (`bg-blue-50`,
+  `text-gray-900`, borda azul dos inputs, botão em gradiente) trocadas por
+  tokens/default. `IntegrationManage` → `PageShell` dentro de `mx-auto max-w-4xl`
+  (largura preservada, agora centralizado), botão Voltar como 1º filho, card
+  "Header da loja" + status cards de emerald/yellow crus → `success`/`warning`.
+  **Fora:** `SetupPayments` (paywall centralizado, não é página normal — mantém
+  `animate-fade-in`). Indentação profunda pré-existente do corpo do
+  `IntegrationManage` não foi mexida (evitar rewrite de 250 linhas).
 - [ ] **`StatCard` / `KpiRow`** — hoje cada dashboard monta os cards à mão (`shopee/Dashboard.tsx`, `IntegrationManage.tsx`, `UnifiedDashboard.tsx` — 3 layouts diferentes de "4 cards de número"). Um componente só, com slot de delta e de nota.
 - [ ] **Empty-state** — consolidar em `<EmptyState variant="onboarding" | "no-data" | "no-connection" action={}>`. Absorver o card bespoke do `UnifiedDashboard`.
 - [ ] ~~**`DataTable`**~~ — **fora desta rodada** (vira sub-projeto próprio):
