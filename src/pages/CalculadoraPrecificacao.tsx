@@ -1330,7 +1330,7 @@ function CalculadoraPrecificacaoContent() {
 
               <Separator />
 
-              {/* ── Resultado + Modos de Cálculo + Botão ─────────────────── */}
+              {/* ── Margem Real + dica + botão Cadastrar ──────────────────── */}
               <div className="flex flex-col sm:flex-row items-stretch gap-3">
 
                 {/* Chip Margem Real */}
