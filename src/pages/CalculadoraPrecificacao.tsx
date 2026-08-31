@@ -38,6 +38,9 @@ import { formatCurrency, formatPercent } from "@/lib/format";
 import {
   apurar,
   apurarAnuncio,
+  precoPorMargem,
+  precoPorLucro,
+  margemMaxViavelPct,
   type PricingInputs,
   type AnuncioApuravel,
 } from "@/lib/pricing";
@@ -67,6 +70,9 @@ const PLATAFORMA_OPTIONS: { value: Plataforma; label: string; color: string; bg:
   { value: "TiktokShop",   label: "TikTok Shop",   color: "text-pink-600",   bg: "bg-pink-500/10 border-pink-500/30 hover:bg-pink-500/20" },
   { value: "MercadoLivre", label: "Mercado Livre", color: "text-blue-600",   bg: "bg-blue-500/10 border-blue-500/30 hover:bg-blue-500/20" },
 ];
+
+// ─── Modo de cálculo ─────────────────────────────────────────────────────────
+type ModoCalculo = "margem" | "preco" | "lucro";
 
 // ─── Custos adicionais ───────────────────────────────────────────────────────
 // Custos extras que compõem o custo do produto (ex: frete de compra, imposto de
@@ -338,6 +344,11 @@ function CalculadoraPrecificacaoContent() {
   const [plataformaSelecionada, setPlataformaSelecionada] = useState<Plataforma | "">("");
   const [mlTipoAnuncio,         setMlTipoAnuncio]         = useState<MLTipoAnuncio>("classico");
 
+  // ── Modo de cálculo ───────────────────────────────────────────────────────
+  const [modoCalculo,          setModoCalculo]          = useState<ModoCalculo>("preco");
+  const [margemDesejadaSlider, setMargemDesejadaSlider] = useState("30");
+  const [lucroDesejado,        setLucroDesejado]        = useState("");
+
   // ── Dialog state ──────────────────────────────────────────────────────────
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingId,    setEditingId]    = useState<string | null>(null);
@@ -494,6 +505,30 @@ function CalculadoraPrecificacaoContent() {
       custosVariaveis: { produto: _custoBase, custosAdicionais: totalCustosAdicionais, variavel: _custoVar, comissao: comissaoVal, imposto: impostoVal, afiliados: afiliadosVal, taxaFixa: _taxaFixa },
     };
   }, [pricingInputs, custoProduto, totalCustosAdicionais, precoPromocional, desconto]);
+
+  // ── Preço sugerido conforme modo de cálculo ───────────────────────────────
+  // O preço sugerido é só referência — NÃO sobrescreve o Preço Promocional
+  // (nem tem botão pra isso). Nos modos "Por Margem"/"Por Lucro" a UI mostra as
+  // duas saídas lado a lado (manter o preço atual × ajustar pro alvo), pra não
+  // ler como "a ferramenta mandou baixar o preço" quando um custo cai.
+  // `inviavel` = as taxas + o alvo estouram o denominador (preço impossível).
+  const precoSugerido = useMemo<{ preco: number; inviavel: boolean }>(() => {
+    if (modoCalculo === "margem")
+      return precoPorMargem(pricingInputs, parseInput(margemDesejadaSlider));
+    if (modoCalculo === "lucro")
+      return precoPorLucro(pricingInputs, parseInput(lucroDesejado));
+    return { preco: 0, inviavel: false };
+  }, [modoCalculo, margemDesejadaSlider, lucroDesejado, pricingInputs]);
+
+  // Teto de margem que as taxas atuais ainda permitem.
+  const margemMax = useMemo(() => margemMaxViavelPct(pricingInputs), [pricingInputs]);
+  const margemMaxSlider = Math.max(1, Math.floor(margemMax) - 1);
+
+  // Se as taxas subirem e deixarem o slider fora do teto, recolhe pro máximo.
+  useEffect(() => {
+    if (parseInput(margemDesejadaSlider) > margemMaxSlider)
+      setMargemDesejadaSlider(String(margemMaxSlider));
+  }, [margemMaxSlider, margemDesejadaSlider]);
 
   // ── Panorama / Break-even ─────────────────────────────────────────────────
   const panorama = useMemo(() => {
@@ -1330,7 +1365,7 @@ function CalculadoraPrecificacaoContent() {
 
               <Separator />
 
-              {/* ── Margem Real + dica + botão Cadastrar ──────────────────── */}
+              {/* ── Margem Real + modos de cálculo + botão Cadastrar ──────── */}
               <div className="flex flex-col sm:flex-row items-stretch gap-3">
 
                 {/* Chip Margem Real */}
@@ -1347,13 +1382,75 @@ function CalculadoraPrecificacaoContent() {
                   </div>
                 </div>
 
-                {/* Dica: a Calculadora trabalha só "Por Preço" — você digita o
-                    Preço Promocional acima e ela mostra o resultado real. */}
-                <div className="flex-1 flex flex-col justify-center gap-2 p-4 bg-muted/30 rounded-lg border">
-                  <p className="text-xs text-muted-foreground">
-                    Informe o preço no campo <span className="font-medium text-foreground">"Preço Promocional"</span> acima
-                    para ver a margem, o lucro e o detalhamento de custos. Tirou uma taxa? O lucro sobe na hora.
-                  </p>
+                {/* Centro: tabs + conteúdo do modo */}
+                <div className="flex-1 flex flex-col gap-2 p-4 bg-muted/30 rounded-lg border">
+
+                  <div className="flex gap-2">
+                    {(["preco", "margem", "lucro"] as const).map(modo => (
+                      <button key={modo} type="button"
+                        onClick={() => setModoCalculo(modo)}
+                        className={`px-3 py-1 rounded-md border text-xs font-medium transition-all ${
+                          modoCalculo === modo
+                            ? "bg-primary text-primary-foreground border-primary"
+                            : "border-border bg-background text-muted-foreground hover:bg-muted"
+                        }`}>
+                        {modo === "preco" ? "Por Preço" : modo === "margem" ? "Por Margem" : "Por Lucro"}
+                      </button>
+                    ))}
+                  </div>
+
+                  {modoCalculo === "preco" && (
+                    <p className="text-xs text-muted-foreground">
+                      Informe o preço no campo <span className="font-medium text-foreground">"Preço Promocional"</span> acima
+                      para ver a margem, o lucro e o detalhamento de custos. Tirou uma taxa? O lucro sobe na hora.
+                    </p>
+                  )}
+
+                  {modoCalculo === "margem" && (
+                    <div className="space-y-1.5">
+                      <div className="flex items-center justify-between">
+                        <span className="text-xs text-muted-foreground">Margem desejada</span>
+                        <span className="text-xs font-bold font-mono text-primary">{margemDesejadaSlider}%</span>
+                      </div>
+                      <input type="range" min="1" max={margemMaxSlider} step="1"
+                        value={margemDesejadaSlider}
+                        onChange={e => setMargemDesejadaSlider(e.target.value)}
+                        className="w-full accent-primary" />
+                      {precoSugerido.inviavel ? (
+                        <p className="text-xs text-destructive">
+                          As taxas já consomem {formatPercent(100 - margemMax)} do preço — a margem máxima possível é {formatPercent(margemMax)}.
+                        </p>
+                      ) : precoSugerido.preco > 0 && (
+                        <p className="text-xs text-muted-foreground">
+                          Preço para essa margem: <span className="font-bold font-mono text-primary">{formatCurrency(precoSugerido.preco)}</span>
+                          <span className="text-muted-foreground/70"> — digite no Preço Promocional se quiser usar.</span>
+                        </p>
+                      )}
+                    </div>
+                  )}
+
+                  {modoCalculo === "lucro" && (
+                    <div className="space-y-1.5">
+                      <Input
+                        id="lucroDesejado" type="text" inputMode="decimal"
+                        value={lucroDesejado}
+                        onChange={e => handleDecimalInput(e.target.value, setLucroDesejado)}
+                        placeholder="Lucro desejado (R$ por venda)" className="h-8 text-sm max-w-[220px]"
+                      />
+                      {parseInput(lucroDesejado) > 0 && (
+                        precoSugerido.inviavel ? (
+                          <p className="text-xs text-destructive">
+                            As taxas somam {formatPercent(100 - margemMax)} do preço — não há preço que feche esse lucro.
+                          </p>
+                        ) : precoSugerido.preco > 0 && (
+                          <p className="text-xs text-muted-foreground">
+                            Preço para esse lucro: <span className="font-bold font-mono text-primary">{formatCurrency(precoSugerido.preco)}</span>
+                            <span className="text-muted-foreground/70"> — digite no Preço Promocional se quiser usar.</span>
+                          </p>
+                        )
+                      )}
+                    </div>
+                  )}
                 </div>
 
                 {/* Botão Cadastrar */}

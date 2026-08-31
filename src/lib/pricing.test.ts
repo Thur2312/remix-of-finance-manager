@@ -46,6 +46,27 @@ describe('BUG-05 — modo "Por Preço": custo some, preço fixo, margem sobe', (
   });
 });
 
+describe('Margem Real ⟷ taxas % são inversamente proporcionais (preço fixo)', () => {
+  // margemPct = 1 − custosFixos/preço − Σtaxas%  → tirar X pontos de taxa
+  // levanta a margem em exatamente X pontos, e vice-versa.
+  const preco = 100;
+  it('tirar 10 pontos de comissão sobe a Margem Real em 10 pontos', () => {
+    const antes = apurar({ ...base(0), comissaoPct: 12 }, preco).margemPct;
+    const depois = apurar({ ...base(0), comissaoPct: 2 }, preco).margemPct;
+    expect(depois - antes).toBeCloseTo(10, 6);
+  });
+  it('somar mais taxas derruba a Margem Real ponto a ponto', () => {
+    const menos = apurar({ ...base(0), comissaoPct: 6, impostoPct: 6, afiliadosPct: 0 }, preco).margemPct;
+    const mais  = apurar({ ...base(0), comissaoPct: 6, impostoPct: 6, afiliadosPct: 8 }, preco).margemPct;
+    expect(menos - mais).toBeCloseTo(8, 6);
+  });
+  it('zerar todas as taxas % → margem = 1 − só os custos em R$', () => {
+    const semTaxas = apurar({ ...base(0), comissaoPct: 0, impostoPct: 0, afiliadosPct: 0, taxaFixa: 0 }, preco);
+    // custo 45 + custoVar 0,30 = 45,30 de 100 → margem 54,7%
+    expect(semTaxas.margemPct).toBeCloseTo(54.7, 1);
+  });
+});
+
 describe('simetria: precoPorMargem e apurar são inversos exatos', () => {
   it('o preço sugerido para 20% apurado de volta dá 20%', () => {
     const i = base(10);
