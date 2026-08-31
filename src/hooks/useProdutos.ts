@@ -4,7 +4,7 @@ import type { Json } from '@/integrations/supabase/types';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
 
-// ─── Tipos baseados no database.types.ts ────────────────────────────────────
+// ─── Tipos baseados em src/integrations/supabase/types.ts ───────────────────
 
 // Custo adicional que compõe o custo do produto. Persistido em jsonb na coluna
 // custos_adicionais. "valor" = R$ fixo; "percent" = % sobre o custo base (custo).
