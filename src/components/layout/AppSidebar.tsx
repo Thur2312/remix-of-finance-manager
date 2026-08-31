@@ -5,11 +5,12 @@ import { useAuth } from '@/contexts/AuthContext';
 import { Sidebar, SidebarContent, SidebarFooter, SidebarGroup, SidebarGroupContent, SidebarHeader, SidebarMenu, SidebarMenuButton, SidebarMenuItem, useSidebar } from '@/components/ui/sidebar';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { User, ChevronRight, LogOut, TrendingUp, Calculator, Receipt, Sparkles, BarChart3, HandCoins, Wallet, Plug, LayoutDashboard, Shield, ShieldCheck, Zap, Gauge, CalendarDays, Landmark, Wrench, CircleUser, type LucideIcon } from 'lucide-react';
+import { ChevronRight, LogOut, ShieldCheck, CircleUser, type LucideIcon } from 'lucide-react';
 import { useSaleEventsUnseenCount } from '@/hooks/useSaleEvents';
 import logo from '@/assets/logo-new.svg';
 import { useNavigate } from 'react-router-dom';
 import { PlanCard } from '@/components/PlanCard';
+import { sidebarGroups, adminItem, contaItems, sectionRoutes, type NavItem } from './navModel';
 
 // Marca só-ícone pro modo colapsado — as 3 formas do símbolo do logo,
 // extraídas do SVG do wordmark. Assim a sidebar estreita mostra um ícone
@@ -24,66 +25,6 @@ function Logomark({ className }: { className?: string }) {
   );
 }
 
-interface SidebarItem {
-  title: string;
-  url: string;
-  icon: LucideIcon;
-  badge?: string;
-}
-
-interface SidebarGroup {
-  label: string;
-  icon: LucideIcon;
-  items: SidebarItem[];
-}
-
-// Agrupado por seção em vez de lista plana — quem procura "algo de
-// planejamento" olha direto no terceiro grupo em vez de ler os 9 rótulos.
-// Cada grupo tem um ícone no rótulo (dá um respiro visual e vira âncora
-// pra vista rápida).
-const sidebarGroups: SidebarGroup[] = [
-  {
-    label: 'Visão Geral',
-    icon: Gauge,
-    items: [{ title: 'Dashboard', url: '/dashboard', icon: LayoutDashboard }],
-  },
-  {
-    label: 'Dia a Dia',
-    icon: CalendarDays,
-    items: [
-      { title: 'Gestão', url: '/gestao', icon: TrendingUp },
-      { title: 'Vendas', url: '/vendas', icon: Zap },
-      { title: 'Fluxo de Caixa', url: '/fluxo-caixa', icon: HandCoins },
-    ],
-  },
-  {
-    label: 'Financeiro',
-    icon: Landmark,
-    items: [
-      { title: 'Precificação', url: '/calculadora', icon: Calculator },
-      { title: 'Custos Fixos', url: '/precificacao/custos', icon: Receipt },
-      { title: 'DRE', url: '/dre', icon: BarChart3 },
-    ],
-  },
-  {
-    label: 'Ferramentas',
-    icon: Wrench,
-    items: [
-      { title: 'Assistente', url: '/assistente-anuncio', icon: Sparkles, badge: 'IA' },
-      { title: 'Integrações', url: '/integrations', icon: Plug },
-    ],
-  },
-];
-
-const adminItem: SidebarItem = { title: 'Avisos', url: '/admin/notificacoes', icon: Shield };
-
-// Grupo "Conta" no rodapé da navegação (antes ficava: Planos solto + Perfil
-// escondido no dropdown do rodapé). Configurações ainda não tem rota própria.
-const contaItems: SidebarItem[] = [
-  { title: 'Planos', url: '/planos', icon: Wallet },
-  { title: 'Perfil', url: '/perfil', icon: User },
-];
-
 // Estado aberto/fechado dos grupos, lembrado entre sessões. Ausência da chave =
 // grupo aberto (default); só guardamos quando o usuário fecha explicitamente.
 const GROUPS_STORAGE_KEY = 'sidebar-groups-collapsed';
@@ -95,20 +36,6 @@ function loadCollapsed(): Record<string, boolean> {
     return {};
   }
 }
-
-// Rotas que pertencem a cada seção (para highlight ativo)
-const sectionRoutes: Record<string, string[]> = {
-  '/dashboard': ['/dashboard'],
-  '/gestao': [
-    '/gestao',
-    '/shopee/dashboard', '/shopee/resultados', '/shopee/variacoes', '/shopee/upload', '/shopee/configuracoes',
-    '/tiktok/dashboard', '/tiktok/resultados', '/tiktok/variacoes', '/tiktok/upload', '/tiktok/pagamentos', '/tiktok/pagamentos/upload', '/tiktok/configuracoes',
-    // Faltavam as rotas do Mercado Livre — o item "Gestão" nunca ficava
-    // destacado como ativo em nenhuma dessas páginas.
-    '/mercadolivre/resultados', '/mercadolivre/variacoes', '/mercadolivre/pagamentos', '/mercadolivre/configuracoes',
-  ],
-  '/fluxo-caixa': ['/fluxo-caixa', '/fluxo-caixa/lancamentos', '/fluxo-caixa/categorias'],
-};
 
 export function AppSidebar() {
   const { state } = useSidebar();
@@ -158,7 +85,7 @@ export function AppSidebar() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [location.pathname]);
 
-  const renderItem = (item: SidebarItem) => {
+  const renderItem = (item: NavItem) => {
     const active = isItemActive(item.url);
     const badge = item.url === '/vendas' && unseenSalesCount
       ? (unseenSalesCount > 9 ? '9+' : String(unseenSalesCount))
@@ -192,7 +119,7 @@ export function AppSidebar() {
   // Grupo recolhível: o rótulo vira botão (chevron gira). Estado lembrado no
   // localStorage. No modo ícone (sidebar colapsada) o grupo fica sempre aberto
   // e o rótulo some.
-  const renderGroup = (label: string, items: SidebarItem[], GroupIcon: LucideIcon) => (
+  const renderGroup = (label: string, items: NavItem[], GroupIcon: LucideIcon) => (
     <Collapsible
       key={label}
       open={collapsed ? true : !collapsedGroups[label]}

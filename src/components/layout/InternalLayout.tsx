@@ -4,7 +4,6 @@ import { ProtectedRoute } from './ProtectedRoute';
 import { ErrorBoundary } from '@/components/ErrorBoundary';
 import { TrialGuard } from './TrialGuard';
 import { AppLayout } from './AppLayout';
-import { TopbarTitleProvider } from './TopbarTitleContext';
 
 // Transição leve entre páginas (fade), respeitando prefers-reduced-motion.
 // Fica escopada aqui dentro — e não em torno de todo o <Routes> em App.tsx —
@@ -45,11 +44,9 @@ export function InternalLayout() {
     <ProtectedRoute>
       <ErrorBoundary>
         <TrialGuard>
-          <TopbarTitleProvider>
-            <AppLayout>
-              <AnimatedOutlet />
-            </AppLayout>
-          </TopbarTitleProvider>
+          <AppLayout>
+            <AnimatedOutlet />
+          </AppLayout>
         </TrialGuard>
       </ErrorBoundary>
     </ProtectedRoute>
@@ -63,11 +60,9 @@ export function InternalLayoutNoGuard() {
   return (
     <ProtectedRoute>
       <ErrorBoundary>
-        <TopbarTitleProvider>
-          <AppLayout>
-            <AnimatedOutlet />
-          </AppLayout>
-        </TopbarTitleProvider>
+        <AppLayout>
+          <AnimatedOutlet />
+        </AppLayout>
       </ErrorBoundary>
     </ProtectedRoute>
   );

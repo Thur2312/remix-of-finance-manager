@@ -1,27 +1,12 @@
 import { ReactNode } from 'react';
-import { useLocation } from 'react-router-dom';
 import { SidebarProvider, SidebarTrigger, SidebarInset } from '@/components/ui/sidebar';
 import { AppSidebar } from './AppSidebar';
-import { Separator } from '@/components/ui/separator';
-import { FinancialAssistant } from '@/components/assistant/FinancialAssistant'; // ← adicionar
+import { FinancialAssistant } from '@/components/assistant/FinancialAssistant';
 import { TrialBanner } from '../TrialBanner';
-import { getPageTitle } from './pageTitles';
-import { useTopbarTitleOverride } from './TopbarTitleContext';
+import { Breadcrumbs } from './Breadcrumbs';
 import { NotificationBell } from './NotificationBell';
 
-interface AppLayoutProps {
-  children: ReactNode;
-  /** Só precisa passar isso pra casos fora do mapa de rotas em
-   *  pageTitles.ts — a maioria das páginas não precisa mais informar
-   *  título nenhum, ele já vem sozinho a partir da URL. */
-  title?: string;
-}
-
-export function AppLayout({ children, title }: AppLayoutProps) {
-  const location = useLocation();
-  const dynamicTitle = useTopbarTitleOverride();
-  const resolvedTitle = title ?? dynamicTitle ?? getPageTitle(location.pathname);
-
+export function AppLayout({ children }: { children: ReactNode }) {
   return (
     // "app-shell" escopa só o raio (mais contido que o resto do site — ver
     // index.css) pro app interno, sem tocar no tema/raio global usado pela
@@ -31,20 +16,21 @@ export function AppLayout({ children, title }: AppLayoutProps) {
         <div className="flex min-h-screen w-full bg-background">
           <AppSidebar />
           <SidebarInset className="flex-1">
-            <header className="flex h-16 shrink-0 items-center gap-2 border-b border-sidebar-border bg-sidebar px-6 text-sidebar-foreground">
-              <SidebarTrigger className="-ml-1 text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground" />
-              <Separator orientation="vertical" className="mr-2 h-4 bg-sidebar-border" />
-              {resolvedTitle && <h1 className="font-display text-lg font-semibold text-sidebar-foreground">{resolvedTitle}</h1>}
+            {/* Topbar fosco e sticky: some no conteúdo (bg translúcido), só o
+                blur no scroll dá profundidade. O título da página vive no
+                <h1> grande do PageShell — aqui em cima é só o rastro de
+                navegação (breadcrumbs). */}
+            <header className="sticky top-0 z-30 flex h-14 shrink-0 items-center gap-2.5 border-b border-border/60 bg-background/70 px-4 backdrop-blur-md supports-[backdrop-filter]:bg-background/60 sm:px-6">
+              <SidebarTrigger className="-ml-1 size-8 shrink-0 text-muted-foreground hover:text-foreground" />
+              <Breadcrumbs />
               <div className="flex-1" />
               <NotificationBell />
             </header>
             <TrialBanner />
-            {/* Container único da área interna: todas as páginas herdam a
-                mesma largura máxima e o mesmo respiro. Antes cada tela definia
-                (ou não) seu próprio max-w-*, então elas pulavam entre
-                full-bleed / 1024 centrado / 896 à esquerda em telas largas. */}
+            {/* Container único da área interna: largura máxima e respiro
+                herdados por todas as páginas; padding responsivo. */}
             <main className="flex-1 bg-background">
-              <div className="mx-auto w-full max-w-[1400px] p-8">
+              <div className="mx-auto w-full max-w-[1400px] px-4 py-6 sm:px-6 lg:px-8 lg:py-8">
                 {children}
               </div>
             </main>

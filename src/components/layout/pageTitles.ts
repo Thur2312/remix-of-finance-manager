@@ -1,8 +1,6 @@
-// Título do topbar por rota — fonte única de verdade. Antes cada página
-// repetia o próprio texto (às vezes divergindo: "Gestão Shopee" numa tela,
-// nada na outra), o que fazia o topbar mudar de padrão a cada navegação.
-// Rotas com título dinâmico (depende de estado do componente, não só da
-// URL) não entram aqui — usam useTopbarTitle() em vez disso.
+// Fallback de rótulo por rota — só usado pelo <Breadcrumbs> quando a rota não
+// cai no modelo de navegação (navModel.ts). O rastro normal ("Grupo › Item")
+// vem de lá; isto cobre as bordas (ex.: /setup-payment).
 const PAGE_TITLES: Record<string, string> = {
   '/dashboard': 'Dashboard',
   '/vendas': 'Vendas',
@@ -32,8 +30,6 @@ const PAGE_TITLES: Record<string, string> = {
   '/planos': 'Planos',
   '/user/auth/planos': 'Planos',
   '/setup-payment': 'Configurar pagamento',
-  // '/gestao' e '/integrations/:provider' têm título dinâmico — ver
-  // useTopbarTitle() em Gestao.tsx e IntegrationManage.tsx.
 };
 
 export function getPageTitle(pathname: string): string | undefined {

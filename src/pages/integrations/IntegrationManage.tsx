@@ -1,5 +1,4 @@
 import { useParams, useNavigate } from 'react-router-dom';
-import { useTopbarTitle } from '@/components/layout/TopbarTitleContext';
 import { PageShell } from '@/components/layout/PageShell';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -54,8 +53,6 @@ export default function IntegrationManage() {
   const provider = connection?.provider;
   const Icon = providerIcons[provider || ''] || Store;
   const name = providerNames[provider || ''] || provider || 'integração';
-
-  useTopbarTitle(`Gerenciar ${name}`);
 
   // ✅ useShopeeSync só para Shopee/TikTok, ML não usa
   const { data: syncData, isLoading: syncLoading } = useShopeeSync(

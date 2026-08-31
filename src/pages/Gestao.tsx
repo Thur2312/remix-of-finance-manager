@@ -1,6 +1,5 @@
 import { useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { useTopbarTitle } from '@/components/layout/TopbarTitleContext';
 import { PageShell } from '@/components/layout/PageShell';
 import { InPageNav, shopeeNavTabs, tiktokNavTabs } from '@/components/layout/InPageNav';
 import { mercadolivreNavTabs } from '@/components/layout/InPageNav';
@@ -110,16 +109,6 @@ function GestaoContent({ selected, onSelect }: GestaoContentProps) {
   );
 }
 
-// Mesmo padrão de título das outras telas de marketplace (ex.: "Gestão
-// Shopee" em shopee/Resultados.tsx) — antes o topbar ficava genérico
-// ("Gestão", sem o marketplace) enquanto o resto do app já mostrava o
-// contexto completo, inconsistência visível ao trocar de aba.
-const MARKETPLACE_TITLE: Record<MarketplaceFilter, string> = {
-  shopee: 'Gestão Shopee',
-  tiktok: 'Gestão TikTok Shop',
-  mercadolivre: 'Gestão Mercado Livre',
-};
-
 const VALID_MARKETPLACES: MarketplaceFilter[] = ['shopee', 'tiktok', 'mercadolivre'];
 
 function isMarketplaceFilter(value: string | null): value is MarketplaceFilter {
@@ -135,7 +124,6 @@ export default function Gestao() {
   const [selected, setSelected] = useState<MarketplaceFilter>(
     isMarketplaceFilter(mpParam) ? mpParam : 'shopee'
   );
-  useTopbarTitle(MARKETPLACE_TITLE[selected]);
 
   return <GestaoContent selected={selected} onSelect={setSelected} />;
 }
