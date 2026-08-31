@@ -1,32 +1,34 @@
 import { Outlet, useLocation } from 'react-router-dom';
-import { AnimatePresence, motion } from 'framer-motion';
+import { AnimatePresence, motion, useReducedMotion } from 'framer-motion';
 import { ProtectedRoute } from './ProtectedRoute';
 import { ErrorBoundary } from '@/components/ErrorBoundary';
 import { TrialGuard } from './TrialGuard';
 import { AppLayout } from './AppLayout';
+import { routeTransition } from '@/lib/motion';
 
-// Transição leve entre páginas (fade), respeitando prefers-reduced-motion.
-// Fica escopada aqui dentro — e não em torno de todo o <Routes> em App.tsx —
-// porque animar a árvore inteira trocaria a key do InternalLayout a cada
-// navegação e remontaria a sidebar/topbar (o bug que este arquivo existe
-// pra resolver). Só o conteúdo de <Outlet /> anima; o shell fica parado.
-const routeTransition = {
-  initial: { opacity: 0 },
-  animate: { opacity: 1 },
-  exit: { opacity: 0 },
-  transition: { duration: 0.18, ease: [0.16, 1, 0.3, 1] as const },
-};
+// Transição leve entre páginas (fade + leve slide), respeitando
+// prefers-reduced-motion. Fica escopada aqui dentro — e não em torno de todo o
+// <Routes> em App.tsx — porque animar a árvore inteira trocaria a key do
+// InternalLayout a cada navegação e remontaria a sidebar/topbar. Só o conteúdo
+// de <Outlet /> anima; o shell fica parado.
+
+// Chave da transição: normalmente a rota inteira. Exceção: `/gestao/*` conta
+// como uma "página" só — a casca de Gestão (seletor de marketplace + abas de
+// view) fica montada e só o painel troca (com o Suspense da própria
+// GestaoShell), então não faz sentido a casca inteira dar fade a cada aba.
+function transitionKey(pathname: string) {
+  return pathname.startsWith('/gestao') ? '/gestao' : pathname;
+}
 
 function AnimatedOutlet() {
   const location = useLocation();
-  const reducedMotion =
-    typeof window !== 'undefined' && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const reducedMotion = useReducedMotion();
 
   if (reducedMotion) return <Outlet />;
 
   return (
     <AnimatePresence mode="wait" initial={false}>
-      <motion.div key={location.pathname} {...routeTransition}>
+      <motion.div key={transitionKey(location.pathname)} {...routeTransition}>
         <Outlet />
       </motion.div>
     </AnimatePresence>

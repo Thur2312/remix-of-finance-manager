@@ -373,14 +373,31 @@ input[type="number"] {
     pointer-events: none;
   }
 
-  /* Opt-in — só pra cards clicáveis/navegáveis (não todo .panel por padrão). */
+  /* Opt-in — só pra cards clicáveis/navegáveis (não todo .panel por padrão).
+     Hover-lift de -2px + sombra tingida; tap volta pra 0 (feedback de clique). */
+  .panel-interactive {
+    cursor: pointer;
+  }
+
   .panel-interactive:hover {
-    box-shadow: 0 1px 2px rgba(10, 22, 40, 0.04), 0 16px 36px -16px rgba(49, 142, 241, 0.22);
-    transform: translateY(-1px);
+    box-shadow: 0 1px 2px rgba(10, 22, 40, 0.04), 0 18px 40px -16px rgba(49, 142, 241, 0.24);
+    transform: translateY(-2px);
+  }
+
+  .panel-interactive:active {
+    transform: translateY(0);
+    transition-duration: 80ms;
   }
 
   .panel-interactive:hover::before {
     background: hsl(var(--primary) / 0.28);
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .panel-interactive:hover,
+    .panel-interactive:active {
+      transform: none;
+    }
   }
 
   /* Variante "quieta" — pra conteúdo de segundo plano (detalhe, não a

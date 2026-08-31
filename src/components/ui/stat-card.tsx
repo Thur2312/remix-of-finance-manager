@@ -1,7 +1,9 @@
-import { type ReactNode } from 'react';
+import { Children, isValidElement, type ReactNode } from 'react';
+import { motion } from 'framer-motion';
 import { type LucideIcon, TrendingUp, TrendingDown, Minus } from 'lucide-react';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { IconBadge, type IconBadgeVariant } from '@/components/layout/IconBadge';
+import { fadeSlideUp, staggerContainer } from '@/lib/motion';
 import { cn } from '@/lib/utils';
 
 export interface StatDelta {
@@ -63,7 +65,7 @@ export function StatCard({
   className,
 }: StatCardProps) {
   return (
-    <Card className={cn('panel border-transparent bg-card transition-shadow hover:shadow-md', className)}>
+    <Card className={cn('panel h-full border-transparent bg-card transition-shadow hover:shadow-md', className)}>
       <CardHeader className="flex flex-row items-start justify-between space-y-0 pb-3">
         <div className="flex items-center gap-1.5">
           <span className="text-sm font-medium text-muted-foreground">{title}</span>
@@ -91,6 +93,25 @@ export function StatCard({
   );
 }
 
+// Grid responsivo de KPIs, com cascata de entrada (mount-only — não re-dispara
+// a cada refresh de dados porque `initial`/`animate` só rodam na montagem).
 export function KpiRow({ children, className }: { children: ReactNode; className?: string }) {
-  return <div className={cn('grid gap-4 sm:grid-cols-2 lg:grid-cols-4', className)}>{children}</div>;
+  return (
+    <motion.div
+      className={cn('grid gap-4 sm:grid-cols-2 lg:grid-cols-4', className)}
+      variants={staggerContainer}
+      initial="hidden"
+      animate="visible"
+    >
+      {Children.map(children, (child) =>
+        isValidElement(child) ? (
+          <motion.div variants={fadeSlideUp} className="h-full">
+            {child}
+          </motion.div>
+        ) : (
+          child
+        ),
+      )}
+    </motion.div>
+  );
 }
