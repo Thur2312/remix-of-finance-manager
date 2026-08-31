@@ -14,7 +14,7 @@ import { formatDREForDisplay, formatCurrency, DREPeriod } from '@/lib/dre-calcul
 import { FileSpreadsheet, RefreshCw, Download, Calendar, BarChart3, AlertCircle, CheckCircle2, XCircle, ArrowRight } from 'lucide-react';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import { PageHeader } from '@/components/layout/PageHeader';
+import { PageShell } from '@/components/layout/PageShell';
 import { EmptyResultsState } from '@/components/layout/EmptyResultsState';
 import { Link } from 'react-router-dom';
 
@@ -105,13 +105,12 @@ function DREContent() {
   const dreSections = formatDREForDisplay(dreData);
 
   return (
-    <div className="space-y-6">
-      <PageHeader
-        icon={BarChart3}
-        title="Demonstração do Resultado (DRE)"
-        subtitle="Visão consolidada do resultado financeiro da empresa"
-        action={
-          <div className="flex items-center gap-3">
+    <PageShell
+      icon={BarChart3}
+      title="Demonstração do Resultado (DRE)"
+      subtitle="Visão consolidada do resultado financeiro da empresa"
+      action={
+        <div className="flex items-center gap-3">
             <Select value={selectedPeriod.label} onValueChange={handlePeriodChange}>
               <SelectTrigger className="w-48">
                 <Calendar className="h-4 w-4 mr-2 text-muted-foreground" />
@@ -135,9 +134,9 @@ function DREContent() {
               Exportar
             </Button>
           </div>
-        }
-      />
-
+      }
+    >
+      <div className="space-y-6">
       {/* Period Info - Regra 2: Resumo executivo textual (sem valor numérico duplicado) */}
       <Card className="bg-muted/30">
         <CardContent className="py-3">
@@ -199,7 +198,8 @@ function DREContent() {
           </Card>
         </TabsContent>
       </Tabs>
-    </div>);
+      </div>
+    </PageShell>);
 
 }
 

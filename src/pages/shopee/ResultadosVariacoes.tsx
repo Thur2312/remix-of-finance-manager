@@ -39,7 +39,7 @@ import {
 } from '@/lib/calculations';
 import { ResultsCharts } from '@/components/charts/ResultsCharts';
 import { shopeeNavTabs } from '@/components/layout/InPageNav';
-import { PageHeader } from '@/components/layout/PageHeader';
+import { PageShell } from '@/components/layout/PageShell';
 import { FiltersCard } from '@/components/layout/FiltersCard';
 import { EmptyResultsState } from '@/components/layout/EmptyResultsState';
 
@@ -392,7 +392,7 @@ function ResultadosVariacoesContent() {
   }
 
   return (
-    <div className="space-y-6 animate-fade-in">
+    <div className="space-y-6">
       {renderFilters()}
       {renderSummaryCards()}
       {results && results.groups.length > 0 && (
@@ -405,9 +405,8 @@ function ResultadosVariacoesContent() {
 
 export default function ResultadosVariacoes() {
   return (
-    <>
-      <PageHeader tabs={shopeeNavTabs} />
+    <PageShell tabs={shopeeNavTabs}>
       <ResultadosVariacoesContent />
-    </>
+    </PageShell>
   );
 }

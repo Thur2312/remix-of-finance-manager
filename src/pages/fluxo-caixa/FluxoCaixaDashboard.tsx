@@ -6,7 +6,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { useCashFlowCategories, useCashFlowEntries, expandRecurringEntries } from '@/hooks/useCashFlow';
 import { CashFlowCharts } from '@/components/fluxo-caixa/CashFlowCharts';
 import { Plus, ArrowRight } from 'lucide-react';
-import { PageHeader } from '@/components/layout/PageHeader';
+import { PageShell } from '@/components/layout/PageShell';
 import { fluxoCaixaNavTabs } from '@/components/layout/InPageNav';
 import { format, startOfMonth, endOfMonth, isAfter, isBefore, parseISO, subYears, addYears } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
@@ -73,17 +73,16 @@ function FluxoCaixaDashboardContent() {
   }).sort((a, b) => parseISO(a.due_date!).getTime() - parseISO(b.due_date!).getTime()).slice(0, 5);
   // "Últimos Lançamentos" mostra apenas os registros reais criados pelo usuário, nunca ocorrências virtuais.
   const recentEntries = entries.slice(0, 5);
-  return <>
-      <PageHeader
-        icon={HandCoins}
-        title="Fluxo de Caixa"
-        subtitle={`Visão geral de ${format(now, 'MMMM yyyy', { locale: ptBR })}`}
-        action={<Button onClick={() => navigate('/fluxo-caixa/lancamentos')} className="gap-2">
-            <Plus className="h-4 w-4" />
-            Novo Lançamento
-          </Button>}
-        tabs={fluxoCaixaNavTabs}
-      />
+  return <PageShell
+      icon={HandCoins}
+      title="Fluxo de Caixa"
+      subtitle={`Visão geral de ${format(now, 'MMMM yyyy', { locale: ptBR })}`}
+      action={<Button onClick={() => navigate('/fluxo-caixa/lancamentos')} className="gap-2">
+          <Plus className="h-4 w-4" />
+          Novo Lançamento
+        </Button>}
+      tabs={fluxoCaixaNavTabs}
+    >
       <div className="space-y-6">
         {/* Summary Cards */}
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-5">
@@ -225,7 +224,7 @@ function FluxoCaixaDashboardContent() {
           </Card>
         </div>
       </div>
-    </>;
+    </PageShell>;
 }
 
 export default FluxoCaixaDashboardContent;

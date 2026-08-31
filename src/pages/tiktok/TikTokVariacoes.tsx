@@ -28,7 +28,7 @@ import { fetchAllTikTokOrders } from '@/lib/tiktok-helpers';
 import { EditableCostCell } from '@/components/EditableCostCell';
 import { ResultsCharts } from '@/components/charts/ResultsCharts';
 import { tiktokNavTabs } from '@/components/layout/InPageNav';
-import { PageHeader } from '@/components/layout/PageHeader';
+import { PageShell } from '@/components/layout/PageShell';
 import { FiltersCard } from '@/components/layout/FiltersCard';
 import { EmptyResultsState } from '@/components/layout/EmptyResultsState';
 
@@ -544,7 +544,7 @@ function TikTokVariacoesContent() {
   }
 
   return (
-    <div className="space-y-6 animate-fade-in">
+    <div className="space-y-6">
       {renderFilters()}
       {renderSummaryCards()}
       {calculatedResults && calculatedResults.groups.length > 0 && (
@@ -557,9 +557,8 @@ function TikTokVariacoesContent() {
 
 export default function TikTokVariacoes() {
   return (
-    <>
-      <PageHeader tabs={tiktokNavTabs} />
+    <PageShell tabs={tiktokNavTabs}>
       <TikTokVariacoesContent />
-    </>
+    </PageShell>
   );
 }

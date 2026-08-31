@@ -20,7 +20,7 @@ import {
   Building2, Laptop, Megaphone, CreditCard, Receipt,
   Truck, FolderOpen, Package, ShoppingBag, Users, Wrench, Globe,
 } from 'lucide-react';
-import { PageHeader } from '@/components/layout/PageHeader';
+import { PageShell } from '@/components/layout/PageShell';
 import { formatCurrency } from '@/lib/format';
 
 // ── Ícones das categorias padrão + customizadas ──────────────────────────────
@@ -149,13 +149,11 @@ function CadastroCustosContent() {
   }
 
   return (
-    <div className="space-y-6">
-
-        <PageHeader
-          icon={Receipt}
-          title="Cadastro de Custos Fixos"
-          subtitle="Gerencie os custos fixos mensais da sua operação"
-          action={
+    <PageShell
+      icon={Receipt}
+      title="Cadastro de Custos Fixos"
+      subtitle="Gerencie os custos fixos mensais da sua operação"
+      action={
           <Dialog
             open={isAddDialogOpen}
             onOpenChange={open => { setIsAddDialogOpen(open); if (!open) resetForm(); }}
@@ -255,9 +253,9 @@ function CadastroCustosContent() {
               </DialogFooter>
             </DialogContent>
           </Dialog>
-          }
-        />
-
+      }
+    >
+      <div className="space-y-6">
         {/* ── Card de totais ──────────────────────────────────────────────────── */}
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <Card>
@@ -391,7 +389,8 @@ function CadastroCustosContent() {
             )}
           </CardContent>
         </Card>
-    </div>
+      </div>
+    </PageShell>
   );
 }
 

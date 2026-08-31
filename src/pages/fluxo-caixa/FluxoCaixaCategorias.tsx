@@ -8,7 +8,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { useCashFlowCategories, type CashFlowCategory } from '@/hooks/useCashFlow';
 import { Plus, Trash2, Edit, TrendingUp, TrendingDown } from 'lucide-react';
 import { fluxoCaixaNavTabs } from '@/components/layout/InPageNav';
-import { PageHeader } from '@/components/layout/PageHeader';
+import { PageShell } from '@/components/layout/PageShell';
 import {
   Dialog,
   DialogContent,
@@ -147,18 +147,17 @@ function FluxoCaixaCategoriasContent() {
   );
 
   return (
-    <>
-      <PageHeader
-        title="Categorias"
-        subtitle="Gerencie as categorias de entradas e saídas"
-        action={
-          <Button onClick={() => handleOpenDialog()}>
-            <Plus className="h-4 w-4 mr-2" />
-            Nova Categoria
-          </Button>
-        }
-        tabs={fluxoCaixaNavTabs}
-      />
+    <PageShell
+      title="Categorias"
+      subtitle="Gerencie as categorias de entradas e saídas"
+      action={
+        <Button onClick={() => handleOpenDialog()}>
+          <Plus className="h-4 w-4 mr-2" />
+          Nova Categoria
+        </Button>
+      }
+      tabs={fluxoCaixaNavTabs}
+    >
       <div className="space-y-6">
         <div className="grid gap-6 md:grid-cols-2">
           {/* Income Categories */}
@@ -308,7 +307,7 @@ function FluxoCaixaCategoriasContent() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-    </>
+    </PageShell>
   );
 }
 

@@ -13,7 +13,7 @@ import { formatCurrency } from '@/lib/format';
 import { logger } from '@/lib/logger';
 import * as XLSX from 'xlsx';
 import { tiktokNavTabs } from '@/components/layout/InPageNav';
-import { PageHeader } from '@/components/layout/PageHeader';
+import { PageShell } from '@/components/layout/PageShell';
 
 interface ExtendedImportSummary extends ImportSummary {
   dataSource: 'order_details' | 'statements';
@@ -389,13 +389,12 @@ function TikTokPagamentosUploadContent() {
   }, [processFile, processMultipleFiles]);
 
   return (
-    <>
-      <PageHeader
-        icon={Upload}
-        title="Upload de Pagamentos TikTok"
-        subtitle="Importe o relatório de pagamentos (Income) do TikTok Shop para visualizar o detalhamento de recebimentos"
-        tabs={tiktokNavTabs}
-      />
+    <PageShell
+      icon={Upload}
+      title="Upload de Pagamentos TikTok"
+      subtitle="Importe o relatório de pagamentos (Income) do TikTok Shop para visualizar o detalhamento de recebimentos"
+      tabs={tiktokNavTabs}
+    >
       <div className="space-y-6">
         <Card>
           <CardHeader>
@@ -626,7 +625,7 @@ function TikTokPagamentosUploadContent() {
           </CardContent>
         </Card>
       </div>
-    </>
+    </PageShell>
   );
 }
 

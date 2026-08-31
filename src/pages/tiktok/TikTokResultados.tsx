@@ -30,7 +30,7 @@ import { fetchAllTikTokOrders } from '@/lib/tiktok-helpers';
 import { EditableCostCell } from '@/components/EditableCostCell';
 import { ResultsCharts } from '@/components/charts/ResultsCharts';
 import { tiktokNavTabs } from '@/components/layout/InPageNav';
-import { PageHeader } from '@/components/layout/PageHeader';
+import { PageShell } from '@/components/layout/PageShell';
 import { FiltersCard } from '@/components/layout/FiltersCard';
 import { EmptyResultsState } from '@/components/layout/EmptyResultsState';
 
@@ -640,7 +640,7 @@ function TikTokResultadosContent() {
   }
 
   return (
-    <div className="space-y-6 animate-fade-in">
+    <div className="space-y-6">
       {hasOrdersThatShouldBeExcluded && (
         <Alert>
           <AlertCircle className="h-4 w-4" />
@@ -666,9 +666,8 @@ function TikTokResultadosContent() {
 
 export default function TikTokResultados() {
   return (
-    <>
-      <PageHeader tabs={tiktokNavTabs} />
+    <PageShell tabs={tiktokNavTabs}>
       <TikTokResultadosContent />
-    </>
+    </PageShell>
   );
 }

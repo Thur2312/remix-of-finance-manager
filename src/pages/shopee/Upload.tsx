@@ -45,7 +45,7 @@ import {
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { shopeeNavTabs } from '@/components/layout/InPageNav';
-import { PageHeader } from '@/components/layout/PageHeader';
+import { PageShell } from '@/components/layout/PageShell';
 import { ExportSection } from '@/components/shopee/ExportSection';
 import { isExcludedOrderStatus, EXCLUDED_STATUS_DESCRIPTION } from '@/lib/marketplace-order-status';
 
@@ -643,7 +643,7 @@ function UploadContent() {
   );
 
   return (
-    <div className="space-y-6 animate-fade-in">
+    <div className="space-y-6">
       {step === 'upload' && renderUploadStep()}
       {step === 'mapping' && renderMappingStep()}
       {step === 'preview' && renderPreviewStep()}
@@ -654,10 +654,9 @@ function UploadContent() {
 
 export default function Upload() {
   return (
-    <>
-      <PageHeader tabs={shopeeNavTabs} />
+    <PageShell tabs={shopeeNavTabs} className="space-y-6">
       <UploadContent />
       <ExportSection />
-    </>
+    </PageShell>
   );
 }

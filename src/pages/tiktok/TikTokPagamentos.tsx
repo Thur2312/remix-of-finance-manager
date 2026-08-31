@@ -47,7 +47,7 @@ import { SettlementDetailModal } from '@/components/tiktok/SettlementDetailModal
 import { PaymentCharts } from '@/components/tiktok/PaymentCharts';
 import { FeatureGate } from '@/components/FeatureGate';
 import { tiktokNavTabs } from '@/components/layout/InPageNav';
-import { PageHeader } from '@/components/layout/PageHeader';
+import { PageShell } from '@/components/layout/PageShell';
 
 // Superfície de cartão da área interna — mesma família visual do .glass-card
 // da landing, calibrada pra densidade (ver .panel em index.css).
@@ -325,8 +325,7 @@ function TikTokPagamentosContent() {
 
   if (loading) {
     return (
-      <>
-        <PageHeader title="Pagamentos TikTok Shop" tabs={tiktokNavTabs} />
+      <PageShell title="Pagamentos TikTok Shop" tabs={tiktokNavTabs}>
         <motion.div
           className="space-y-6"
           initial="hidden"
@@ -347,18 +346,17 @@ function TikTokPagamentosContent() {
             <Skeleton className="h-96" />
           </motion.div>
         </motion.div>
-      </>
+      </PageShell>
     );
   }
 
   if (settlements.length === 0 && statements.length === 0) {
     return (
-      <>
-        <PageHeader
-          title="Pagamentos TikTok Shop"
-          subtitle="Visualize o detalhamento completo de recebimentos do TikTok Shop"
-          tabs={tiktokNavTabs}
-        />
+      <PageShell
+        title="Pagamentos TikTok Shop"
+        subtitle="Visualize o detalhamento completo de recebimentos do TikTok Shop"
+        tabs={tiktokNavTabs}
+      >
         <motion.div
           className="space-y-6"
           initial="hidden"
@@ -383,19 +381,17 @@ function TikTokPagamentosContent() {
             </Card>
           </motion.div>
         </motion.div>
-
-      </>
+      </PageShell>
     );
   }
 
   const totalDiscounts = summary.totalSellerDiscounts + summary.totalPlatformDiscounts;
 
   return (
-    <>
-      <PageHeader
-        title="Pagamentos TikTok Shop"
-        subtitle={`${summary.recordCount} registros • ${summary.orderCount} vendas • ${summary.refundCount} reembolsos`}
-        action={
+    <PageShell
+      title="Pagamentos TikTok Shop"
+      subtitle={`${summary.recordCount} registros • ${summary.orderCount} vendas • ${summary.refundCount} reembolsos`}
+      action={
           <div className="flex gap-2">
             <Button variant="outline" onClick={exportToCSV}>
               <Download className="h-4 w-4 mr-2" />
@@ -408,9 +404,9 @@ function TikTokPagamentosContent() {
               </Link>
             </Button>
           </div>
-        }
-        tabs={tiktokNavTabs}
-      />
+      }
+      tabs={tiktokNavTabs}
+    >
       <motion.div
         className="space-y-6"
         initial="hidden"
@@ -815,7 +811,7 @@ function TikTokPagamentosContent() {
           onOpenChange={setModalOpen}
         />
       </motion.div>
-    </>
+    </PageShell>
   );
 }
 

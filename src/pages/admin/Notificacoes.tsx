@@ -3,7 +3,7 @@ import { Navigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
-import { PageHeader } from '@/components/layout/PageHeader';
+import { PageShell } from '@/components/layout/PageShell';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -119,9 +119,13 @@ function NotificacoesAdminContent() {
   };
 
   return (
-    <div className="max-w-3xl mx-auto space-y-6">
-      <PageHeader icon={Shield} title="Avisos e novidades" subtitle="Crie comunicados pra todos os usuários ou só pra um grupo específico" />
-
+    <PageShell
+      icon={Shield}
+      title="Avisos e novidades"
+      subtitle="Crie comunicados pra todos os usuários ou só pra um grupo específico"
+      width="narrow"
+      className="space-y-6"
+    >
       <Card className="panel bg-card border-transparent">
         <CardHeader>
           <CardTitle>Novo aviso</CardTitle>
@@ -222,7 +226,7 @@ function NotificacoesAdminContent() {
           )}
         </CardContent>
       </Card>
-    </div>
+    </PageShell>
   );
 }
 

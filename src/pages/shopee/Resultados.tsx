@@ -45,7 +45,7 @@ import {
 import { ResultsCharts } from '@/components/charts/ResultsCharts';
 import { EditableCostCell } from '@/components/EditableCostCell';
 import { shopeeNavTabs } from '@/components/layout/InPageNav';
-import { PageHeader } from '@/components/layout/PageHeader';
+import { PageShell } from '@/components/layout/PageShell';
 import { FiltersCard } from '@/components/layout/FiltersCard';
 import { EmptyResultsState } from '@/components/layout/EmptyResultsState';
 
@@ -704,7 +704,7 @@ function ResultadosContent() {
   }
 
   return (
-    <div className="space-y-6 animate-fade-in">
+    <div className="space-y-6">
       {hasOrdersWithoutStatus && (
         <Alert>
           <AlertCircle className="h-4 w-4" />
@@ -730,9 +730,8 @@ function ResultadosContent() {
 
 export default function Resultados() {
   return (
-    <>
-      <PageHeader tabs={shopeeNavTabs} />
+    <PageShell tabs={shopeeNavTabs}>
       <ResultadosContent />
-    </>
+    </PageShell>
   );
 }

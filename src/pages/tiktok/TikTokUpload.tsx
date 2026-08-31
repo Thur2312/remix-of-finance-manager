@@ -26,7 +26,7 @@ import {
 } from '@/components/ui/table';
 import { parseTikTokCSVRow, ParsedTikTokRow, excludedStatusesDescription } from '@/lib/tiktok-helpers';
 import { tiktokNavTabs } from '@/components/layout/InPageNav';
-import { PageHeader } from '@/components/layout/PageHeader';
+import { PageShell } from '@/components/layout/PageShell';
 
 function TikTokUploadContent() {
   const { user } = useAuth();
@@ -428,7 +428,7 @@ function TikTokUploadContent() {
   );
 
   return (
-    <div className="space-y-6 animate-fade-in">
+    <div className="space-y-6">
       {step === 'upload' && renderUploadStep()}
       {step === 'preview' && renderPreviewStep()}
       {step === 'importing' && renderImportingStep()}
@@ -439,9 +439,8 @@ function TikTokUploadContent() {
 
 export default function TikTokUpload() {
   return (
-    <>
-      <PageHeader tabs={tiktokNavTabs} />
+    <PageShell tabs={tiktokNavTabs}>
       <TikTokUploadContent />
-    </>
+    </PageShell>
   );
 }

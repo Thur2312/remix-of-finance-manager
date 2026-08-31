@@ -24,7 +24,7 @@ import {
   DialogDescription, DialogFooter,
 } from '@/components/ui/dialog';
 import { fluxoCaixaNavTabs } from '@/components/layout/InPageNav';
-import { PageHeader } from '@/components/layout/PageHeader';
+import { PageShell } from '@/components/layout/PageShell';
 import { FiltersCard } from '@/components/layout/FiltersCard';
 
 // Superfície de cartão da área interna — mesma família visual do .glass-card
@@ -244,11 +244,10 @@ function FluxoCaixaLancamentosContent() {
   };
 
   return (
-    <>
-      <PageHeader
-        title="Lançamentos"
-        subtitle="Gerencie todas as entradas e saídas do seu fluxo de caixa"
-        action={
+    <PageShell
+      title="Lançamentos"
+      subtitle="Gerencie todas as entradas e saídas do seu fluxo de caixa"
+      action={
           <div className="flex flex-wrap gap-2">
             <Button variant="outline" onClick={() => setIsCategoryDialogOpen(true)}>
               <Tag className="h-4 w-4 mr-2" />
@@ -268,8 +267,8 @@ function FluxoCaixaLancamentosContent() {
             </Button>
           </div>
         }
-        tabs={fluxoCaixaNavTabs}
-      />
+      tabs={fluxoCaixaNavTabs}
+    >
       <div className="space-y-6">
 
         {/* ── Filtros ───────────────────────────────────────────────────── */}
@@ -434,7 +433,7 @@ function FluxoCaixaLancamentosContent() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-    </>
+    </PageShell>
   );
 }
 

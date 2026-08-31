@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Zap, ChevronLeft, ChevronRight, ExternalLink } from 'lucide-react';
-import { PageHeader } from '@/components/layout/PageHeader';
+import { PageShell } from '@/components/layout/PageShell';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -63,13 +63,12 @@ export default function Vendas() {
   const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
 
   return (
-    <div className="space-y-6">
-      <PageHeader
-        icon={Zap}
-        title="Vendas"
-        subtitle="Atividade de vendas da Shopee e do Mercado Livre em tempo real"
-      />
-
+    <PageShell
+      icon={Zap}
+      title="Vendas"
+      subtitle="Atividade de vendas da Shopee e do Mercado Livre em tempo real"
+      className="space-y-6"
+    >
       <div className="flex items-center gap-3 flex-wrap">
         <Select value={provider} onValueChange={(v) => { setProvider(v as ProviderFilter); setPage(0); }}>
           <SelectTrigger className="w-[180px]"><SelectValue /></SelectTrigger>
@@ -161,6 +160,6 @@ export default function Vendas() {
           )}
         </CardContent>
       </Card>
-    </div>
+    </PageShell>
   );
 }

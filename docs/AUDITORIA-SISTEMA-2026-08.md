@@ -169,7 +169,17 @@ da Faixa C satisfeito.
   aplicar no item 5/6 (margem/lucro positivo em destaque) e no que a Faixa D pedir.
 
 **C.2 — Componentes de página**
-- [ ] **`PageShell`** — um wrapper único: `<PageShell title icon action tabs>{children}</PageShell>` que resolve container + `PageHeader` + `InPageNav` + espaçamento. Migrar as 19 páginas sem header.
+- [~] **`PageShell`** — wrapper único `<PageShell icon iconVariant title subtitle action tabs width>{children}</PageShell>`
+  que resolve `PageHeader` + `InPageNav` + ritmo vertical (`space-y-8` seção /
+  `space-y-4` header→tabs) + largura (`width="narrow"` = `mx-auto max-w-3xl`).
+  `src/components/layout/PageShell.tsx`. `PageHeader`/`InPageNav` perderam as
+  margens externas próprias (ritmo agora é do shell); `IconBadgeVariant`
+  exportado. **Rodada 1 FEITA (31/08):** as **21 páginas que já usavam
+  `PageHeader`** migradas (marketplace Resultados/Variações/Pagamentos/Config/
+  Upload, Fluxo ×3, DRE, Calculadora, Custos, Vendas, Avisos admin) +
+  `animate-fade-in`/`-up` dos wrappers removidos (o `InternalLayout` já faz o
+  fade de rota). typecheck 0, 99 testes, build ok. **Falta:** dar `PageShell`
+  às ~10 telas sem header (dashboards + forms) — rodada 2.
 - [ ] **`StatCard` / `KpiRow`** — hoje cada dashboard monta os cards à mão (`shopee/Dashboard.tsx`, `IntegrationManage.tsx`, `UnifiedDashboard.tsx` — 3 layouts diferentes de "4 cards de número"). Um componente só, com slot de delta e de nota.
 - [ ] **Empty-state** — consolidar em `<EmptyState variant="onboarding" | "no-data" | "no-connection" action={}>`. Absorver o card bespoke do `UnifiedDashboard`.
 - [ ] ~~**`DataTable`**~~ — **fora desta rodada** (vira sub-projeto próprio):

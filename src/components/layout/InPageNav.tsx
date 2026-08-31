@@ -12,7 +12,7 @@ interface InPageNavProps {
 
 export function InPageNav({ tabs }: InPageNavProps) {
   return (
-    <div className="mb-6">
+    <div>
       <nav className="flex gap-1 rounded-lg bg-muted/50 border border-border/50 p-1.5 overflow-x-auto">
         {tabs.map((tab) => (
           <NavLink

@@ -1,6 +1,6 @@
 import React, { useState, useMemo, useEffect } from "react";
 import { Link } from "react-router-dom";
-import { PageHeader } from "@/components/layout/PageHeader";
+import { PageShell } from "@/components/layout/PageShell";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Alert, AlertDescription } from "@/components/ui/alert";
@@ -934,15 +934,15 @@ function CalculadoraPrecificacaoContent() {
   return (
     <>
       <TooltipProvider>
-        <div className="max-w-5xl mx-auto space-y-6">
-
-          <PageHeader
+        <div className="max-w-5xl mx-auto">
+          <PageShell
             icon={Calculator}
             title="Calculadora de Precificação"
             subtitle="Análise completa com Margem de Contribuição e Absorção de Custos Fixos"
-          />
+            className="space-y-6"
+          >
 
-          <p className="text-xs text-muted-foreground flex items-center gap-1.5 -mt-4">
+          <p className="text-xs text-muted-foreground flex items-center gap-1.5">
             <Info className="h-3 w-3 flex-shrink-0" />
             Taxas de comissão conferidas em {TAXAS_VERIFICADAS_EM} — marketplaces podem mudar sem aviso, confirme na Central do Vendedor antes de decisões importantes.
           </p>
@@ -1961,6 +1961,7 @@ function CalculadoraPrecificacaoContent() {
             </CardContent>
           </Card>
 
+          </PageShell>
         </div>
         <br />
       </TooltipProvider>

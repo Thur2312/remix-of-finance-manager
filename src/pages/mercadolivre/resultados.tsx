@@ -33,7 +33,7 @@ import {
   formatPercent,
 } from '@/lib/calculations';
 import { mercadolivreNavTabs } from '@/components/layout/InPageNav';
-import { PageHeader } from '@/components/layout/PageHeader';
+import { PageShell } from '@/components/layout/PageShell';
 import { FiltersCard } from '@/components/layout/FiltersCard';
 import { EmptyResultsState } from '@/components/layout/EmptyResultsState';
 import { useMercadolivreData } from '@/hooks/useMercadolivreData';
@@ -351,7 +351,7 @@ function ResultadosContent() {
   };
 
   return (
-    <div className="space-y-6 animate-fade-in">
+    <div className="space-y-6">
       {renderFilters()}
       {renderSummaryCards()}
       {renderResultsTable()}
@@ -361,9 +361,8 @@ function ResultadosContent() {
 
 export default function MercadoLivreResultados() {
   return (
-    <>
-      <PageHeader tabs={mercadolivreNavTabs} />
+    <PageShell tabs={mercadolivreNavTabs}>
       <ResultadosContent />
-    </>
+    </PageShell>
   );
 }

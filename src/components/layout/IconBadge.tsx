@@ -1,7 +1,7 @@
 import { type LucideIcon } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
-type IconBadgeVariant = 'brand' | 'success' | 'warning' | 'danger' | 'gold';
+export type IconBadgeVariant = 'brand' | 'success' | 'warning' | 'danger' | 'gold';
 
 const VARIANT_CLASSES: Record<IconBadgeVariant, string> = {
   brand: 'bg-primary/10 text-primary',
