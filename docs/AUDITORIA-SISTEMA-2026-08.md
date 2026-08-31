@@ -218,12 +218,24 @@ da Faixa C satisfeito.
   composável. Revisitar se um padrão específico doer (princípio N3: "só onde
   dói, COM teste").
 
-**C.3 — Motion (vocabulário, só Framer — sem GSAP no app)**
-- [ ] **Easing de assinatura** — `[0.16, 1, 0.3, 1]` (expo-out) como padrão único, substituindo `easeOut` / `transition-all duration-300` (mesmo P1 do `DESIGN-DIRECTION` addendum, aplicado ao app).
-- [ ] **Hover-lift** padrão em cards navegáveis e botões primários (`translateY(-2px)` + sombra), tap `scale(0.97)`.
-- [ ] **Stagger** na entrada de grids de KPI/card (dashboard).
-- [ ] **Contador animado** nos KPIs financeiros internos (`useSpring`) — já existe na landing (`AnimatedStat`), reaproveitar.
-- [ ] **Transição de rota** — trocar o fade seco do `InternalLayout` por um fade+slide leve com o easing de assinatura.
+**C.3 — Motion (vocabulário, só Framer — sem GSAP no app)** — parte 1 FEITA (31/08, `a43283d`)
+- [x] **Easing de assinatura** — `src/lib/motion.ts` (`EXPO_OUT` + presets
+  `fadeSlideUp`/`staggerContainer`/`routeTransition`). Ponto único pro JS da área
+  interna. `easeOut`/`duration-300` stragglers **não** varridos ainda (sweep
+  mecânico, baixa prio).
+- [x] **`<MotionConfig reducedMotion="user">`** no root (`main.tsx`) — toda
+  animação Framer respeita o `prefers-reduced-motion` sem cada componente checar.
+- [x] **Stagger** — `<KpiRow>` faz cascata dos cards na montagem (mount-only).
+- [x] **Transição de rota** — fade + slide leve (`y:6`) com o easing; a chave
+  passou a ser grossa em `/gestao/*` (a casca de Gestão não dá mais fade a cada
+  troca de aba — só o painel, via Suspense).
+- [~] **Hover-lift** — `.panel-interactive` melhorado (-2px + `:active` + guard
+  reduced-motion no CSS), mas **ainda opt-in / pouco usado**. Aplicar nos cards
+  navegáveis (quick-actions, IntegrationCard) + `scale` no `:active` dos botões
+  → depois da revisão visual (é "taste").
+- [ ] **Contador animado** nos KPIs (`useSpring`/`useCountUp` — já existe em
+  `landing/hooks.ts`) — muda a API do `<StatCard>` (valor vira número, não
+  string formatada). Adiado.
 
 ### Faixa D — Sidebar
 
