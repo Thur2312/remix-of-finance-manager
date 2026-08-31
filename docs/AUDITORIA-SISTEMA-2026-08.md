@@ -219,6 +219,31 @@ da Faixa C satisfeito.
 - [ ] **Cor do "chrome"** — o `DESIGN-DIRECTION` propôs sidebar/topbar em navy `#0A1628`; hoje `index.css` diz que voltou pra "superfície quase-branca diferenciada só por borda". Decidir: navy (mais marca) ou branco (mais leve). É token (`--sidebar-*`), muda tudo de uma vez.
 - [ ] **`NotificationBell` na topbar** — só admin usa; esconder pra não-admin ou dar uso real.
 
+**Topbar redesenhado (31/08, `17f09ad`):** sticky + frosted (`bg-background/70`
++ `backdrop-blur`, borda fina, 56px); o `<h1>` pequeno saiu (duplicava o do
+`PageShell`) e virou **breadcrumbs** ("Grupo › Item › subpágina") derivados de
+`navModel.ts` (modelo de nav extraído da `AppSidebar`, agora compartilhado).
+`TopbarTitleContext` removido. Container com padding responsivo. Chrome segue
+branco (navy continua revertido) — badge de Vendas e `NotificationBell` ainda em
+aberto.
+
+### Faixa G — Gestão unificada (`/gestao/:marketplace/:view`)
+
+- [x] **Casca única (31/08, `89ae1d0`).** Antes o seletor de marketplace só
+  existia no dashboard; trocar pra Resultados/etc caía numa rota separada sem o
+  seletor ("um layout por célula"). Agora `src/pages/gestao/GestaoShell.tsx`
+  mantém seletor de marketplace + abas de view sempre montados; só o painel
+  troca. Modelo em `marketplaceViews.ts` (lazy por view). Os 11 `*Content` de
+  marketplace + 3 `*DashboardContent` perderam o `PageShell`/abas próprios. As
+  ~14 rotas antigas viram redirect de bookmark. Trocar de marketplace preserva a
+  view se existir no destino (ML não tem Upload → cai no dashboard).
+- [ ] **Polir visual** — `MarketplaceControl` foi redesenhado (chips com logo +
+  cor de marca no ativo); falta olhar rodando. O `AnimatedOutlet` do
+  `InternalLayout` ainda faz fade da casca inteira a cada troca de aba (keyed em
+  `location.pathname`) — dava pra keyar mais grosso p/ só o painel animar.
+- [ ] **`StatCard`/`KpiRow`** encaixa naturalmente aqui depois (os dashboards de
+  marketplace montam a linha de KPIs à mão).
+
 ### Faixa E — Fechar features pendentes (de sessões anteriores)
 
 - [ ] **Push** dos commits `007a30c` + `60f710b` (multi-loja Shopee).
