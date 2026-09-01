@@ -24,7 +24,6 @@ import { PageShell } from '@/components/layout/PageShell';
 import { StatCard, KpiRow } from '@/components/ui/stat-card';
 import { OnboardingChecklist } from '@/components/dashboard/OnboardingChecklist';
 import { TaxSummaryRow } from '@/hooks/useIntegrationTax';
-import { Company } from '@/hooks/useCompanies';
 import { formatCurrency } from '@/lib/calculations';
 import { formatCents, type Cents } from '@/lib/money';
 import { Link } from 'react-router-dom';
@@ -452,22 +451,24 @@ function RecentSalesActivityCard() {
 function UnifiedDashboardContent() {
   const [marketplace, setMarketplace] = useState<Marketplace>('shopee');
   const [syncPeriod, setSyncPeriod] = useState<number>(15);
-  const [selectedCompany, setSelectedCompany] = useState<Company | null>(null);
 
   const { shopee, tiktok, mercadolivre, combined, isShopeeConnected, syncData, syncNow, shopeeConnection } =
     useDashboardData(syncPeriod);
   const { shopeeConnections, setActiveConnectionId } = useActiveShopeeConnection();
 
-  // Insights — DRE (user-wide, sempre) + finança Shopee (só quando a aba
-  // relevante está aberta). Lógica pura em src/lib/insights.ts.
-  const { dreData, isLoading: dreLoading } = useDREData();
+  // A empresa é a mesma da DRE (fonte única — dreData é calculado com ela e o
+  // TaxSummaryRow / insights leem a mesma). Insights: DRE (user-wide, sempre) +
+  // finança Shopee (só na aba relevante). Lógica pura em src/lib/insights.ts.
+  const { dreData, isLoading: dreLoading, selectedCompany, setSelectedCompany } = useDREData();
   const showShopeeInsights = marketplace === 'shopee' || marketplace === 'todos';
   const insights = useMemo(
     () => buildInsights({
       dre: dreData,
+      company: selectedCompany,
       shopeeFinance: showShopeeInsights ? (syncData?.stats ?? null) : null,
+      shopeeFinancePrev: showShopeeInsights ? (syncData?.prevStats ?? null) : null,
     }),
-    [dreData, syncData, showShopeeInsights],
+    [dreData, selectedCompany, syncData, showShopeeInsights],
   );
 
   const statsMap: Record<Marketplace, MarketplaceStats> = { shopee, tiktok, mercadolivre, todos: combined };

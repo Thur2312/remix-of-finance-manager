@@ -283,7 +283,6 @@ describe('calculateDRE — imposto da empresa (companies.tax_rate / tax_base)', 
     expect(dre.issSimples).toBe(0);
     expect(dre.impostosSobreVendasTotal).toBe(0);
     expect(dre.impostosSobreLucro).toBe(0);
-    expect(dre.alertas.some(a => a.campo === 'impostosSobreVendasTotal')).toBe(true);
   });
 
   it('tax_base="revenue" → ISS = alíquota sobre a receita de vendas dos marketplaces', () => {

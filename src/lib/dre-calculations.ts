@@ -26,12 +26,6 @@ export interface DRESection {
   total?: DRELineItem;
 }
 
-export interface DREAlerta {
-  tipo: 'warning' | 'error' | 'info';
-  mensagem: string;
-  campo: string;
-}
-
 // Pedido Shopee normalizado para o DRE (vem de orders + fees)
 export interface ShopeeOrderDRE {
   id: string;
@@ -139,8 +133,6 @@ export interface DREData {
 
   lucroLiquido: number;
   margemLiquida: number;
-
-  alertas: DREAlerta[];
 
   // Equivalentes em centavos (Fase 4, aditivo — ver
   // docs/DIAGNOSTICO-FINANCEIRO.md seção 6). Percentuais (margens) não têm
@@ -387,46 +379,9 @@ export function filterByPeriod<T extends {
   });
 }
 
-// ============= ALERTAS =============
-
-function gerarAlertas(data: Partial<DREData>, company: DRECompanyTax | null): DREAlerta[] {
-  const alertas: DREAlerta[] = [];
-
-  if ((data.receitaBrutaTotal || 0) > 0) {
-    if (!company) {
-      alertas.push({ tipo: 'warning', mensagem: 'Nenhuma empresa selecionada. O DRE não estima Simples Nacional / IRPJ até você escolher a empresa.', campo: 'impostosSobreVendasTotal' });
-    } else if (company.tax_rate === 0) {
-      alertas.push({ tipo: 'warning', mensagem: 'A empresa selecionada está sem alíquota de imposto. Ajuste em Empresas se ela recolhe Simples Nacional ou IRPJ/CSLL.', campo: 'impostosSobreVendasTotal' });
-    }
-  }
-  if ((data.cogsTotal || 0) === 0 && (data.receitaBrutaTotal || 0) > 0) {
-    alertas.push({ tipo: 'error', mensagem: 'Custo dos produtos (COGS) zerado. Cadastre os custos unitários dos produtos.', campo: 'cogsTotal' });
-  }
-  if ((data.margemContribuicao || 0) < 0) {
-    alertas.push({ tipo: 'error', mensagem: 'Margem de contribuição negativa! A operação não é sustentável.', campo: 'margemContribuicao' });
-  }
-  if ((data.lucroOperacional || 0) < 0 && (data.margemContribuicao || 0) > 0) {
-    alertas.push({ tipo: 'warning', mensagem: 'Lucro operacional negativo. Custos fixos estão acima da margem de contribuição.', campo: 'lucroOperacional' });
-  }
-  if ((data.custosFixosTotal || 0) === 0 && (data.receitaBrutaTotal || 0) > 0) {
-    alertas.push({ tipo: 'info', mensagem: 'Nenhum custo fixo cadastrado. Cadastre custos fixos para uma DRE completa.', campo: 'custosFixosTotal' });
-  }
-
-  // Nada impede que uma venda já contabilizada pela integração (Shopee/TikTok/ML)
-  // seja lançada de novo manualmente no Fluxo de Caixa (ex: ao conciliar o
-  // repasse bancário) — não existe chave de referência entre CashFlowEntry e
-  // o pedido de origem pra detectar/evitar isso automaticamente. Só alertamos.
-  const receitaMarketplace = (data.receitaBrutaTotal || 0) - (data.receitaBrutaExtra || 0);
-  if ((data.receitaBrutaExtra || 0) > 0 && receitaMarketplace > 0) {
-    alertas.push({
-      tipo: 'warning',
-      mensagem: 'Há receita lançada manualmente no Fluxo de Caixa neste período, além das vendas dos marketplaces. Confira se algum desses lançamentos não é o mesmo repasse que a integração já contabilizou — senão a receita conta em dobro.',
-      campo: 'receitaBrutaExtra',
-    });
-  }
-
-  return alertas;
-}
+// Diagnósticos da DRE (COGS zerado, margem de contribuição negativa, empresa sem
+// alíquota, receita possivelmente duplicada, etc.) vivem em src/lib/insights.ts
+// (`dreInsights`) — camada única de insight, consumida pelo <InsightsPanel>.
 
 // ============= CÁLCULO PRINCIPAL =============
 
@@ -669,8 +624,6 @@ export function calculateDRE(
   const margemLiquida = receitaLiquida > 0 ? (lucroLiquido / receitaLiquida) * 100 : 0;
   const lucroLiquidoCents = lucroOperacionalCents - despesasFinanceirasTotalCents - outrasDespesasFluxoCents;
 
-  const alertas = gerarAlertas({ receitaBrutaTotal, receitaBrutaExtra, impostosSobreVendasTotal, cogsTotal, margemContribuicao, lucroOperacional, custosFixosTotal }, company);
-
   return {
     periodo: period,
     receitaBrutaShopee, receitaBrutaTikTok, receitaBrutaMercadoLivre, receitaBrutaExtra, receitaBrutaTotal,
@@ -686,7 +639,6 @@ export function calculateDRE(
     jurosMultas, impostosSobreLucro, despesasFinanceirasTotal,
     outrasReceitasFluxo, outrasDespesasFluxo, outrasDespesasFluxoPorCategoria,
     lucroLiquido, margemLiquida,
-    alertas,
 
     receitaBrutaShopeeCents: receitaBrutaShopeeCents as Cents,
     receitaBrutaTikTokCents: receitaBrutaTikTokCents as Cents,

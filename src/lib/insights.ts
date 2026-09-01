@@ -1,4 +1,4 @@
-import type { DREData } from './dre-calculations';
+import type { DREData, DRECompanyTax } from './dre-calculations';
 import type { ShopeeFinance } from './shopee-sync-status';
 import { formatCurrency } from './format';
 
@@ -35,10 +35,27 @@ const pct0 = (n: number) => `${Math.round(n)}%`;
 
 // ── DRE ──────────────────────────────────────────────────────────────────────
 
-export function dreInsights(dre: DREData): Insight[] {
+export function dreInsights(dre: DREData, company?: DRECompanyTax | null): Insight[] {
   const out: Insight[] = [];
   const receita = dre.receitaBrutaTotal;
   if (receita <= 0) return out;
+
+  // Config: sem empresa / sem alíquota → a DRE não estima Simples/IRPJ
+  if (company === undefined || company === null) {
+    out.push({
+      id: 'dre-empresa-nao-selecionada',
+      severity: 'warning',
+      title: 'Nenhuma empresa selecionada',
+      detail: 'A DRE não estima Simples Nacional / IRPJ enquanto você não escolher a empresa no seletor acima.',
+    });
+  } else if (company.tax_rate === 0) {
+    out.push({
+      id: 'dre-empresa-sem-aliquota',
+      severity: 'warning',
+      title: 'A empresa está sem alíquota de imposto',
+      detail: 'A DRE mostra imposto sobre vendas zerado. Ajuste em Empresas se ela recolhe Simples Nacional ou IRPJ/CSLL.',
+    });
+  }
 
   // Fechou no vermelho
   if (dre.lucroLiquido < 0) {
@@ -102,6 +119,28 @@ export function dreInsights(dre: DREData): Insight[] {
     }
   }
 
+  // Nenhum custo fixo cadastrado → DRE incompleta
+  if (dre.custosFixosTotal === 0) {
+    out.push({
+      id: 'dre-sem-custo-fixo',
+      severity: 'info',
+      title: 'Nenhum custo fixo cadastrado',
+      detail: 'Aluguel, pró-labore, contador, ferramentas — sem eles a DRE mostra um lucro operacional maior do que o real.',
+      action: { label: 'Cadastrar custos fixos', to: '/fluxo-caixa' },
+    });
+  }
+
+  // Receita avulsa no fluxo de caixa pode ser dupla contagem
+  if (dre.receitaBrutaExtra > 0 && receita - dre.receitaBrutaExtra > 0) {
+    out.push({
+      id: 'dre-receita-duplicada',
+      severity: 'warning',
+      title: 'Receita lançada à mão além das vendas dos marketplaces',
+      detail: `${formatCurrency(dre.receitaBrutaExtra)} entraram pelo Fluxo de Caixa neste período. Confira se não é o mesmo repasse que a integração já contou — senão a receita dobra.`,
+      action: { label: 'Revisar lançamentos', to: '/fluxo-caixa/lancamentos' },
+    });
+  }
+
   // Margem bruta apertada
   if (dre.margemBruta > 0 && dre.margemBruta < 15) {
     out.push({
@@ -139,11 +178,12 @@ export function dreInsights(dre: DREData): Insight[] {
 
 // ── Finança Shopee (path de sincronização) ───────────────────────────────────
 
-export function shopeeFinanceInsights(fin: ShopeeFinance): Insight[] {
+export function shopeeFinanceInsights(fin: ShopeeFinance, prev?: ShopeeFinance | null): Insight[] {
   const out: Insight[] = [];
   if (fin.faturamento <= 0) return out;
 
-  // Taxa efetiva — o que a Shopee reteve, decomposto
+  // Taxa efetiva — o que a Shopee reteve, decomposto. Com período anterior,
+  // sinaliza quando a mordida está crescendo (custo silencioso).
   const retido = fin.faturamento - fin.valorLiquido;
   if (retido > 0) {
     const share = (retido / fin.faturamento) * 100;
@@ -152,10 +192,22 @@ export function shopeeFinanceInsights(fin: ShopeeFinance): Insight[] {
       .slice(0, 3)
       .map(f => `${f.label} ${formatCurrency(f.amount)}`)
       .join(' · ');
+
+    let deltaTxt = '';
+    let subindo = false;
+    if (prev && prev.faturamento > 0) {
+      const prevShare = ((prev.faturamento - prev.valorLiquido) / prev.faturamento) * 100;
+      const dpp = share - prevShare;
+      if (Math.abs(dpp) >= 1) {
+        deltaTxt = ` — ${dpp > 0 ? '+' : ''}${dpp.toFixed(0)} p.p. vs período anterior`;
+        subindo = dpp >= 3;
+      }
+    }
+
     out.push({
       id: 'shopee-taxa-efetiva',
-      severity: share >= 35 ? 'warning' : 'info',
-      title: `A Shopee ficou com ${pct0(share)} do faturamento`,
+      severity: share >= 35 || subindo ? 'warning' : 'info',
+      title: `A Shopee ficou com ${pct0(share)} do faturamento${deltaTxt}`,
       detail: `${formatCurrency(retido)} em taxas e descontos no período${top3 ? `: ${top3}` : ''}.`,
       metric: pct0(share),
     });
@@ -194,11 +246,13 @@ export function shopeeFinanceInsights(fin: ShopeeFinance): Insight[] {
 
 export function buildInsights(input: {
   dre?: DREData | null;
+  company?: DRECompanyTax | null;
   shopeeFinance?: ShopeeFinance | null;
+  shopeeFinancePrev?: ShopeeFinance | null;
 }): Insight[] {
   const all: Insight[] = [];
-  if (input.dre) all.push(...dreInsights(input.dre));
-  if (input.shopeeFinance) all.push(...shopeeFinanceInsights(input.shopeeFinance));
+  if (input.dre) all.push(...dreInsights(input.dre, input.company));
+  if (input.shopeeFinance) all.push(...shopeeFinanceInsights(input.shopeeFinance, input.shopeeFinancePrev));
 
   const seen = new Set<string>();
   const unique = all.filter(i => {

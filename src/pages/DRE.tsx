@@ -9,7 +9,8 @@ import { useDREData } from '@/hooks/useDREData';
 import { DRETable } from '@/components/dre/DRETable';
 import { DRECharts } from '@/components/dre/DRECharts';
 import { DRESummaryCards } from '@/components/dre/DRESummaryCards';
-import { DREAlerts } from '@/components/dre/DREAlerts';
+import { InsightsPanel } from '@/components/insights/InsightsPanel';
+import { buildInsights } from '@/lib/insights';
 import { formatDREForDisplay, formatCurrency, DREPeriod } from '@/lib/dre-calculations';
 import { FileSpreadsheet, RefreshCw, Download, Calendar, BarChart3, AlertCircle, CheckCircle2, XCircle, ArrowRight } from 'lucide-react';
 import { format } from 'date-fns';
@@ -174,10 +175,9 @@ function DREContent() {
         </CardContent>
       </Card>
 
-      {/* Alertas de Validação */}
-      {dreData.alertas && dreData.alertas.length > 0 &&
-      <DREAlerts alertas={dreData.alertas} />
-      }
+      {/* Insights — diagnóstico da DRE (mesma camada do Dashboard) */}
+      <InsightsPanel insights={buildInsights({ dre: dreData, company: selectedCompany })} />
+
 
       {/* Summary Cards */}
       <DRESummaryCards data={dreData} />
