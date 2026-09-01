@@ -17,7 +17,9 @@ import { useDashboardData, Marketplace, MarketplaceStats } from '@/hooks/useDash
 import { useActiveShopeeConnection } from '@/hooks/useActiveShopeeConnection';
 import { useRecentSaleEvents } from '@/hooks/useSaleEvents';
 import { useDREData } from '@/hooks/useDREData';
+import { useProductCosts } from '@/hooks/useProductCosts';
 import { buildInsights } from '@/lib/insights';
+import { aggregateShopeeSkuFinance } from '@/lib/shopee-sku-finance';
 import { InsightsPanel } from '@/components/insights/InsightsPanel';
 import { CompanySelector } from '@/components/dashboard/CompanySelector';
 import { PageShell } from '@/components/layout/PageShell';
@@ -460,7 +462,15 @@ function UnifiedDashboardContent() {
   // TaxSummaryRow / insights leem a mesma). Insights: DRE (user-wide, sempre) +
   // finança Shopee (só na aba relevante). Lógica pura em src/lib/insights.ts.
   const { dreData, dreDataPrev, isLoading: dreLoading, selectedCompany, setSelectedCompany } = useDREData();
+  const { data: productCosts } = useProductCosts();
   const showShopeeInsights = marketplace === 'shopee' || marketplace === 'todos';
+
+  // Resultado por SKU do path sync da Shopee (order_items × escrow × custos).
+  const shopeeSkuRows = useMemo(() => {
+    if (!showShopeeInsights || !syncData?.orders?.length) return null;
+    return aggregateShopeeSkuFinance(syncData.orders, syncData.payments ?? [], productCosts ?? []);
+  }, [showShopeeInsights, syncData, productCosts]);
+
   const insights = useMemo(
     () => buildInsights({
       dre: dreData,
@@ -468,8 +478,9 @@ function UnifiedDashboardContent() {
       company: selectedCompany,
       shopeeFinance: showShopeeInsights ? (syncData?.stats ?? null) : null,
       shopeeFinancePrev: showShopeeInsights ? (syncData?.prevStats ?? null) : null,
+      products: shopeeSkuRows,
     }),
-    [dreData, dreDataPrev, selectedCompany, syncData, showShopeeInsights],
+    [dreData, dreDataPrev, selectedCompany, syncData, showShopeeInsights, shopeeSkuRows],
   );
 
   const statsMap: Record<Marketplace, MarketplaceStats> = { shopee, tiktok, mercadolivre, todos: combined };

@@ -340,7 +340,7 @@ export function productInsights(groups: ProductLike[]): Insight[] {
       out.push({
         id: 'produto-concentracao',
         severity: 'info',
-        title: `"${label(top)}" é ${pct0(share)} do faturamento desta análise`,
+        title: `"${label(top)}" é ${pct0(share)} do faturamento por produto no período`,
         detail: 'Um produto carregando a operação é risco: ruptura de estoque ou queda de demanda derruba o resultado.',
         metric: pct0(share),
       });
