@@ -9,6 +9,7 @@ import { useDREData } from '@/hooks/useDREData';
 import { DRETable } from '@/components/dre/DRETable';
 import { DRECharts } from '@/components/dre/DRECharts';
 import { DRESummaryCards } from '@/components/dre/DRESummaryCards';
+import { DRETrendChart } from '@/components/dre/DRETrendChart';
 import { InsightsPanel } from '@/components/insights/InsightsPanel';
 import { buildInsights } from '@/lib/insights';
 import { formatDREForDisplay, formatCurrency, DREPeriod } from '@/lib/dre-calculations';
@@ -31,6 +32,7 @@ function DREContent() {
     setSelectedPeriod,
     selectedCompany,
     setSelectedCompany,
+    dreTrend,
     refetch
   } = useDREData();
 
@@ -191,6 +193,7 @@ function DREContent() {
         </TabsList>
 
         <TabsContent value="resumo" className="space-y-6">
+          <DRETrendChart points={dreTrend} />
           <DRECharts data={dreData} />
         </TabsContent>
 

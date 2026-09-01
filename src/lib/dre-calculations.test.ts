@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import {
   calculateDRE,
+  getMonthlyPeriods,
   type ShopeeOrderDRE,
   type TikTokOrder,
   type TikTokSettlement,
@@ -270,6 +271,26 @@ describe('calculateDRE — campos *Cents batem (ou ficam próximos) de toCents()
     expect(dre.receitaBrutaTotalCents).toBe(0);
     expect(dre.lucroLiquidoCents).toBe(0);
     expect(Number.isNaN(dre.margemLiquida)).toBe(false);
+  });
+});
+
+describe('getMonthlyPeriods', () => {
+  it('devolve N meses contíguos, mais recente por último, sem sobreposição', () => {
+    const ps = getMonthlyPeriods(6);
+    expect(ps).toHaveLength(6);
+    for (let i = 1; i < ps.length; i++) {
+      expect(ps[i].start.getTime()).toBeGreaterThan(ps[i - 1].start.getTime());
+      // fim de um mês = início do próximo menos 1ms
+      expect(ps[i].start.getTime() - ps[i - 1].end.getTime()).toBe(1);
+    }
+    // o último termina no futuro relativo a agora OU é o mês corrente
+    expect(ps[5].end.getTime()).toBeGreaterThan(ps[5].start.getTime());
+  });
+
+  it('rótulos são mês/ano curtos', () => {
+    for (const p of getMonthlyPeriods(3)) {
+      expect(p.label).toMatch(/^(jan|fev|mar|abr|mai|jun|jul|ago|set|out|nov|dez)\/\d{2}$/);
+    }
   });
 });
 

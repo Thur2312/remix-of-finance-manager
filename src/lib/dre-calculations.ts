@@ -361,6 +361,25 @@ export function getDefaultPeriods(): DREPeriod[] {
   ];
 }
 
+const MES_ABREV = ['jan', 'fev', 'mar', 'abr', 'mai', 'jun', 'jul', 'ago', 'set', 'out', 'nov', 'dez'];
+
+// N meses fechados terminando no mês atual — pra série histórica da DRE.
+// Rótulo curto ("set/25"), fuso de negócio (São Paulo), igual getDefaultPeriods.
+export function getMonthlyPeriods(count: number): DREPeriod[] {
+  const { year, month } = businessDateParts(new Date());
+  const out: DREPeriod[] = [];
+  for (let i = count - 1; i >= 0; i--) {
+    const anchor = new Date(Date.UTC(year, month - i, 1));
+    const label = `${MES_ABREV[anchor.getUTCMonth()]}/${String(anchor.getUTCFullYear()).slice(-2)}`;
+    out.push({
+      start: businessMonthStart(year, month - i),
+      end: businessMonthEnd(year, month - i),
+      label,
+    });
+  }
+  return out;
+}
+
 export function filterByPeriod<T extends {
   data_pedido?: string | null;
   statement_date?: string | null;

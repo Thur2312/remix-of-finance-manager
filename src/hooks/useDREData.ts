@@ -8,6 +8,7 @@ import {
   DREPeriod,
   calculateDRE,
   getDefaultPeriods,
+  getMonthlyPeriods,
   TikTokSettlement,
   TikTokOrder,
   FixedCost,
@@ -57,10 +58,20 @@ interface ShopeePayment {
 
 // ── Interface de resultado ──────────────────────────────────────────────────
 
+export interface DRETrendPoint {
+  label: string;
+  faturamento: number;
+  lucroOperacional: number;
+  lucroLiquido: number;
+  margemOperacional: number;
+}
+
 interface UseDREDataResult {
   dreData: DREData | null;
   /** DRE do período anterior de mesma duração — null se a janela não é ~mensal */
   dreDataPrev: DREData | null;
+  /** Série dos últimos 6 meses fechados (mais recente por último) */
+  dreTrend: DRETrendPoint[];
   isLoading: boolean;
   error: string | null;
   periods: DREPeriod[];
@@ -482,6 +493,22 @@ export function useDREData(): UseDREDataResult {
     return buildDRE({ start: prevStart, end: prevEnd, label: 'Período anterior' });
   }, [buildDRE, selectedPeriod]);
 
+  // Série dos últimos 6 meses — independe do período selecionado. Todos os
+  // dados já estão em memória; é só rodar o buildDRE (puro) por janela.
+  const dreTrend = useMemo((): DRETrendPoint[] => {
+    if (!buildDRE) return [];
+    return getMonthlyPeriods(6).map(p => {
+      const d = buildDRE(p);
+      return {
+        label: p.label,
+        faturamento: d.receitaBrutaTotal,
+        lucroOperacional: d.lucroOperacional,
+        lucroLiquido: d.lucroLiquido,
+        margemOperacional: d.margemOperacional,
+      };
+    });
+  }, [buildDRE]);
+
   const refetch = async () => {
     if (!user) return;
     logger.debug('[DRE] refetch iniciado');
@@ -500,6 +527,7 @@ export function useDREData(): UseDREDataResult {
   return {
     dreData,
     dreDataPrev,
+    dreTrend,
     isLoading,
     error,
     periods,
