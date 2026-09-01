@@ -31,9 +31,7 @@ const settingsSchema = z.object({
   adicional_por_item: z.number().min(0),
   percentual_valor_antecipado: z.number().min(0).max(1),
   taxa_antecipacao: z.number().min(0).max(1),
-  imposto_nf_saida: z.number().min(0).max(1),
   percentual_nf_entrada: z.number().min(0).max(1),
-  desconto_nf_saida: z.number().min(0).max(1),
   gasto_tiktok_ads: z.number().min(0),
   is_default: z.boolean(),
 });
@@ -45,9 +43,7 @@ const defaultSettings = {
   adicional_por_item: 0,
   percentual_valor_antecipado: 0,
   taxa_antecipacao: 0,
-  imposto_nf_saida: 0,
   percentual_nf_entrada: 0,
-  desconto_nf_saida: 0,
   gasto_tiktok_ads: 0,
   is_default: true,
 };
@@ -106,9 +102,7 @@ function TikTokConfiguracoesContent() {
       adicional_por_item: Number(setting.adicional_por_item),
       percentual_valor_antecipado: Number(setting.percentual_valor_antecipado),
       taxa_antecipacao: Number(setting.taxa_antecipacao),
-      imposto_nf_saida: Number(setting.imposto_nf_saida),
       percentual_nf_entrada: Number(setting.percentual_nf_entrada),
-      desconto_nf_saida: Number(setting.desconto_nf_saida),
       gasto_tiktok_ads: Number(setting.gasto_tiktok_ads) || 0,
       is_default: setting.is_default,
     });
@@ -484,24 +478,12 @@ function TikTokConfiguracoesContent() {
             <Separator />
 
             <div>
-              <h3 className="font-semibold mb-4 text-primary">Impostos e Notas Fiscais</h3>
-              <div className="grid gap-4 sm:grid-cols-3">
-                <div className="space-y-2">
-                  <Label htmlFor="imposto_nf_saida">Imposto NF Saída (%)</Label>
-                  <div className="relative">
-                    <Input
-                      id="imposto_nf_saida"
-                      type="text"
-                      inputMode="decimal"
-                      value={getLocalValue('imposto_nf_saida', formData.imposto_nf_saida, true, false)}
-                      onChange={(e) => handleLocalChange('imposto_nf_saida', e.target.value, true, false)}
-                      onBlur={() => handleLocalBlur('imposto_nf_saida', formData.imposto_nf_saida, true, false)}
-                      placeholder="0"
-                      className="pr-8"
-                    />
-                    <span className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground">%</span>
-                  </div>
-                </div>
+              <h3 className="font-semibold mb-4 text-primary">Notas Fiscais</h3>
+              <p className="text-xs text-muted-foreground mb-4">
+                O imposto sobre vendas (Simples Nacional / IRPJ) agora é configurado
+                por empresa — veja o seletor de empresa nos dashboards e na DRE.
+              </p>
+              <div className="grid gap-4 sm:grid-cols-2">
                 <div className="space-y-2">
                   <Label htmlFor="percentual_nf_entrada">% NF Entrada</Label>
                   <div className="relative">
@@ -512,22 +494,6 @@ function TikTokConfiguracoesContent() {
                       value={getLocalValue('percentual_nf_entrada', formData.percentual_nf_entrada, true, false)}
                       onChange={(e) => handleLocalChange('percentual_nf_entrada', e.target.value, true, false)}
                       onBlur={() => handleLocalBlur('percentual_nf_entrada', formData.percentual_nf_entrada, true, false)}
-                      placeholder="0"
-                      className="pr-8"
-                    />
-                    <span className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground">%</span>
-                  </div>
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="desconto_nf_saida">Desconto Base Cálculo (%)</Label>
-                  <div className="relative">
-                    <Input
-                      id="desconto_nf_saida"
-                      type="text"
-                      inputMode="decimal"
-                      value={getLocalValue('desconto_nf_saida', formData.desconto_nf_saida, true, false)}
-                      onChange={(e) => handleLocalChange('desconto_nf_saida', e.target.value, true, false)}
-                      onBlur={() => handleLocalBlur('desconto_nf_saida', formData.desconto_nf_saida, true, false)}
                       placeholder="0"
                       className="pr-8"
                     />

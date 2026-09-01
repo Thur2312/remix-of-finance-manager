@@ -113,10 +113,7 @@ export function TikTokResultadosContent() {
 
   const calculatedResults = useMemo(() => {
     if (!settings || orders.length === 0) return null;
-    // Análise operacional por produto — sem o imposto de saída (Simples). O
-    // imposto por empresa (companies.tax_rate/applyTax) aparece nos dashboards
-    // e na DRE, não faz sentido rateado linha a linha aqui.
-    return calculateTikTokResults(orders, settings, 'produto', { includeImpostoSaida: false });
+    return calculateTikTokResults(orders, settings, 'produto');
   }, [orders, settings]);
 
   // Antes, a exclusão de status na importação só cobria "Cancelado"/"Não

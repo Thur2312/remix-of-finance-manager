@@ -62,17 +62,12 @@ export function TikTokDashboardContent() {
   const totalRevenue = calculatedResults?.totals.total_faturado || 0;
   const totalRevenueCents = (calculatedResults?.totals.total_faturado_cents ?? 0) as Cents;
 
-  // Quando a empresa tem imposto configurado, o TaxSummaryRow (applyTax, por
-  // empresa) é a fonte de verdade do imposto — então o card mostra o lucro
-  // ANTES do imposto, senão o imposto de settings.imposto_nf_saida embutido em
-  // lucro_reais seria contado de novo pelo TaxSummaryRow (dupla tributação).
+  // lucro_reais é pré-imposto. O imposto por empresa entra no TaxSummaryRow
+  // (applyTax por companies.tax_rate/tax_base), fonte única — nunca embutido
+  // no card.
   const hasCompanyTax = (selectedCompany?.tax_rate ?? 0) > 0;
-  const totalProfit = hasCompanyTax
-    ? (calculatedResults?.totals.lucro_antes_imposto ?? 0)
-    : (calculatedResults?.totals.lucro_reais ?? 0);
-  const totalProfitCents = (hasCompanyTax
-    ? (calculatedResults?.totals.lucro_antes_imposto_cents ?? 0)
-    : (calculatedResults?.totals.lucro_reais_cents ?? 0)) as Cents;
+  const totalProfit = calculatedResults?.totals.lucro_reais ?? 0;
+  const totalProfitCents = (calculatedResults?.totals.lucro_reais_cents ?? 0) as Cents;
 
   const chartData = useMemo(() => {
     if (!calculatedResults) return [];

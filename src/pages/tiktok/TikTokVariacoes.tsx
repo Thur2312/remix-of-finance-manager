@@ -111,10 +111,7 @@ export function TikTokVariacoesContent() {
 
   const calculatedResults = useMemo(() => {
     if (!settings || orders.length === 0) return null;
-    // Análise operacional por variação — sem o imposto de saída (Simples). O
-    // imposto por empresa (companies.tax_rate/applyTax) aparece nos dashboards
-    // e na DRE, não faz sentido rateado linha a linha aqui.
-    return calculateTikTokResults(orders, settings, 'variacao', { includeImpostoSaida: false });
+    return calculateTikTokResults(orders, settings, 'variacao');
   }, [orders, settings]);
 
   const handleCostSave = useCallback(async (sku: string, nomeProduto: string, variacao: string, newCost: number) => {

@@ -793,10 +793,8 @@ export type Database = {
         Row: {
           adicional_por_item: number | null
           created_at: string | null
-          desconto_nf_saida: number | null
           gasto_ml_ads: number | null
           id: string
-          imposto_nf_saida: number | null
           is_default: boolean | null
           name: string
           percentual_nf_entrada: number | null
@@ -810,10 +808,8 @@ export type Database = {
         Insert: {
           adicional_por_item?: number | null
           created_at?: string | null
-          desconto_nf_saida?: number | null
           gasto_ml_ads?: number | null
           id?: string
-          imposto_nf_saida?: number | null
           is_default?: boolean | null
           name?: string
           percentual_nf_entrada?: number | null
@@ -827,10 +823,8 @@ export type Database = {
         Update: {
           adicional_por_item?: number | null
           created_at?: string | null
-          desconto_nf_saida?: number | null
           gasto_ml_ads?: number | null
           id?: string
-          imposto_nf_saida?: number | null
           is_default?: boolean | null
           name?: string
           percentual_nf_entrada?: number | null
@@ -1456,10 +1450,8 @@ export type Database = {
         Row: {
           adicional_por_item: number | null
           created_at: string | null
-          desconto_nf_saida: number | null
           gasto_shopee_ads: number | null
           id: string
-          imposto_nf_saida: number | null
           is_default: boolean | null
           name: string
           percentual_nf_entrada: number | null
@@ -1472,10 +1464,8 @@ export type Database = {
         Insert: {
           adicional_por_item?: number | null
           created_at?: string | null
-          desconto_nf_saida?: number | null
           gasto_shopee_ads?: number | null
           id?: string
-          imposto_nf_saida?: number | null
           is_default?: boolean | null
           name?: string
           percentual_nf_entrada?: number | null
@@ -1488,10 +1478,8 @@ export type Database = {
         Update: {
           adicional_por_item?: number | null
           created_at?: string | null
-          desconto_nf_saida?: number | null
           gasto_shopee_ads?: number | null
           id?: string
-          imposto_nf_saida?: number | null
           is_default?: boolean | null
           name?: string
           percentual_nf_entrada?: number | null
@@ -1724,10 +1712,8 @@ export type Database = {
         Row: {
           adicional_por_item: number | null
           created_at: string | null
-          desconto_nf_saida: number | null
           gasto_tiktok_ads: number | null
           id: string
-          imposto_nf_saida: number | null
           is_default: boolean | null
           name: string
           percentual_nf_entrada: number | null
@@ -1741,10 +1727,8 @@ export type Database = {
         Insert: {
           adicional_por_item?: number | null
           created_at?: string | null
-          desconto_nf_saida?: number | null
           gasto_tiktok_ads?: number | null
           id?: string
-          imposto_nf_saida?: number | null
           is_default?: boolean | null
           name?: string
           percentual_nf_entrada?: number | null
@@ -1758,10 +1742,8 @@ export type Database = {
         Update: {
           adicional_por_item?: number | null
           created_at?: string | null
-          desconto_nf_saida?: number | null
           gasto_tiktok_ads?: number | null
           id?: string
-          imposto_nf_saida?: number | null
           is_default?: boolean | null
           name?: string
           percentual_nf_entrada?: number | null

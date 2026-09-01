@@ -33,9 +33,7 @@ interface MLSettingsData {
   adicional_por_item: number;
   percentual_valor_antecipado: number;
   taxa_antecipacao: number;
-  imposto_nf_saida: number;
   percentual_nf_entrada: number;
-  desconto_nf_saida: number;
   gasto_ml_ads: number;
   is_default: boolean;
   created_at: string;
@@ -49,9 +47,7 @@ const mlSettingsSchema = z.object({
   adicional_por_item: z.number().min(0),
   percentual_valor_antecipado: z.number().min(0).max(1),
   taxa_antecipacao: z.number().min(0).max(1),
-  imposto_nf_saida: z.number().min(0).max(1),
   percentual_nf_entrada: z.number().min(0).max(1),
-  desconto_nf_saida: z.number().min(0).max(1),
   gasto_ml_ads: z.number().min(0),
   is_default: z.boolean(),
 });
@@ -63,9 +59,7 @@ const defaultMLSettings = {
   adicional_por_item: 0,
   percentual_valor_antecipado: 0,
   taxa_antecipacao: 0,
-  imposto_nf_saida: 0,
   percentual_nf_entrada: 0,
-  desconto_nf_saida: 0,
   gasto_ml_ads: 0,
   is_default: true,
 };
@@ -124,9 +118,7 @@ function ConfiguracoesContent() {
       adicional_por_item: Number(setting.adicional_por_item),
       percentual_valor_antecipado: Number(setting.percentual_valor_antecipado),
       taxa_antecipacao: Number(setting.taxa_antecipacao),
-      imposto_nf_saida: Number(setting.imposto_nf_saida),
       percentual_nf_entrada: Number(setting.percentual_nf_entrada),
-      desconto_nf_saida: Number(setting.desconto_nf_saida),
       gasto_ml_ads: Number(setting.gasto_ml_ads) || 0,
       is_default: setting.is_default,
     });
@@ -435,27 +427,19 @@ function ConfiguracoesContent() {
 
             <Separator />
 
-            {/* Taxes */}
+            {/* Notas Fiscais */}
             <div>
-              <h3 className="font-semibold mb-4 text-foreground">Impostos e Notas Fiscais</h3>
-              <div className="grid gap-4 sm:grid-cols-3">
-                <PercentField
-                  id="imposto_nf_saida"
-                  label="Imposto NF Saída (%)"
-                  field="imposto_nf_saida"
-                  description="Imposto sobre NF de saída"
-                />
+              <h3 className="font-semibold mb-4 text-foreground">Notas Fiscais</h3>
+              <p className="text-xs text-muted-foreground mb-4">
+                O imposto sobre vendas (Simples Nacional / IRPJ) agora é configurado
+                por empresa — veja o seletor de empresa nos dashboards e na DRE.
+              </p>
+              <div className="grid gap-4 sm:grid-cols-2">
                 <PercentField
                   id="percentual_nf_entrada"
                   label="% NF Entrada"
                   field="percentual_nf_entrada"
                   description="% do custo para NF entrada"
-                />
-                <PercentField
-                  id="desconto_nf_saida"
-                  label="Desconto NF Saída (%)"
-                  field="desconto_nf_saida"
-                  description="Desconto aplicado antes do imposto"
                 />
               </div>
             </div>

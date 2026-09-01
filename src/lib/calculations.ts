@@ -9,9 +9,7 @@ export interface SettingsData {
   adicional_por_item: number;
   percentual_valor_antecipado: number;
   taxa_antecipacao: number;
-  imposto_nf_saida: number;
   percentual_nf_entrada: number;
-  desconto_nf_saida: number;
   gasto_shopee_ads: number;
   is_default: boolean;
 }
@@ -31,9 +29,7 @@ export function normalizeShopeeSettings(
     adicional_por_item: row.adicional_por_item ?? 0,
     percentual_valor_antecipado: row.percentual_valor_antecipado ?? 0,
     taxa_antecipacao: row.taxa_antecipacao ?? 0,
-    imposto_nf_saida: row.imposto_nf_saida ?? 0,
     percentual_nf_entrada: row.percentual_nf_entrada ?? 0,
-    desconto_nf_saida: row.desconto_nf_saida ?? 0,
     gasto_shopee_ads: row.gasto_shopee_ads ?? 0,
     is_default: row.is_default ?? false,
   };
@@ -70,7 +66,6 @@ export interface GroupedResult {
   taxa_adicional_itens: number;
   total_a_receber: number;
   total_gasto_produtos: number;
-  imposto: number;
   nf_entrada: number;
   lucro_reais: number;
   lucro_percentual: number;
@@ -86,7 +81,6 @@ export interface GroupedResult {
   taxa_adicional_itens_cents?: Cents;
   total_a_receber_cents?: Cents;
   total_gasto_produtos_cents?: Cents;
-  imposto_cents?: Cents;
   nf_entrada_cents?: Cents;
   lucro_reais_cents?: Cents;
 }
@@ -101,17 +95,13 @@ export interface CalculationResult {
     taxa_adicional_itens: number;
     total_a_receber: number;
     total_gasto_produtos: number;
-    imposto: number;
     nf_entrada: number;
     gasto_ads: number;
     lucro_bruto: number;
+    // Lucro operacional (após taxas, custos, NF entrada e ads) — pré-imposto.
+    // O imposto (Simples/IRPJ) é por empresa, aplicado no TaxSummaryRow / DRE
+    // via applyTax (companies.tax_rate/tax_base), nunca aqui.
     lucro_reais: number;
-    // lucro_reais + imposto — o resultado ANTES do imposto de saída. Existe pra
-    // as telas alimentarem o TaxSummaryRow (imposto por empresa, applyTax) sem
-    // contar o imposto duas vezes: o `lucro_reais` já embute o
-    // settings.imposto_nf_saida, então passá-lo pro TaxSummaryRow tributava de
-    // novo. Aditivo — nenhum consumidor atual muda.
-    lucro_antes_imposto: number;
     lucro_percentual_medio: number;
 
     total_faturado_cents: Cents;
@@ -120,12 +110,10 @@ export interface CalculationResult {
     taxa_adicional_itens_cents: Cents;
     total_a_receber_cents: Cents;
     total_gasto_produtos_cents: Cents;
-    imposto_cents: Cents;
     nf_entrada_cents: Cents;
     gasto_ads_cents: Cents;
     lucro_bruto_cents: Cents;
     lucro_reais_cents: Cents;
-    lucro_antes_imposto_cents: Cents;
   };
 }
 
@@ -187,30 +175,15 @@ export function calculateResults(
     const total_a_receber_cents = total_faturado_cents - taxa_shopee_reais_cents - taxa_adicional_itens_cents;
     const total_gasto_produtos_cents = itens_vendidos * custo_unitario_medio_cents;
 
-    // Calculate tax with optional discount
-    let imposto: number;
-    const desconto = Number(settings.desconto_nf_saida);
-    if (desconto === 0 || !desconto) {
-      imposto = total_faturado * Number(settings.imposto_nf_saida);
-    } else {
-      imposto = (total_faturado - (total_faturado * desconto)) * Number(settings.imposto_nf_saida);
-    }
-
-    let imposto_cents: number;
-    if (desconto === 0 || !desconto) {
-      imposto_cents = Math.round(total_faturado_cents * Number(settings.imposto_nf_saida));
-    } else {
-      imposto_cents = Math.round(
-        (total_faturado_cents - Math.round(total_faturado_cents * desconto)) * Number(settings.imposto_nf_saida)
-      );
-    }
-
+    // Sem imposto de saída aqui — o imposto (Simples/IRPJ) é por empresa,
+    // aplicado no TaxSummaryRow / DRE via applyTax (companies.tax_rate/tax_base).
+    // Ver docs/DIAGNOSTICO-FINANCEIRO.md (BUG-01, "Aposentar imposto_nf_saida").
     const nf_entrada = total_gasto_produtos * Number(settings.percentual_nf_entrada);
-    const lucro_reais = total_a_receber - total_gasto_produtos - imposto - nf_entrada;
+    const lucro_reais = total_a_receber - total_gasto_produtos - nf_entrada;
     const lucro_percentual = total_a_receber > 0 ? (lucro_reais / total_a_receber) * 100 : 0;
 
     const nf_entrada_cents = Math.round(total_gasto_produtos_cents * Number(settings.percentual_nf_entrada));
-    const lucro_reais_cents = total_a_receber_cents - total_gasto_produtos_cents - imposto_cents - nf_entrada_cents;
+    const lucro_reais_cents = total_a_receber_cents - total_gasto_produtos_cents - nf_entrada_cents;
 
     // Get display info from first order in group
     const firstOrder = groupOrders[0];
@@ -228,7 +201,6 @@ export function calculateResults(
       taxa_adicional_itens,
       total_a_receber,
       total_gasto_produtos,
-      imposto,
       nf_entrada,
       lucro_reais,
       lucro_percentual,
@@ -239,7 +211,6 @@ export function calculateResults(
       taxa_adicional_itens_cents: taxa_adicional_itens_cents as Cents,
       total_a_receber_cents: total_a_receber_cents as Cents,
       total_gasto_produtos_cents: total_gasto_produtos_cents as Cents,
-      imposto_cents: imposto_cents as Cents,
       nf_entrada_cents: nf_entrada_cents as Cents,
       lucro_reais_cents: lucro_reais_cents as Cents,
     });
@@ -261,11 +232,6 @@ export function calculateResults(
   const lucro_liquido_cents = lucro_bruto_cents - gastoAdsCents;
   const total_a_receber_cents = results.reduce((sum, r) => sum + (r.total_a_receber_cents ?? 0), 0);
 
-  const imposto_total = results.reduce((sum, r) => sum + r.imposto, 0);
-  const imposto_total_cents = results.reduce((sum, r) => sum + Number(r.imposto_cents ?? 0), 0);
-  const lucro_antes_imposto = lucro_liquido + imposto_total;
-  const lucro_antes_imposto_cents = lucro_liquido_cents + imposto_total_cents;
-
   const totals = {
     itens_vendidos: results.reduce((sum, r) => sum + r.itens_vendidos, 0),
     total_faturado: results.reduce((sum, r) => sum + r.total_faturado, 0),
@@ -274,12 +240,10 @@ export function calculateResults(
     taxa_adicional_itens: results.reduce((sum, r) => sum + r.taxa_adicional_itens, 0),
     total_a_receber,
     total_gasto_produtos: results.reduce((sum, r) => sum + r.total_gasto_produtos, 0),
-    imposto: imposto_total,
     nf_entrada: results.reduce((sum, r) => sum + r.nf_entrada, 0),
     gasto_ads,
     lucro_bruto,
     lucro_reais: lucro_liquido,
-    lucro_antes_imposto,
     lucro_percentual_medio: total_a_receber > 0
       ? (lucro_liquido / total_a_receber) * 100
       : 0,
@@ -290,12 +254,10 @@ export function calculateResults(
     taxa_adicional_itens_cents: results.reduce((sum, r) => sum + (r.taxa_adicional_itens_cents ?? 0), 0) as Cents,
     total_a_receber_cents: total_a_receber_cents as Cents,
     total_gasto_produtos_cents: results.reduce((sum, r) => sum + (r.total_gasto_produtos_cents ?? 0), 0) as Cents,
-    imposto_cents: results.reduce((sum, r) => sum + (r.imposto_cents ?? 0), 0) as Cents,
     nf_entrada_cents: results.reduce((sum, r) => sum + (r.nf_entrada_cents ?? 0), 0) as Cents,
     gasto_ads_cents: gastoAdsCents,
     lucro_bruto_cents: lucro_bruto_cents as Cents,
     lucro_reais_cents: lucro_liquido_cents as Cents,
-    lucro_antes_imposto_cents: lucro_antes_imposto_cents as Cents,
   };
 
   return { groups: results, totals };

@@ -162,7 +162,7 @@ async function buscarDadosFinanceiros(supabase: ReturnType<typeof createClient>,
 
     supabase
       .from('settings')
-      .select('taxa_comissao_shopee, taxa_antecipacao, imposto_nf_saida, gasto_shopee_ads, taxa_afiliado')
+      .select('taxa_comissao_shopee, taxa_antecipacao, gasto_shopee_ads, taxa_afiliado')
       .eq('user_id', userId)
       .eq('is_default', true)
       .maybeSingle(),

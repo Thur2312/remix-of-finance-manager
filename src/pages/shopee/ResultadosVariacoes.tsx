@@ -141,7 +141,6 @@ export function ResultadosVariacoesContent() {
       'Taxa Adicional',
       'Total a Receber',
       'Custo Produtos',
-      'Imposto',
       'NF Entrada',
       'Lucro R$',
       'Lucro %',
@@ -158,7 +157,6 @@ export function ResultadosVariacoesContent() {
       r.taxa_adicional_itens.toFixed(2),
       r.total_a_receber.toFixed(2),
       r.total_gasto_produtos.toFixed(2),
-      r.imposto.toFixed(2),
       r.nf_entrada.toFixed(2),
       r.lucro_reais.toFixed(2),
       r.lucro_percentual.toFixed(1),
@@ -195,9 +193,11 @@ export function ResultadosVariacoesContent() {
         bg: 'bg-success/10',
       },
       {
-        title: 'Lucro Líquido',
+        title: 'Lucro Operacional',
         value: formatCurrency(totals.lucro_reais),
-        subtitle: totals.gasto_ads > 0 ? `Ads: -${formatCurrency(totals.gasto_ads)}` : undefined,
+        subtitle: totals.gasto_ads > 0
+          ? `Ads: -${formatCurrency(totals.gasto_ads)} · antes do imposto`
+          : 'Antes do imposto de saída',
         icon: totals.lucro_reais >= 0 ? TrendingUp : TrendingDown,
         color: totals.lucro_reais >= 0 ? 'text-success' : 'text-destructive',
         bg: totals.lucro_reais >= 0 ? 'bg-success/10' : 'bg-destructive/10',
@@ -305,7 +305,6 @@ export function ResultadosVariacoesContent() {
                   <TableHead className="text-right">Taxa Shopee</TableHead>
                   <TableHead className="text-right">A Receber</TableHead>
                   <TableHead className="text-right">Custo</TableHead>
-                  <TableHead className="text-right">Imposto</TableHead>
                   <TableHead className="text-right">Lucro R$</TableHead>
                   <TableHead className="text-right">Margem</TableHead>
                 </TableRow>
@@ -328,7 +327,6 @@ export function ResultadosVariacoesContent() {
                     <TableCell className="text-right text-muted-foreground">{formatCurrency(row.taxa_shopee_reais)}</TableCell>
                     <TableCell className="text-right">{formatCurrency(row.total_a_receber)}</TableCell>
                     <TableCell className="text-right text-muted-foreground">{formatCurrency(row.total_gasto_produtos)}</TableCell>
-                    <TableCell className="text-right text-muted-foreground">{formatCurrency(row.imposto)}</TableCell>
                     <TableCell className={cn('text-right font-medium', row.lucro_reais >= 0 ? 'text-success' : 'text-destructive')}>
                       {formatCurrency(row.lucro_reais)}
                     </TableCell>
@@ -348,7 +346,6 @@ export function ResultadosVariacoesContent() {
                   <TableCell className="text-right">{formatCurrency(totals.taxa_shopee_reais)}</TableCell>
                   <TableCell className="text-right font-bold">{formatCurrency(totals.total_a_receber)}</TableCell>
                   <TableCell className="text-right">{formatCurrency(totals.total_gasto_produtos)}</TableCell>
-                  <TableCell className="text-right">{formatCurrency(totals.imposto)}</TableCell>
                   <TableCell className={cn('text-right font-bold', totals.lucro_reais >= 0 ? 'text-success' : 'text-destructive')}>
                     {formatCurrency(totals.lucro_reais)}
                   </TableCell>

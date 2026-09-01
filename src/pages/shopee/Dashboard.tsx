@@ -172,27 +172,21 @@ export function ShopeeDashboardContent() {
   // mesma coorte; o Líquido é Σ escrow_amount, não `receita − taxas`.
   const totalOrders = usingSyncData ? syncData.stats.pedidos : orders.length;
   const totalRevenue = usingSyncData ? syncData.stats.faturamento : (calculatedResults?.totals.total_faturado || 0);
-  // Com imposto por empresa configurado, o TaxSummaryRow é a fonte de verdade
-  // do imposto — o card mostra o lucro ANTES dele. No path manual, lucro_reais
-  // já embute settings.imposto_nf_saida (dupla tributação se passasse pro
-  // TaxSummaryRow). O path sync (valorLiquido = escrow) já é pré-imposto.
+  // lucro_reais (path manual) e valorLiquido = escrow (path sync) são ambos
+  // pré-imposto. O imposto por empresa entra no TaxSummaryRow (applyTax por
+  // companies.tax_rate/tax_base), fonte única — nunca embutido no card.
   const hasCompanyTax = (selectedCompany?.tax_rate ?? 0) > 0;
   const totalProfit = usingSyncData
     ? syncData.stats.valorLiquido
-    : hasCompanyTax
-      ? (calculatedResults?.totals.lucro_antes_imposto ?? 0)
-      : (calculatedResults?.totals.lucro_reais ?? 0);
-  // Agora os dois lados do ternário têm _cents (sync via computeShopeeFinance,
-  // upload manual via calculateResults) — os 3 cards de topo já podem usar
-  // formatCents direto, sem fallback pra formatCurrency.
+    : (calculatedResults?.totals.lucro_reais ?? 0);
+  // Os dois lados têm _cents (sync via computeShopeeFinance, upload manual via
+  // calculateResults) — os 3 cards de topo usam formatCents direto.
   const totalRevenueCents = (usingSyncData
     ? syncData.stats.faturamentoCents
     : (calculatedResults?.totals.total_faturado_cents ?? 0)) as Cents;
   const totalProfitCents = (usingSyncData
     ? syncData.stats.valorLiquidoCents
-    : hasCompanyTax
-      ? (calculatedResults?.totals.lucro_antes_imposto_cents ?? 0)
-      : (calculatedResults?.totals.lucro_reais_cents ?? 0)) as Cents;
+    : (calculatedResults?.totals.lucro_reais_cents ?? 0)) as Cents;
   // "Taxas Shopee" = tudo que a Shopee reteve/abateu (comissão, serviço, frete,
   // descontos) = faturamento − líquido. É o único número que reconcilia os 3 cards.
   const totalFeesCentsCard = (usingSyncData

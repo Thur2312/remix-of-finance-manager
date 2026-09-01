@@ -212,10 +212,21 @@ saída pra não tributar duas vezes (`31ed3d3`).
   Trade-off aceito: a DRE assume o regime de UMA empresa pro demonstrativo
   inteiro (consolidado user-wide). D3 (filtrar todos os dados por empresa) fica
   pra quando os uploads de TikTok/ML ganharem `company_id`.
-- **Ainda pendente (Faixa F, baixa prio):** dropar as 3 colunas
-  `imposto_nf_saida` (`settings` ainda usada por `calculations.ts` — path upload
-  manual do Shopee — e pelas 3 telas de config), limpar o `select` do
-  `financial-assistant`.
+- **Fase 3 — FEITO.** `imposto_nf_saida` (+ `desconto_nf_saida`, que só existia
+  pra reduzir a base dele) foi **removido de vez**:
+  - `calculations.ts` (path upload manual Shopee) e `tiktok-calculations.ts` não
+    calculam mais imposto; `lucro_reais` agora é lucro operacional pré-imposto.
+    Campos `imposto`/`imposto_cents`/`lucro_antes_imposto`/`_cents` saíram dos
+    tipos de resultado. Dashboards Shopee/TikTok e as 4 telas Resultados/Variações
+    (Shopee + TikTok) atualizadas — coluna "Imposto" e linha do CSV removidas,
+    card "Lucro Líquido" → "Lucro Operacional".
+  - Campo tirado das 3 telas de config (Shopee/TikTok/ML) — seção virou "Notas
+    Fiscais" só com `% NF Entrada`.
+  - `financial-assistant`: `imposto_nf_saida` fora do `select`.
+  - Migration `20260901120000_drop_imposto_nf_saida.sql` dropa as 2 colunas de
+    `settings`, `tiktok_settings` e `ml_settings` (`IF EXISTS` — `ml_settings`
+    não está no baseline). **Precisa `supabase db push`.** `types.ts` editado à
+    mão (regen no próximo db push confirma).
 
 ### BUG-02 — Sinal invertido na Tela A · CONFIRMADO, causa isolada
 

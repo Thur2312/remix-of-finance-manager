@@ -12,9 +12,7 @@ function settings(p: Partial<TikTokSettingsData> = {}): TikTokSettingsData {
     adicional_por_item: 0.5,
     percentual_valor_antecipado: 0,
     taxa_antecipacao: 0,
-    imposto_nf_saida: 0.06,
     percentual_nf_entrada: 0,
-    desconto_nf_saida: 0,
     gasto_tiktok_ads: 0,
     is_default: true,
     ...p,
@@ -75,16 +73,21 @@ describe('calculateTikTokResults — campos *Cents batem com toCents() dos campo
     closeEnough(r.totals.lucro_reais_cents, toCents(r.totals.lucro_reais));
   });
 
-  it('com desconto de NF de saída e descontos de plataforma/vendedor', () => {
+  it('descontos de plataforma/vendedor em centavos', () => {
     const orders = [
       order({ total_faturado: 250, desconto_plataforma: 10, desconto_vendedor: 5, custo_unitario: 40, quantidade: 2 }),
     ];
-    const r = calculateTikTokResults(orders, settings({ desconto_nf_saida: 0.15, imposto_nf_saida: 0.09 }));
+    const r = calculateTikTokResults(orders, settings());
 
-    expect(r.groups[0].imposto_cents).toBe(toCents(r.groups[0].imposto));
     expect(r.groups[0].desconto_plataforma_cents).toBe(1000);
     expect(r.groups[0].desconto_vendedor_cents).toBe(500);
-    expect(r.totals.imposto_cents).toBe(toCents(r.totals.imposto));
+  });
+
+  it('lucro_reais é pré-imposto — não desconta imposto de saída (imposto por empresa)', () => {
+    const orders = [order({ total_faturado: 300, custo_unitario: 40, quantidade: 2 })];
+    const r = calculateTikTokResults(orders, settings());
+    const g = r.groups[0];
+    expect(g.lucro_reais).toBeCloseTo(g.total_a_receber - g.total_gasto_produtos - g.nf_entrada, 6);
   });
 
   it('com gasto de ads', () => {
@@ -99,38 +102,5 @@ describe('calculateTikTokResults — campos *Cents batem com toCents() dos campo
     const r = calculateTikTokResults([], settings());
     expect(r.totals.total_faturado_cents).toBe(0);
     expect(r.totals.lucro_reais_cents).toBe(0);
-    expect(r.totals.lucro_antes_imposto_cents).toBe(0);
-  });
-
-  it('lucro_antes_imposto = lucro_reais + imposto (pra alimentar o TaxSummaryRow sem dupla tributação)', () => {
-    const orders = [order({ total_faturado: 300, custo_unitario: 40, quantidade: 2 })];
-    const r = calculateTikTokResults(orders, settings({ imposto_nf_saida: 0.08, gasto_tiktok_ads: 5 }));
-
-    expect(r.totals.imposto).toBeGreaterThan(0);
-    expect(r.totals.lucro_antes_imposto).toBeCloseTo(r.totals.lucro_reais + r.totals.imposto, 6);
-    expect(r.totals.lucro_antes_imposto_cents).toBe(r.totals.lucro_reais_cents + r.totals.imposto_cents);
-  });
-
-  it('sem imposto de saída → lucro_antes_imposto == lucro_reais', () => {
-    const orders = [order({ total_faturado: 200, custo_unitario: 25, quantidade: 3 })];
-    const r = calculateTikTokResults(orders, settings({ imposto_nf_saida: 0 }));
-
-    expect(r.totals.imposto).toBe(0);
-    expect(r.totals.lucro_antes_imposto).toBeCloseTo(r.totals.lucro_reais, 6);
-  });
-
-  it('includeImpostoSaida:false → imposto zerado e lucro_reais fica pré-imposto (telas de produto)', () => {
-    const orders = [order({ total_faturado: 300, custo_unitario: 40, quantidade: 2 })];
-    const comImposto = calculateTikTokResults(orders, settings({ imposto_nf_saida: 0.08 }));
-    const semImposto = calculateTikTokResults(orders, settings({ imposto_nf_saida: 0.08 }), 'produto', { includeImpostoSaida: false });
-
-    expect(comImposto.totals.imposto).toBeGreaterThan(0);
-    expect(semImposto.totals.imposto).toBe(0);
-    expect(semImposto.totals.imposto_cents).toBe(0);
-    // o lucro exibido sobe exatamente o valor do imposto que deixou de ser descontado
-    expect(semImposto.totals.lucro_reais).toBeCloseTo(comImposto.totals.lucro_antes_imposto, 6);
-    expect(semImposto.groups[0].lucro_reais).toBeCloseTo(comImposto.groups[0].lucro_reais + comImposto.groups[0].imposto, 6);
-    // percentual recalculado dentro da lib, sem duplicar a fórmula no componente
-    expect(semImposto.totals.lucro_percentual_medio).toBeGreaterThan(comImposto.totals.lucro_percentual_medio);
   });
 });
