@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { simulatePrice, priceCurve, type PriceScenarioBaseline } from './scenario';
+import { simulatePrice, priceCurve, projectVolume, type PriceScenarioBaseline } from './scenario';
 
 const base = (p: Partial<PriceScenarioBaseline> = {}): PriceScenarioBaseline => ({
   nome: 'Produto',
@@ -68,8 +68,8 @@ describe('priceCurve', () => {
   it('devolve steps+1 pontos, preços crescentes, dentro da faixa', () => {
     const c = priceCurve(base({ precoAtual: 100 }), { steps: 10 });
     expect(c).toHaveLength(11);
-    expect(c[0].preco).toBeCloseTo(60, 0);
-    expect(c[10].preco).toBeCloseTo(150, 0);
+    expect(c[0].preco).toBeCloseTo(70, 0);
+    expect(c[10].preco).toBeCloseTo(135, 0);
     for (let i = 1; i < c.length; i++) expect(c[i].preco).toBeGreaterThan(c[i - 1].preco);
   });
 
@@ -79,9 +79,31 @@ describe('priceCurve', () => {
   });
 
   it('tem uma queda local ao cruzar a faixa da Shopee (R$79,99 → R$80: taxa fixa 4 → 16)', () => {
-    // range 54–135 cruza o limite de R$80
+    // range 63–121,5 cruza o limite de R$80
     const c = priceCurve(base({ precoAtual: 90, custo: 30 }), { steps: 80 });
     const temQueda = c.some((p, i) => i > 0 && p.lucroMes < c[i - 1].lucroMes);
     expect(temQueda).toBe(true);
+  });
+});
+
+describe('projectVolume', () => {
+  it('volume acima do break-even → lucro maior que hoje e cobreBreakEven true', () => {
+    const s = simulatePrice(base({ precoAtual: 90, custo: 20 }), 80);
+    const be = s.simulado.volumeBreakEven!;
+    const p = projectVolume(base({ precoAtual: 90, custo: 20 }), 80, be + 10);
+    expect(p.cobreBreakEven).toBe(true);
+    expect(p.deltaVsHoje).toBeGreaterThan(0);
+  });
+
+  it('volume abaixo do break-even → lucro menor que hoje', () => {
+    const p = projectVolume(base({ precoAtual: 90, custo: 20, unidadesMes: 40 }), 80, 45);
+    // 45 provavelmente < break-even de um corte de preço
+    expect(p.cobreBreakEven).toBe(false);
+    expect(p.deltaVsHoje).toBeLessThan(0);
+  });
+
+  it('mesmo preço, mesmo volume → delta zero', () => {
+    const p = projectVolume(base({ unidadesMes: 40 }), base().precoAtual, 40);
+    expect(p.deltaVsHoje).toBe(0);
   });
 });

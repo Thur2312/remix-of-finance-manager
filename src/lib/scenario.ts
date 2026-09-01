@@ -22,6 +22,9 @@ export interface PriceScenarioBaseline {
   custo: number;
   /** custo variável por venda (embalagem/etiqueta), em R$ */
   custoVar: number;
+  /** outros custos por venda que NÃO escalam com o preço — frete que você paga,
+   *  ads rateado por unidade, etc. Some ao `custo`. */
+  custoExtraPorVenda?: number;
   impostoPct: number;
   afiliadosPct: number;
   /** usados só quando marketplace === '' */
@@ -54,7 +57,7 @@ function ratesAt(base: PriceScenarioBaseline, preco: number): { comissaoPct: num
 function inputsAt(base: PriceScenarioBaseline, preco: number): PricingInputs {
   const { comissaoPct, taxaFixa } = ratesAt(base, preco);
   return {
-    custo: base.custo,
+    custo: base.custo + (base.custoExtraPorVenda ?? 0),
     custoVar: base.custoVar,
     taxaFixa,
     comissaoPct,
@@ -119,13 +122,42 @@ export function simulatePrice(base: PriceScenarioBaseline, novoPreco: number): P
 
   const simulado = evalAt(novoPreco);
 
+  // deltaVolumePct: quanto o volume precisa MUDAR pra manter o lucro de hoje.
+  //   subiu o preço → negativo (pode vender menos). desceu → positivo (precisa vender mais).
+  const dv = simulado.deltaVolumePct ?? Infinity;
   let veredito: PriceScenario['veredito'];
   if (!simulado.viavel) veredito = 'inviavel';
-  else if (simulado.deltaLucroVolumeConstante >= 0) veredito = 'melhora';        // mesmo volume, lucro sobe
-  else if ((simulado.deltaVolumePct ?? Infinity) <= 25) veredito = 'plausivel';   // precisa vender só um pouco mais
+  else if (simulado.deltaLucroVolumeConstante >= 0 && dv <= -5) veredito = 'melhora';   // dá folga de volume
+  else if (dv <= 25) veredito = 'plausivel';                                            // precisa vender só um pouco mais
   else veredito = 'dificil';
 
   return { baseline: evalAt(base.precoAtual), simulado, lucroMesAtual: round2(lucroMesAtual), veredito };
+}
+
+export interface VolumeProjection {
+  unidades: number;
+  lucroMes: number;
+  deltaVsHoje: number;
+  /** o volume esperado cobre (ou passa) o break-even? */
+  cobreBreakEven: boolean;
+}
+
+// Projeção com um volume que o vendedor ESPERA atingir no novo preço — a outra
+// metade do modelo mental. O break-even diz "precisa de X"; isto diz "se você
+// acha que consegue Y, o resultado é este".
+export function projectVolume(
+  base: PriceScenarioBaseline,
+  novoPreco: number,
+  unidadesEsperadas: number,
+): VolumeProjection {
+  const s = simulatePrice(base, novoPreco);
+  const lucroMes = round2(s.simulado.lucroUnit * unidadesEsperadas);
+  return {
+    unidades: Math.round(unidadesEsperadas),
+    lucroMes,
+    deltaVsHoje: round2(lucroMes - s.lucroMesAtual),
+    cobreBreakEven: s.simulado.volumeBreakEven != null && unidadesEsperadas >= s.simulado.volumeBreakEven,
+  };
 }
 
 export interface PriceCurvePoint {
@@ -141,8 +173,8 @@ export function priceCurve(
   base: PriceScenarioBaseline,
   opts: { minPct?: number; maxPct?: number; steps?: number } = {},
 ): PriceCurvePoint[] {
-  const minPct = opts.minPct ?? 0.6;
-  const maxPct = opts.maxPct ?? 1.5;
+  const minPct = opts.minPct ?? 0.7;
+  const maxPct = opts.maxPct ?? 1.35;
   const steps = opts.steps ?? 48;
   const lo = base.precoAtual * minPct;
   const hi = base.precoAtual * maxPct;

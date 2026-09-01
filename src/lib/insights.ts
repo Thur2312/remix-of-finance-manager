@@ -314,6 +314,7 @@ export function productInsights(groups: ProductLike[]): Insight[] {
         : `${prejuizo.length} produtos deram prejuízo no período`,
       detail: `${piores}${prejuizo.length > 3 ? ` e mais ${prejuizo.length - 3}` : ''}. Preço de venda abaixo do custo mais as taxas.`,
       metric: formatCurrency(totalPerda),
+      action: { label: 'Simular um novo preço', to: '/simulador' },
     });
   }
 

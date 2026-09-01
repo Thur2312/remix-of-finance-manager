@@ -13,7 +13,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { EmptyState } from '@/components/ui/empty-state';
 import { cn } from '@/lib/utils';
 import { formatCurrency } from '@/lib/format';
-import { simulatePrice, priceCurve, type PriceScenarioBaseline } from '@/lib/scenario';
+import { simulatePrice, priceCurve, projectVolume, type PriceScenarioBaseline } from '@/lib/scenario';
 import { type Marketplace } from '@/lib/marketplace-fees';
 import { useAnuncios } from '@/hooks/useProdutos';
 
@@ -39,12 +39,14 @@ const num = (v: string) => {
   const n = parseFloat(String(v).replace(',', '.'));
   return Number.isFinite(n) ? n : 0;
 };
+const round1 = (n: number) => Math.round(n * 10) / 10;
 
 interface Fields {
   nome: string;
   marketplace: MpValue;
   custo: string;
   custoVar: string;
+  custoExtra: string;
   impostoPct: string;
   afiliadosPct: string;
   comissaoPctManual: string;
@@ -54,7 +56,7 @@ interface Fields {
 }
 
 const EMPTY: Fields = {
-  nome: '', marketplace: 'Shopee', custo: '', custoVar: '0',
+  nome: '', marketplace: 'Shopee', custo: '', custoVar: '0', custoExtra: '0',
   impostoPct: '0', afiliadosPct: '0', comissaoPctManual: '', taxaFixaManual: '',
   precoAtual: '', unidadesMes: '',
 };
@@ -65,6 +67,7 @@ function fieldsToBaseline(f: Fields): PriceScenarioBaseline {
     marketplace: f.marketplace === 'outro' ? '' : f.marketplace,
     custo: num(f.custo),
     custoVar: num(f.custoVar),
+    custoExtraPorVenda: num(f.custoExtra),
     impostoPct: num(f.impostoPct),
     afiliadosPct: num(f.afiliadosPct),
     comissaoPctManual: num(f.comissaoPctManual),
@@ -215,6 +218,42 @@ function Curva({ base, novoPreco }: { base: PriceScenarioBaseline; novoPreco: nu
   );
 }
 
+// ─── Expectativa de volume (a outra metade do modelo) ───────────────────────
+
+function VolumeExpectativa({
+  base, novoPreco, volPct, onChange,
+}: { base: PriceScenarioBaseline; novoPreco: number; volPct: number | null; onChange: (v: number) => void }) {
+  const pct = volPct ?? 0;
+  const unidades = Math.max(0, base.unidadesMes * (1 + pct / 100));
+  const proj = projectVolume(base, novoPreco, unidades);
+  const ganhou = proj.deltaVsHoje >= 0;
+
+  return (
+    <Card>
+      <CardContent className="space-y-3 pt-5">
+        <div className="flex items-baseline justify-between">
+          <Label>E se o volume mudar?</Label>
+          <span className={cn('text-sm font-medium', pct >= 0 ? 'text-success' : 'text-destructive')}>
+            {pct >= 0 ? '+' : ''}{pct.toFixed(0)}% · {Math.round(unidades)} un/mês
+          </span>
+        </div>
+        <Slider min={-40} max={100} step={1} value={[pct]} onValueChange={([v]) => onChange(v)} />
+        <div className="flex justify-between text-xs text-muted-foreground">
+          <span>−40%</span><span>hoje: {base.unidadesMes} un</span><span>+100%</span>
+        </div>
+        <div className={cn('rounded-md px-3 py-2.5 text-sm', ganhou ? 'bg-success/10' : 'bg-destructive/10')}>
+          Com <strong>{Math.round(unidades)} un/mês</strong> a {formatCurrency(novoPreco)}, o lucro deste produto seria{' '}
+          <strong>{formatCurrency(proj.lucroMes)}/mês</strong> —{' '}
+          <strong className={ganhou ? 'text-success' : 'text-destructive'}>
+            {proj.deltaVsHoje >= 0 ? '+' : ''}{formatCurrency(proj.deltaVsHoje)}
+          </strong>{' '}
+          vs hoje. {proj.cobreBreakEven ? 'Passa do ponto de equilíbrio.' : 'Ainda abaixo do ponto de equilíbrio.'}
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
 // ─── Página ─────────────────────────────────────────────────────────────────
 
 export default function Simulador() {
@@ -226,6 +265,8 @@ export default function Simulador() {
   // reformatar no meio da digitação). `null` = ainda igual ao preço atual.
   const [novoPrecoRaw, setNovoPrecoRaw] = useState<number | null>(null);
   const [precoText, setPrecoText] = useState<string | null>(null);
+  // expectativa de mudança de volume no novo preço (%). null = ainda não mexeu.
+  const [volPct, setVolPct] = useState<number | null>(null);
 
   const set = (k: keyof Fields, v: string) => setF(prev => ({ ...prev, [k]: v }));
   const setPreco = (n: number) => { setNovoPrecoRaw(n); setPrecoText(n.toFixed(2)); };
@@ -242,6 +283,7 @@ export default function Simulador() {
       marketplace: toMpValue(a.marketplace),
       custo: String(a.custo + custoAdd + (a.antecipado || 0)),
       custoVar: String(a.custo_var || 0),
+      custoExtra: '0',
       impostoPct: String(a.imposto_pct || 0),
       afiliadosPct: String(a.afiliados || 0),
       comissaoPctManual: String(parseFloat(String(a.comissao_taxa)) || 0),
@@ -251,6 +293,7 @@ export default function Simulador() {
     });
     setNovoPrecoRaw(null);
     setPrecoText(null);
+    setVolPct(null);
   };
 
   const base = useMemo(() => fieldsToBaseline(f), [f]);
@@ -313,6 +356,8 @@ export default function Simulador() {
             <Fld label="Unidades vendidas / mês" v={f.unidadesMes} onChange={v => set('unidadesMes', v)} numeric />
             <Fld label="Custo do produto (R$)" v={f.custo} onChange={v => set('custo', v)} numeric />
             <Fld label="Custo variável / embalagem (R$)" v={f.custoVar} onChange={v => set('custoVar', v)} numeric />
+            <Fld label="Frete / ads por venda (R$)" v={f.custoExtra} onChange={v => set('custoExtra', v)} numeric
+              hint="O que você paga por venda e não muda com o preço" />
             <Fld label="Imposto (%)" v={f.impostoPct} onChange={v => set('impostoPct', v)} numeric />
             <Fld label="Afiliados (%)" v={f.afiliadosPct} onChange={v => set('afiliadosPct', v)} numeric />
             {f.marketplace === 'outro' && (
@@ -354,29 +399,33 @@ export default function Simulador() {
                 </div>
               </div>
               <Slider
-                min={Math.round(base.precoAtual * 0.6)}
-                max={Math.round(base.precoAtual * 1.5)}
+                min={round1(base.precoAtual * 0.75)}
+                max={round1(base.precoAtual * 1.3)}
                 step={0.5}
-                value={[Math.min(Math.max(novoPreco, base.precoAtual * 0.6), base.precoAtual * 1.5)]}
+                value={[Math.min(Math.max(novoPreco, base.precoAtual * 0.75), base.precoAtual * 1.3)]}
                 onValueChange={([v]) => setPreco(v)}
               />
               <div className="flex justify-between text-xs text-muted-foreground">
-                <span>{formatCurrency(base.precoAtual * 0.6)}</span>
+                <span>{formatCurrency(base.precoAtual * 0.75)}</span>
                 <span>atual: {formatCurrency(base.precoAtual)}</span>
-                <span>{formatCurrency(base.precoAtual * 1.5)}</span>
+                <span>{formatCurrency(base.precoAtual * 1.3)}</span>
               </div>
             </CardContent>
           </Card>
 
           <Veredito base={base} novoPreco={novoPreco} />
           <Curva base={base} novoPreco={novoPreco} />
+
+          {novoPreco !== base.precoAtual && (
+            <VolumeExpectativa base={base} novoPreco={novoPreco} volPct={volPct} onChange={setVolPct} />
+          )}
         </>
       )}
     </PageShell>
   );
 }
 
-function Fld({ label, v, onChange, numeric }: { label: string; v: string; onChange: (v: string) => void; numeric?: boolean }) {
+function Fld({ label, v, onChange, numeric, hint }: { label: string; v: string; onChange: (v: string) => void; numeric?: boolean; hint?: string }) {
   return (
     <div className="space-y-1.5">
       <Label className="text-xs">{label}</Label>
@@ -386,6 +435,7 @@ function Fld({ label, v, onChange, numeric }: { label: string; v: string; onChan
         value={v}
         onChange={e => onChange(e.target.value)}
       />
+      {hint && <p className="text-[10px] leading-tight text-muted-foreground">{hint}</p>}
     </div>
   );
 }
