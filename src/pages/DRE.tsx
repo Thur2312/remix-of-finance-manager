@@ -23,6 +23,7 @@ import { Link } from 'react-router-dom';
 function DREContent() {
   const {
     dreData,
+    dreDataPrev,
     isLoading,
     error,
     periods,
@@ -176,7 +177,7 @@ function DREContent() {
       </Card>
 
       {/* Insights — diagnóstico da DRE (mesma camada do Dashboard) */}
-      <InsightsPanel insights={buildInsights({ dre: dreData, company: selectedCompany })} />
+      <InsightsPanel insights={buildInsights({ dre: dreData, drePrev: dreDataPrev, company: selectedCompany })} />
 
 
       {/* Summary Cards */}

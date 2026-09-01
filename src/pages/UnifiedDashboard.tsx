@@ -459,16 +459,17 @@ function UnifiedDashboardContent() {
   // A empresa é a mesma da DRE (fonte única — dreData é calculado com ela e o
   // TaxSummaryRow / insights leem a mesma). Insights: DRE (user-wide, sempre) +
   // finança Shopee (só na aba relevante). Lógica pura em src/lib/insights.ts.
-  const { dreData, isLoading: dreLoading, selectedCompany, setSelectedCompany } = useDREData();
+  const { dreData, dreDataPrev, isLoading: dreLoading, selectedCompany, setSelectedCompany } = useDREData();
   const showShopeeInsights = marketplace === 'shopee' || marketplace === 'todos';
   const insights = useMemo(
     () => buildInsights({
       dre: dreData,
+      drePrev: dreDataPrev,
       company: selectedCompany,
       shopeeFinance: showShopeeInsights ? (syncData?.stats ?? null) : null,
       shopeeFinancePrev: showShopeeInsights ? (syncData?.prevStats ?? null) : null,
     }),
-    [dreData, selectedCompany, syncData, showShopeeInsights],
+    [dreData, dreDataPrev, selectedCompany, syncData, showShopeeInsights],
   );
 
   const statsMap: Record<Marketplace, MarketplaceStats> = { shopee, tiktok, mercadolivre, todos: combined };

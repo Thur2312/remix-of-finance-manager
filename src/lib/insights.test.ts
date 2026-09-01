@@ -124,6 +124,30 @@ describe('dreInsights', () => {
     const d = dre({ shopee: [shopeeOrder({ total_faturado: 550 })], tiktokFaturado: 450 });
     expect(ids(dreInsights(d, EMPRESA))).not.toContain('dre-concentracao-canal');
   });
+
+  it('MoM: lucro líquido caindo forte vs período anterior → warning', () => {
+    const atual = dre({ shopee: [shopeeOrder({ total_faturado: 1000, custo_unitario: 400, quantidade: 1 })], fixed: [fixedCost(200)] });
+    const anterior = dre({ shopee: [shopeeOrder({ total_faturado: 1000, custo_unitario: 100, quantidade: 1 })], fixed: [fixedCost(200)] });
+    expect(anterior.lucroLiquido).toBeGreaterThan(atual.lucroLiquido);
+    const got = dreInsights(atual, EMPRESA, anterior);
+    expect(ids(got)).toContain('dre-lucro-caindo');
+  });
+
+  it('MoM: custos fixos subindo >15% → info', () => {
+    const base = [shopeeOrder({ total_faturado: 5000, custo_unitario: 50, quantidade: 10 })];
+    const atual = dre({ shopee: base, fixed: [fixedCost(1000)] });
+    const anterior = dre({ shopee: base, fixed: [fixedCost(500)] });
+    const got = dreInsights(atual, EMPRESA, anterior);
+    const i = got.find(x => x.id === 'dre-custo-fixo-subindo')!;
+    expect(i.severity).toBe('info');
+    expect(i.metric).toBe(formatCurrency(500));
+  });
+
+  it('MoM: sem período anterior → nenhum insight de comparação', () => {
+    const d = dre({ shopee: [shopeeOrder({ total_faturado: 1000, custo_unitario: 900, quantidade: 1 })] });
+    const got = dreInsights(d, EMPRESA);
+    expect(ids(got).filter(id => id.includes('caindo') || id.includes('comprimindo') || id.includes('subindo'))).toEqual([]);
+  });
 });
 
 describe('shopeeFinanceInsights', () => {

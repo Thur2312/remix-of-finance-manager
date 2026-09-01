@@ -59,6 +59,8 @@ interface ShopeePayment {
 
 interface UseDREDataResult {
   dreData: DREData | null;
+  /** DRE do período anterior de mesma duração — null se a janela não é ~mensal */
+  dreDataPrev: DREData | null;
   isLoading: boolean;
   error: string | null;
   periods: DREPeriod[];
@@ -371,7 +373,10 @@ export function useDREData(): UseDREDataResult {
 
   // ── Cálculo da DRE ────────────────────────────────────────────────────────
 
-  const dreData = useMemo((): DREData | null => {
+  // Builder: toda a preparação (mapeamento, escrow, taxa efetiva) independe do
+  // período — o `calculateDRE` é quem filtra. Retorna uma função pra rodar o
+  // mesmo cálculo em janelas diferentes (período atual + anterior, pra MoM).
+  const buildDRE = useMemo((): ((period: DREPeriod) => DREData) | null => {
     if (isLoading || !user) return null;
 
     // Converter ShopeeOrder[] → ShopeeOrderDRE[] (tipo explícito, sem 'as any')
@@ -433,14 +438,14 @@ export function useDREData(): UseDREDataResult {
           : (shopeeSettings?.taxa_comissao_shopee ?? 0),
     };
 
-    return calculateDRE(
+    return (period: DREPeriod) => calculateDRE(
       shopeeOrdersMapped,
       tiktokOrders,
       tiktokSettlements,
       fixedCosts,
       shopeeSettingsAjustado,
       tiktokSettings,
-      selectedPeriod,
+      period,
       mlOrders,
       cashFlowEntries,
       selectedCompany,
@@ -454,13 +459,28 @@ export function useDREData(): UseDREDataResult {
     fixedCosts,
     shopeeSettings,
     tiktokSettings,
-    selectedPeriod,
     mlOrders,
     cashFlowEntries,
     selectedCompany,
     isLoading,
     user,
   ]);
+
+  const dreData = useMemo(
+    () => buildDRE?.(selectedPeriod) ?? null,
+    [buildDRE, selectedPeriod],
+  );
+
+  // DRE do período imediatamente anterior, mesma duração — só quando a janela
+  // é ~mensal (comparar "Ano Atual" com o ano passado inteiro não é útil aqui).
+  const dreDataPrev = useMemo((): DREData | null => {
+    if (!buildDRE) return null;
+    const durMs = selectedPeriod.end.getTime() - selectedPeriod.start.getTime();
+    if (durMs > 40 * 24 * 60 * 60 * 1000) return null;
+    const prevEnd = new Date(selectedPeriod.start.getTime() - 1);
+    const prevStart = new Date(prevEnd.getTime() - durMs);
+    return buildDRE({ start: prevStart, end: prevEnd, label: 'Período anterior' });
+  }, [buildDRE, selectedPeriod]);
 
   const refetch = async () => {
     if (!user) return;
@@ -479,6 +499,7 @@ export function useDREData(): UseDREDataResult {
 
   return {
     dreData,
+    dreDataPrev,
     isLoading,
     error,
     periods,

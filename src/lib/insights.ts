@@ -35,10 +35,47 @@ const pct0 = (n: number) => `${Math.round(n)}%`;
 
 // ── DRE ──────────────────────────────────────────────────────────────────────
 
-export function dreInsights(dre: DREData, company?: DRECompanyTax | null): Insight[] {
+export function dreInsights(dre: DREData, company?: DRECompanyTax | null, prev?: DREData | null): Insight[] {
   const out: Insight[] = [];
   const receita = dre.receitaBrutaTotal;
   if (receita <= 0) return out;
+
+  // ── Comparação com o período anterior (mesma duração) ──────────────────────
+  if (prev && prev.receitaBrutaTotal > 0) {
+    // Lucro líquido caindo forte
+    if (prev.lucroLiquido > 0 && dre.lucroLiquido < prev.lucroLiquido * 0.8) {
+      const queda = ((dre.lucroLiquido - prev.lucroLiquido) / prev.lucroLiquido) * 100;
+      out.push({
+        id: 'dre-lucro-caindo',
+        severity: 'warning',
+        title: `Lucro líquido caiu ${pct0(Math.abs(queda))} vs o período anterior`,
+        detail: `Foi de ${formatCurrency(prev.lucroLiquido)} para ${formatCurrency(dre.lucroLiquido)}.`,
+        metric: formatCurrency(dre.lucroLiquido - prev.lucroLiquido),
+        action: { label: 'Comparar na DRE', to: '/dre' },
+      });
+    }
+    // Margem líquida comprimindo
+    const dMargem = dre.margemLiquida - prev.margemLiquida;
+    if (dMargem <= -3 && prev.margemLiquida > 0) {
+      out.push({
+        id: 'dre-margem-comprimindo',
+        severity: 'warning',
+        title: `Margem líquida foi de ${pct0(prev.margemLiquida)} para ${pct0(dre.margemLiquida)}`,
+        detail: 'Cada real vendido está sobrando menos. Confira se subiu custo de produto, taxa de marketplace ou ads.',
+        metric: `${dMargem.toFixed(0)} p.p.`,
+      });
+    }
+    // Custos fixos subindo
+    if (prev.custosFixosTotal > 0 && dre.custosFixosTotal > prev.custosFixosTotal * 1.15) {
+      out.push({
+        id: 'dre-custo-fixo-subindo',
+        severity: 'info',
+        title: `Custos fixos subiram ${formatCurrency(dre.custosFixosTotal - prev.custosFixosTotal)}`,
+        detail: `De ${formatCurrency(prev.custosFixosTotal)} para ${formatCurrency(dre.custosFixosTotal)} por mês.`,
+        metric: formatCurrency(dre.custosFixosTotal - prev.custosFixosTotal),
+      });
+    }
+  }
 
   // Config: sem empresa / sem alíquota → a DRE não estima Simples/IRPJ
   if (company === undefined || company === null) {
@@ -317,13 +354,14 @@ export function productInsights(groups: ProductLike[]): Insight[] {
 
 export function buildInsights(input: {
   dre?: DREData | null;
+  drePrev?: DREData | null;
   company?: DRECompanyTax | null;
   shopeeFinance?: ShopeeFinance | null;
   shopeeFinancePrev?: ShopeeFinance | null;
   products?: ProductLike[] | null;
 }): Insight[] {
   const all: Insight[] = [];
-  if (input.dre) all.push(...dreInsights(input.dre, input.company));
+  if (input.dre) all.push(...dreInsights(input.dre, input.company, input.drePrev));
   if (input.shopeeFinance) all.push(...shopeeFinanceInsights(input.shopeeFinance, input.shopeeFinancePrev));
   if (input.products && input.products.length > 0) all.push(...productInsights(input.products));
 
