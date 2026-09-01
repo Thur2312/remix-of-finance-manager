@@ -1,7 +1,7 @@
 import {
   User, TrendingUp, Calculator, Receipt, Sparkles, BarChart3, HandCoins, Wallet,
   Plug, LayoutDashboard, Shield, Zap, Gauge, CalendarDays, Landmark, Wrench,
-  type LucideIcon,
+  FlaskConical, type LucideIcon,
 } from 'lucide-react';
 
 // Modelo de navegação da área interna — fonte única, consumida pela
@@ -51,6 +51,7 @@ export const sidebarGroups: NavGroup[] = [
     label: 'Ferramentas',
     icon: Wrench,
     items: [
+      { title: 'Simulador', url: '/simulador', icon: FlaskConical, badge: 'Novo' },
       { title: 'Assistente', url: '/assistente-anuncio', icon: Sparkles, badge: 'IA' },
       { title: 'Integrações', url: '/integrations', icon: Plug },
     ],

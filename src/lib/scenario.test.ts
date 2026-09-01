@@ -1,0 +1,87 @@
+import { describe, it, expect } from 'vitest';
+import { simulatePrice, priceCurve, type PriceScenarioBaseline } from './scenario';
+
+const base = (p: Partial<PriceScenarioBaseline> = {}): PriceScenarioBaseline => ({
+  nome: 'Produto',
+  marketplace: 'Shopee',
+  custo: 30,
+  custoVar: 1,
+  impostoPct: 6,
+  afiliadosPct: 0,
+  precoAtual: 90,
+  unidadesMes: 40,
+  ...p,
+});
+
+describe('simulatePrice', () => {
+  it('preço igual ao atual → simulado == baseline, delta zero', () => {
+    const s = simulatePrice(base(), 90);
+    expect(s.simulado.lucroUnit).toBe(s.baseline.lucroUnit);
+    expect(s.simulado.deltaLucroVolumeConstante).toBe(0);
+    expect(s.simulado.deltaVolumePct).toBe(0);
+  });
+
+  it('baixar o preço → lucro/un cai e o break-even exige mais volume', () => {
+    const s = simulatePrice(base({ precoAtual: 90 }), 80);
+    expect(s.simulado.lucroUnit).toBeLessThan(s.baseline.lucroUnit);
+    expect(s.simulado.volumeBreakEven!).toBeGreaterThan(base().unidadesMes);
+    expect(s.simulado.deltaVolumePct!).toBeGreaterThan(0);
+    expect(s.simulado.deltaLucroVolumeConstante).toBeLessThan(0);
+  });
+
+  it('a comissão muda de faixa ao cruzar R$99,99 (Shopee)', () => {
+    // no atual R$90 a comissão Shopee é 14%; subindo pra R$79 vira 20%
+    const s = simulatePrice(base({ precoAtual: 90 }), 79);
+    expect(s.baseline.comissaoPct).toBe(14);
+    expect(s.simulado.comissaoPct).toBe(20);
+  });
+
+  it('preço que zera o lucro unitário → inviável, sem break-even', () => {
+    // custo alto o suficiente pra que nenhum volume salve
+    const s = simulatePrice(base({ custo: 200, precoAtual: 90 }), 90);
+    expect(s.simulado.viavel).toBe(false);
+    expect(s.simulado.volumeBreakEven).toBeNull();
+    expect(s.veredito).toBe('inviavel');
+  });
+
+  it('subir o preço a volume constante → veredito "melhora"', () => {
+    const s = simulatePrice(base({ precoAtual: 90 }), 110);
+    expect(s.simulado.deltaLucroVolumeConstante).toBeGreaterThan(0);
+    expect(s.veredito).toBe('melhora');
+  });
+
+  it('corte pequeno de preço → "plausível"; corte grande → "difícil"', () => {
+    const pequeno = simulatePrice(base({ precoAtual: 90, custo: 20 }), 87);
+    const grande = simulatePrice(base({ precoAtual: 90, custo: 20 }), 62);
+    expect(pequeno.veredito).toBe('plausivel');
+    expect(grande.veredito).toBe('dificil');
+  });
+
+  it('marketplace vazio usa comissão/taxa manual', () => {
+    const s = simulatePrice(base({ marketplace: '', comissaoPctManual: 10, taxaFixaManual: 2 }), 90);
+    expect(s.simulado.comissaoPct).toBe(10);
+    expect(s.simulado.taxaFixa).toBe(2);
+  });
+});
+
+describe('priceCurve', () => {
+  it('devolve steps+1 pontos, preços crescentes, dentro da faixa', () => {
+    const c = priceCurve(base({ precoAtual: 100 }), { steps: 10 });
+    expect(c).toHaveLength(11);
+    expect(c[0].preco).toBeCloseTo(60, 0);
+    expect(c[10].preco).toBeCloseTo(150, 0);
+    for (let i = 1; i < c.length; i++) expect(c[i].preco).toBeGreaterThan(c[i - 1].preco);
+  });
+
+  it('a volume constante o lucro sobe com o preço no geral (ponta > início)', () => {
+    const c = priceCurve(base({ precoAtual: 90, custo: 30 }), { steps: 40 });
+    expect(c[c.length - 1].lucroMes).toBeGreaterThan(c[0].lucroMes);
+  });
+
+  it('tem uma queda local ao cruzar a faixa da Shopee (R$79,99 → R$80: taxa fixa 4 → 16)', () => {
+    // range 54–135 cruza o limite de R$80
+    const c = priceCurve(base({ precoAtual: 90, custo: 30 }), { steps: 80 });
+    const temQueda = c.some((p, i) => i > 0 && p.lucroMes < c[i - 1].lucroMes);
+    expect(temQueda).toBe(true);
+  });
+});

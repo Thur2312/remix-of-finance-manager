@@ -35,6 +35,7 @@ const FluxoCaixaDashboard       = lazy(() => import("./pages/fluxo-caixa/FluxoCa
 const FluxoCaixaLancamentos     = lazy(() => import("./pages/fluxo-caixa/FluxoCaixaLancamentos"));
 const FluxoCaixaCategorias      = lazy(() => import("./pages/fluxo-caixa/FluxoCaixaCategorias"));
 const AssistenteAnuncio         = lazy(() => import("./pages/AssistenteAnuncio"));
+const Simulador                 = lazy(() => import("./pages/Simulador"));
 const DRE                       = lazy(() => import("./pages/DRE"));
 const Perfil                    = lazy(() => import("./pages/Perfil"));
 const NotificacoesAdmin         = lazy(() => import("./pages/admin/Notificacoes"));
@@ -98,6 +99,7 @@ const App = () => {
                 ))}
 
                 <Route path="/calculadora" element={<CalculadoraPrecificacao />} />
+                <Route path="/simulador" element={<Simulador />} />
                 <Route path="/precificacao/custos" element={<CadastroCustos />} />
                 <Route path="/fluxo-caixa" element={<FluxoCaixaDashboard />} />
                 <Route path="/fluxo-caixa/lancamentos" element={<FluxoCaixaLancamentos />} />
