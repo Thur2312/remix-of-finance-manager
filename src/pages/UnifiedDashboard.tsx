@@ -16,6 +16,9 @@ import { ptBR } from 'date-fns/locale';
 import { useDashboardData, Marketplace, MarketplaceStats } from '@/hooks/useDashboardData';
 import { useActiveShopeeConnection } from '@/hooks/useActiveShopeeConnection';
 import { useRecentSaleEvents } from '@/hooks/useSaleEvents';
+import { useDREData } from '@/hooks/useDREData';
+import { buildInsights } from '@/lib/insights';
+import { InsightsPanel } from '@/components/insights/InsightsPanel';
 import { CompanySelector } from '@/components/dashboard/CompanySelector';
 import { PageShell } from '@/components/layout/PageShell';
 import { StatCard, KpiRow } from '@/components/ui/stat-card';
@@ -455,6 +458,18 @@ function UnifiedDashboardContent() {
     useDashboardData(syncPeriod);
   const { shopeeConnections, setActiveConnectionId } = useActiveShopeeConnection();
 
+  // Insights — DRE (user-wide, sempre) + finança Shopee (só quando a aba
+  // relevante está aberta). Lógica pura em src/lib/insights.ts.
+  const { dreData, isLoading: dreLoading } = useDREData();
+  const showShopeeInsights = marketplace === 'shopee' || marketplace === 'todos';
+  const insights = useMemo(
+    () => buildInsights({
+      dre: dreData,
+      shopeeFinance: showShopeeInsights ? (syncData?.stats ?? null) : null,
+    }),
+    [dreData, syncData, showShopeeInsights],
+  );
+
   const statsMap: Record<Marketplace, MarketplaceStats> = { shopee, tiktok, mercadolivre, todos: combined };
   const stats = statsMap[marketplace];
   const prevStats = syncData?.prevStats;
@@ -536,6 +551,11 @@ function UnifiedDashboardContent() {
         <EmptyState mp={marketplace} />
       ) : (
         <>
+          {/* Insights — o que o vendedor precisa saber antes dos números crus */}
+          {(insights.length > 0 || dreLoading) && (
+            <InsightsPanel insights={insights} loading={dreLoading && insights.length === 0} />
+          )}
+
           {/* Stats Cards */}
           <KpiRow>
             <StatCard title="Pedidos" value={stats.totalOrders.toString()} description="Concluídos no período"
