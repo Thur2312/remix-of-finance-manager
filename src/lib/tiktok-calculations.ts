@@ -139,7 +139,8 @@ export interface TikTokCalculationResult {
 export function calculateTikTokResults(
   orders: TikTokOrder[],
   settings: TikTokSettingsData,
-  groupBy: 'produto' | 'variacao' = 'produto'
+  groupBy: 'produto' | 'variacao' = 'produto',
+  { includeImpostoSaida = true }: { includeImpostoSaida?: boolean } = {}
 ): TikTokCalculationResult {
   const adicionalPorItemCents = toCents(Number(settings.adicional_por_item) || 0);
   const gastoAdsCents = toCents(Number(settings.gasto_tiktok_ads) || 0);
@@ -196,22 +197,23 @@ export function calculateTikTokResults(
     const total_a_receber_cents = total_faturado_cents - taxa_tiktok_reais_cents - taxa_afiliado_reais_cents - taxa_adicional_itens_cents;
     const total_gasto_produtos_cents = itens_vendidos * custo_unitario_medio_cents;
 
-    // Calculate tax with optional discount
-    let imposto: number;
-    const desconto = Number(settings.desconto_nf_saida);
-    if (desconto === 0 || !desconto) {
-      imposto = total_faturado * Number(settings.imposto_nf_saida);
-    } else {
-      imposto = (total_faturado - (total_faturado * desconto)) * Number(settings.imposto_nf_saida);
-    }
-
-    let imposto_cents: number;
-    if (desconto === 0 || !desconto) {
-      imposto_cents = Math.round(total_faturado_cents * Number(settings.imposto_nf_saida));
-    } else {
-      imposto_cents = Math.round(
-        (total_faturado_cents - Math.round(total_faturado_cents * desconto)) * Number(settings.imposto_nf_saida)
-      );
+    // Imposto sobre NF de saída (modelo antigo, `settings.imposto_nf_saida`).
+    // As telas de análise por produto passam `includeImpostoSaida: false` — o
+    // imposto da empresa vive nos dashboards/DRE via `applyTax`
+    // (companies.tax_rate/tax_base). Ver docs/DIAGNOSTICO-FINANCEIRO.md.
+    let imposto = 0;
+    let imposto_cents = 0;
+    if (includeImpostoSaida) {
+      const desconto = Number(settings.desconto_nf_saida);
+      if (desconto === 0 || !desconto) {
+        imposto = total_faturado * Number(settings.imposto_nf_saida);
+        imposto_cents = Math.round(total_faturado_cents * Number(settings.imposto_nf_saida));
+      } else {
+        imposto = (total_faturado - (total_faturado * desconto)) * Number(settings.imposto_nf_saida);
+        imposto_cents = Math.round(
+          (total_faturado_cents - Math.round(total_faturado_cents * desconto)) * Number(settings.imposto_nf_saida)
+        );
+      }
     }
 
     const nf_entrada = total_gasto_produtos * Number(settings.percentual_nf_entrada);

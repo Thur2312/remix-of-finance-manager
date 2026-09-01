@@ -111,7 +111,10 @@ export function TikTokVariacoesContent() {
 
   const calculatedResults = useMemo(() => {
     if (!settings || orders.length === 0) return null;
-    return calculateTikTokResults(orders, settings, 'variacao');
+    // Análise operacional por variação — sem o imposto de saída (Simples). O
+    // imposto por empresa (companies.tax_rate/applyTax) aparece nos dashboards
+    // e na DRE, não faz sentido rateado linha a linha aqui.
+    return calculateTikTokResults(orders, settings, 'variacao', { includeImpostoSaida: false });
   }, [orders, settings]);
 
   const handleCostSave = useCallback(async (sku: string, nomeProduto: string, variacao: string, newCost: number) => {
@@ -209,7 +212,6 @@ export function TikTokVariacoesContent() {
       'Taxa Adicional',
       'Total a Receber',
       'Custo Produtos',
-      'Imposto',
       'NF Entrada',
       'Lucro R$',
       'Lucro %',
@@ -225,7 +227,6 @@ export function TikTokVariacoesContent() {
       r.taxa_adicional_itens.toFixed(2),
       r.total_a_receber.toFixed(2),
       r.total_gasto_produtos.toFixed(2),
-      r.imposto.toFixed(2),
       r.nf_entrada.toFixed(2),
       r.lucro_reais.toFixed(2),
       r.lucro_percentual.toFixed(1),
@@ -262,9 +263,11 @@ export function TikTokVariacoesContent() {
         bg: 'bg-success/10',
       },
       {
-        title: 'Lucro Líquido',
+        title: 'Lucro Operacional',
         value: formatCurrency(totals.lucro_reais),
-        subtitle: totals.gasto_ads > 0 ? `Ads: -${formatCurrency(totals.gasto_ads)}` : undefined,
+        subtitle: totals.gasto_ads > 0
+          ? `Ads: -${formatCurrency(totals.gasto_ads)} · antes do imposto`
+          : 'Antes do imposto de saída',
         icon: totals.lucro_reais >= 0 ? TrendingUp : TrendingDown,
         color: totals.lucro_reais >= 0 ? 'text-success' : 'text-destructive',
         bg: totals.lucro_reais >= 0 ? 'bg-success/10' : 'bg-destructive/10',

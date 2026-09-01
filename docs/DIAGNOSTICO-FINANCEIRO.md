@@ -182,6 +182,25 @@ empresa e perguntar antes de escolher.
 Regra adicional, qualquer que seja a base: **nunca aplicar imposto sobre resultado
 negativo**.
 
+**Status (resolvido como design — ver [[redesign-e-auditoria]] / memória):**
+`companies.tax_base` (`revenue` default | `profit`) + `applyTax()` em `src/lib/tax.ts`
+com guard `profit<=0 → 0` (BUG-02). Dashboards (Shopee/TikTok/ML/Unificado) já
+usam esse modelo via `TaxSummaryRow`, mostrando o lucro **antes** do imposto de
+saída pra não tributar duas vezes (`31ed3d3`).
+
+**Aposentar `settings.imposto_nf_saida` (faseado):**
+- **Fase 1 — FEITO.** `TikTokResultados` e `TikTokVariacoes` (análise operacional
+  por produto/variação) não aplicam mais `imposto_nf_saida`:
+  `calculateTikTokResults(..., { includeImpostoSaida: false })`. Coluna "Imposto"
+  e a linha do CSV saíram; card "Lucro Líquido" → "Lucro Operacional (antes do
+  imposto)". Motivo: ratear alíquota Simples da empresa linha a linha num
+  relatório de produto é artificial; imposto vive no dashboard/DRE.
+- **Fase 2 — pendente.** DRE (`dre-calculations.ts` `issShopee`/`issTikTok`) ainda
+  lê `imposto_nf_saida` — precisa decidir escopo de empresa da DRE (hoje é
+  user-wide, sem `companies`). Só depois disso dá pra dropar as 3 colunas
+  (`settings`/`tiktok_settings`/`ml_settings`), tirar o campo das telas de config
+  e limpar o `financial-assistant`.
+
 ### BUG-02 — Sinal invertido na Tela A · CONFIRMADO, causa isolada
 
 `−44,94 − 4,04 = −48,98`, mas a UI exibe **−40,90**. O imposto está sendo somado.

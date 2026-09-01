@@ -118,4 +118,19 @@ describe('calculateTikTokResults — campos *Cents batem com toCents() dos campo
     expect(r.totals.imposto).toBe(0);
     expect(r.totals.lucro_antes_imposto).toBeCloseTo(r.totals.lucro_reais, 6);
   });
+
+  it('includeImpostoSaida:false → imposto zerado e lucro_reais fica pré-imposto (telas de produto)', () => {
+    const orders = [order({ total_faturado: 300, custo_unitario: 40, quantidade: 2 })];
+    const comImposto = calculateTikTokResults(orders, settings({ imposto_nf_saida: 0.08 }));
+    const semImposto = calculateTikTokResults(orders, settings({ imposto_nf_saida: 0.08 }), 'produto', { includeImpostoSaida: false });
+
+    expect(comImposto.totals.imposto).toBeGreaterThan(0);
+    expect(semImposto.totals.imposto).toBe(0);
+    expect(semImposto.totals.imposto_cents).toBe(0);
+    // o lucro exibido sobe exatamente o valor do imposto que deixou de ser descontado
+    expect(semImposto.totals.lucro_reais).toBeCloseTo(comImposto.totals.lucro_antes_imposto, 6);
+    expect(semImposto.groups[0].lucro_reais).toBeCloseTo(comImposto.groups[0].lucro_reais + comImposto.groups[0].imposto, 6);
+    // percentual recalculado dentro da lib, sem duplicar a fórmula no componente
+    expect(semImposto.totals.lucro_percentual_medio).toBeGreaterThan(comImposto.totals.lucro_percentual_medio);
+  });
 });

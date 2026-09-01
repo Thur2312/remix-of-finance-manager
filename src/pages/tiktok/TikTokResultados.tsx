@@ -113,7 +113,10 @@ export function TikTokResultadosContent() {
 
   const calculatedResults = useMemo(() => {
     if (!settings || orders.length === 0) return null;
-    return calculateTikTokResults(orders, settings, 'produto');
+    // Análise operacional por produto — sem o imposto de saída (Simples). O
+    // imposto por empresa (companies.tax_rate/applyTax) aparece nos dashboards
+    // e na DRE, não faz sentido rateado linha a linha aqui.
+    return calculateTikTokResults(orders, settings, 'produto', { includeImpostoSaida: false });
   }, [orders, settings]);
 
   // Antes, a exclusão de status na importação só cobria "Cancelado"/"Não
@@ -306,7 +309,6 @@ export function TikTokResultadosContent() {
       'Taxa Adicional',
       'Total a Receber',
       'Custo Produtos',
-      'Imposto',
       'NF Entrada',
       'Lucro R$',
       'Lucro %',
@@ -322,7 +324,6 @@ export function TikTokResultadosContent() {
       r.taxa_adicional_itens.toFixed(2),
       r.total_a_receber.toFixed(2),
       r.total_gasto_produtos.toFixed(2),
-      r.imposto.toFixed(2),
       r.nf_entrada.toFixed(2),
       r.lucro_reais.toFixed(2),
       r.lucro_percentual.toFixed(1),
@@ -359,9 +360,11 @@ export function TikTokResultadosContent() {
         bg: 'bg-success/10',
       },
       {
-        title: 'Lucro Líquido',
+        title: 'Lucro Operacional',
         value: formatCurrency(totals.lucro_reais),
-        subtitle: totals.gasto_ads > 0 ? `Ads: -${formatCurrency(totals.gasto_ads)}` : undefined,
+        subtitle: totals.gasto_ads > 0
+          ? `Ads: -${formatCurrency(totals.gasto_ads)} · antes do imposto`
+          : 'Antes do imposto de saída',
         icon: totals.lucro_reais >= 0 ? TrendingUp : TrendingDown,
         color: totals.lucro_reais >= 0 ? 'text-success' : 'text-destructive',
         bg: totals.lucro_reais >= 0 ? 'bg-success/10' : 'bg-destructive/10',
@@ -539,7 +542,6 @@ export function TikTokResultadosContent() {
                   <TableHead className="text-right">Taxa TikTok</TableHead>
                   <TableHead className="text-right">A Receber</TableHead>
                   <TableHead className="text-right">Custo Total</TableHead>
-                  <TableHead className="text-right">Imposto</TableHead>
                   <TableHead className="text-right">Lucro R$</TableHead>
                   <TableHead className="text-right">Margem</TableHead>
                 </TableRow>
@@ -575,7 +577,6 @@ export function TikTokResultadosContent() {
                     <TableCell className="text-right text-muted-foreground">{formatCurrency(row.taxa_tiktok_reais)}</TableCell>
                     <TableCell className="text-right">{formatCurrency(row.total_a_receber)}</TableCell>
                     <TableCell className="text-right text-muted-foreground">{formatCurrency(row.total_gasto_produtos)}</TableCell>
-                    <TableCell className="text-right text-muted-foreground">{formatCurrency(row.imposto)}</TableCell>
                     <TableCell className={cn('text-right font-medium', row.lucro_reais >= 0 ? 'text-success' : 'text-destructive')}>
                       {formatCurrency(row.lucro_reais)}
                     </TableCell>
@@ -596,7 +597,6 @@ export function TikTokResultadosContent() {
                   <TableCell className="text-right">{formatCurrency(totals.taxa_tiktok_reais)}</TableCell>
                   <TableCell className="text-right font-bold">{formatCurrency(totals.total_a_receber)}</TableCell>
                   <TableCell className="text-right text-muted-foreground">{formatCurrency(totals.total_gasto_produtos)}</TableCell>
-                  <TableCell className="text-right text-muted-foreground">{formatCurrency(totals.imposto)}</TableCell>
                   <TableCell className={cn('text-right font-bold', totals.lucro_reais >= 0 ? 'text-success' : 'text-destructive')}>
                     {formatCurrency(totals.lucro_reais)}
                   </TableCell>
