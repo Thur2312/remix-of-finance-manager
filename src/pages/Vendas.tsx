@@ -28,9 +28,16 @@ const STATUS_LABEL: Record<string, string> = {
 
 const CANCELLED_STATUSES = ['CANCELLED', 'TO_RETURN', 'invalid'];
 
-function orderExternalLink(provider: SaleEventProvider, externalOrderId: string) {
-  if (provider === 'shopee') return `https://seller.shopee.com.br/portal/sale/order/${externalOrderId}`;
-  return `https://www.mercadolivre.com.br/vendas/${externalOrderId}/detalhe`;
+// `external_order_id` guardado pelo sync/webhook:
+//  - Shopee: `order_sn` (integration-sync/index.ts) — é o mesmo id que a rota
+//    do Seller Center espera em /portal/sale/order/<order_sn>.
+//  - Mercado Livre: `String(order.id)` (mercadolivre-sync/-webhook) — id numérico
+//    do pedido; a rota /vendas/<id>/detalhe resolve o pack no lado do ML.
+function orderExternalLink(provider: SaleEventProvider, externalOrderId: string | null | undefined): string | null {
+  const id = externalOrderId?.trim();
+  if (!id) return null;
+  if (provider === 'shopee') return `https://seller.shopee.com.br/portal/sale/order/${encodeURIComponent(id)}`;
+  return `https://www.mercadolivre.com.br/vendas/${encodeURIComponent(id)}/detalhe`;
 }
 
 const PAGE_SIZE = 20;
@@ -127,15 +134,21 @@ export default function Vendas() {
                         </Badge>
                       </TableCell>
                       <TableCell>
-                        <a
-                          href={orderExternalLink(ev.provider, ev.external_order_id)}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="text-muted-foreground hover:text-foreground"
-                          title="Ver no marketplace"
-                        >
-                          <ExternalLink className="h-4 w-4" />
-                        </a>
+                        {(() => {
+                          const href = orderExternalLink(ev.provider, ev.external_order_id);
+                          if (!href) return null;
+                          return (
+                            <a
+                              href={href}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="text-muted-foreground hover:text-foreground"
+                              title={`Ver pedido no ${PROVIDER_LABEL[ev.provider]}`}
+                            >
+                              <ExternalLink className="h-4 w-4" />
+                            </a>
+                          );
+                        })()}
                       </TableCell>
                     </TableRow>
                   ))}
