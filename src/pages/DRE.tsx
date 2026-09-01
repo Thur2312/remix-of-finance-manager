@@ -16,6 +16,7 @@ import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { PageShell } from '@/components/layout/PageShell';
 import { EmptyState } from '@/components/ui/empty-state';
+import { CompanySelector } from '@/components/dashboard/CompanySelector';
 import { Link } from 'react-router-dom';
 
 function DREContent() {
@@ -26,6 +27,8 @@ function DREContent() {
     periods,
     selectedPeriod,
     setSelectedPeriod,
+    selectedCompany,
+    setSelectedCompany,
     refetch
   } = useDREData();
 
@@ -137,6 +140,12 @@ function DREContent() {
       }
     >
       <div className="space-y-6">
+      {/* Empresa da DRE — define o imposto (Simples sobre faturamento / IRPJ
+         sobre lucro) aplicado ao demonstrativo. */}
+      <div className="flex items-center justify-end">
+        <CompanySelector selectedCompany={selectedCompany} onSelect={setSelectedCompany} />
+      </div>
+
       {/* Period Info - Regra 2: Resumo executivo textual (sem valor numérico duplicado) */}
       <Card className="bg-muted/30">
         <CardContent className="py-3">

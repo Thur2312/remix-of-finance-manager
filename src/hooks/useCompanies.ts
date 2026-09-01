@@ -17,6 +17,7 @@ export interface CompanyFormData {
   name: string;
   cnpj: string;
   tax_rate: number;
+  tax_base: TaxBase;
 }
 
 export function useCompanies() {

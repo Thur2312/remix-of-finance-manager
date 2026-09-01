@@ -1,7 +1,8 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useCallback } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { useActiveShopeeConnection } from '@/hooks/useActiveShopeeConnection';
+import { useCompanies, type Company } from '@/hooks/useCompanies';
 import {
   DREData,
   DREPeriod,
@@ -63,16 +64,44 @@ interface UseDREDataResult {
   periods: DREPeriod[];
   selectedPeriod: DREPeriod;
   setSelectedPeriod: (period: DREPeriod) => void;
+  selectedCompany: Company | null;
+  setSelectedCompany: (company: Company | null) => void;
   refetch: () => Promise<void>;
 }
+
+const DRE_COMPANY_STORAGE_KEY = 'dre:companyId';
 
 // ── Hook principal ──────────────────────────────────────────────────────────
 
 export function useDREData(): UseDREDataResult {
   const { user } = useAuth();
   const { activeConnectionId: activeShopeeConnectionId } = useActiveShopeeConnection();
+  const { companies } = useCompanies();
   const [isLoading, setIsLoading]     = useState(true);
   const [error, setError]             = useState<string | null>(null);
+
+  // Empresa da DRE — modelo de imposto por empresa (companies.tax_rate/tax_base).
+  // Default: 1ª empresa (ou a salva no localStorage), até o usuário escolher
+  // explicitamente — incluindo escolher "nenhuma", que é um estado válido
+  // (DRE sem estimativa de Simples/IRPJ). Ver [[financial-diagnosis-workstream]].
+  const [selectedCompany, setSelectedCompanyState] = useState<Company | null>(null);
+  const [companyTouched, setCompanyTouched] = useState(false);
+
+  useEffect(() => {
+    if (companyTouched || selectedCompany || companies.length === 0) return;
+    let saved: string | null = null;
+    try { saved = localStorage.getItem(DRE_COMPANY_STORAGE_KEY); } catch { /* ignore */ }
+    setSelectedCompanyState(companies.find(c => c.id === saved) ?? companies[0]);
+  }, [companies, companyTouched, selectedCompany]);
+
+  const setSelectedCompany = useCallback((company: Company | null) => {
+    setCompanyTouched(true);
+    setSelectedCompanyState(company);
+    try {
+      if (company) localStorage.setItem(DRE_COMPANY_STORAGE_KEY, company.id);
+      else localStorage.removeItem(DRE_COMPANY_STORAGE_KEY);
+    } catch { /* ignore */ }
+  }, []);
 
   // Estados de dados
   const [shopeeOrders,      setShopeeOrders]      = useState<ShopeeOrder[]>([]);
@@ -270,13 +299,13 @@ export function useDREData(): UseDREDataResult {
       supabase.from('fixed_costs').select('*').eq('user_id', userId),
       supabase
         .from('settings')
-        .select('taxa_comissao_shopee, adicional_por_item, percentual_nf_entrada, gasto_shopee_ads, imposto_nf_saida')
+        .select('taxa_comissao_shopee, adicional_por_item, percentual_nf_entrada, gasto_shopee_ads')
         .eq('user_id', userId)
         .eq('is_default', true)
         .maybeSingle(),
       supabase
         .from('tiktok_settings')
-        .select('taxa_comissao_tiktok, taxa_afiliado, adicional_por_item, percentual_nf_entrada, gasto_tiktok_ads, imposto_nf_saida')
+        .select('taxa_comissao_tiktok, taxa_afiliado, adicional_por_item, percentual_nf_entrada, gasto_tiktok_ads')
         .eq('user_id', userId)
         .eq('is_default', true)
         .maybeSingle(),
@@ -414,6 +443,7 @@ export function useDREData(): UseDREDataResult {
       selectedPeriod,
       mlOrders,
       cashFlowEntries,
+      selectedCompany,
     );
   }, [
     shopeeOrders,
@@ -427,6 +457,7 @@ export function useDREData(): UseDREDataResult {
     selectedPeriod,
     mlOrders,
     cashFlowEntries,
+    selectedCompany,
     isLoading,
     user,
   ]);
@@ -453,6 +484,8 @@ export function useDREData(): UseDREDataResult {
     periods,
     selectedPeriod,
     setSelectedPeriod,
+    selectedCompany,
+    setSelectedCompany,
     refetch,
   };
 }

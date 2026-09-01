@@ -1,5 +1,6 @@
 import { differenceInDays } from 'date-fns';
 import { toCents, type Cents } from './money';
+import type { TaxBase } from './tax';
 
 // ============= INTERFACES =============
 
@@ -313,7 +314,6 @@ export interface ShopeeSettings {
   adicional_por_item: number | null;
   percentual_nf_entrada: number | null;
   gasto_shopee_ads: number | null;
-  imposto_nf_saida?: number | null;
 }
 
 export interface TikTokSettings {
@@ -322,7 +322,15 @@ export interface TikTokSettings {
   adicional_por_item: number | null;
   percentual_nf_entrada: number | null;
   gasto_tiktok_ads: number | null;
-  imposto_nf_saida?: number | null;
+}
+
+// Imposto da empresa aplicado ao DRE (companies.tax_rate / tax_base). O DRE é
+// consolidado/user-wide; assume-se o regime de UMA empresa pro demonstrativo
+// inteiro. `revenue` (Simples) → linha "Impostos sobre Vendas"; `profit`
+// (Presumido/Real) → linha "Impostos sobre Lucro". Ver docs/DIAGNOSTICO-FINANCEIRO.md.
+export interface DRECompanyTax {
+  tax_rate: number;
+  tax_base: TaxBase;
 }
 
 // ============= HELPERS =============
@@ -381,11 +389,15 @@ export function filterByPeriod<T extends {
 
 // ============= ALERTAS =============
 
-function gerarAlertas(data: Partial<DREData>): DREAlerta[] {
+function gerarAlertas(data: Partial<DREData>, company: DRECompanyTax | null): DREAlerta[] {
   const alertas: DREAlerta[] = [];
 
-  if ((data.impostosSobreVendasTotal || 0) === 0 && (data.receitaBrutaTotal || 0) > 0) {
-    alertas.push({ tipo: 'warning', mensagem: 'Nenhum imposto sobre vendas configurado. Verifique as configurações de Simples Nacional/ISS.', campo: 'impostosSobreVendasTotal' });
+  if ((data.receitaBrutaTotal || 0) > 0) {
+    if (!company) {
+      alertas.push({ tipo: 'warning', mensagem: 'Nenhuma empresa selecionada. O DRE não estima Simples Nacional / IRPJ até você escolher a empresa.', campo: 'impostosSobreVendasTotal' });
+    } else if (company.tax_rate === 0) {
+      alertas.push({ tipo: 'warning', mensagem: 'A empresa selecionada está sem alíquota de imposto. Ajuste em Empresas se ela recolhe Simples Nacional ou IRPJ/CSLL.', campo: 'impostosSobreVendasTotal' });
+    }
   }
   if ((data.cogsTotal || 0) === 0 && (data.receitaBrutaTotal || 0) > 0) {
     alertas.push({ tipo: 'error', mensagem: 'Custo dos produtos (COGS) zerado. Cadastre os custos unitários dos produtos.', campo: 'cogsTotal' });
@@ -427,7 +439,8 @@ export function calculateDRE(
   tiktokSettings: TikTokSettings | null,
   period: DREPeriod,
   mlOrders: MlOrder[] = [],
-  cashFlowEntries: CashFlowEntry[] = []
+  cashFlowEntries: CashFlowEntry[] = [],
+  company: DRECompanyTax | null = null
 ): DREData {
 
   const filteredShopeeOrders  = filterByPeriod(shopeeOrders,    period, 'data_pedido');
@@ -462,18 +475,28 @@ export function calculateDRE(
     .reduce((s, e) => s + Number(e.amount_cents || 0), 0);
   const receitaBrutaTotalCents = receitaBrutaShopeeCents + receitaBrutaTikTokCents + receitaBrutaMercadoLivreCents + receitaBrutaExtraCents;
 
-  // 2. IMPOSTOS
+  // 2. IMPOSTOS SOBRE VENDAS
+  // ICMS: dado real dos settlements TikTok (DIFAL + penalties), independe da empresa.
   const icms = filteredSettlements.reduce((s, x) => s + Math.abs(x.icms_difal || 0) + Math.abs(x.icms_penalty || 0), 0);
-  const issShopee  = receitaBrutaShopee * ((shopeeSettings?.imposto_nf_saida || 0) / 100);
-  const issTikTok  = receitaBrutaTikTok * ((tiktokSettings?.imposto_nf_saida || 0) / 100);
-  const issSimples = issShopee + issTikTok;
-  const impostosSobreVendasTotal = icms + issSimples;
-
   const icmsCents = filteredSettlements.reduce((s, x) =>
     s + Math.abs(Number(x.icms_difal_cents || 0)) + Math.abs(Number(x.icms_penalty_cents || 0)), 0);
-  const issShopeeCents = Math.round(receitaBrutaShopeeCents * ((shopeeSettings?.imposto_nf_saida || 0) / 100));
-  const issTikTokCents = Math.round(receitaBrutaTikTokCents * ((tiktokSettings?.imposto_nf_saida || 0) / 100));
-  const issSimplesCents = issShopeeCents + issTikTokCents;
+
+  // ISS / Simples Nacional — vem do imposto da empresa (companies.tax_rate).
+  // Só entra AQUI quando `tax_base='revenue'` (Simples); `profit` (Presumido/
+  // Real) é tratado na seção 11 (Impostos sobre Lucro). Sem empresa, o DRE não
+  // estima esse imposto — só o ICMS real acima. Base = receita de vendas dos
+  // marketplaces (exclui receita avulsa lançada no Fluxo de Caixa).
+  const receitaVendasMarketplace = receitaBrutaShopee + receitaBrutaTikTok + receitaBrutaMercadoLivre;
+  const receitaVendasMarketplaceCents = receitaBrutaShopeeCents + receitaBrutaTikTokCents + receitaBrutaMercadoLivreCents;
+  const taxaImpostoEmpresa = company?.tax_rate ?? 0;
+  const empresaTributaReceita = company?.tax_base === 'revenue' && taxaImpostoEmpresa > 0;
+  const empresaTributaLucro   = company?.tax_base === 'profit'  && taxaImpostoEmpresa > 0;
+
+  const issSimples = empresaTributaReceita ? receitaVendasMarketplace * (taxaImpostoEmpresa / 100) : 0;
+  const issSimplesCents = empresaTributaReceita
+    ? Math.round(receitaVendasMarketplaceCents * (taxaImpostoEmpresa / 100))
+    : 0;
+  const impostosSobreVendasTotal = icms + issSimples;
   const impostosSobreVendasTotalCents = icmsCents + issSimplesCents;
 
   // 3. DEDUÇÕES
@@ -603,15 +626,10 @@ export function calculateDRE(
   const margemOperacional = receitaLiquida > 0 ? (lucroOperacional / receitaLiquida) * 100 : 0;
   const lucroOperacionalCents = margemContribuicaoCents - custosFixosProrrateadosCents;
 
-  // 11. DESPESAS FINANCEIRAS
-  const jurosMultas = 0;
-  const impostosSobreLucro = 0;
-  const despesasFinanceirasTotal = jurosMultas + impostosSobreLucro;
-  const jurosMultasCents = 0 as Cents;
-  const impostosSobreLucroCents = 0 as Cents;
-  const despesasFinanceirasTotalCents = jurosMultasCents + impostosSobreLucroCents;
-
-  // Outras despesas do fluxo de caixa (type=expense, status=paid)
+  // 11. OUTRAS RECEITAS / DESPESAS DO FLUXO DE CAIXA
+  // `outrasReceitasFluxo` já está em receitaBrutaTotal → não soma de novo aqui.
+  // As despesas precisam ser conhecidas antes do imposto sobre lucro (ele
+  // incide sobre o resultado já líquido delas).
   const outrasReceitasFluxo = receitaBrutaExtra;
   const outrasReceitasFluxoCents = receitaBrutaExtraCents;
   const outrasDespesasFluxoPorCategoria: Record<string, number> = {};
@@ -629,12 +647,29 @@ export function calculateDRE(
       outrasDespesasFluxoCents += amountCents;
     });
 
+  // 11b. DESPESAS FINANCEIRAS E IMPOSTO SOBRE O LUCRO
+  const jurosMultas = 0;
+  const jurosMultasCents = 0 as Cents;
+  // `tax_base='profit'` (Lucro Presumido/Real): imposto sobre o resultado antes
+  // do IRPJ, com guard de prejuízo (mesma regra de applyTax em src/lib/tax.ts —
+  // resultado <= 0 não gera imposto).
+  const lucroAntesImpostoLucro = lucroOperacional - jurosMultas - outrasDespesasFluxo;
+  const lucroAntesImpostoLucroCents = lucroOperacionalCents - jurosMultasCents - outrasDespesasFluxoCents;
+  const impostosSobreLucro = empresaTributaLucro
+    ? Math.max(0, lucroAntesImpostoLucro) * (taxaImpostoEmpresa / 100)
+    : 0;
+  const impostosSobreLucroCents = (empresaTributaLucro
+    ? Math.round(Math.max(0, lucroAntesImpostoLucroCents) * (taxaImpostoEmpresa / 100))
+    : 0) as Cents;
+  const despesasFinanceirasTotal = jurosMultas + impostosSobreLucro;
+  const despesasFinanceirasTotalCents = (jurosMultasCents + impostosSobreLucroCents) as Cents;
+
   // 12. LUCRO LÍQUIDO
   const lucroLiquido  = lucroOperacional - despesasFinanceirasTotal - outrasDespesasFluxo;
   const margemLiquida = receitaLiquida > 0 ? (lucroLiquido / receitaLiquida) * 100 : 0;
   const lucroLiquidoCents = lucroOperacionalCents - despesasFinanceirasTotalCents - outrasDespesasFluxoCents;
 
-  const alertas = gerarAlertas({ receitaBrutaTotal, receitaBrutaExtra, impostosSobreVendasTotal, cogsTotal, margemContribuicao, lucroOperacional, custosFixosTotal });
+  const alertas = gerarAlertas({ receitaBrutaTotal, receitaBrutaExtra, impostosSobreVendasTotal, cogsTotal, margemContribuicao, lucroOperacional, custosFixosTotal }, company);
 
   return {
     periodo: period,

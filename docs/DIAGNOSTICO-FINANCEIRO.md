@@ -195,11 +195,27 @@ saída pra não tributar duas vezes (`31ed3d3`).
   e a linha do CSV saíram; card "Lucro Líquido" → "Lucro Operacional (antes do
   imposto)". Motivo: ratear alíquota Simples da empresa linha a linha num
   relatório de produto é artificial; imposto vive no dashboard/DRE.
-- **Fase 2 — pendente.** DRE (`dre-calculations.ts` `issShopee`/`issTikTok`) ainda
-  lê `imposto_nf_saida` — precisa decidir escopo de empresa da DRE (hoje é
-  user-wide, sem `companies`). Só depois disso dá pra dropar as 3 colunas
-  (`settings`/`tiktok_settings`/`ml_settings`), tirar o campo das telas de config
-  e limpar o `financial-assistant`.
+- **Fase 2 — FEITO (opção D1).** A DRE deixou de ler `imposto_nf_saida`. Agora tem
+  um `CompanySelector` (`src/pages/DRE.tsx`) e `calculateDRE` recebe
+  `company: DRECompanyTax | null`:
+  - `tax_base='revenue'` (Simples) → `issSimples = receita de vendas dos
+    marketplaces × tax_rate`, na linha "Impostos sobre Vendas".
+  - `tax_base='profit'` (Presumido/Real) → linha de vendas = 0; preenche a linha
+    "Impostos sobre Lucro" (IRPJ/CSLL) antes zerada: `max(0, resultado antes do
+    IRPJ) × tax_rate`, com guard de prejuízo.
+  - sem empresa → só o `icms` real dos settlements; alerta pede pra escolher.
+  - `icms` (DIFAL dos settlements TikTok) é dado real, intocado.
+  - default: 1ª empresa (ou a salva em `localStorage['dre:companyId']`), até o
+    usuário escolher — inclusive escolher "nenhuma".
+  - `CompanyModal` ganhou o seletor de **base de cálculo** (Faturamento/Lucro) —
+    antes `tax_base` só existia no banco, sem UI.
+  Trade-off aceito: a DRE assume o regime de UMA empresa pro demonstrativo
+  inteiro (consolidado user-wide). D3 (filtrar todos os dados por empresa) fica
+  pra quando os uploads de TikTok/ML ganharem `company_id`.
+- **Ainda pendente (Faixa F, baixa prio):** dropar as 3 colunas
+  `imposto_nf_saida` (`settings` ainda usada por `calculations.ts` — path upload
+  manual do Shopee — e pelas 3 telas de config), limpar o `select` do
+  `financial-assistant`.
 
 ### BUG-02 — Sinal invertido na Tela A · CONFIRMADO, causa isolada
 

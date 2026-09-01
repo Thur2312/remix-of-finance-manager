@@ -24,7 +24,6 @@ const shopeeSettings: ShopeeSettings = {
   adicional_por_item: 0.5,
   percentual_nf_entrada: 2,
   gasto_shopee_ads: 45.9,
-  imposto_nf_saida: 6,
 };
 
 const tiktokSettings: TikTokSettings = {
@@ -33,7 +32,6 @@ const tiktokSettings: TikTokSettings = {
   adicional_por_item: 0.3,
   percentual_nf_entrada: 1,
   gasto_tiktok_ads: 20,
-  imposto_nf_saida: 6,
 };
 
 function shopeeOrder(p: Partial<ShopeeOrderDRE> = {}): ShopeeOrderDRE {
@@ -272,5 +270,57 @@ describe('calculateDRE — campos *Cents batem (ou ficam próximos) de toCents()
     expect(dre.receitaBrutaTotalCents).toBe(0);
     expect(dre.lucroLiquidoCents).toBe(0);
     expect(Number.isNaN(dre.margemLiquida)).toBe(false);
+  });
+});
+
+describe('calculateDRE — imposto da empresa (companies.tax_rate / tax_base)', () => {
+  const shopee = [shopeeOrder({ total_faturado: 1000, custo_unitario: 0, quantidade: 1 })];
+  const tiktok = [tiktokOrder({ total_faturado: 500, custo_unitario: 0, quantidade: 1 })];
+  const ml = [mlOrder({ total_faturado: 300, custo_unitario: 0, taxa_ml: 0, frete_ml: 0 })];
+
+  it('sem empresa → nenhum ISS/Simples estimado (só ICMS real, aqui 0)', () => {
+    const dre = calculateDRE(shopee, tiktok, [], [], shopeeSettings, tiktokSettings, PERIOD, ml, [], null);
+    expect(dre.issSimples).toBe(0);
+    expect(dre.impostosSobreVendasTotal).toBe(0);
+    expect(dre.impostosSobreLucro).toBe(0);
+    expect(dre.alertas.some(a => a.campo === 'impostosSobreVendasTotal')).toBe(true);
+  });
+
+  it('tax_base="revenue" → ISS = alíquota sobre a receita de vendas dos marketplaces', () => {
+    const dre = calculateDRE(shopee, tiktok, [], [], shopeeSettings, tiktokSettings, PERIOD, ml, [], { tax_rate: 6, tax_base: 'revenue' });
+    // (1000 + 500 + 300) * 6% = 108
+    expect(dre.issSimples).toBeCloseTo(108, 6);
+    expect(dre.issSimplesCents).toBe(10800);
+    expect(dre.impostosSobreVendasTotal).toBeCloseTo(108, 6);
+    expect(dre.impostosSobreLucro).toBe(0);
+  });
+
+  it('tax_base="profit" → nada na linha de vendas; imposto entra na linha de lucro', () => {
+    const dre = calculateDRE(shopee, tiktok, [], [], shopeeSettings, tiktokSettings, PERIOD, ml, [], { tax_rate: 10, tax_base: 'profit' });
+    expect(dre.issSimples).toBe(0);
+    expect(dre.impostosSobreLucro).toBeGreaterThan(0);
+    // imposto = 10% do resultado antes do IRPJ (lucro operacional − outras despesas)
+    expect(dre.impostosSobreLucro).toBeCloseTo(Math.max(0, dre.lucroOperacional) * 0.10, 4);
+    expect(dre.despesasFinanceirasTotal).toBeCloseTo(dre.impostosSobreLucro, 6);
+    expect(dre.lucroLiquido).toBeCloseTo(dre.lucroOperacional - dre.impostosSobreLucro, 4);
+  });
+
+  it('tax_base="profit" com prejuízo operacional → imposto sobre lucro = 0 (guard)', () => {
+    const dre = calculateDRE(
+      shopee, tiktok, [],
+      [fixedCost({ amount: 5000, category: 'Aluguel' })],
+      shopeeSettings, tiktokSettings, PERIOD, ml, [],
+      { tax_rate: 10, tax_base: 'profit' },
+    );
+    expect(dre.lucroOperacional).toBeLessThan(0);
+    expect(dre.impostosSobreLucro).toBe(0);
+    expect(dre.impostosSobreLucroCents).toBe(0);
+  });
+
+  it('imposto_nf_saida das settings é ignorado — só a empresa manda', () => {
+    const withField = { ...shopeeSettings } as ShopeeSettings & { imposto_nf_saida: number };
+    withField.imposto_nf_saida = 99;
+    const dre = calculateDRE(shopee, [], [], [], withField, null, PERIOD, [], [], null);
+    expect(dre.issSimples).toBe(0);
   });
 });

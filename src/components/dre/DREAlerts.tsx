@@ -9,10 +9,6 @@ interface DREAlertsProps {
 
 // Mapa de campo → ação corretiva
 const ALERT_ACTIONS: Record<string, { label: string; path: string }> = {
-  impostosSobreVendasTotal: {
-    label: 'Configurar impostos (Shopee)',
-    path: '/shopee/configuracoes',
-  },
   cogsTotal: {
     label: 'Cadastrar custos dos produtos',
     path: '/shopee/configuracoes',
@@ -63,10 +59,6 @@ const STYLES = {
 
 // Mensagens amigáveis com instrução clara
 const FRIENDLY_MESSAGES: Record<string, { titulo: string; instrucao: string }> = {
-  impostosSobreVendasTotal: {
-    titulo: 'Imposto sobre vendas não configurado',
-    instrucao: 'Acesse Configurações da Shopee ou TikTok → campo "Imposto NF Saída (%)" e informe sua alíquota do Simples Nacional ou ISS.',
-  },
   cogsTotal: {
     titulo: 'Custo dos produtos zerado',
     instrucao: 'Acesse Configurações da Shopee → aba "Custos por Produto" e cadastre o custo unitário de cada produto para calcular o lucro real.',

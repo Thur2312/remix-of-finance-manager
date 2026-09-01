@@ -20,7 +20,7 @@ export function CompanyModal({
   initialData,
   onSuccess,
 }: CompanyModalProps) {
-  const [form, setForm] = useState<CompanyFormData>({ name: '', cnpj: '', tax_rate: 0 });
+  const [form, setForm] = useState<CompanyFormData>({ name: '', cnpj: '', tax_rate: 0, tax_base: 'revenue' });
   const [errors, setErrors] = useState<Partial<Record<keyof CompanyFormData, string>>>({});
   const [formError, setFormError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
@@ -28,9 +28,9 @@ export function CompanyModal({
 
   useEffect(() => {
     if (initialData) {
-      setForm({ name: initialData.name, cnpj: initialData.cnpj, tax_rate: initialData.tax_rate });
+      setForm({ name: initialData.name, cnpj: initialData.cnpj, tax_rate: initialData.tax_rate, tax_base: initialData.tax_base });
     } else {
-      setForm({ name: '', cnpj: '', tax_rate: 0 });
+      setForm({ name: '', cnpj: '', tax_rate: 0, tax_base: 'revenue' });
     }
     setErrors({});
     setFormError(null);
@@ -201,9 +201,41 @@ export function CompanyModal({
             )}
             {form.tax_rate > 0 && (
               <p className="mt-1.5 text-xs text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-950/50 px-3 py-1.5 rounded-lg">
-                Para cada R$ 1.000 de lucro líquido, será deduzido R$ {(form.tax_rate * 10).toFixed(2)} em impostos
+                {form.tax_base === 'revenue'
+                  ? `Para cada R$ 1.000 de faturamento, serão deduzidos R$ ${(form.tax_rate * 10).toFixed(2)} em impostos`
+                  : `Para cada R$ 1.000 de lucro, serão deduzidos R$ ${(form.tax_rate * 10).toFixed(2)} em impostos`}
               </p>
             )}
+          </div>
+
+          {/* Base de cálculo */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">
+              Base de cálculo
+            </label>
+            <div className="grid grid-cols-2 gap-2">
+              {([
+                { value: 'revenue' as const, titulo: 'Faturamento', sub: 'Simples Nacional' },
+                { value: 'profit' as const, titulo: 'Lucro', sub: 'Presumido / Real' },
+              ]).map(opt => (
+                <button
+                  key={opt.value}
+                  type="button"
+                  onClick={() => setForm(p => ({ ...p, tax_base: opt.value }))}
+                  className={`px-3 py-2 rounded-xl border text-left transition-all ${
+                    form.tax_base === opt.value
+                      ? 'border-indigo-500 bg-indigo-50 dark:bg-indigo-950/50 ring-1 ring-indigo-500'
+                      : 'border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 hover:border-gray-300 dark:hover:border-gray-600'
+                  }`}
+                >
+                  <span className="block text-sm font-medium text-gray-900 dark:text-white">{opt.titulo}</span>
+                  <span className="block text-xs text-gray-500 dark:text-gray-400">{opt.sub}</span>
+                </button>
+              ))}
+            </div>
+            <p className="mt-1.5 text-xs text-gray-500 dark:text-gray-400">
+              O imposto incide sobre o faturamento (Simples) ou sobre o lucro (Presumido/Real). Nunca sobre resultado negativo.
+            </p>
           </div>
         </div>
 
