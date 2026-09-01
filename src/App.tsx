@@ -26,6 +26,7 @@ const IntegrationsOverview      = lazy(() => import("./pages/integrations/Integr
 const IntegrationManage         = lazy(() => import("./pages/integrations/IntegrationManage"));
 
 const UnifiedDashboard          = lazy(() => import("./pages/UnifiedDashboard"));
+const MetaDoMes                 = lazy(() => import("./pages/MetaDoMes"));
 const GestaoShell               = lazy(() => import("./pages/gestao/GestaoShell"));
 const Vendas                    = lazy(() => import("./pages/Vendas"));
 
@@ -87,6 +88,7 @@ const App = () => {
                  rota abaixo troca ao navegar. ── */}
               <Route element={<InternalLayout />}>
                 <Route path="/dashboard" element={<UnifiedDashboard />} />
+                <Route path="/meta" element={<MetaDoMes />} />
                 <Route path="/vendas" element={<Vendas />} />
 
                 {/* Gestão: casca única marketplace × view */}
