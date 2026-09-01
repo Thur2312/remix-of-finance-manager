@@ -31,6 +31,8 @@ import { EditableCostCell } from '@/components/EditableCostCell';
 import { ResultsCharts } from '@/components/charts/ResultsCharts';
 import { FiltersCard } from '@/components/layout/FiltersCard';
 import { EmptyState } from '@/components/ui/empty-state';
+import { InsightsPanel } from '@/components/insights/InsightsPanel';
+import { buildInsights } from '@/lib/insights';
 
 // Superfície de cartão da área interna — mesma família visual do .glass-card
 // da landing, calibrada pra densidade (ver .panel em index.css).
@@ -651,6 +653,7 @@ export function TikTokResultadosContent() {
       )}
       {renderFilters()}
       {renderSummaryCards()}
+      <InsightsPanel insights={buildInsights({ products: calculatedResults?.groups })} />
       {calculatedResults && calculatedResults.groups.length > 0 && (
         <ResultsCharts data={calculatedResults.groups.map(g => ({ ...g, rebates_shopee: 0, taxa_shopee_reais: g.taxa_tiktok_reais }))} type="produto" />
       )}

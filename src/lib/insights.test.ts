@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest';
-import { dreInsights, shopeeFinanceInsights, buildInsights } from './insights';
+import { dreInsights, shopeeFinanceInsights, productInsights, buildInsights, type ProductLike } from './insights';
+import { formatCurrency } from './format';
 import { calculateDRE, type ShopeeOrderDRE, type FixedCost, type DREPeriod } from './dre-calculations';
 import type { ShopeeFinance } from './shopee-sync-status';
 import type { Cents } from './money';
@@ -169,6 +170,55 @@ describe('shopeeFinanceInsights', () => {
     const taxa = shopeeFinanceInsights(atual, anterior).find(i => i.id === 'shopee-taxa-efetiva')!;
     expect(taxa.severity).toBe('info');
     expect(taxa.title).not.toContain('vs período anterior');
+  });
+});
+
+describe('productInsights', () => {
+  const p = (o: Partial<ProductLike>): ProductLike => ({
+    nome_produto: 'Produto', sku: 'SKU', total_faturado: 100,
+    custo_unitario_medio: 10, lucro_reais: 20, itens_vendidos: 5, ...o,
+  });
+
+  it('lista vazia → nada', () => {
+    expect(productInsights([])).toEqual([]);
+  });
+
+  it('produtos no prejuízo (com custo) → critical com perda total', () => {
+    const got = productInsights([
+      p({ sku: 'A', lucro_reais: -100, custo_unitario_medio: 5 }),
+      p({ sku: 'B', lucro_reais: -50, custo_unitario_medio: 5 }),
+      p({ sku: 'C', lucro_reais: 200 }),
+    ]);
+    const i = got.find(x => x.id === 'produto-prejuizo')!;
+    expect(i.severity).toBe('critical');
+    expect(i.metric).toBe(formatCurrency(-150));
+    expect(i.title).toContain('2 produtos');
+  });
+
+  it('prejuízo sem custo cadastrado NÃO conta como produto-prejuizo (é o outro insight)', () => {
+    const got = productInsights([p({ sku: 'X', lucro_reais: -30, custo_unitario_medio: 0, itens_vendidos: 3 })]);
+    expect(got.map(i => i.id)).not.toContain('produto-prejuizo');
+    expect(got.map(i => i.id)).toContain('produto-sem-custo');
+  });
+
+  it('produtos sem custo cadastrado → warning com a contagem', () => {
+    const got = productInsights([
+      p({ sku: 'A', custo_unitario_medio: 0, itens_vendidos: 2 }),
+      p({ sku: 'B', custo_unitario_medio: 0, itens_vendidos: 7 }),
+      p({ sku: 'C', custo_unitario_medio: 8 }),
+    ]);
+    const i = got.find(x => x.id === 'produto-sem-custo')!;
+    expect(i.severity).toBe('warning');
+    expect(i.metric).toBe('2');
+  });
+
+  it('um SKU com ≥40% do faturamento da tela → info de concentração', () => {
+    const got = productInsights([
+      p({ sku: 'A', total_faturado: 600 }),
+      p({ sku: 'B', total_faturado: 250 }),
+      p({ sku: 'C', total_faturado: 150 }),
+    ]);
+    expect(got.find(x => x.id === 'produto-concentracao')!.metric).toBe('60%');
   });
 });
 

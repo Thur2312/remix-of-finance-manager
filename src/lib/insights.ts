@@ -242,6 +242,77 @@ export function shopeeFinanceInsights(fin: ShopeeFinance, prev?: ShopeeFinance |
   return out;
 }
 
+// ── Produtos (telas Resultados) ──────────────────────────────────────────────
+
+// Forma mínima compartilhada por GroupedResult (calculations.ts) e
+// TikTokGroupedResult (tiktok-calculations.ts) — os dois já têm estes campos.
+export interface ProductLike {
+  nome_produto: string;
+  sku: string;
+  total_faturado: number;
+  custo_unitario_medio: number;
+  lucro_reais: number;
+  itens_vendidos: number;
+}
+
+export function productInsights(groups: ProductLike[]): Insight[] {
+  const out: Insight[] = [];
+  if (groups.length === 0) return out;
+
+  const label = (p: ProductLike) => (p.sku && p.sku !== '-' ? p.sku : p.nome_produto).slice(0, 40);
+
+  // Produtos no prejuízo — só os que têm custo cadastrado (senão o "prejuízo"
+  // é só o custo faltando, coberto pelo insight de baixo).
+  const prejuizo = groups
+    .filter(p => p.lucro_reais < 0 && p.custo_unitario_medio > 0)
+    .sort((a, b) => a.lucro_reais - b.lucro_reais);
+  if (prejuizo.length > 0) {
+    const totalPerda = prejuizo.reduce((s, p) => s + p.lucro_reais, 0);
+    const piores = prejuizo.slice(0, 3).map(p => `${label(p)} (${formatCurrency(p.lucro_reais)})`).join(', ');
+    out.push({
+      id: 'produto-prejuizo',
+      severity: 'critical',
+      title: prejuizo.length === 1
+        ? '1 produto deu prejuízo no período'
+        : `${prejuizo.length} produtos deram prejuízo no período`,
+      detail: `${piores}${prejuizo.length > 3 ? ` e mais ${prejuizo.length - 3}` : ''}. Preço de venda abaixo do custo mais as taxas.`,
+      metric: formatCurrency(totalPerda),
+    });
+  }
+
+  // Vendidos sem custo cadastrado → lucro exibido está inflado
+  const semCusto = groups.filter(p => p.custo_unitario_medio === 0 && p.itens_vendidos > 0);
+  if (semCusto.length > 0) {
+    out.push({
+      id: 'produto-sem-custo',
+      severity: 'warning',
+      title: semCusto.length === 1
+        ? '1 produto vendido sem custo cadastrado'
+        : `${semCusto.length} produtos vendidos sem custo cadastrado`,
+      detail: 'O lucro desses ignora o que você pagou pela mercadoria — o número real é menor. Edite o custo na tabela abaixo.',
+      metric: String(semCusto.length),
+    });
+  }
+
+  // Um SKU carregando o faturamento da tela
+  const totalFat = groups.reduce((s, p) => s + p.total_faturado, 0);
+  if (totalFat > 0 && groups.length > 2) {
+    const top = [...groups].sort((a, b) => b.total_faturado - a.total_faturado)[0];
+    const share = (top.total_faturado / totalFat) * 100;
+    if (share >= 40) {
+      out.push({
+        id: 'produto-concentracao',
+        severity: 'info',
+        title: `"${label(top)}" é ${pct0(share)} do faturamento desta análise`,
+        detail: 'Um produto carregando a operação é risco: ruptura de estoque ou queda de demanda derruba o resultado.',
+        metric: pct0(share),
+      });
+    }
+  }
+
+  return out;
+}
+
 // ── Composição ───────────────────────────────────────────────────────────────
 
 export function buildInsights(input: {
@@ -249,10 +320,12 @@ export function buildInsights(input: {
   company?: DRECompanyTax | null;
   shopeeFinance?: ShopeeFinance | null;
   shopeeFinancePrev?: ShopeeFinance | null;
+  products?: ProductLike[] | null;
 }): Insight[] {
   const all: Insight[] = [];
   if (input.dre) all.push(...dreInsights(input.dre, input.company));
   if (input.shopeeFinance) all.push(...shopeeFinanceInsights(input.shopeeFinance, input.shopeeFinancePrev));
+  if (input.products && input.products.length > 0) all.push(...productInsights(input.products));
 
   const seen = new Set<string>();
   const unique = all.filter(i => {

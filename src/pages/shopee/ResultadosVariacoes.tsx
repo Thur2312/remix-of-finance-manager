@@ -38,6 +38,8 @@ import {
   CalculationResult,
 } from '@/lib/calculations';
 import { ResultsCharts } from '@/components/charts/ResultsCharts';
+import { InsightsPanel } from '@/components/insights/InsightsPanel';
+import { buildInsights } from '@/lib/insights';
 import { FiltersCard } from '@/components/layout/FiltersCard';
 import { EmptyState } from '@/components/ui/empty-state';
 
@@ -390,6 +392,7 @@ export function ResultadosVariacoesContent() {
     <div className="space-y-6">
       {renderFilters()}
       {renderSummaryCards()}
+      <InsightsPanel insights={buildInsights({ products: results?.groups })} />
       {results && results.groups.length > 0 && (
         <ResultsCharts data={results.groups} type="variacao" />
       )}

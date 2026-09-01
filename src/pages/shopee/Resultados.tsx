@@ -43,6 +43,8 @@ import {
   CalculationResult,
 } from '@/lib/calculations';
 import { ResultsCharts } from '@/components/charts/ResultsCharts';
+import { InsightsPanel } from '@/components/insights/InsightsPanel';
+import { buildInsights } from '@/lib/insights';
 import { EditableCostCell } from '@/components/EditableCostCell';
 import { FiltersCard } from '@/components/layout/FiltersCard';
 import { EmptyState } from '@/components/ui/empty-state';
@@ -715,6 +717,7 @@ export function ResultadosContent() {
       )}
       {renderFilters()}
       {renderSummaryCards()}
+      <InsightsPanel insights={buildInsights({ products: results?.groups })} />
       {results && results.groups.length > 0 && (
         <ResultsCharts data={results.groups} type="produto" />
       )}
