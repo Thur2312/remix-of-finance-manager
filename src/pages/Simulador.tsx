@@ -3,8 +3,12 @@ import {
   LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer,
   CartesianGrid, ReferenceLine, ReferenceDot, type TooltipProps,
 } from 'recharts';
-import { FlaskConical, ArrowRight, TrendingUp, TrendingDown, AlertTriangle, CheckCircle2, Sparkles } from 'lucide-react';
+import {
+  FlaskConical, ArrowRight, TrendingUp, TrendingDown, AlertTriangle, CheckCircle2, Sparkles,
+  Save, RotateCcw, Trash2, Scissors,
+} from 'lucide-react';
 import { PageShell } from '@/components/layout/PageShell';
+import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -14,8 +18,12 @@ import { EmptyState } from '@/components/ui/empty-state';
 import { cn } from '@/lib/utils';
 import { formatCurrency } from '@/lib/format';
 import { simulatePrice, priceCurve, projectVolume, type PriceScenarioBaseline } from '@/lib/scenario';
+import { aggregateShopeeSkuFinance } from '@/lib/shopee-sku-finance';
 import { type Marketplace } from '@/lib/marketplace-fees';
 import { useAnuncios } from '@/hooks/useProdutos';
+import { useActiveShopeeConnection } from '@/hooks/useActiveShopeeConnection';
+import { useShopeeSync } from '@/hooks/useShopeeSync';
+import { useProductCosts } from '@/hooks/useProductCosts';
 
 // Radix Select não aceita value="" — o "outro" usa o sentinel 'outro'.
 type MpValue = Marketplace | 'outro';
@@ -254,12 +262,150 @@ function VolumeExpectativa({
   );
 }
 
+// ─── Cenário "tirar do ar" ──────────────────────────────────────────────────
+
+function TirarDoAr({ base }: { base: PriceScenarioBaseline }) {
+  const s = simulatePrice(base, base.precoAtual);
+  const contribUnit = s.baseline.lucroUnit;         // margem de contribuição por unidade
+  const contribMes = s.lucroMesAtual;
+  const daPrejuizo = contribUnit <= 0;
+
+  return (
+    <Card className={cn('ring-1', daPrejuizo ? 'ring-success/30 bg-success/5' : 'ring-warning/40 bg-warning/5')}>
+      <CardContent className="space-y-3 py-5 text-sm">
+        {daPrejuizo ? (
+          <p className="font-medium">
+            <CheckCircle2 className="mr-1.5 inline size-4 text-success" />
+            Cada venda deste produto <strong>tira {formatCurrency(Math.abs(contribUnit))} do seu bolso</strong>. Tirar do ar
+            melhora seu resultado em <strong className="text-success">{formatCurrency(Math.abs(contribMes))}/mês</strong>.
+            {' '}A menos que ele exista pra girar estoque ou trazer tráfego pros outros — aí é decisão de estratégia, não de finanças.
+          </p>
+        ) : (
+          <p className="font-medium">
+            <AlertTriangle className="mr-1.5 inline size-4 text-warning" />
+            Este produto <strong>contribui {formatCurrency(contribMes)}/mês</strong> pro seu resultado
+            ({formatCurrency(contribUnit)} por unidade × {base.unidadesMes}).
+          </p>
+        )}
+        {!daPrejuizo && (
+          <div className="rounded-md bg-background/60 px-3 py-2.5 text-xs leading-relaxed text-muted-foreground">
+            <strong className="text-foreground">Cuidado com a intuição de "margem baixa → cortar".</strong> Cortar
+            <strong> não reduz</strong> seus custos fixos (aluguel, contador, ferramentas) — eles continuam e se
+            redistribuem pros produtos que sobraram, apertando a margem deles. Só vale cortar se você usa o
+            <strong> capital de giro</strong> parado neste produto e o <strong>tempo de operação</strong> dele (anúncio,
+            atendimento, compra) pra algo que rende <strong>mais de {formatCurrency(contribMes)}/mês</strong>.
+          </div>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
+// ─── Cenários salvos (localStorage, por navegador) ──────────────────────────
+
+interface SavedScenario {
+  id: string;
+  nome: string;
+  fields: Fields;
+  novoPreco: number;
+  // headline pré-calculado, só pra listar
+  precoAtual: number;
+  lucroMesAntes: number;
+  lucroMesDepois: number;
+  veredito: string;
+}
+
+const STORE_KEY = 'simulador:cenarios';
+
+function loadSaved(): SavedScenario[] {
+  try {
+    const raw = localStorage.getItem(STORE_KEY);
+    return raw ? (JSON.parse(raw) as SavedScenario[]) : [];
+  } catch {
+    return [];
+  }
+}
+function persist(list: SavedScenario[]) {
+  try { localStorage.setItem(STORE_KEY, JSON.stringify(list.slice(0, 12))); } catch { /* quota / private mode */ }
+}
+
+const VEREDITO_LABEL: Record<string, string> = {
+  melhora: 'Melhora', plausivel: 'Plausível', dificil: 'Difícil', inviavel: 'Inviável',
+};
+
+function CenariosSalvos({ list, onLoad, onRemove }: {
+  list: SavedScenario[]; onLoad: (s: SavedScenario) => void; onRemove: (id: string) => void;
+}) {
+  if (list.length === 0) return null;
+  return (
+    <Card>
+      <CardContent className="pt-5">
+        <h3 className="text-sm font-semibold">Cenários salvos <span className="font-normal text-muted-foreground">— comparar</span></h3>
+        <div className="mt-3 overflow-x-auto">
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="border-b border-border/60 text-left text-xs text-muted-foreground">
+                <th className="pb-2 pr-3 font-medium">Cenário</th>
+                <th className="pb-2 pr-3 font-medium">Preço</th>
+                <th className="pb-2 pr-3 font-medium">Lucro/mês</th>
+                <th className="pb-2 pr-3 font-medium">Veredito</th>
+                <th className="pb-2" />
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-border/50">
+              {list.map(s => {
+                const delta = s.lucroMesDepois - s.lucroMesAntes;
+                return (
+                  <tr key={s.id}>
+                    <td className="py-2 pr-3">{s.nome}</td>
+                    <td className="py-2 pr-3 font-mono tabular-nums">
+                      {formatCurrency(s.precoAtual)} <ArrowRight className="inline size-3 text-muted-foreground" /> {formatCurrency(s.novoPreco)}
+                    </td>
+                    <td className={cn('py-2 pr-3 font-mono tabular-nums', delta >= 0 ? 'text-success' : 'text-destructive')}>
+                      {delta >= 0 ? '+' : ''}{formatCurrency(delta)}
+                    </td>
+                    <td className="py-2 pr-3 text-xs">{VEREDITO_LABEL[s.veredito] ?? s.veredito}</td>
+                    <td className="py-2 text-right">
+                      <button onClick={() => onLoad(s)} className="mr-2 text-xs text-primary hover:underline">
+                        <RotateCcw className="inline size-3" /> carregar
+                      </button>
+                      <button onClick={() => onRemove(s.id)} className="text-xs text-muted-foreground hover:text-destructive">
+                        <Trash2 className="inline size-3" />
+                      </button>
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
 // ─── Página ─────────────────────────────────────────────────────────────────
+
+const SYNC_DIAS = 15;
 
 export default function Simulador() {
   const { anuncios, isLoading } = useAnuncios();
-  const [origem, setOrigem] = useState<'anuncio' | 'manual'>('anuncio');
+  const { activeConnection } = useActiveShopeeConnection();
+  const { data: syncData } = useShopeeSync(activeConnection?.status === 'connected' ? activeConnection.id : null, SYNC_DIAS);
+  const { data: productCosts } = useProductCosts();
+
+  // Top SKUs vendidos de verdade (path sync Shopee) — origem "das minhas vendas".
+  const skusVendidos = useMemo(() => {
+    if (!syncData?.orders?.length) return [];
+    return aggregateShopeeSkuFinance(syncData.orders, syncData.payments ?? [], productCosts ?? [])
+      .filter(r => r.itens_vendidos > 0 && r.total_faturado > 0)
+      .sort((a, b) => b.total_faturado - a.total_faturado)
+      .slice(0, 20);
+  }, [syncData, productCosts]);
+
+  const [origem, setOrigem] = useState<'anuncio' | 'vendas' | 'manual'>('anuncio');
   const [anuncioId, setAnuncioId] = useState<string>('');
+  const [skuKey, setSkuKey] = useState<string>('');
   const [f, setF] = useState<Fields>(EMPTY);
   // Preço simulado: número (fonte de verdade) + texto do input (evita
   // reformatar no meio da digitação). `null` = ainda igual ao preço atual.
@@ -267,6 +413,8 @@ export default function Simulador() {
   const [precoText, setPrecoText] = useState<string | null>(null);
   // expectativa de mudança de volume no novo preço (%). null = ainda não mexeu.
   const [volPct, setVolPct] = useState<number | null>(null);
+  const [cenario, setCenario] = useState<'preco' | 'cortar'>('preco');
+  const [salvos, setSalvos] = useState<SavedScenario[]>(loadSaved);
 
   const set = (k: keyof Fields, v: string) => setF(prev => ({ ...prev, [k]: v }));
   const setPreco = (n: number) => { setNovoPrecoRaw(n); setPrecoText(n.toFixed(2)); };
@@ -296,10 +444,56 @@ export default function Simulador() {
     setVolPct(null);
   };
 
+  const pickSku = (key: string) => {
+    setSkuKey(key);
+    const r = skusVendidos.find(x => x.key === key);
+    if (!r) return;
+    const precoMedio = r.total_faturado / r.itens_vendidos;
+    const unidadesMes = r.itens_vendidos * (30 / SYNC_DIAS); // extrapola a janela de 15d
+    setF({
+      ...EMPTY,
+      nome: r.nome_produto,
+      marketplace: 'Shopee',
+      custo: r.custo_unitario_medio > 0 ? String(round1(r.custo_unitario_medio)) : '',
+      precoAtual: String(round1(precoMedio)),
+      unidadesMes: String(Math.round(unidadesMes)),
+    });
+    setNovoPrecoRaw(null);
+    setPrecoText(null);
+    setVolPct(null);
+  };
+
   const base = useMemo(() => fieldsToBaseline(f), [f]);
   const pronto = base.precoAtual > 0 && base.custo >= 0 && base.unidadesMes > 0
     && (base.marketplace !== '' || (base.comissaoPctManual ?? 0) > 0);
   const novoPreco = novoPrecoRaw ?? base.precoAtual;
+
+  const salvarCenario = () => {
+    const s = simulatePrice(base, novoPreco);
+    const novo: SavedScenario = {
+      id: crypto.randomUUID(),
+      nome: `${base.nome} — ${formatCurrency(novoPreco)}`,
+      fields: f,
+      novoPreco,
+      precoAtual: base.precoAtual,
+      lucroMesAntes: s.lucroMesAtual,
+      lucroMesDepois: s.simulado.lucroMesVolumeConstante,
+      veredito: s.veredito,
+    };
+    const next = [novo, ...salvos].slice(0, 12);
+    setSalvos(next);
+    persist(next);
+  };
+  const carregarCenario = (s: SavedScenario) => {
+    setF(s.fields);
+    setPreco(s.novoPreco);
+    setCenario('preco');
+  };
+  const removerCenario = (id: string) => {
+    const next = salvos.filter(s => s.id !== id);
+    setSalvos(next);
+    persist(next);
+  };
 
   return (
     <PageShell
@@ -312,17 +506,42 @@ export default function Simulador() {
       <Card>
         <CardContent className="space-y-4 pt-5">
           <div className="flex gap-1 rounded-lg bg-muted/60 p-1 text-sm font-medium">
-            {(['anuncio', 'manual'] as const).map(o => (
+            {([
+              ['vendas', 'Das minhas vendas'],
+              ['anuncio', 'De um anúncio'],
+              ['manual', 'Manual'],
+            ] as const).map(([o, label]) => (
               <button
                 key={o}
                 onClick={() => setOrigem(o)}
                 className={cn('flex-1 rounded-md px-3 py-1.5 transition-colors',
                   origem === o ? 'bg-background shadow-sm' : 'text-muted-foreground hover:text-foreground')}
               >
-                {o === 'anuncio' ? 'De um anúncio' : 'Manual'}
+                {label}
               </button>
             ))}
           </div>
+
+          {origem === 'vendas' && (
+            <div className="space-y-1.5">
+              <Label>Produto vendido (Shopee, últimos {SYNC_DIAS} dias)</Label>
+              <Select value={skuKey} onValueChange={pickSku} disabled={skusVendidos.length === 0}>
+                <SelectTrigger>
+                  <SelectValue placeholder={skusVendidos.length ? 'Escolha um produto' : 'Nenhuma venda sincronizada'} />
+                </SelectTrigger>
+                <SelectContent>
+                  {skusVendidos.map(r => (
+                    <SelectItem key={r.key} value={r.key}>
+                      {r.nome_produto} — {r.itens_vendidos} un · {formatCurrency(r.total_faturado)}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <p className="text-xs text-muted-foreground">
+                Preço, custo e volume vêm dos pedidos reais. O volume/mês é estimado ({SYNC_DIAS} dias × 2) — ajuste se souber melhor.
+              </p>
+            </div>
+          )}
 
           {origem === 'anuncio' && (
             <div className="space-y-1.5">
@@ -378,6 +597,24 @@ export default function Simulador() {
         />
       ) : (
         <>
+          {/* Cenário */}
+          <div className="flex gap-1 rounded-lg bg-muted/60 p-1 text-sm font-medium">
+            <button onClick={() => setCenario('preco')}
+              className={cn('flex-1 rounded-md px-3 py-1.5 transition-colors',
+                cenario === 'preco' ? 'bg-background shadow-sm' : 'text-muted-foreground hover:text-foreground')}>
+              Mudar o preço
+            </button>
+            <button onClick={() => setCenario('cortar')}
+              className={cn('flex flex-1 items-center justify-center gap-1.5 rounded-md px-3 py-1.5 transition-colors',
+                cenario === 'cortar' ? 'bg-background shadow-sm' : 'text-muted-foreground hover:text-foreground')}>
+              <Scissors className="size-3.5" /> Tirar do ar
+            </button>
+          </div>
+
+          {cenario === 'cortar' ? (
+            <TirarDoAr base={base} />
+          ) : (
+          <>
           {/* Slider de preço */}
           <Card>
             <CardContent className="space-y-3 pt-5">
@@ -426,6 +663,18 @@ export default function Simulador() {
             </>
           )}
           <Curva base={base} novoPreco={novoPreco} />
+
+          {Math.abs(novoPreco - base.precoAtual) >= 0.01 && (
+            <div className="flex justify-end">
+              <Button variant="outline" size="sm" onClick={salvarCenario}>
+                <Save className="mr-1.5 size-3.5" /> Salvar este cenário
+              </Button>
+            </div>
+          )}
+          </>
+          )}
+
+          <CenariosSalvos list={salvos} onLoad={carregarCenario} onRemove={removerCenario} />
         </>
       )}
     </PageShell>
