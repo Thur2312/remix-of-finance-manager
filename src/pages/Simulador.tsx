@@ -413,12 +413,19 @@ export default function Simulador() {
             </CardContent>
           </Card>
 
-          <Veredito base={base} novoPreco={novoPreco} />
-          <Curva base={base} novoPreco={novoPreco} />
-
-          {novoPreco !== base.precoAtual && (
-            <VolumeExpectativa base={base} novoPreco={novoPreco} volPct={volPct} onChange={setVolPct} />
+          {Math.abs(novoPreco - base.precoAtual) < 0.01 ? (
+            <Card className="ring-1 ring-border">
+              <CardContent className="py-5 text-center text-sm text-muted-foreground">
+                Mexa no preço acima para ver o efeito no lucro e o ponto de equilíbrio de volume.
+              </CardContent>
+            </Card>
+          ) : (
+            <>
+              <Veredito base={base} novoPreco={novoPreco} />
+              <VolumeExpectativa base={base} novoPreco={novoPreco} volPct={volPct} onChange={setVolPct} />
+            </>
           )}
+          <Curva base={base} novoPreco={novoPreco} />
         </>
       )}
     </PageShell>
