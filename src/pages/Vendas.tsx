@@ -19,14 +19,35 @@ const PROVIDER_LABEL: Record<SaleEventProvider, string> = {
 };
 
 const STATUS_LABEL: Record<string, string> = {
-  COMPLETED: 'Concluído', SHIPPED: 'Enviado', TO_CONFIRM_RECEIVE: 'A caminho',
-  PROCESSED: 'Processando', UNPAID: 'Aguardando pagamento', TO_RETURN: 'Devolução',
-  CANCELLED: 'Cancelado', paid: 'Pago', payment_required: 'Aguardando pagamento',
-  payment_in_process: 'Pagamento em processamento', partially_paid: 'Parcialmente pago',
-  confirmed: 'Confirmado', invalid: 'Inválido',
+  // Shopee (Open Platform v2)
+  UNPAID: 'Aguardando pagamento',
+  READY_TO_SHIP: 'A enviar',
+  RETRY_SHIP: 'Reenvio pendente',
+  PROCESSED: 'Preparando envio',
+  SHIPPED: 'Enviado',
+  TO_CONFIRM_RECEIVE: 'A caminho',
+  IN_CANCEL: 'Cancelamento em andamento',
+  CANCELLED: 'Cancelado',
+  TO_RETURN: 'Devolução',
+  COMPLETED: 'Concluído',
+  // Mercado Livre
+  confirmed: 'Confirmado',
+  payment_required: 'Aguardando pagamento',
+  payment_in_process: 'Processando pagamento',
+  partially_paid: 'Parcialmente pago',
+  paid: 'Pago',
+  cancelled: 'Cancelado',
+  invalid: 'Inválido',
 };
 
-const CANCELLED_STATUSES = ['CANCELLED', 'TO_RETURN', 'invalid'];
+// Fallback pra status não mapeado (raro): tira o SNAKE_CASE e capitaliza —
+// "SOME_NEW_STATUS" → "Some new status". Melhor que gritar em inglês.
+function statusLabel(status: string): string {
+  return STATUS_LABEL[status]
+    ?? (status.charAt(0).toUpperCase() + status.slice(1).toLowerCase()).replace(/_/g, ' ');
+}
+
+const CANCELLED_STATUSES = ['CANCELLED', 'IN_CANCEL', 'TO_RETURN', 'cancelled', 'invalid'];
 
 // `external_order_id` guardado pelo sync/webhook:
 //  - Shopee: `order_sn` (integration-sync/index.ts) — é o mesmo id que a rota
@@ -130,7 +151,7 @@ export default function Vendas() {
                       <TableCell className="text-sm font-semibold tabular-nums">{formatCurrency(ev.total_amount)}</TableCell>
                       <TableCell>
                         <Badge variant={CANCELLED_STATUSES.includes(ev.status) ? 'destructive' : 'secondary'}>
-                          {STATUS_LABEL[ev.status] || ev.status}
+                          {statusLabel(ev.status)}
                         </Badge>
                       </TableCell>
                       <TableCell>
