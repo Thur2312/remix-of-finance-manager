@@ -288,10 +288,10 @@ aberto.
 ### Faixa E — Fechar features pendentes (de sessões anteriores)
 
 - [ ] **Push** dos commits `007a30c` + `60f710b` (multi-loja Shopee).
-- [ ] **Commit + push** da notificação de venda (`/vendas`) — e validar os links externos de pedido (Seller Center Shopee / "Minhas vendas" ML).
+- [x] **Notificação de venda (`/vendas`)** — commitada/pushada/deployada (migração `sale_events` aplicada 27/08). Links externos revisados 01/09 (`3ad0712`): Shopee OK (`order_sn` bate com a rota do Seller Center); ML usa `www.mercadolivre.com.br/vendas/<order_id>/detalhe` (padrão do painel, só falta o click-test logado); guard contra id vazio + `encodeURIComponent` adicionados.
 - [x] **Publicar o aviso** da multi-loja — migration `20260828180000_notice_multi_shopee.sql` (segmento `shopee_connected`, type `feature`). Aplica no próximo `db push`.
 - [ ] **Landing** — decidir: mergear `design/landing-redesign` em `main`, e se implementa o Addendum 5 (P1–P6 craft) do `DESIGN-DIRECTION`.
-- [ ] **Deletar branch remota** `feature/shopee-webhook` se morta.
+- [x] **Deletar branch remota** `feature/shopee-webhook` — **decisão 01/09: deletar.** 123 commits atrás; conteúdo único = só `shopee-webhook/index.ts` + `_shared/shopee.ts`, nunca deployado nem validado contra payload real do Partner Center. Segurança/OAuth da branch já entraram no main por outro caminho. Real-time Shopee é otimização de latência (polling + notif. de venda já cobrem). Se virar prioridade, reescrever contra o código atual. Comando: `git push origin --delete feature/shopee-webhook` (usuário roda).
 
 ### Faixa F — Backend / dados / segurança
 
