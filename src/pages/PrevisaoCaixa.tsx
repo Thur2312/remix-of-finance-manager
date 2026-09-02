@@ -19,6 +19,8 @@ import { useCashFlowForecast } from '@/hooks/useCashFlowForecast';
 import { ForecastChart } from '@/components/fluxo-caixa/ForecastChart';
 
 const dataCurta = (iso: string) => format(parseISO(iso.slice(0, 10)), "dd 'de' MMM", { locale: ptBR });
+const emQuantosDias = (offset: number) =>
+  offset === 0 ? 'hoje' : offset === 1 ? 'amanhã' : `daqui a ${offset} dias`;
 /** cents (number puro vindo da lib de forecast) → "R$ 1.234,56" */
 const brl = (cents: number) => formatCurrency(cents / 100);
 
@@ -53,6 +55,9 @@ function PrevisaoContent() {
   const { result } = f;
   const neg = result.primeiroNegativo;
   const showTendencia = f.ritmoLiquidoDiaCents > 0;
+  // O zero só vira referência no gráfico quando o saldo chega perto dele —
+  // senão comprime a variação semana a semana no topo do gráfico à toa.
+  const perigo = !!neg || result.saldoMinimo.saldoCents < Math.max(result.dias[0].saldoCents * 0.25, 0);
 
   return (
     <div className="space-y-5">
@@ -64,8 +69,16 @@ function PrevisaoContent() {
           <CardContent className="flex items-start gap-3 py-5">
             <AlertTriangle className="mt-0.5 size-5 shrink-0 text-destructive" />
             <p className="text-sm font-medium">
-              Em <strong>{dataCurta(neg.dateIso)}</strong> ({neg.offset} dias) o saldo projetado fica em{' '}
-              <strong className="text-destructive">{brl(neg.saldoCents)}</strong> —
+              {neg.offset === 0 ? (
+                <>
+                  O saldo projetado já fecha <strong className="text-destructive">{brl(neg.saldoCents)}</strong> hoje —
+                </>
+              ) : (
+                <>
+                  <strong className="capitalize">{emQuantosDias(neg.offset)}</strong> ({dataCurta(neg.dateIso)}) o
+                  saldo projetado fica em <strong className="text-destructive">{brl(neg.saldoCents)}</strong> —
+                </>
+              )}{' '}
               contando só o dinheiro já garantido (recebíveis com data de liberação + contas lançadas).
               Antecipe um recebível, adie uma conta ou reforce o caixa antes disso.
             </p>
@@ -94,10 +107,12 @@ function PrevisaoContent() {
               {showTendencia && (
                 <span><span className="mr-1 inline-block size-2 rounded-sm bg-primary/20 align-middle" />com tendência de vendas</span>
               )}
-              <span><span className="mr-1 inline-block h-px w-3 bg-destructive align-middle" />zero</span>
+              {perigo && (
+                <span><span className="mr-1 inline-block h-px w-3 bg-destructive align-middle" />zero</span>
+              )}
             </div>
           </div>
-          <ForecastChart dias={result.dias} showTendencia={showTendencia} />
+          <ForecastChart dias={result.dias} showTendencia={showTendencia} destacarZero={perigo} />
           <div className="grid gap-3 pt-1 sm:grid-cols-3">
             <Stat label="Entra (garantido)" value={brl(result.totalEntradasCents)}
               hint="recebíveis com data + entradas pendentes" />

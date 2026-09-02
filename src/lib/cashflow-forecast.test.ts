@@ -1,5 +1,10 @@
 import { describe, it, expect } from 'vitest';
-import { computeForecast, type ForecastInputs } from './cashflow-forecast';
+import {
+  computeForecast,
+  tendenciaStartOffset,
+  type ForecastInputs,
+  type ForecastReceivable,
+} from './cashflow-forecast';
 
 const base = (p: Partial<ForecastInputs> = {}): ForecastInputs => ({
   openingBalanceCents: 100_00,
@@ -93,5 +98,50 @@ describe('computeForecast', () => {
     // fundo do poço entre dia 05 (20) e o recebível do dia 15
     expect(r.saldoMinimo.saldoCents).toBe(20_00);
     expect(r.saldoMinimo.dateIso).toBe('2026-09-05');
+  });
+});
+
+describe('tendenciaStartOffset', () => {
+  const rec = (dateIso: string, amountCents: number): ForecastReceivable => ({
+    dateIso, amountCents, source: 'ml',
+  });
+  const opts = { piso: 10, teto: 30 };
+
+  it('sem recebíveis confirmados, cai no piso', () => {
+    expect(tendenciaStartOffset([], '2026-09-02', opts)).toBe(10);
+  });
+
+  it('recebíveis curtos não empurram além do piso', () => {
+    const r = tendenciaStartOffset(
+      [rec('2026-09-04', 500_00), rec('2026-09-06', 500_00)],
+      '2026-09-02',
+      opts,
+    );
+    expect(r).toBe(10); // 75% acumula no dia 06 (offset 4) → clamp sobe pro piso
+  });
+
+  it('empurra a marca pra depois do dia em que 75% do valor já caiu', () => {
+    // 200 no dia 04, 800 no dia 20 (offset 18) → 75% do total (1000) só fecha
+    // no recebível do dia 20 → tendência começa no offset 19.
+    const r = tendenciaStartOffset(
+      [rec('2026-09-04', 200_00), rec('2026-09-20', 800_00)],
+      '2026-09-02',
+      opts,
+    );
+    expect(r).toBe(19);
+  });
+
+  it('respeita o teto (horizonte)', () => {
+    const r = tendenciaStartOffset([rec('2026-12-01', 999_00)], '2026-09-02', opts);
+    expect(r).toBe(30);
+  });
+
+  it('ignora recebível passado ou de valor não-positivo', () => {
+    const r = tendenciaStartOffset(
+      [rec('2026-08-20', 900_00), rec('2026-09-10', 0), rec('2026-09-15', 100_00)],
+      '2026-09-02',
+      opts,
+    );
+    expect(r).toBe(14); // só o do dia 15 (offset 13) conta → +1
   });
 });

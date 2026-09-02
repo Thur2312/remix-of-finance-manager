@@ -1,12 +1,13 @@
 import { useMemo } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { addDays, format, subDays, subYears } from 'date-fns';
+import { addDays, differenceInCalendarDays, format, parseISO, subDays, subYears } from 'date-fns';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
 import { toCents } from '@/lib/money';
 import {
   computeForecast,
+  tendenciaStartOffset,
   type ForecastPayable,
   type ForecastReceivable,
   type ForecastResult,
@@ -23,12 +24,15 @@ import {
 // Fluxo de Caixa que o vendedor já mantém.
 
 const HORIZON_DAYS = 30;
-// A tendência (ritmo projetado) só passa a somar depois desta marca — antes
-// disso os recebíveis de marketplace já aprovados ainda estão caindo e
-// somar o ritmo em cima contaria o mesmo dinheiro duas vezes. ~3 semanas
-// cobre com folga o ciclo entrega + liberação do ML.
-const TENDENCIA_COMECA_EM_DIAS = 21;
+// Piso pro início da tendência: mesmo sem nenhum recebível confirmado mapeado,
+// não somamos o ritmo antes disso — cobre o ciclo típico entrega + liberação
+// do ML de uma venda feita hoje. O valor real sai de `tendenciaStartOffset`,
+// que empurra a marca pra frente quando há recebíveis confirmados mais longos.
+const TENDENCIA_PISO_DIAS = 10;
 const RITMO_JANELA_DIAS = 30;
+// Abaixo disto não há histórico suficiente pra estimar um ritmo diário —
+// a conexão é recente demais e dividir pela janela cheia subestimaria.
+const RITMO_MIN_DIAS = 7;
 
 interface PaymentRow {
   net_amount: number | null;
@@ -133,13 +137,24 @@ export function useCashFlowForecast(): CashFlowForecast {
         .map(p => ({ dateIso: p.release_date!.slice(0, 10), amountCents: centsOf(p), source: 'ml' as const }))
         .filter(r => r.amountCents > 0);
 
-      const ritmoTotal = (ritmoRes.data ?? []).reduce((s, p) => s + Math.max(0, centsOf(p)), 0);
+      const ritmoRows = ritmoRes.data ?? [];
+      const ritmoTotal = ritmoRows.reduce((s, p) => s + Math.max(0, centsOf(p)), 0);
 
-      return {
-        receivables,
-        ritmoLiquidoDiaCents: Math.round(ritmoTotal / RITMO_JANELA_DIAS),
-        hasMercadoLivre: true,
-      };
+      // Denominador = dias realmente observados, não a janela nominal. Conexão
+      // nova (ex.: 10 dias de histórico) dividida por 30 subestimaria o ritmo
+      // em 3x. Abaixo de RITMO_MIN_DIAS a estimativa não se sustenta → sem
+      // tendência (a linha conservadora continua valendo).
+      const oldestIso = ritmoRows.reduce<string | null>((min, p) => {
+        const d = (p.transaction_date ?? '').slice(0, 10);
+        return d && (!min || d < min) ? d : min;
+      }, null);
+      const spanDias = oldestIso
+        ? Math.min(RITMO_JANELA_DIAS, differenceInCalendarDays(now, parseISO(oldestIso)))
+        : 0;
+      const ritmoLiquidoDiaCents =
+        spanDias >= RITMO_MIN_DIAS ? Math.round(ritmoTotal / spanDias) : 0;
+
+      return { receivables, ritmoLiquidoDiaCents, hasMercadoLivre: true };
     },
   });
 
@@ -198,6 +213,13 @@ export function useCashFlowForecast(): CashFlowForecast {
 
     const ritmoLiquidoDiaCents = mlQuery.data?.ritmoLiquidoDiaCents ?? 0;
 
+    // A tendência (ML) só passa a somar depois que o grosso dos recebíveis ML
+    // já confirmados caiu — evita contar o mesmo dinheiro na linha e na banda.
+    const tendenciaComecaEmDias = tendenciaStartOffset(mlReceivables, todayIso, {
+      piso: TENDENCIA_PISO_DIAS,
+      teto: HORIZON_DAYS,
+    });
+
     const result = computeForecast({
       openingBalanceCents,
       todayIso,
@@ -205,7 +227,7 @@ export function useCashFlowForecast(): CashFlowForecast {
       receivables,
       payables,
       ritmoLiquidoDiaCents,
-      tendenciaComecaEmDias: TENDENCIA_COMECA_EM_DIAS,
+      tendenciaComecaEmDias,
     });
 
     return {

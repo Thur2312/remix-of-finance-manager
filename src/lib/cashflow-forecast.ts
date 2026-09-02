@@ -79,6 +79,40 @@ function addDaysIso(iso: string, n: number): string {
   return new Date(ms).toISOString().slice(0, 10);
 }
 
+/**
+ * Offset (dias a partir da âncora) a partir do qual a TENDÊNCIA deve começar a
+ * somar: o primeiro dia em que `fraction` (padrão 0,75) do valor dos recebíveis
+ * já confirmados acumulou. Antes disso, somar o ritmo médio em cima contaria o
+ * mesmo dinheiro duas vezes — os recebíveis de marketplace já aprovados ainda
+ * estão caindo nessa janela. `piso`/`teto` contêm o resultado quando há poucos
+ * (ou nenhum) recebível confirmado. Só recebíveis futuros com valor positivo
+ * entram na conta.
+ */
+export function tendenciaStartOffset(
+  receivables: ForecastReceivable[],
+  todayIso: string,
+  opts: { piso: number; teto: number; fraction?: number },
+): number {
+  const { piso, teto, fraction = 0.75 } = opts;
+  const clamp = (n: number) => Math.min(teto, Math.max(piso, n));
+
+  const anchor = isoToUtcDays(todayIso);
+  const items = receivables
+    .map(r => ({ off: isoToUtcDays(r.dateIso) - anchor, amt: Math.max(0, r.amountCents) }))
+    .filter(r => r.off >= 0 && r.amt > 0)
+    .sort((a, b) => a.off - b.off);
+
+  const total = items.reduce((s, r) => s + r.amt, 0);
+  if (total <= 0) return clamp(piso);
+
+  let acc = 0;
+  for (const r of items) {
+    acc += r.amt;
+    if (acc >= total * fraction) return clamp(r.off + 1);
+  }
+  return clamp(piso);
+}
+
 export function computeForecast(i: ForecastInputs): ForecastResult {
   const anchorDay = isoToUtcDays(i.todayIso);
   const horizon = Math.max(0, Math.floor(i.horizonDays));

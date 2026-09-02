@@ -10,6 +10,8 @@ interface ForecastChartProps {
   dias: ForecastDay[];
   /** mostra a banda de tendência (só faz sentido quando há ritmo projetado) */
   showTendencia: boolean;
+  /** força o zero a aparecer no eixo (quando o saldo chega perto do vermelho) */
+  destacarZero: boolean;
 }
 
 interface Row {
@@ -41,7 +43,7 @@ function ForecastTooltip({ active, payload, label }: TooltipProps<number, string
 // (recebível com data + contas lançadas) — é ela que carrega o alerta. A ÁREA
 // sombreada por cima é o cenário com a tendência de vendas somada, sempre
 // mostrada como faixa, nunca como número de destaque.
-export function ForecastChart({ dias, showTendencia }: ForecastChartProps) {
+export function ForecastChart({ dias, showTendencia, destacarZero }: ForecastChartProps) {
   const data: Row[] = dias.map(d => ({
     label: format(parseISO(d.dateIso), 'dd/MM'),
     saldo: d.saldoCents / 100,
@@ -58,7 +60,13 @@ export function ForecastChart({ dias, showTendencia }: ForecastChartProps) {
           </linearGradient>
         </defs>
         <CartesianGrid vertical={false} stroke="hsl(var(--border))" strokeOpacity={0.4} />
-        <ReferenceLine y={0} stroke="hsl(var(--destructive))" strokeWidth={1} strokeDasharray="4 3" />
+        <ReferenceLine
+          y={0}
+          stroke="hsl(var(--destructive))"
+          strokeWidth={1}
+          strokeDasharray="4 3"
+          ifOverflow={destacarZero ? 'extendDomain' : 'discard'}
+        />
         <XAxis
           dataKey="label"
           tick={{ fontSize: 10 }}
