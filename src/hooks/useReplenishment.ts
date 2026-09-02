@@ -226,19 +226,21 @@ export function useReplenishment(): UseReplenishment {
     queryKey: ['replenishment-costs', user?.id],
     enabled: !!user?.id,
     queryFn: async () => {
+      // Devolve um objeto simples (não Map): o cache do React Query é
+      // persistido em JSON no localStorage e um Map vira {} na re-hidratação.
       const { data, error } = await supabase
         .from('product_costs')
         .select('sku, cost, packaging_cost, other_costs, effective_from')
         .eq('user_id', user!.id)
         .order('effective_from', { ascending: false });
       if (error) throw error;
-      const byKey = new Map<string, number>();
+      const byKey: Record<string, number> = {};
       for (const c of data ?? []) {
         const key = skuKey(c.sku);
-        if (!key || byKey.has(key)) continue; // primeiro = mais recente
-        byKey.set(key, Math.round(
+        if (!key || key in byKey) continue; // primeiro = mais recente
+        byKey[key] = Math.round(
           ((Number(c.cost) || 0) + (Number(c.packaging_cost) || 0) + (Number(c.other_costs) || 0)) * 100,
-        ));
+        );
       }
       return byKey;
     },
@@ -332,7 +334,7 @@ export function useReplenishment(): UseReplenishment {
 
   const composed = useMemo(() => {
     const sales = salesQuery.data ?? [];
-    const costs = costsQuery.data ?? new Map<string, number>();
+    const costs = costsQuery.data ?? {};
     const inv = inventoryQuery.data?.inv ?? [];
     const po = inventoryQuery.data?.po ?? [];
 
@@ -388,7 +390,7 @@ export function useReplenishment(): UseReplenishment {
           : 0;
 
       // Custo pousado: product_costs → custo do pedido do marketplace → null.
-      const cadastrado = costs.get(key);
+      const cadastrado = costs[key];
       const mpCostUnit = s && s.mpCostUnits > 0 ? Math.round(s.mpCostCentsSum / s.mpCostUnits) : null;
       const landedCost = cadastrado ?? mpCostUnit;
       if (landedCost === null && (s?.units ?? 0) > 0) semCusto.add(key);
