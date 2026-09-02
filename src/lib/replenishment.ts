@@ -83,6 +83,10 @@ export interface ReplenishmentRow {
   lucroDiaCents: number | null;
   urgencia: Urgencia;
   estoqueVelho: boolean;
+  /** parâmetros em uso (pra editar) */
+  leadTimeDays: number;
+  safetyDays: number;
+  moqUnits: number | null;
 }
 
 export interface ReplenishmentPlan {
@@ -172,6 +176,9 @@ export function computeReplenishmentRow(
     lucroDiaCents,
     urgencia,
     estoqueVelho: s.stockUpdatedDaysAgo > opts.stockStaleDays,
+    leadTimeDays: s.leadTimeDays,
+    safetyDays: s.safetyDays,
+    moqUnits: s.moqUnits,
   };
 }
 

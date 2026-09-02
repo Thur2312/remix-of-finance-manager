@@ -1,25 +1,26 @@
-import { useState } from 'react';
+import { useState, type ReactNode } from 'react';
 import { Link } from 'react-router-dom';
 import { format, parseISO } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import {
-  PackageSearch, AlertTriangle, CheckCircle2, Truck, Boxes, Plus,
+  PackageSearch, AlertTriangle, Truck, Boxes, Plus, ChevronDown, Coins, Wallet, Settings2,
 } from 'lucide-react';
 import { PageShell } from '@/components/layout/PageShell';
 import { Card, CardContent } from '@/components/ui/card';
+import { StatCard, KpiRow } from '@/components/ui/stat-card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { EmptyState } from '@/components/ui/empty-state';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter, DialogClose,
 } from '@/components/ui/dialog';
 import { cn } from '@/lib/utils';
 import { formatCurrency } from '@/lib/format';
 import { parseMoneyInput } from '@/lib/money';
-import { useReplenishment, type OpenPurchaseOrder } from '@/hooks/useReplenishment';
+import { useReplenishment, type OpenPurchaseOrder, type SaveInventoryInput } from '@/hooks/useReplenishment';
 import type { ReplenishmentRow, Urgencia } from '@/lib/replenishment';
 
 const brl = (cents: number) => formatCurrency(cents / 100);
@@ -65,110 +66,109 @@ function ReposicaoContent() {
   const { plan } = r;
   const pedir = plan.pedidos;
   const cortadosSet = new Set(plan.cortadosPorCaixa);
+  const onSave = (i: SaveInventoryInput) => r.saveInventory.mutate(i);
+
+  // ── Veredito em uma frase ─────────────────────────────────────────────────
+  let veredito: ReactNode;
+  if (pedir.length === 0) {
+    veredito = (
+      <>
+        Nenhum SKU no ponto de reposição.{' '}
+        {plan.rows[0]?.rupturaIso
+          ? <>O mais apertado é <strong>{plan.rows[0].itemName}</strong>, até <strong>{dataCurta(plan.rows[0].rupturaIso)}</strong>.</>
+          : 'Sem previsão de ruptura na janela.'}
+      </>
+    );
+  } else if (!r.caixaConfiavel) {
+    veredito = (
+      <>
+        Confirme o saldo real em <Link to="/previsao" className="underline underline-offset-2">Previsão de caixa</Link>{' '}
+        pra eu priorizar o pedido pelo que o seu caixa aguenta.
+      </>
+    );
+  } else if (plan.cortadosPorCaixa.length > 0) {
+    veredito = (
+      <>
+        O caixa projetado comporta <strong>{brl(plan.caixaDisponivelCents ?? 0)}</strong> em compras. Feche o pedido
+        com os <strong>{pedir.length - plan.cortadosPorCaixa.length}</strong> de maior lucro/dia
+        (<strong>{brl(plan.custoNoCaixaCents)}</strong>); os outros {plan.cortadosPorCaixa.length} esperam o próximo ciclo.
+      </>
+    );
+  } else {
+    veredito = <>Repor tudo (<strong>{brl(plan.custoTotalCents)}</strong>) cabe no caixa projetado.</>;
+  }
 
   return (
     <div className="space-y-5">
-      {/* Veredito */}
-      {pedir.length === 0 ? (
-        <Card className="ring-1 ring-success/30 bg-success/5">
-          <CardContent className="flex items-start gap-3 py-5">
-            <CheckCircle2 className="mt-0.5 size-5 shrink-0 text-success" />
-            <p className="text-sm font-medium">
-              Nenhum SKU no ponto de reposição agora. O mais apertado é{' '}
-              {plan.rows[0]?.rupturaIso ? (
-                <>
-                  <strong>{plan.rows[0].itemName}</strong>, que dura até{' '}
-                  <strong>{dataCurta(plan.rows[0].rupturaIso)}</strong>.
-                </>
-              ) : 'sem previsão de ruptura.'}
-            </p>
-          </CardContent>
-        </Card>
-      ) : (
-        <Card className="ring-1 ring-warning/40 bg-warning/5">
-          <CardContent className="flex items-start gap-3 py-5">
-            <AlertTriangle className="mt-0.5 size-5 shrink-0 text-warning" />
-            <div className="text-sm">
-              <p className="font-medium">
-                <strong>{pedir.length}</strong> {pedir.length === 1 ? 'SKU' : 'SKUs'} no ponto de reposição —
-                repor{plan.pedidosSemCusto.length > 0 ? ' os que têm custo cadastrado' : ' tudo'} custa{' '}
-                <strong>{brl(plan.custoTotalCents)}</strong> ao fornecedor.
-              </p>
-              {plan.pedidosSemCusto.length > 0 && (
-                <p className="mt-1 text-muted-foreground">
-                  {plan.pedidosSemCusto.length} {plan.pedidosSemCusto.length === 1 ? 'SKU está' : 'SKUs estão'} sem
-                  custo cadastrado e ficaram fora da conta — cadastre em{' '}
-                  <Link to="/precificacao/custos" className="underline underline-offset-2">Custos de produto</Link>.
-                </p>
-              )}
-              {plan.caixaDisponivelCents !== null && plan.cortadosPorCaixa.length > 0 && (
-                <p className="mt-1 text-muted-foreground">
-                  Seu caixa projetado comporta <strong>{brl(plan.caixaDisponivelCents)}</strong> em compras sem
-                  ficar no vermelho. Priorize os {pedir.length - plan.cortadosPorCaixa.length} de maior lucro/dia
-                  ({brl(plan.custoNoCaixaCents)}); os outros {plan.cortadosPorCaixa.length} podem esperar o próximo ciclo.
-                </p>
-              )}
-              {plan.caixaDisponivelCents !== null && plan.cortadosPorCaixa.length === 0 && (
-                <p className="mt-1 text-muted-foreground">
-                  Cabe no caixa projetado ({brl(plan.caixaDisponivelCents)} disponível).
-                </p>
-              )}
-              {!r.caixaConfiavel && (
-                <p className="mt-1 text-muted-foreground">
-                  Confirme o saldo real em <Link to="/previsao" className="underline underline-offset-2">Previsão de caixa</Link>{' '}
-                  pra eu priorizar pelo que o seu caixa aguenta.
-                </p>
-              )}
-            </div>
-          </CardContent>
-        </Card>
-      )}
+      {/* 1 · Resumo */}
+      <KpiRow className={plan.pedidosSemCusto.length > 0 ? 'lg:grid-cols-4' : 'lg:grid-cols-3'}>
+        <StatCard
+          title="Pedir agora"
+          value={pedir.length}
+          icon={AlertTriangle}
+          variant={pedir.length ? 'warning' : 'success'}
+          description={pedir.length ? `de ${plan.rows.length} SKUs` : 'catálogo coberto'}
+        />
+        <StatCard
+          title="Custo do pedido"
+          value={brl(plan.custoTotalCents)}
+          icon={Coins}
+          description="SKUs com custo cadastrado"
+        />
+        <StatCard
+          title="Cabe no caixa"
+          value={r.caixaConfiavel ? brl(plan.custoNoCaixaCents) : '—'}
+          icon={Wallet}
+          variant={r.caixaConfiavel && plan.cortadosPorCaixa.length > 0 ? 'warning' : 'brand'}
+          description={r.caixaConfiavel
+            ? `${brl(plan.caixaDisponivelCents ?? 0)} disponível`
+            : 'confirme o saldo na Previsão'}
+        />
+        {plan.pedidosSemCusto.length > 0 && (
+          <StatCard
+            title="Sem custo"
+            value={plan.pedidosSemCusto.length}
+            icon={PackageSearch}
+            variant="danger"
+            description="fora da conta — cadastre o custo"
+          />
+        )}
+      </KpiRow>
 
-      {/* Tabela */}
+      {/* 2 · Veredito */}
+      <Card className={cn('ring-1', pedir.length === 0 ? 'bg-success/5 ring-success/30' : 'bg-warning/5 ring-warning/40')}>
+        <CardContent className="py-4 text-sm">{veredito}</CardContent>
+      </Card>
+
+      {/* 3 · Pedir agora */}
       <Card>
         <CardContent className="pt-5">
           <div className="mb-3 flex items-center justify-between gap-2">
-            <h3 className="text-sm font-semibold">SKUs — {r.windowDays} dias de venda</h3>
+            <h3 className="text-sm font-semibold">Pedir agora</h3>
             <NovoPedidoDialog onAdd={(i) => r.addPurchaseOrder.mutate(i)} pending={r.addPurchaseOrder.isPending} />
           </div>
-          <div className="overflow-x-auto">
-            <table className="w-full min-w-[720px] text-sm">
-              <thead>
-                <tr className="border-b text-left text-[11px] uppercase tracking-wide text-muted-foreground">
-                  <th className="pb-2 pr-2 font-medium">Produto</th>
-                  <th className="pb-2 px-2 text-right font-medium">Vende/dia</th>
-                  <th className="pb-2 px-2 text-right font-medium">Cobertura</th>
-                  <th className="pb-2 px-2 text-right font-medium">Estoque</th>
-                  <th className="pb-2 px-2 text-right font-medium">Em trânsito</th>
-                  <th className="pb-2 px-2 text-right font-medium">Pedir</th>
-                  <th className="pb-2 px-2 text-right font-medium">Custo</th>
-                  <th className="pb-2 pl-2 text-right font-medium">Lucro/dia</th>
-                </tr>
-              </thead>
-              <tbody>
-                {plan.rows.map((row) => (
-                  <SkuRow
-                    key={row.sku}
-                    row={row}
-                    cortado={cortadosSet.has(row.sku)}
-                    onStock={(units) => r.saveInventory.mutate({ sku: row.sku, itemName: row.itemName, stockUnits: units })}
-                    saving={r.saveInventory.isPending}
-                  />
-                ))}
-              </tbody>
-            </table>
-          </div>
+          {pedir.length === 0 ? (
+            <p className="py-6 text-center text-xs text-muted-foreground">
+              Nada no ponto de reposição. O catálogo completo está mais abaixo.
+            </p>
+          ) : (
+            <PlanTable rows={pedir} cortadosSet={cortadosSet} onSave={onSave} saving={r.saveInventory.isPending} compact />
+          )}
         </CardContent>
       </Card>
 
-      {/* Pedidos em trânsito */}
-      {r.openPurchaseOrders.length > 0 && (
-        <Card>
-          <CardContent className="pt-5">
-            <h3 className="mb-3 flex items-center gap-1.5 text-sm font-semibold">
-              <Truck className="size-4 text-muted-foreground" />
-              Pedidos de compra em aberto
-            </h3>
+      {/* 4 · Fornecedor */}
+      <Card>
+        <CardContent className="pt-5">
+          <h3 className="mb-3 flex items-center gap-1.5 text-sm font-semibold">
+            <Truck className="size-4 text-muted-foreground" />
+            Pedidos ao fornecedor em aberto
+          </h3>
+          {r.openPurchaseOrders.length === 0 ? (
+            <p className="py-4 text-center text-xs text-muted-foreground">
+              Nenhum pedido em aberto. Registre um pra ele contar como estoque em trânsito e como saída na Previsão de caixa.
+            </p>
+          ) : (
             <ul className="space-y-2">
               {r.openPurchaseOrders.map((po) => (
                 <PurchaseOrderRow
@@ -179,46 +179,111 @@ function ReposicaoContent() {
                 />
               ))}
             </ul>
-          </CardContent>
-        </Card>
-      )}
+          )}
+        </CardContent>
+      </Card>
 
-      <p className="text-xs text-muted-foreground">
-        A velocidade é a média dos últimos {r.windowDays} dias. Pra SKU zerado hoje, os dias sem venda até a
-        última venda são descontados da janela (marcados com <span className="font-mono">*</span>) — foi falta de
-        produto, não de demanda. O lucro/dia usa a taxa real do Mercado Livre e a tabela de comissão pra
-        Shopee/TikTok.{' '}
-        {r.syncedStockCount > 0
-          ? `O estoque de ${r.syncedStockCount} ${r.syncedStockCount === 1 ? 'SKU vem' : 'SKUs vem'} do catálogo${r.stockSyncDaysAgo === 0 ? ' (sincronizado hoje)' : r.stockSyncDaysAgo != null ? ` (sincronizado há ${r.stockSyncDaysAgo}d)` : ''}; digite por cima pra corrigir. `
-          : 'O estoque é o que você informou. '}
-        Some as unidades quando um pedido de compra chega.
-        {r.skusSemCusto > 0 && ` ${r.skusSemCusto} ${r.skusSemCusto === 1 ? 'SKU vendeu mas está' : 'SKUs venderam mas estão'} sem custo cadastrado — sem isso não dá pra calcular lucro/dia nem custo do pedido.`}
-      </p>
+      {/* 5 · Catálogo completo */}
+      <Collapsible>
+        <Card>
+          <CollapsibleTrigger asChild>
+            <button className="flex w-full items-center justify-between px-6 py-4 text-sm font-semibold [&[data-state=open]_svg]:rotate-180">
+              Catálogo completo · {plan.rows.length} SKUs
+              <ChevronDown className="size-4 text-muted-foreground transition-transform" />
+            </button>
+          </CollapsibleTrigger>
+          <CollapsibleContent>
+            <CardContent className="pt-0">
+              <PlanTable rows={plan.rows} cortadosSet={cortadosSet} onSave={onSave} saving={r.saveInventory.isPending} />
+            </CardContent>
+          </CollapsibleContent>
+        </Card>
+      </Collapsible>
+
+      {/* 6 · Notas */}
+      <div className="space-y-1 text-xs text-muted-foreground">
+        <p>
+          <strong>Velocidade</strong>: média dos últimos {r.windowDays} dias. Pra SKU zerado hoje, os dias sem venda
+          até a última venda saem da janela (marcados com <span className="font-mono">*</span>) — foi falta de produto,
+          não de demanda.
+        </p>
+        <p>
+          <strong>Lucro/dia</strong>: margem de contribuição × velocidade, com a taxa real do Mercado Livre e a tabela
+          de comissão pra Shopee/TikTok. É por ele que o corte pelo caixa prioriza.
+        </p>
+        <p>
+          <strong>Estoque</strong>:{' '}
+          {r.syncedStockCount > 0
+            ? `${r.syncedStockCount} ${r.syncedStockCount === 1 ? 'SKU vem' : 'SKUs vêm'} do catálogo${
+                r.stockSyncDaysAgo === 0 ? ' (sincronizado hoje)' : r.stockSyncDaysAgo != null ? ` (há ${r.stockSyncDaysAgo}d)` : ''
+              }; digite por cima pra corrigir.`
+            : 'o que você informou — atualize quando um pedido chega.'}
+          {r.skusSemCusto > 0 && ` ${r.skusSemCusto} ${r.skusSemCusto === 1 ? 'SKU vendeu' : 'SKUs venderam'} sem custo cadastrado.`}
+        </p>
+      </div>
+    </div>
+  );
+}
+
+// ── Tabela ──────────────────────────────────────────────────────────────────
+function PlanTable({
+  rows, cortadosSet, onSave, saving, compact,
+}: {
+  rows: ReplenishmentRow[];
+  cortadosSet: Set<string>;
+  onSave: (i: SaveInventoryInput) => void;
+  saving: boolean;
+  compact?: boolean;
+}) {
+  return (
+    <div className="overflow-x-auto">
+      <table className={cn('w-full text-sm', compact ? 'min-w-[640px]' : 'min-w-[760px]')}>
+        <thead>
+          <tr className="border-b text-left text-[11px] uppercase tracking-wide text-muted-foreground">
+            <th className="pb-2 pr-2 font-medium">Produto</th>
+            <th className="pb-2 px-2 text-right font-medium">Vende/dia</th>
+            <th className="pb-2 px-2 text-right font-medium">Cobertura</th>
+            <th className="pb-2 px-2 text-right font-medium">Estoque</th>
+            <th className="pb-2 px-2 text-right font-medium">Trânsito</th>
+            <th className="pb-2 px-2 text-right font-medium">Pedir</th>
+            <th className="pb-2 px-2 text-right font-medium">Custo</th>
+            {!compact && <th className="pb-2 px-2 text-right font-medium">Lucro/dia</th>}
+            <th className="pb-2 pl-2" />
+          </tr>
+        </thead>
+        <tbody>
+          {rows.map((row) => (
+            <SkuRow
+              key={row.sku}
+              row={row}
+              cortado={cortadosSet.has(row.sku)}
+              onSave={onSave}
+              saving={saving}
+              compact={compact}
+            />
+          ))}
+        </tbody>
+      </table>
     </div>
   );
 }
 
 function SkuRow({
-  row, cortado, onStock, saving,
-}: { row: ReplenishmentRow; cortado: boolean; onStock: (u: number) => void; saving: boolean }) {
+  row, cortado, onSave, saving, compact,
+}: { row: ReplenishmentRow; cortado: boolean; onSave: (i: SaveInventoryInput) => void; saving: boolean; compact?: boolean }) {
   const [draft, setDraft] = useState('');
   const meta = URGENCIA_META[row.urgencia];
-  const editing = draft !== '';
-  const parsed = editing ? Number(draft.replace(/\D/g, '')) : null;
+  const parsed = draft !== '' ? Number(draft.replace(/\D/g, '')) : null;
 
   return (
-    <tr className={cn('border-b border-border/50 last:border-0', row.precisaPedir && 'bg-warning/5')}>
+    <tr className={cn('border-b border-border/50 last:border-0', row.precisaPedir && !compact && 'bg-warning/5')}>
       <td className="py-2 pr-2">
-        <div className="flex items-center gap-2">
-          <span className="min-w-0">
-            <span className="block max-w-[220px] truncate font-medium">{row.itemName}</span>
-            <span className="flex items-center gap-1.5">
-              <span className={cn('rounded px-1 py-px text-[10px] ring-1', meta.cls)}>{meta.label}</span>
-              {cortado && <span className="text-[10px] text-muted-foreground">espera o próximo ciclo</span>}
-              {row.estoqueVelho && <span className="text-[10px] text-warning">estoque desatualizado</span>}
-            </span>
-          </span>
-        </div>
+        <span className="block max-w-[200px] truncate font-medium">{row.itemName}</span>
+        <span className="flex flex-wrap items-center gap-1.5">
+          <span className={cn('rounded px-1 py-px text-[10px] ring-1', meta.cls)}>{meta.label}</span>
+          {cortado && <span className="text-[10px] text-muted-foreground">espera o ciclo</span>}
+          {row.estoqueVelho && <span className="text-[10px] text-warning">estoque velho</span>}
+        </span>
       </td>
       <td className="px-2 py-2 text-right tabular-nums">
         {num(row.velocidadeDia, row.velocidadeDia < 10 ? 1 : 0)}
@@ -228,19 +293,19 @@ function SkuRow({
         {Number.isFinite(row.coberturaDias) ? (
           <>
             {num(row.coberturaDias)}d
-            {row.rupturaIso && <span className="block text-[10px] text-muted-foreground">até {dataCurta(row.rupturaIso)}</span>}
+            {row.rupturaIso && <span className="block text-[10px] text-muted-foreground">{dataCurta(row.rupturaIso)}</span>}
           </>
         ) : '—'}
       </td>
       <td className="px-2 py-2 text-right">
         <input
           inputMode="numeric"
-          className="w-16 rounded border bg-background px-1.5 py-0.5 text-right font-mono text-sm tabular-nums"
+          className="w-14 rounded border bg-background px-1.5 py-0.5 text-right font-mono text-sm tabular-nums"
           placeholder={String(row.estoqueAtual)}
           value={draft}
           disabled={saving}
           onChange={(e) => setDraft(e.target.value)}
-          onBlur={() => { if (parsed !== null && !Number.isNaN(parsed)) onStock(parsed); setDraft(''); }}
+          onBlur={() => { if (parsed !== null && !Number.isNaN(parsed)) onSave({ sku: row.sku, itemName: row.itemName, stockUnits: parsed }); setDraft(''); }}
           onKeyDown={(e) => { if (e.key === 'Enter') (e.target as HTMLInputElement).blur(); }}
         />
         {row.estoqueOrigem === 'sync' && <span className="mt-0.5 block text-[10px] text-muted-foreground">catálogo</span>}
@@ -256,10 +321,69 @@ function SkuRow({
             ? <span className="text-[10px] text-warning">sem custo</span>
             : brl(row.custoCompraCents)}
       </td>
-      <td className="py-2 pl-2 text-right font-mono tabular-nums text-muted-foreground">
-        {row.lucroDiaCents === null ? '—' : brl(row.lucroDiaCents)}
+      {!compact && (
+        <td className="px-2 py-2 text-right font-mono tabular-nums text-muted-foreground">
+          {row.lucroDiaCents === null ? '—' : brl(row.lucroDiaCents)}
+        </td>
+      )}
+      <td className="py-2 pl-2 text-right">
+        <ConfigSkuDialog row={row} onSave={onSave} pending={saving} />
       </td>
     </tr>
+  );
+}
+
+function ConfigSkuDialog({
+  row, onSave, pending,
+}: { row: ReplenishmentRow; onSave: (i: SaveInventoryInput) => void; pending: boolean }) {
+  const [lead, setLead] = useState(String(row.leadTimeDays));
+  const [safety, setSafety] = useState(String(row.safetyDays));
+  const [moq, setMoq] = useState(row.moqUnits ? String(row.moqUnits) : '');
+
+  return (
+    <Dialog>
+      <DialogTrigger asChild>
+        <Button size="icon" variant="ghost" className="size-7 text-muted-foreground" aria-label={`Configurar ${row.itemName}`}>
+          <Settings2 className="size-3.5" />
+        </Button>
+      </DialogTrigger>
+      <DialogContent>
+        <DialogHeader><DialogTitle className="truncate">{row.itemName}</DialogTitle></DialogHeader>
+        <div className="grid grid-cols-2 gap-3">
+          <div>
+            <Label htmlFor="cfg-lead">Lead time (dias)</Label>
+            <Input id="cfg-lead" inputMode="numeric" className="mt-1" value={lead} onChange={(e) => setLead(e.target.value)} />
+            <p className="mt-1 text-[10px] text-muted-foreground">do pedido ao fornecedor até chegar no estoque</p>
+          </div>
+          <div>
+            <Label htmlFor="cfg-safety">Estoque de segurança (dias)</Label>
+            <Input id="cfg-safety" inputMode="numeric" className="mt-1" value={safety} onChange={(e) => setSafety(e.target.value)} />
+            <p className="mt-1 text-[10px] text-muted-foreground">folga pra oscilação da demanda</p>
+          </div>
+          <div className="col-span-2">
+            <Label htmlFor="cfg-moq">Lote mínimo do fornecedor (opcional)</Label>
+            <Input id="cfg-moq" inputMode="numeric" className="mt-1" value={moq} onChange={(e) => setMoq(e.target.value)} placeholder="sem mínimo" />
+            <p className="mt-1 text-[10px] text-muted-foreground">a sugestão de compra arredonda pra cima nesse múltiplo</p>
+          </div>
+        </div>
+        <DialogFooter>
+          <DialogClose asChild>
+            <Button
+              disabled={pending}
+              onClick={() => onSave({
+                sku: row.sku,
+                itemName: row.itemName,
+                leadTimeDays: Number(lead.replace(/\D/g, '')) || 0,
+                safetyDays: Number(safety.replace(/\D/g, '')) || 0,
+                moqUnits: moq.trim() === '' ? null : (Number(moq.replace(/\D/g, '')) || null),
+              })}
+            >
+              {pending ? 'Salvando…' : 'Salvar'}
+            </Button>
+          </DialogClose>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
 }
 
