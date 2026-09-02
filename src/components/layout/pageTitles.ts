@@ -4,6 +4,7 @@
 const PAGE_TITLES: Record<string, string> = {
   '/dashboard': 'Dashboard',
   '/previsao': 'Previsão de caixa',
+  '/reposicao': 'Reposição de estoque',
   '/vendas': 'Vendas',
   '/mercadolivre/resultados': 'Gestão Mercado Livre',
   '/mercadolivre/variacoes': 'Gestão Mercado Livre',

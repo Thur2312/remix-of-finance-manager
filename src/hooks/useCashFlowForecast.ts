@@ -314,6 +314,29 @@ export function useCashFlowForecast(): CashFlowForecast {
     },
   });
 
+  // ── Saídas: pedidos de compra ao fornecedor em aberto ─────────────────────
+  // Um pedido não recebido com vencimento na janela é uma saída certa de caixa.
+  const purchaseQuery = useQuery({
+    queryKey: ['cash-flow-forecast-po', user?.id, todayIso],
+    enabled: !!user?.id,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('purchase_orders')
+        .select('sku, item_name, qty_units, unit_cost_cents, expected_at, payment_due_at')
+        .eq('user_id', user!.id)
+        .is('received_at', null);
+      if (error) throw error;
+      return (data ?? [])
+        .map(p => {
+          const due = (p.payment_due_at ?? p.expected_at ?? '').slice(0, 10);
+          const cents = Math.round((Number(p.qty_units) || 0) * (Number(p.unit_cost_cents) || 0));
+          if (!due || cents <= 0) return null;
+          return { dateIso: due, amountCents: cents, label: `Fornecedor · ${p.item_name || p.sku}` };
+        })
+        .filter((x): x is ForecastPayable => x !== null);
+    },
+  });
+
   const saveAnchor = useMutation<void, Error, number>({
     mutationFn: async (balanceCents: number) => {
       const { error } = await supabase
@@ -355,10 +378,12 @@ export function useCashFlowForecast(): CashFlowForecast {
       ? Math.max(0, Math.round((now.getTime() - new Date(settings.opening_balance_date).getTime()) / 86_400_000))
       : null;
 
-    const payables: ForecastPayable[] = expanded
-      .filter(e => e.type === 'expense' && e.status !== 'paid' && !!e.due_date)
-      .map(e => ({ dateIso: e.due_date!.slice(0, 10), amountCents: toCents(Number(e.amount)), label: e.description }))
-      .sort((a, b) => a.dateIso.localeCompare(b.dateIso));
+    const payables: ForecastPayable[] = [
+      ...expanded
+        .filter(e => e.type === 'expense' && e.status !== 'paid' && !!e.due_date)
+        .map(e => ({ dateIso: e.due_date!.slice(0, 10), amountCents: toCents(Number(e.amount)), label: e.description })),
+      ...(purchaseQuery.data ?? []),
+    ].sort((a, b) => a.dateIso.localeCompare(b.dateIso));
 
     const manualReceivables: ForecastReceivable[] = expanded
       .filter(e => e.type === 'income' && e.status === 'pending')
@@ -405,13 +430,13 @@ export function useCashFlowForecast(): CashFlowForecast {
       payables,
       ritmoLiquidoDiaCents,
     };
-  }, [entries, now, settingsQuery.data, mlQuery.data, shopeeQuery.data, tiktokQuery.data, todayIso]);
+  }, [entries, now, settingsQuery.data, mlQuery.data, shopeeQuery.data, tiktokQuery.data, purchaseQuery.data, todayIso]);
 
   return {
     ...composed,
     isLoading:
       entriesLoading || settingsQuery.isLoading || mlQuery.isLoading ||
-      shopeeQuery.isLoading || tiktokQuery.isLoading,
+      shopeeQuery.isLoading || tiktokQuery.isLoading || purchaseQuery.isLoading,
     hasMercadoLivre: mlQuery.data?.hasMercadoLivre ?? false,
     hasShopee: shopeeQuery.data?.hasShopee ?? false,
     hasTiktok: tiktokQuery.data?.hasTiktok ?? false,
