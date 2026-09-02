@@ -1,5 +1,6 @@
 import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react-swc";
+import { VitePWA } from "vite-plugin-pwa";
 import path from "path";
 
 export default defineConfig(({ mode }) => ({
@@ -8,6 +9,35 @@ export default defineConfig(({ mode }) => ({
   },
   plugins: [
     react(),
+    VitePWA({
+      registerType: "autoUpdate",
+      includeAssets: ["favicon.svg", "favicon.ico", "apple-touch-icon-180x180.png"],
+      manifest: {
+        name: "Seller Finance — Gestão Financeira para Vendedores de Marketplace",
+        short_name: "Seller Finance",
+        description:
+          "Plataforma de gestão financeira para vendedores da Shopee e TikTok Shop. Sincronize pedidos, calcule lucro real, controle fluxo de caixa e gere relatórios automáticos.",
+        lang: "pt-BR",
+        start_url: "/dashboard",
+        scope: "/",
+        display: "standalone",
+        theme_color: "#2c8ffa",
+        background_color: "#ffffff",
+        icons: [
+          { src: "pwa-64x64.png", sizes: "64x64", type: "image/png" },
+          { src: "pwa-192x192.png", sizes: "192x192", type: "image/png" },
+          { src: "pwa-512x512.png", sizes: "512x512", type: "image/png" },
+          { src: "maskable-icon-512x512.png", sizes: "512x512", type: "image/png", purpose: "maskable" },
+        ],
+      },
+      workbox: {
+        // Só faz cache do app shell (JS/CSS/HTML estático). Chamadas à API do
+        // Supabase (dados financeiros) nunca passam pelo service worker —
+        // sempre direto na rede, sem risco de mostrar dado desatualizado/stale.
+        globPatterns: ["**/*.{js,css,html,svg,png,ico,woff2}"],
+        navigateFallbackDenylist: [/^\/api/],
+      },
+    }),
   ].filter(Boolean),
 
   resolve: {

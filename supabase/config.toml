@@ -31,3 +31,8 @@ entrypoint = "./functions/asaas-webhook/index.ts"
 enabled = true
 verify_jwt = true
 entrypoint = "./functions/asaas-cancel/index.ts"
+
+[functions.delete-account-data]
+enabled = true
+verify_jwt = true
+entrypoint = "./functions/delete-account-data/index.ts"

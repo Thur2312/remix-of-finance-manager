@@ -5,6 +5,7 @@ import { FinancialAssistant } from '@/components/assistant/FinancialAssistant';
 import { TrialBanner } from '../TrialBanner';
 import { Breadcrumbs } from './Breadcrumbs';
 import { NotificationBell } from './NotificationBell';
+import { PwaInstallAnnouncement } from '../PwaInstallAnnouncement';
 
 export function AppLayout({ children }: { children: ReactNode }) {
   return (
@@ -37,6 +38,7 @@ export function AppLayout({ children }: { children: ReactNode }) {
           </SidebarInset>
         </div>
         <FinancialAssistant />
+        <PwaInstallAnnouncement />
       </SidebarProvider>
     </div>
   );
