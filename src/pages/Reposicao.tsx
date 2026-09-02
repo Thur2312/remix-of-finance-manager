@@ -187,7 +187,11 @@ function ReposicaoContent() {
         A velocidade é a média dos últimos {r.windowDays} dias. Pra SKU zerado hoje, os dias sem venda até a
         última venda são descontados da janela (marcados com <span className="font-mono">*</span>) — foi falta de
         produto, não de demanda. O lucro/dia usa a taxa real do Mercado Livre e a tabela de comissão pra
-        Shopee/TikTok. O estoque é o que você informou; some as unidades quando um pedido chega.
+        Shopee/TikTok.{' '}
+        {r.syncedStockCount > 0
+          ? `O estoque de ${r.syncedStockCount} ${r.syncedStockCount === 1 ? 'SKU vem' : 'SKUs vem'} do catálogo${r.stockSyncDaysAgo === 0 ? ' (sincronizado hoje)' : r.stockSyncDaysAgo != null ? ` (sincronizado há ${r.stockSyncDaysAgo}d)` : ''}; digite por cima pra corrigir. `
+          : 'O estoque é o que você informou. '}
+        Some as unidades quando um pedido de compra chega.
         {r.skusSemCusto > 0 && ` ${r.skusSemCusto} ${r.skusSemCusto === 1 ? 'SKU vendeu mas está' : 'SKUs venderam mas estão'} sem custo cadastrado — sem isso não dá pra calcular lucro/dia nem custo do pedido.`}
       </p>
     </div>
@@ -239,6 +243,8 @@ function SkuRow({
           onBlur={() => { if (parsed !== null && !Number.isNaN(parsed)) onStock(parsed); setDraft(''); }}
           onKeyDown={(e) => { if (e.key === 'Enter') (e.target as HTMLInputElement).blur(); }}
         />
+        {row.estoqueOrigem === 'sync' && <span className="mt-0.5 block text-[10px] text-muted-foreground">catálogo</span>}
+        {row.estoqueOrigem === 'nenhum' && <span className="mt-0.5 block text-[10px] text-warning">informe</span>}
       </td>
       <td className="px-2 py-2 text-right tabular-nums text-muted-foreground">{row.emTransito || '—'}</td>
       <td className="px-2 py-2 text-right font-mono tabular-nums">

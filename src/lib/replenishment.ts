@@ -26,9 +26,11 @@ export interface ReplenishmentSku {
   contributionMarginCents: number | null;
   /** custo de compra unitário pago ao fornecedor, centavos; null se desconhecido */
   purchaseUnitCostCents: number | null;
-  /** estoque físico informado */
+  /** estoque físico em uso (sincronizado ou informado) */
   stockUnits: number;
-  /** há quantos dias o estoque foi informado */
+  /** de onde veio o estoque */
+  stockSource: 'sync' | 'manual' | 'nenhum';
+  /** há quantos dias o estoque foi sincronizado/informado */
   stockUpdatedDaysAgo: number;
   /** unidades já pedidas ao fornecedor e ainda não recebidas */
   inTransitUnits: number;
@@ -64,6 +66,7 @@ export interface ReplenishmentRow {
   /** true = a janela foi encurtada por ruptura (velocidade é estimada por baixo) */
   velocidadeAjustada: boolean;
   estoqueAtual: number;
+  estoqueOrigem: 'sync' | 'manual' | 'nenhum';
   emTransito: number;
   /** (estoque + trânsito) / velocidade — Infinity se não há giro */
   coberturaDias: number;
@@ -158,6 +161,7 @@ export function computeReplenishmentRow(
     velocidadeDia: v,
     velocidadeAjustada,
     estoqueAtual: Math.max(0, s.stockUnits),
+    estoqueOrigem: s.stockSource,
     emTransito: Math.max(0, s.inTransitUnits),
     coberturaDias: cobertura,
     rupturaIso,

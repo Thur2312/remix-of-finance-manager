@@ -22,6 +22,7 @@ const sku = (p: Partial<ReplenishmentSku> = {}): ReplenishmentSku => ({
   contributionMarginCents: 10_00,
   purchaseUnitCostCents: 5_00,
   stockUnits: 100,
+  stockSource: 'manual',
   stockUpdatedDaysAgo: 0,
   inTransitUnits: 0,
   leadTimeDays: 14,
@@ -103,6 +104,11 @@ describe('computeReplenishmentRow', () => {
   it('marca estoque velho', () => {
     expect(computeReplenishmentRow(sku({ stockUpdatedDaysAgo: 5 }), opts).estoqueVelho).toBe(false);
     expect(computeReplenishmentRow(sku({ stockUpdatedDaysAgo: 20 }), opts).estoqueVelho).toBe(true);
+  });
+
+  it('passa a origem do estoque pra linha', () => {
+    expect(computeReplenishmentRow(sku({ stockSource: 'sync' }), opts).estoqueOrigem).toBe('sync');
+    expect(computeReplenishmentRow(sku({ stockSource: 'nenhum' }), opts).estoqueOrigem).toBe('nenhum');
   });
 
   it('desconta dias sem estoque da janela → velocidade sobe', () => {

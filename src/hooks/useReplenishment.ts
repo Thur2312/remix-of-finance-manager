@@ -66,6 +66,10 @@ export interface UseReplenishment {
   caixaConfiavel: boolean;
   /** quantos SKUs entraram com custo estimado (não estão em product_costs) */
   skusSemCusto: number;
+  /** quantos SKUs têm estoque vindo do catálogo sincronizado */
+  syncedStockCount: number;
+  /** há quantos dias o sync de estoque mais recente rodou (null se nunca) */
+  stockSyncDaysAgo: number | null;
   windowDays: number;
   saveInventory: ReturnType<typeof useMutation<void, Error, SaveInventoryInput>>;
   addPurchaseOrder: ReturnType<typeof useMutation<void, Error, AddPurchaseOrderInput>>;
@@ -244,7 +248,7 @@ export function useReplenishment(): UseReplenishment {
     queryKey: ['replenishment-inventory', user?.id],
     enabled: !!user?.id,
     queryFn: async () => {
-      const [invRes, poRes] = await Promise.all([
+      const [invRes, poRes, stockRes] = await Promise.all([
         supabase
           .from('inventory_settings')
           .select('sku, item_name, stock_units, stock_updated_at, lead_time_days, safety_days, moq_units, active')
@@ -254,10 +258,15 @@ export function useReplenishment(): UseReplenishment {
           .select('id, sku, item_name, qty_units, unit_cost_cents, ordered_at, expected_at')
           .eq('user_id', user!.id)
           .is('received_at', null),
+        supabase
+          .from('product_stock')
+          .select('sku, item_name, stock_units, synced_at')
+          .eq('user_id', user!.id),
       ]);
       if (invRes.error) throw invRes.error;
       if (poRes.error) throw poRes.error;
-      return { inv: invRes.data ?? [], po: poRes.data ?? [] };
+      if (stockRes.error) throw stockRes.error;
+      return { inv: invRes.data ?? [], po: poRes.data ?? [], stock: stockRes.data ?? [] };
     },
   });
 
@@ -327,29 +336,48 @@ export function useReplenishment(): UseReplenishment {
     const inv = inventoryQuery.data?.inv ?? [];
     const po = inventoryQuery.data?.po ?? [];
 
+    const stock = inventoryQuery.data?.stock ?? [];
     const invByKey = new Map(inv.map(r => [skuKey(r.sku), r]));
+    const stockByKey = new Map(stock.map(r => [skuKey(r.sku), r]));
     const transitByKey = new Map<string, number>();
     for (const p of po) {
       const k = skuKey(p.sku);
       transitByKey.set(k, (transitByKey.get(k) ?? 0) + (Number(p.qty_units) || 0));
     }
 
-    // Universo de SKUs = os que venderam + os configurados manualmente.
-    const keys = new Set<string>([...sales.map(s => skuKey(s.sku)), ...invByKey.keys()]);
+    // Universo de SKUs = os que venderam + os configurados manualmente + os
+    // que vieram do catálogo sincronizado.
+    const keys = new Set<string>([
+      ...sales.map(s => skuKey(s.sku)),
+      ...invByKey.keys(),
+      ...stockByKey.keys(),
+    ]);
     const semCusto = new Set<string>();
 
     const skus: ReplenishmentSku[] = [];
     for (const key of keys) {
       const s = sales.find(x => skuKey(x.sku) === key);
       const settings = invByKey.get(key);
-      if (!s && !settings?.active) continue;
+      const synced = stockByKey.get(key);
+      if (!s && !settings?.active && !synced) continue;
 
       const units = s?.units ?? 0;
       const spanDias = s
         ? Math.min(WINDOW_DIAS, Math.max(WINDOW_MIN_DIAS, differenceInCalendarDays(now, parseISO(s.earliestIso)) + 1))
         : WINDOW_DIAS;
 
-      const stockUnits = settings?.stock_units ?? 0;
+      // Estoque: vale o mais recente entre o sincronizado do catálogo e o que
+      // o vendedor informou. O manual "gruda" até o próximo sync; se o sync
+      // estiver errado, o vendedor digita de novo.
+      const manualAt = settings?.stock_updated_at ? new Date(settings.stock_updated_at).getTime() : 0;
+      const syncedAt = synced?.synced_at ? new Date(synced.synced_at).getTime() : 0;
+      const temManual = manualAt > 0 && settings?.stock_units != null;
+      const usaSync = !!synced && (!temManual || syncedAt >= manualAt);
+
+      const stockUnits = usaSync ? (synced!.stock_units ?? 0) : (settings?.stock_units ?? 0);
+      const stockSource: ReplenishmentSku['stockSource'] =
+        usaSync ? 'sync' : temManual ? 'manual' : 'nenhum';
+      const stockRefIso = usaSync ? synced!.synced_at : settings?.stock_updated_at;
       const inTransitUnits = transitByKey.get(key) ?? 0;
 
       // Ruptura: estoque + trânsito zerados hoje → os dias sem venda desde a
@@ -378,8 +406,9 @@ export function useReplenishment(): UseReplenishment {
         contributionMarginCents,
         purchaseUnitCostCents: landedCost,
         stockUnits,
-        stockUpdatedDaysAgo: settings?.stock_updated_at
-          ? Math.max(0, differenceInCalendarDays(now, parseISO(settings.stock_updated_at)))
+        stockSource,
+        stockUpdatedDaysAgo: stockRefIso
+          ? Math.max(0, differenceInCalendarDays(now, parseISO(stockRefIso)))
           : 999,
         inTransitUnits,
         leadTimeDays: settings?.lead_time_days ?? LEAD_TIME_PADRAO,
@@ -412,12 +441,18 @@ export function useReplenishment(): UseReplenishment {
       }))
       .sort((a, b) => (a.expectedAt ?? '9999').localeCompare(b.expectedAt ?? '9999'));
 
+    const stockSyncAges = stock
+      .map(r => (r.synced_at ? differenceInCalendarDays(now, parseISO(r.synced_at)) : null))
+      .filter((n): n is number => n !== null);
+
     return {
       plan,
       caixaConfiavel,
       openPurchaseOrders,
       hasData: skus.length > 0,
       skusSemCusto: semCusto.size,
+      syncedStockCount: stock.length,
+      stockSyncDaysAgo: stockSyncAges.length ? Math.min(...stockSyncAges) : null,
     };
   }, [salesQuery.data, costsQuery.data, inventoryQuery.data, forecast.openingIsConfirmed, forecast.isLoading, forecast.result, now, todayIso]);
 

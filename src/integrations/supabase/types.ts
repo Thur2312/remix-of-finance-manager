@@ -1328,6 +1328,36 @@ export type Database = {
         }
         Relationships: []
       }
+      product_stock: {
+        Row: {
+          external_id: string | null
+          item_name: string | null
+          source: string
+          stock_units: number
+          synced_at: string
+          sku: string
+          user_id: string
+        }
+        Insert: {
+          external_id?: string | null
+          item_name?: string | null
+          source: string
+          stock_units?: number
+          synced_at?: string
+          sku: string
+          user_id: string
+        }
+        Update: {
+          external_id?: string | null
+          item_name?: string | null
+          source?: string
+          stock_units?: number
+          synced_at?: string
+          sku?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           avatar_url: string | null
