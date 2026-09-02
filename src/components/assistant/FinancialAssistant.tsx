@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from "react";
-import { Send, Sparkles, TrendingUp, DollarSign, BarChart2, X, ChevronDown, Trash2 } from "lucide-react";
+import { Send, Sparkles, TrendingUp, CalendarClock, PackageSearch, X, ChevronDown, Trash2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 
 interface Mensagem {
@@ -14,10 +14,10 @@ interface SugestaoProps {
 }
 
 const FINN_SUGESTOES = [
-  { icone: TrendingUp, texto: "Qual canal me deu mais lucro esse mês?" },
-  { icone: DollarSign, texto: "Quais produtos estão no prejuízo?" },
-  { icone: BarChart2, texto: "Qual minha margem real na Shopee?" },
-  { icone: Sparkles, texto: "Quanto vou receber nos próximos dias?" },
+  { icone: CalendarClock, texto: "Quando meu caixa aperta?" },
+  { icone: PackageSearch, texto: "O que preciso comprar essa semana?" },
+  { icone: TrendingUp, texto: "Como estou indo nos últimos 60 dias?" },
+  { icone: Sparkles, texto: "Qual produto mais rende?" },
 ];
 
 function Sugestao({ texto, onClick }: SugestaoProps) {

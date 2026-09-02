@@ -3,651 +3,496 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 import { z } from 'https://deno.land/x/zod@v3.22.4/mod.ts';
 import { getCorsHeaders, handleCorsPreflightRequest } from '../_shared/cors.ts';
 import { hasActivePlanAccess } from '../_shared/plan-guard.ts';
+import { computeForecast } from '../_shared/finance/cashflow-forecast.ts';
+import { buildReplenishmentPlan, type ReplenishmentSku } from '../_shared/finance/replenishment.ts';
 
 const assistantSchema = z.object({
   pergunta: z.string().min(1).max(1000),
 });
 
-const systemPrompt = `Você é o Finn, assistente financeiro inteligente do Seller Finance — uma plataforma de gestão financeira para vendedores de marketplace no Brasil (Shopee, TikTok Shop e Mercado Livre).
+// Finn 2.0 (Aposta F) — antes: despejava um JSON fixo de 60 dias no prompt toda
+// mensagem, sem enxergar previsão de caixa nem reposição. Agora: loop de
+// function-calling. O modelo tem ferramentas e puxa só o que a pergunta pede;
+// as contas pesadas rodam nas libs puras (cópias em _shared/finance), não no
+// modelo. Continua no Gemini (tier gratuito).
 
-Você tem acesso aos dados financeiros reais do vendedor e deve usá-los para responder perguntas de forma direta, prática e personalizada.
+const systemPrompt = `Você é o Finn, assistente financeiro do Seller Finance — plataforma de gestão pra vendedores de marketplace no Brasil (Shopee, TikTok Shop, Mercado Livre).
 
-COMO RESPONDER:
-- Seja direto e objetivo. O vendedor quer respostas rápidas, não textos longos.
-- Use os dados reais fornecidos no contexto. Nunca invente números.
-- Quando calcular margens ou lucros, mostre o raciocínio de forma simples.
-- Use R$ para valores monetários (ex: R$ 1.234,50).
-- Responda sempre em português do Brasil, de forma natural e humana.
-- Não use emojis em excesso — no máximo um por resposta.
-- Se a pergunta não for relacionada ao negócio do vendedor, redirecione gentilmente.
-- Você também pode fazer cálculos livres: projeções, simulações, comparativos entre períodos, análise de produto específico, etc.
+COMO RESPONDER
+- Direto e curto. O vendedor quer resposta rápida.
+- Use SEMPRE as ferramentas pra buscar número real. Nunca invente valor.
+- Escolha a ferramenta pela pergunta: "como estou / quanto faturei / que produto rende" → resumo_financeiro; "quando o caixa aperta / tenho como pagar" → previsao_caixa; "o que pedir / vou ficar sem estoque" → plano_reposicao. Pode chamar mais de uma.
+- Valores em R$ (ex.: R$ 1.234). Português do Brasil, natural. No máximo um emoji.
+- Se a ferramenta disser que falta um dado, explique em linguagem simples o que o vendedor precisa fazer — nunca cite nome de tabela/coluna.
+- Se a pergunta não for sobre o negócio, redirecione com gentileza.
 
-LINGUAGEM — REGRAS ABSOLUTAS:
-- NUNCA mencione nomes de tabelas, colunas, variáveis ou termos técnicos de banco de dados (ex: orders, order_items, net_amount, payments, fees, fee_type, integration_id, etc.)
-- NUNCA diga que um dado "não está disponível na estrutura" ou que "não há registros na tabela"
-- NUNCA invente telas, seções, menus ou funcionalidades que não existem na plataforma. Se não souber onde algo está, não chute.
-- Quando faltar um dado, explique em linguagem simples o que o vendedor precisa fazer. Use os exemplos abaixo como guia.
+MAPA DA PLATAFORMA (só cite estas seções ao orientar)
+Dashboard · Meta do mês · Previsão de caixa · Reposição de estoque · Vendas · Gestão · Fluxo de Caixa · Precificação · Custos Fixos · DRE · Simulador · Integrações · Planos`;
 
-MAPA REAL DA PLATAFORMA (use apenas essas seções ao orientar o vendedor):
-- Dashboard — visão geral dos resultados
-- Gestão — controle dos pedidos
-- Fluxo de Caixa — entradas e saídas financeiras
-- Precificação — calculadora de preços e cadastro de anúncios com custos, taxas e margens reais
-- Custos Fixos — cadastro de despesas mensais fixas da operação (aluguel, internet, funcionários, etc.)
-- Assistente — você, o Finn
-- DRE — demonstrativo de resultados
-- Integrações — conexão com marketplaces (Shopee, TikTok Shop, Mercado Livre)
-- Planos — assinatura da plataforma
+// ─── Ferramentas ─────────────────────────────────────────────────────────────
 
-ORIENTAÇÕES POR SITUAÇÃO (use linguagem humana, nunca técnica):
-- Sem custo de produto cadastrado → "A plataforma ainda não tem uma seção para cadastrar o custo de aquisição por produto. Por enquanto, me informe o custo do produto aqui na conversa e eu calculo o lucro para você na hora."
-- Sem integração conectada → "Para ver seus dados, você precisa conectar sua conta do marketplace na seção Integrações."
-- Dado zerado ou desatualizado → "Esse valor ainda não foi sincronizado. Tente sincronizar sua loja novamente nas Integrações."
-- Custo fixo não cadastrado → "Você pode cadastrar suas despesas mensais (aluguel, internet, etc.) na seção Custos Fixos para que eu considere no cálculo do seu lucro real."
-- Simulação de preço → "Você pode usar a calculadora de Precificação para simular o preço ideal de venda de qualquer produto."
+const TOOLS = [{
+  functionDeclarations: [
+    {
+      name: 'resumo_financeiro',
+      description: 'Resultado dos últimos 60 dias: faturamento, taxas do marketplace, margem, pedidos por status, os produtos que mais faturam e os anúncios cadastrados. Use pra "como estou indo", "quanto faturei", "qual produto rende mais".',
+      parameters: { type: 'object', properties: {} },
+    },
+    {
+      name: 'previsao_caixa',
+      description: 'Projeta o saldo em conta pelos próximos 30 dias contando só o dinheiro garantido (saldo confirmado + recebíveis do Mercado Livre com data + contas lançadas + pedidos ao fornecedor). Diz o primeiro dia em que fica negativo. Use pra "quando o caixa aperta", "tenho como pagar X".',
+      parameters: { type: 'object', properties: {} },
+    },
+    {
+      name: 'plano_reposicao',
+      description: 'Quais SKUs estão no ponto de reposição, quanto pedir de cada um, o custo total e o quanto disso cabe no caixa projetado. Use pra "o que preciso comprar", "vou ficar sem estoque de quê".',
+      parameters: { type: 'object', properties: {} },
+    },
+  ],
+}];
 
-O QUE VOCÊ CONSEGUE CALCULAR:
-- Receita bruta por produto e no total
-- Receita líquida após as taxas do marketplace (comissão, taxa de serviço, frete, ajustes)
-- Qual produto tem melhor e pior margem do marketplace
-- Pedidos por status (completos, cancelados, a enviar, etc.)
-- Projeção de receita
-- Break-even de qualquer produto se o vendedor informar o custo na conversa
-- Lucro líquido por produto se o vendedor informar o custo de aquisição aqui na conversa
-- Anúncios cadastrados: nome, marketplace, custo, preço de venda, comissão, taxa fixa, afiliados, imposto e lucro estimado por unidade
-- Comparar margem entre anúncios e identificar o mais e menos rentável
-- Identificar anúncios no prejuízo (lucro negativo)
-- Simular impacto de mudança de preço ou custo em um anúncio específico
+const brl = (cents: number) => `R$ ${(cents / 100).toLocaleString('pt-BR', { maximumFractionDigits: 0 })}`;
+const isoDay = (d: Date) => d.toISOString().slice(0, 10);
+const addDaysIso = (iso: string, n: number) => {
+  const [y, m, d] = iso.slice(0, 10).split('-').map(Number);
+  return new Date(Date.UTC(y, m - 1, d + n)).toISOString().slice(0, 10);
+};
+const centsOf = (reais: unknown, cents: unknown) => {
+  const c = Number(cents);
+  if (Number.isFinite(c) && c !== 0) return Math.round(c);
+  return Math.round((Number(reais) || 0) * 100);
+};
+const EXCLUIDOS = ['cancel', 'nao pago', 'unpaid', 'devolu', 'reembols', 'refund', 'return'];
+const statusExcluido = (s: string | null | undefined) =>
+  !!s && EXCLUIDOS.some((k) => s.normalize('NFD').replace(/\p{Diacritic}/gu, '').toLowerCase().includes(k));
+const skuKey = (s: string | null | undefined) => (s ?? '').toLowerCase().replace(/[\s\-_./\\]+/g, '');
 
-O QUE VOCÊ NÃO CONSEGUE SEM O CUSTO DE AQUISIÇÃO:
-- Lucro líquido final por produto
-- Identificar produtos no prejuízo com precisão
-- Nesse caso, sempre ofereça: "Me diga o custo de aquisição do produto e eu calculo agora para você."
+// ── previsao_caixa ──────────────────────────────────────────────────────────
+async function toolPrevisaoCaixa(supabase: ReturnType<typeof createClient>, userId: string) {
+  const { data: settings } = await supabase
+    .from('cash_flow_settings').select('opening_balance_cents, opening_balance_date')
+    .eq('user_id', userId).maybeSingle();
 
-CONTEXTO DOS DADOS:
-Os dados abaixo representam a situação real do vendedor nos últimos 60 dias.`;
+  const hoje = isoDay(new Date());
+  const horizonte = 30;
+  const limite = addDaysIso(hoje, horizonte);
 
-async function buscarDadosFinanceiros(supabase: ReturnType<typeof createClient>, userId: string) {
-  const hoje = new Date();
-  const inicio60Dias = new Date(hoje);
-  inicio60Dias.setDate(hoje.getDate() - 60);
-  const dataInicio = inicio60Dias.toISOString();
+  const { data: conns } = await supabase
+    .from('integration_connections').select('id')
+    .eq('user_id', userId).eq('provider', 'mercadolivre').eq('status', 'connected');
+  const mlIds = (conns ?? []).map((c) => c.id);
 
-  const { data: integracoes } = await supabase
-    .from('integration_connections')
-    .select('id, provider, shop_name, status')
-    .eq('user_id', userId)
-    .eq('status', 'connected');
-
-  const integracaoIds = (integracoes ?? []).map((i: { id: string }) => i.id);
-
-  if (integracaoIds.length === 0) {
-    // Ainda busca anúncios mesmo sem integração conectada
-    const { data: anunciosData } = await supabase
-      .from('anuncios')
-      .select('nome_anuncio, custo, valor_venda, comissao_taxa, antecipado, afiliados, imposto_pct, custo_var, taxafixa, marketplace')
-      .eq('user_id', userId)
-      .order('atualizado_em', { ascending: false })
-      .limit(100);
-
-    const anuncios = processarAnuncios(anunciosData ?? []);
-
-    return {
-      periodo: `${inicio60Dias.toISOString().split('T')[0]} até hoje`,
-      integracoes: [],
-      aviso: 'Nenhuma integração conectada encontrada para este usuário.',
-      resumo_geral: { total_pedidos: 0, faturamento_bruto: 0, valor_liberado_escrow: 0, valor_liquido_apos_taxas: 0, total_taxas_marketplace: 0, margem_liquida_pct: 0 },
-      pedidos_por_status: [],
-      analise_por_produto: [],
-      taxas_detalhadas: {},
-      pedidos_com_margem: [],
-      pagamentos_recentes: [],
-      custos_fixos: { lista: [], total_mensal_recorrente: 0 },
-      custos_por_produto: [],
-      configuracoes: null,
-      anuncios_cadastrados: anuncios,
-    };
-  }
-
-  const pedidosRes = await supabase
-    .from('orders')
-    .select('id, external_order_id, status, total_amount, order_created_at, integration_id')
-    .in('integration_id', integracaoIds)
-    .gte('order_created_at', dataInicio)
-    .order('order_created_at', { ascending: false })
-    .limit(500);
-
-  const pedidos = pedidosRes.data ?? [];
-  const pedidoIds = pedidos.map((p: { id: string }) => p.id);
-  const pedidoIdsFiltro = pedidoIds.length > 0 ? pedidoIds : ['00000000-0000-0000-0000-000000000000'];
-
-  const [
-    itensRes,
-    pagamentosRes,
-    taxasRes,
-    custosFixosRes,
-    produtoCostosRes,
-    configRes,
-    anunciosRes,
-  ] = await Promise.all([
-    supabase
-      .from('order_items')
-      .select('order_id, item_name, sku, quantity, unit_price, total_price')
-      .in('order_id', pedidoIdsFiltro)
-      .limit(2000),
-
-    supabase
-      .from('payments')
-      .select('order_id, amount, net_amount, marketplace_fee, status, payment_method, transaction_date, description')
-      .in('order_id', pedidoIdsFiltro)
-      .order('transaction_date', { ascending: false })
-      .limit(1000),
-
-    supabase
-      .from('fees')
-      .select('order_id, fee_type, amount, description, fee_date')
-      .in('order_id', pedidoIdsFiltro)
-      .limit(2000),
-
-    supabase
-      .from('fixed_costs')
-      .select('name, amount, category, is_recurring')
-      .eq('user_id', userId),
-
-    supabase
-      .from('product_costs')
-      .select('sku, item_name, cost, packaging_cost, other_costs, tax_percent')
-      .eq('user_id', userId)
-      .limit(100),
-
-    supabase
-      .from('settings')
-      .select('taxa_comissao_shopee, taxa_antecipacao, gasto_shopee_ads, taxa_afiliado')
-      .eq('user_id', userId)
-      .eq('is_default', true)
-      .maybeSingle(),
-
-    supabase
-      .from('anuncios')
-      .select('nome_anuncio, custo, valor_venda, comissao_taxa, antecipado, afiliados, imposto_pct, custo_var, taxafixa, marketplace')
-      .eq('user_id', userId)
-      .order('atualizado_em', { ascending: false })
-      .limit(100),
-  ]);
-
-  const itens = itensRes.data ?? [];
-  const pagamentos = pagamentosRes.data ?? [];
-  const taxas = taxasRes.data ?? [];
-
-  const pagamentoPorPedido: Record<string, { amount: number; net_amount: number; marketplace_fee: number }> = {};
-  for (const p of pagamentos) {
-    if (!p.order_id) continue;
-    pagamentoPorPedido[p.order_id] = {
-      amount: Number(p.amount) || 0,
-      net_amount: Number(p.net_amount) || 0,
-      marketplace_fee: Number(p.marketplace_fee) || 0,
-    };
-  }
-
-  const taxasPorPedido: Record<string, Record<string, number>> = {};
-  for (const t of taxas) {
-    if (!t.order_id) continue;
-    if (!taxasPorPedido[t.order_id]) taxasPorPedido[t.order_id] = {};
-    const tipo = t.fee_type || 'outros';
-    taxasPorPedido[t.order_id][tipo] = (taxasPorPedido[t.order_id][tipo] || 0) + Number(t.amount);
-  }
-
-  const itensPorPedido: Record<string, typeof itens> = {};
-  for (const item of itens) {
-    if (!item.order_id) continue;
-    if (!itensPorPedido[item.order_id]) itensPorPedido[item.order_id] = [];
-    itensPorPedido[item.order_id].push(item);
-  }
-
-  const porStatus: Record<string, { count: number; total: number }> = {};
-  for (const p of pedidos) {
-    const s = p.status || 'UNKNOWN';
-    if (!porStatus[s]) porStatus[s] = { count: 0, total: 0 };
-    porStatus[s].count++;
-    porStatus[s].total += Number(p.total_amount) || 0;
-  }
-
-  const porProduto: Record<string, {
-    quantidade: number;
-    receita_bruta: number;
-    receita_liquida: number;
-    taxas_marketplace: number;
-    sku: string;
-    pedidos: number;
-  }> = {};
-
-  for (const pedido of pedidos) {
-    if (pedido.status === 'CANCELLED') continue;
-    const itensDoPedido = itensPorPedido[pedido.id] ?? [];
-    const pagamento = pagamentoPorPedido[pedido.id];
-    const totalBrutoPedido = itensDoPedido.reduce((acc, i) => acc + (Number(i.total_price) || 0), 0);
-
-    for (const item of itensDoPedido) {
-      const nome = item.item_name || item.sku || 'Sem nome';
-      if (!porProduto[nome]) {
-        porProduto[nome] = { quantidade: 0, receita_bruta: 0, receita_liquida: 0, taxas_marketplace: 0, sku: item.sku || '', pedidos: 0 };
-      }
-      const receitaBrutaItem = Number(item.total_price) || 0;
-      porProduto[nome].quantidade += Number(item.quantity) || 0;
-      porProduto[nome].receita_bruta += receitaBrutaItem;
-      porProduto[nome].pedidos += 1;
-
-      if (pagamento && totalBrutoPedido > 0) {
-        const proporcao = receitaBrutaItem / totalBrutoPedido;
-        porProduto[nome].receita_liquida += pagamento.net_amount * proporcao;
-        porProduto[nome].taxas_marketplace += pagamento.marketplace_fee * proporcao;
-      }
+  const receivables: { dateIso: string; amountCents: number; source: 'ml' }[] = [];
+  if (mlIds.length) {
+    const { data: recs } = await supabase
+      .from('payments').select('net_amount, net_amount_cents, release_date')
+      .in('integration_id', mlIds).not('release_date', 'is', null)
+      .gte('release_date', hoje).lte('release_date', limite);
+    for (const p of recs ?? []) {
+      const c = Math.max(0, centsOf(p.net_amount, p.net_amount_cents));
+      if (c > 0) receivables.push({ dateIso: String(p.release_date).slice(0, 10), amountCents: c, source: 'ml' });
     }
   }
 
-  const analisePorProduto = Object.entries(porProduto)
-    .sort((a, b) => b[1].receita_bruta - a[1].receita_bruta)
-    .slice(0, 20)
-    .map(([nome, d]) => ({
-      nome,
-      sku: d.sku,
-      quantidade_vendida: d.quantidade,
-      pedidos: d.pedidos,
-      receita_bruta: Number(d.receita_bruta.toFixed(2)),
-      receita_liquida_apos_marketplace: Number(d.receita_liquida.toFixed(2)),
-      taxas_marketplace: Number(d.taxas_marketplace.toFixed(2)),
-      margem_marketplace_pct: d.receita_bruta > 0
-        ? Number(((d.receita_liquida / d.receita_bruta) * 100).toFixed(1))
-        : 0,
-    }));
-
-  const taxasPorTipo: Record<string, number> = {};
-  for (const t of taxas) {
-    const tipo = t.fee_type || 'outros';
-    taxasPorTipo[tipo] = (taxasPorTipo[tipo] || 0) + Number(t.amount);
+  const { data: entries } = await supabase
+    .from('cash_flow_entries')
+    .select('type, status, amount, amount_cents, date, due_date')
+    .eq('user_id', userId);
+  const payables: { dateIso: string; amountCents: number; label: string }[] = [];
+  for (const e of entries ?? []) {
+    const venc = (e.due_date ?? e.date ?? '').slice(0, 10);
+    if (!venc || venc > limite) continue;
+    if (e.type === 'income' && e.status === 'pending') {
+      receivables.push({ dateIso: venc < hoje ? hoje : venc, amountCents: Math.max(0, centsOf(e.amount, e.amount_cents)), source: 'ml' });
+    } else if (e.type === 'expense' && e.status !== 'paid') {
+      payables.push({ dateIso: venc < hoje ? hoje : venc, amountCents: Math.max(0, centsOf(e.amount, e.amount_cents)), label: e.description ?? 'Conta' });
+    }
   }
 
-  const pedidosAtivos = pedidos.filter(p => p.status !== 'CANCELLED');
-  const faturamentoBruto = pedidosAtivos.reduce((acc, p) => acc + (Number(p.total_amount) || 0), 0);
-  const valorLiberado = pagamentos.reduce((acc, p) => acc + (Number(p.amount) || 0), 0);
-  const valorLiquido = pagamentos.reduce((acc, p) => acc + (Number(p.net_amount) || 0), 0);
-  const totalTaxas = pagamentos.reduce((acc, p) => acc + (Number(p.marketplace_fee) || 0), 0);
-  const totalCustosFixos = (custosFixosRes.data ?? [])
-    .filter((c: { is_recurring: boolean }) => c.is_recurring)
-    .reduce((acc: number, c: { amount: number }) => acc + c.amount, 0);
+  const { data: pos } = await supabase
+    .from('purchase_orders').select('sku, item_name, qty_units, unit_cost_cents, expected_at, payment_due_at')
+    .eq('user_id', userId).is('received_at', null);
+  for (const p of pos ?? []) {
+    const venc = (p.payment_due_at ?? p.expected_at ?? '').slice(0, 10);
+    const c = Math.round((Number(p.qty_units) || 0) * (Number(p.unit_cost_cents) || 0));
+    if (venc && venc <= limite && c > 0) {
+      payables.push({ dateIso: venc < hoje ? hoje : venc, amountCents: c, label: `Fornecedor · ${p.item_name || p.sku}` });
+    }
+  }
 
-  const pedidosComMargem = pedidos
-    .filter(p => p.status === 'COMPLETED' && pagamentoPorPedido[p.id])
-    .slice(0, 10)
-    .map(p => {
-      const pag = pagamentoPorPedido[p.id];
-      const taxasDoPedido = taxasPorPedido[p.id] ?? {};
-      const itensDoPedido = (itensPorPedido[p.id] ?? []).map(i => ({
-        nome: i.item_name,
-        sku: i.sku,
-        quantidade: i.quantity,
-        total: Number(i.total_price),
-      }));
-      return {
-        external_order_id: p.external_order_id,
-        data: p.order_created_at,
-        receita_bruta: Number(p.total_amount),
-        valor_liberado: pag.amount,
-        valor_liquido: pag.net_amount,
-        taxas_marketplace: pag.marketplace_fee,
-        margem_pct: Number(p.total_amount) > 0
-          ? Number(((pag.net_amount / Number(p.total_amount)) * 100).toFixed(1))
-          : 0,
-        taxas_detalhadas: taxasDoPedido,
-        itens: itensDoPedido,
-      };
-    });
+  const suggested = suggestedOpeningFromEntries(entries ?? [], hoje);
+  const openingBalanceCents = settings ? Number(settings.opening_balance_cents) : suggested;
 
-  const anuncios = processarAnuncios(anunciosRes.data ?? []);
-
-  return {
-    periodo: `${inicio60Dias.toISOString().split('T')[0]} até hoje`,
-    integracoes: (integracoes ?? []).map((i: { id: string; provider: string; shop_name: string }) => ({
-      canal: i.provider,
-      loja: i.shop_name,
-    })),
-    resumo_geral: {
-      total_pedidos: pedidos.length,
-      pedidos_ativos: pedidosAtivos.length,
-      pedidos_cancelados: pedidos.filter(p => p.status === 'CANCELLED').length,
-      faturamento_bruto: Number(faturamentoBruto.toFixed(2)),
-      valor_liberado_escrow: Number(valorLiberado.toFixed(2)),
-      valor_liquido_apos_taxas: Number(valorLiquido.toFixed(2)),
-      total_taxas_marketplace: Number(totalTaxas.toFixed(2)),
-      margem_liquida_pct: faturamentoBruto > 0
-        ? Number(((valorLiquido / faturamentoBruto) * 100).toFixed(1))
-        : 0,
-    },
-    pedidos_por_status: Object.entries(porStatus).map(([status, d]) => ({
-      status,
-      quantidade: d.count,
-      faturamento: Number(d.total.toFixed(2)),
-    })),
-    analise_por_produto: analisePorProduto,
-    taxas_detalhadas: {
-      comissao: Number((taxasPorTipo['commission'] || 0).toFixed(2)),
-      taxa_servico: Number((taxasPorTipo['service_fee'] || 0).toFixed(2)),
-      frete: Number((taxasPorTipo['shipping_fee'] || 0).toFixed(2)),
-      ajustes: Number((taxasPorTipo['adjustment'] || 0).toFixed(2)),
-      total_geral: Number(Object.values(taxasPorTipo).reduce((a, b) => a + b, 0).toFixed(2)),
-    },
-    pedidos_com_margem: pedidosComMargem,
-    pagamentos_recentes: pagamentos.slice(0, 10).map(p => ({
-      order_id: p.order_id,
-      amount: Number(p.amount),
-      net_amount: Number(p.net_amount),
-      marketplace_fee: Number(p.marketplace_fee),
-      status: p.status,
-      transaction_date: p.transaction_date,
-    })),
-    custos_fixos: {
-      lista: custosFixosRes.data ?? [],
-      total_mensal_recorrente: Number(totalCustosFixos.toFixed(2)),
-    },
-    custos_por_produto: produtoCostosRes.data ?? [],
-    configuracoes: configRes.data ?? null,
-    anuncios_cadastrados: anuncios,
-  };
-}
-
-// ─── Processa anúncios e calcula lucro estimado ───────────────────────────────
-function processarAnuncios(data: {
-  nome_anuncio: string;
-  custo: number;
-  valor_venda: number;
-  comissao_taxa: string;
-  antecipado: number;
-  afiliados: number;
-  imposto_pct: number;
-  custo_var: number;
-  taxafixa: number | null;
-  marketplace: string | null;
-}[]) {
-  const lista = data.map(a => {
-    const comissaoTaxaVal = parseFloat(String(a.comissao_taxa || '0')) || 0;
-    const impostoVal      = a.valor_venda * (a.imposto_pct / 100);
-    const lucro           = a.valor_venda
-      - a.custo
-      - a.custo_var
-      - comissaoTaxaVal
-      - (a.taxafixa || 0)
-      - a.antecipado
-      - a.afiliados
-      - impostoVal;
-    const margem_pct = a.valor_venda > 0
-      ? Number(((lucro / a.valor_venda) * 100).toFixed(1))
-      : 0;
-
-    return {
-      nome:           a.nome_anuncio,
-      marketplace:    a.marketplace || '—',
-      custo_produto:  a.custo,
-      valor_venda:    a.valor_venda,
-      comissao_taxa:  comissaoTaxaVal,
-      taxa_fixa:      a.taxafixa || 0,
-      antecipado:     a.antecipado,
-      afiliados:      a.afiliados,
-      imposto_pct:    a.imposto_pct,
-      imposto_valor:  Number(impostoVal.toFixed(2)),
-      custo_variavel: a.custo_var,
-      lucro_estimado: Number(lucro.toFixed(2)),
-      margem_pct,
-      viavel:         lucro > 0,
-    };
+  const r = computeForecast({
+    openingBalanceCents, todayIso: hoje, horizonDays: horizonte,
+    receivables, payables, ritmoLiquidoDiaCents: 0, tendenciaComecaEmDias: horizonte,
   });
 
-  const viaveis   = lista.filter(a => a.viavel);
-  const inviaveis = lista.filter(a => !a.viavel);
-
   return {
-    total: lista.length,
-    lista,
-    resumo: {
-      melhor_margem: viaveis.length > 0
-        ? viaveis.reduce((a, b) => a.margem_pct > b.margem_pct ? a : b).nome
-        : null,
-      pior_margem: lista.length > 0
-        ? lista.reduce((a, b) => a.margem_pct < b.margem_pct ? a : b).nome
-        : null,
-      total_inviaveis:  inviaveis.length,
-      nomes_inviaveis:  inviaveis.map(a => a.nome),
-    },
+    saldo_inicial: brl(openingBalanceCents),
+    saldo_inicial_confirmado: !!settings,
+    primeiro_dia_negativo: r.primeiroNegativo
+      ? { data: r.primeiroNegativo.dateIso, dias_a_frente: r.primeiroNegativo.offset, saldo: brl(r.primeiroNegativo.saldoCents) }
+      : null,
+    pior_saldo: { data: r.saldoMinimo.dateIso, saldo: brl(r.saldoMinimo.saldoCents) },
+    entra_garantido_30d: brl(r.totalEntradasCents),
+    sai_30d: brl(r.totalSaidasCents),
+    saldo_em_30d: brl(r.saldoFinalCents),
+    aviso: settings ? null : 'O vendedor não confirmou o saldo real da conta na Previsão de caixa, então o ponto de partida é uma estimativa pelo Fluxo de Caixa. Sugira confirmar pra ficar preciso.',
+    so_mercado_livre: 'Recebíveis de Shopee/TikTok não entram nesta projeção do Finn — para o quadro completo, a tela Previsão de caixa.',
   };
 }
 
-// ─── Retry com backoff exponencial ───────────────────────────────────────────
-const MAX_RETRIES = 3;
-const RETRY_STATUS = new Set([429, 503]);
-
-async function callGeminiWithRetry(
-  apiKey: string,
-  body: object,
-): Promise<{ ok: boolean; status: number; data?: unknown; errorText?: string }> {
-  let lastStatus = 500;
-  let lastErrorText = '';
-
-  for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
-    const response = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent`,
-      {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'x-goog-api-key': apiKey,
-        },
-        body: JSON.stringify(body),
-      }
-    );
-
-    if (response.ok) {
-      const data = await response.json();
-      return { ok: true, status: response.status, data };
+function suggestedOpeningFromEntries(entries: Record<string, unknown>[], hoje: string): number {
+  let acc = 0;
+  for (const e of entries) {
+    const d = String(e.date ?? '').slice(0, 10);
+    if (d && d <= hoje && (e.status === 'received' || e.status === 'paid')) {
+      const c = Math.max(0, centsOf(e.amount, e.amount_cents));
+      acc += e.type === 'income' ? c : -c;
     }
-
-    lastStatus = response.status;
-    lastErrorText = await response.text();
-    console.error(`Gemini tentativa ${attempt}/${MAX_RETRIES} — status ${lastStatus}:`, lastErrorText);
-
-    if (!RETRY_STATUS.has(lastStatus) || attempt === MAX_RETRIES) break;
-
-    const delay = Math.pow(2, attempt - 1) * 1000;
-    console.log(`Aguardando ${delay}ms antes da próxima tentativa...`);
-    await new Promise(resolve => setTimeout(resolve, delay));
   }
-
-  return { ok: false, status: lastStatus, errorText: lastErrorText };
+  return acc;
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
+// ── plano_reposicao ────────────────────────────────────────────────────────
+async function toolPlanoReposicao(supabase: ReturnType<typeof createClient>, userId: string) {
+  const { data: conns } = await supabase.from('integration_connections').select('id').eq('user_id', userId);
+  const connIds = (conns ?? []).map((c) => c.id);
+  const desde = addDaysIso(isoDay(new Date()), -60);
+
+  const [shopeeRes, mlRes, tiktokRes, costRes, invRes, stockRes, poRes] = await Promise.all([
+    connIds.length
+      ? supabase.from('orders').select('status, order_created_at, order_items(sku, quantity, total_price_cents)').in('integration_id', connIds).gte('order_created_at', desde)
+      : Promise.resolve({ data: [] }),
+    supabase.from('ml_orders').select('sku, nome_produto, quantidade, total_faturado_cents, taxa_ml_cents, frete_ml_cents, custo_unitario_cents, status_pedido, data_pedido').eq('user_id', userId).gte('data_pedido', desde),
+    supabase.from('tiktok_orders').select('sku, nome_produto, quantidade, total_faturado_cents, custo_unitario_cents, status_pedido, data_pedido').eq('user_id', userId).gte('data_pedido', desde),
+    supabase.from('product_costs').select('sku, cost, packaging_cost, other_costs').eq('user_id', userId),
+    supabase.from('inventory_settings').select('sku, item_name, stock_units, stock_updated_at, lead_time_days, safety_days, moq_units').eq('user_id', userId),
+    supabase.from('product_stock').select('sku, item_name, stock_units, synced_at').eq('user_id', userId),
+    supabase.from('purchase_orders').select('sku, qty_units').eq('user_id', userId).is('received_at', null),
+  ]);
+
+  interface Acc { sku: string; nome: string; units: number; grossCents: number; netCents: number; mpCostSum: number; mpCostUnits: number }
+  const acc = new Map<string, Acc>();
+  const bump = (rawSku: string | null | undefined, nome: string | null | undefined, units: number, gross: number, net: number, mpCost?: number) => {
+    const key = skuKey(rawSku);
+    if (!key || units <= 0) return;
+    const cur = acc.get(key) ?? { sku: (rawSku ?? '').trim(), nome: (nome ?? rawSku ?? '').trim(), units: 0, grossCents: 0, netCents: 0, mpCostSum: 0, mpCostUnits: 0 };
+    cur.units += units; cur.grossCents += Math.max(0, gross); cur.netCents += Math.max(0, net);
+    if (mpCost && mpCost > 0) { cur.mpCostSum += mpCost * units; cur.mpCostUnits += units; }
+    acc.set(key, cur);
+  };
+  for (const o of (shopeeRes.data as { status: string | null; order_items?: { sku: string | null; quantity: number | null; total_price_cents: number | null }[] }[]) ?? []) {
+    if (statusExcluido(o.status)) continue;
+    for (const it of o.order_items ?? []) {
+      const g = Math.round(Number(it.total_price_cents) || 0);
+      bump(it.sku, it.sku, Number(it.quantity) || 0, g, Math.round(g * 0.82));
+    }
+  }
+  for (const r of mlRes.data ?? []) {
+    if (statusExcluido(r.status_pedido)) continue;
+    const g = Math.round(Number(r.total_faturado_cents) || 0);
+    const net = Math.max(0, g - Math.round(Number(r.taxa_ml_cents) || 0) - Math.round(Number(r.frete_ml_cents) || 0));
+    bump(r.sku, r.nome_produto, Number(r.quantidade) || 0, g, net, Math.round(Number(r.custo_unitario_cents) || 0));
+  }
+  for (const r of tiktokRes.data ?? []) {
+    if (statusExcluido(r.status_pedido)) continue;
+    const g = Math.round(Number(r.total_faturado_cents) || 0);
+    bump(r.sku, r.nome_produto, Number(r.quantidade) || 0, g, Math.round(g * 0.85), Math.round(Number(r.custo_unitario_cents) || 0));
+  }
+  if (acc.size === 0) return { aviso: 'Sem histórico de vendas por SKU nos últimos 60 dias. O vendedor precisa sincronizar um marketplace.' };
+
+  const costByKey = new Map<string, number>();
+  for (const c of costRes.data ?? []) {
+    const k = skuKey(c.sku);
+    if (k && !costByKey.has(k)) costByKey.set(k, Math.round(((Number(c.cost) || 0) + (Number(c.packaging_cost) || 0) + (Number(c.other_costs) || 0)) * 100));
+  }
+  const invByKey = new Map((invRes.data ?? []).map((r) => [skuKey(r.sku), r]));
+  const stockByKey = new Map((stockRes.data ?? []).map((r) => [skuKey(r.sku), r]));
+  const transitByKey = new Map<string, number>();
+  for (const p of poRes.data ?? []) { const k = skuKey(p.sku); transitByKey.set(k, (transitByKey.get(k) ?? 0) + (Number(p.qty_units) || 0)); }
+
+  const skus: ReplenishmentSku[] = [];
+  for (const [key, a] of acc) {
+    const settings = invByKey.get(key);
+    const synced = stockByKey.get(key);
+    const manualAt = settings?.stock_updated_at ? new Date(settings.stock_updated_at).getTime() : 0;
+    const syncedAt = synced?.synced_at ? new Date(synced.synced_at).getTime() : 0;
+    const temManual = manualAt > 0 && settings?.stock_units != null;
+    const usaSync = !!synced && (!temManual || syncedAt >= manualAt);
+    const stock = usaSync ? Number(synced!.stock_units) || 0 : Number(settings?.stock_units) || 0;
+    const cadastrado = costByKey.get(key);
+    const mpCost = a.mpCostUnits > 0 ? Math.round(a.mpCostSum / a.mpCostUnits) : null;
+    const landed = cadastrado ?? mpCost;
+    const netUnit = a.units > 0 ? Math.round(a.netCents / a.units) : 0;
+    skus.push({
+      sku: (a.sku || key).toUpperCase(), itemName: settings?.item_name || a.nome || key,
+      unitsSold: a.units, windowDays: 60, daysOutOfStock: 0,
+      contributionMarginCents: landed == null ? null : netUnit - landed,
+      purchaseUnitCostCents: landed,
+      stockUnits: stock, stockSource: usaSync ? 'sync' : temManual ? 'manual' : 'nenhum',
+      stockUpdatedDaysAgo: 0,
+      inTransitUnits: transitByKey.get(key) ?? 0,
+      leadTimeDays: Number(settings?.lead_time_days) || 14,
+      safetyDays: Number(settings?.safety_days) || 7,
+      moqUnits: settings?.moq_units ?? null,
+    });
+  }
+
+  const plan = buildReplenishmentPlan(skus, { todayIso: isoDay(new Date()), reviewCycleDays: 14, stockStaleDays: 10, minWindowDays: 7 });
+  const pedir = plan.pedidos.slice(0, 12).map((r) => ({
+    produto: r.itemName, urgencia: r.urgencia,
+    cobertura_dias: Number.isFinite(r.coberturaDias) ? Math.round(r.coberturaDias) : null,
+    ruptura: r.rupturaIso, pedir_unidades: r.sugestaoUnidades,
+    custo: r.custoCompraCents == null ? 'custo não cadastrado' : brl(r.custoCompraCents),
+  }));
+
+  return {
+    skus_no_ponto_de_reposicao: plan.pedidos.length,
+    custo_total: brl(plan.custoTotalCents),
+    pedidos_sem_custo_cadastrado: plan.pedidosSemCusto.length,
+    lista: pedir,
+    aviso: skus.every((s) => s.stockSource === 'nenhum')
+      ? 'Nenhum SKU tem estoque informado (nem sincronizado nem digitado), então a cobertura assume estoque 0. Sugira sincronizar ou informar o estoque na tela Reposição de estoque.'
+      : null,
+  };
+}
+
+// ─── Dados p/ resumo_financeiro (mantido do Finn 1.0, enxugado) ──────────────
+async function buscarResumoFinanceiro(supabase: ReturnType<typeof createClient>, userId: string) {
+  const hoje = new Date();
+  const dataInicio = addDaysIso(isoDay(hoje), -60);
+
+  const { data: integracoes } = await supabase
+    .from('integration_connections').select('id, provider, shop_name, status')
+    .eq('user_id', userId).eq('status', 'connected');
+  const integracaoIds = (integracoes ?? []).map((i: { id: string }) => i.id);
+
+  const [anunciosRes, custosFixosRes, produtoCostosRes] = await Promise.all([
+    supabase.from('anuncios').select('nome_anuncio, custo, valor_venda, comissao_taxa, antecipado, afiliados, imposto_pct, custo_var, taxafixa, marketplace').eq('user_id', userId).order('atualizado_em', { ascending: false }).limit(100),
+    supabase.from('fixed_costs').select('name, amount, category, is_recurring').eq('user_id', userId),
+    supabase.from('product_costs').select('sku, item_name, cost, packaging_cost, other_costs').eq('user_id', userId).limit(100),
+  ]);
+  const anuncios = processarAnuncios(anunciosRes.data ?? []);
+  const totalCustosFixos = (custosFixosRes.data ?? []).filter((c: { is_recurring: boolean }) => c.is_recurring).reduce((s: number, c: { amount: number }) => s + Number(c.amount), 0);
+
+  if (integracaoIds.length === 0) {
+    return { periodo: `${dataInicio} até hoje`, aviso: 'Nenhum marketplace conectado — sem dados de venda. O vendedor pode conectar em Integrações.', custos_fixos_mensais: Number(totalCustosFixos.toFixed(2)), anuncios_cadastrados: anuncios };
+  }
+
+  const { data: pedidos } = await supabase
+    .from('orders').select('id, status, total_amount, order_created_at, integration_id')
+    .in('integration_id', integracaoIds).gte('order_created_at', dataInicio)
+    .order('order_created_at', { ascending: false }).limit(1000);
+  const pedidoIds = (pedidos ?? []).map((p: { id: string }) => p.id);
+  const filtro = pedidoIds.length ? pedidoIds : ['00000000-0000-0000-0000-000000000000'];
+
+  const [itensRes, pagamentosRes] = await Promise.all([
+    supabase.from('order_items').select('order_id, item_name, sku, quantity, total_price').in('order_id', filtro).limit(4000),
+    supabase.from('payments').select('order_id, amount, net_amount, marketplace_fee').in('order_id', filtro).limit(2000),
+  ]);
+  const itens = itensRes.data ?? [];
+  const pagamentos = pagamentosRes.data ?? [];
+
+  const pagPorPedido: Record<string, { net: number; fee: number }> = {};
+  for (const p of pagamentos) {
+    if (!p.order_id) continue;
+    pagPorPedido[p.order_id] = { net: Number(p.net_amount) || 0, fee: Number(p.marketplace_fee) || 0 };
+  }
+  const itensPorPedido: Record<string, typeof itens> = {};
+  for (const it of itens) { if (!it.order_id) continue; (itensPorPedido[it.order_id] ??= []).push(it); }
+
+  const porStatus: Record<string, number> = {};
+  const porProduto: Record<string, { qtd: number; bruto: number; liquido: number }> = {};
+  let fatBruto = 0, liquido = 0, taxas = 0;
+  for (const pd of pedidos ?? []) {
+    porStatus[pd.status || 'UNKNOWN'] = (porStatus[pd.status || 'UNKNOWN'] || 0) + 1;
+    if (statusExcluido(pd.status)) continue;
+    fatBruto += Number(pd.total_amount) || 0;
+    const pag = pagPorPedido[pd.id];
+    if (pag) { liquido += pag.net; taxas += pag.fee; }
+    const its = itensPorPedido[pd.id] ?? [];
+    const brutoPedido = its.reduce((s, i) => s + (Number(i.total_price) || 0), 0);
+    for (const it of its) {
+      const nome = it.item_name || it.sku || 'Sem nome';
+      const rec = (porProduto[nome] ??= { qtd: 0, bruto: 0, liquido: 0 });
+      const b = Number(it.total_price) || 0;
+      rec.qtd += Number(it.quantity) || 0; rec.bruto += b;
+      if (pag && brutoPedido > 0) rec.liquido += pag.net * (b / brutoPedido);
+    }
+  }
+  const topProdutos = Object.entries(porProduto).sort((a, b) => b[1].bruto - a[1].bruto).slice(0, 12).map(([nome, d]) => ({
+    nome, unidades: d.qtd, faturamento_bruto: Number(d.bruto.toFixed(2)),
+    receita_liquida_apos_taxas: Number(d.liquido.toFixed(2)),
+    margem_apos_marketplace_pct: d.bruto > 0 ? Number(((d.liquido / d.bruto) * 100).toFixed(1)) : 0,
+  }));
+
+  return {
+    periodo: `${dataInicio} até hoje`,
+    lojas: (integracoes ?? []).map((i: { provider: string; shop_name: string }) => ({ canal: i.provider, loja: i.shop_name })),
+    faturamento_bruto: Number(fatBruto.toFixed(2)),
+    receita_liquida_apos_taxas: Number(liquido.toFixed(2)),
+    total_taxas_marketplace: Number(taxas.toFixed(2)),
+    margem_apos_marketplace_pct: fatBruto > 0 ? Number(((liquido / fatBruto) * 100).toFixed(1)) : 0,
+    custos_fixos_mensais: Number(totalCustosFixos.toFixed(2)),
+    pedidos_por_status: porStatus,
+    top_produtos: topProdutos,
+    custos_por_produto_cadastrados: (produtoCostosRes.data ?? []).length,
+    anuncios_cadastrados: anuncios,
+    nota: 'Margem "após marketplace" já desconta comissão/taxa/frete do marketplace, mas NÃO o custo de compra do produto. Para lucro final, o vendedor precisa do custo cadastrado (Custos de produto) ou informar na conversa.',
+  };
+}
+
+function processarAnuncios(data: {
+  nome_anuncio: string; custo: number; valor_venda: number; comissao_taxa: string;
+  antecipado: number; afiliados: number; imposto_pct: number; custo_var: number;
+  taxafixa: number | null; marketplace: string | null;
+}[]) {
+  const lista = data.map((a) => {
+    const comissao = parseFloat(String(a.comissao_taxa || '0')) || 0;
+    const imposto = a.valor_venda * (a.imposto_pct / 100);
+    const lucro = a.valor_venda - a.custo - a.custo_var - comissao - (a.taxafixa || 0) - a.antecipado - a.afiliados - imposto;
+    return {
+      nome: a.nome_anuncio, marketplace: a.marketplace || '—',
+      valor_venda: a.valor_venda, custo_produto: a.custo,
+      lucro_estimado_unidade: Number(lucro.toFixed(2)),
+      margem_pct: a.valor_venda > 0 ? Number(((lucro / a.valor_venda) * 100).toFixed(1)) : 0,
+      no_prejuizo: lucro < 0,
+    };
+  });
+  return {
+    total: lista.length,
+    no_prejuizo: lista.filter((a) => a.no_prejuizo).map((a) => a.nome),
+    lista: lista.slice(0, 40),
+  };
+}
+
+// ─── Loop de function-calling ────────────────────────────────────────────────
+async function executarFerramenta(nome: string, supabase: ReturnType<typeof createClient>, userId: string) {
+  try {
+    if (nome === 'resumo_financeiro') return await buscarResumoFinanceiro(supabase, userId);
+    if (nome === 'previsao_caixa') return await toolPrevisaoCaixa(supabase, userId);
+    if (nome === 'plano_reposicao') return await toolPlanoReposicao(supabase, userId);
+    return { erro: `ferramenta desconhecida: ${nome}` };
+  } catch (e) {
+    console.error(`Ferramenta ${nome} falhou:`, e);
+    return { erro: 'não consegui buscar esse dado agora' };
+  }
+}
+
+const MODEL = 'gemini-2.5-flash';
+const MAX_TOOL_ROUNDS = 4;
+
+// deno-lint-ignore no-explicit-any
+async function geminiCall(apiKey: string, body: any): Promise<any> {
+  for (let attempt = 1; attempt <= 3; attempt++) {
+    const res = await fetch(
+      `https://generativelanguage.googleapis.com/v1beta/models/${MODEL}:generateContent`,
+      { method: 'POST', headers: { 'Content-Type': 'application/json', 'x-goog-api-key': apiKey }, body: JSON.stringify(body) },
+    );
+    if (res.ok) return res.json();
+    const txt = await res.text();
+    console.error(`Gemini ${attempt}/3 status ${res.status}:`, txt);
+    if (![429, 503].includes(res.status) || attempt === 3) {
+      const err = new Error('gemini_failed') as Error & { status: number };
+      err.status = res.status;
+      throw err;
+    }
+    await new Promise((r) => setTimeout(r, 2 ** (attempt - 1) * 1000));
+  }
+}
 
 serve(async (req: Request) => {
   const preflight = handleCorsPreflightRequest(req);
   if (preflight) return preflight;
-
   const corsHeaders = getCorsHeaders(req);
+  const json = (obj: unknown, status = 200) =>
+    new Response(JSON.stringify(obj), { status, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
 
   try {
     const authHeader = req.headers.get('Authorization');
-    if (!authHeader?.startsWith('Bearer ')) {
-      return new Response(
-        JSON.stringify({ error: 'Não autorizado.' }),
-        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
-    }
+    if (!authHeader?.startsWith('Bearer ')) return json({ error: 'Não autorizado.' }, 401);
 
     const supabase = createClient(
-      Deno.env.get('SUPABASE_URL')!,
-      Deno.env.get('SUPABASE_ANON_KEY')!,
-      { global: { headers: { Authorization: authHeader } } }
+      Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_ANON_KEY')!,
+      { global: { headers: { Authorization: authHeader } } },
     );
-
     const { data: { user }, error: userError } = await supabase.auth.getUser();
-    if (userError || !user) {
-      return new Response(
-        JSON.stringify({ error: 'Token inválido ou expirado.' }),
-        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
-    }
-
+    if (userError || !user) return json({ error: 'Token inválido ou expirado.' }, 401);
     const userId = user.id;
 
-    const hasAccess = await hasActivePlanAccess(
-      Deno.env.get('SUPABASE_URL')!,
-      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!,
-      userId
-    );
-    if (!hasAccess) {
-      return new Response(
-        JSON.stringify({ error: 'Recurso disponível apenas para contas com plano ativo.' }),
-        { status: 402, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
+    if (!(await hasActivePlanAccess(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!, userId))) {
+      return json({ error: 'Recurso disponível apenas para contas com plano ativo.' }, 402);
     }
 
     const rawBody = await req.json();
-
     if (rawBody.action === 'clear') {
-      await supabase
-        .from('assistant_conversations')
-        .delete()
-        .eq('user_id', userId);
-      return new Response(
-        JSON.stringify({ ok: true }),
-        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
+      await supabase.from('assistant_conversations').delete().eq('user_id', userId);
+      return json({ ok: true });
     }
 
-    const validationResult = assistantSchema.safeParse(rawBody);
-    if (!validationResult.success) {
-      return new Response(
-        JSON.stringify({ error: 'Dados inválidos' }),
-        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
-    }
-
-    const { pergunta } = validationResult.data;
-
-    const { data: convRow } = await supabase
-      .from('assistant_conversations')
-      .select('messages')
-      .eq('user_id', userId)
-      .maybeSingle();
-
-    const historicoSalvo: { role: 'user' | 'assistant'; content: string }[] =
-      (convRow?.messages as { role: 'user' | 'assistant'; content: string }[]) ?? [];
-
-    console.log('Buscando dados financeiros do usuário:', userId);
-    const dadosFinanceiros = await buscarDadosFinanceiros(supabase, userId);
-    console.log('Dados coletados:', {
-      integracoes: dadosFinanceiros.integracoes.length,
-      pedidos: dadosFinanceiros.resumo_geral.total_pedidos,
-      faturamento: dadosFinanceiros.resumo_geral.faturamento_bruto,
-      produtos: dadosFinanceiros.analise_por_produto.length,
-      anuncios: dadosFinanceiros.anuncios_cadastrados.total,
-    });
-
-    const contents = [];
-
-    contents.push({
-      role: 'user',
-      parts: [{
-        text: `${systemPrompt}\n\nDADOS FINANCEIROS DO VENDEDOR (últimos 60 dias):\n${JSON.stringify(dadosFinanceiros, null, 2)}\n\n---\nAgora responda as perguntas do vendedor com base nesses dados.`
-      }]
-    });
-
-    contents.push({
-      role: 'model',
-      parts: [{ text: 'Entendido! Tenho acesso aos seus dados financeiros reais. Como posso te ajudar?' }]
-    });
-
-    for (const msg of historicoSalvo.slice(-20)) {
-      contents.push({
-        role: msg.role === 'user' ? 'user' : 'model',
-        parts: [{ text: msg.content }]
-      });
-    }
-
-    contents.push({
-      role: 'user',
-      parts: [{ text: pergunta }]
-    });
+    const parsed = assistantSchema.safeParse(rawBody);
+    if (!parsed.success) return json({ error: 'Dados inválidos' }, 400);
+    const { pergunta } = parsed.data;
 
     const GEMINI_API_KEY = Deno.env.get('GEMINI_API_KEY');
-    if (!GEMINI_API_KEY) {
-      return new Response(
-        JSON.stringify({ error: 'API de IA não configurada.' }),
-        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
-    }
+    if (!GEMINI_API_KEY) return json({ error: 'API de IA não configurada.' }, 500);
 
-    const geminiResult = await callGeminiWithRetry(GEMINI_API_KEY, {
-      contents,
-      generationConfig: { temperature: 0.4, maxOutputTokens: 1024 },
-    });
+    const { data: convRow } = await supabase
+      .from('assistant_conversations').select('messages').eq('user_id', userId).maybeSingle();
+    const historico: { role: 'user' | 'assistant'; content: string }[] =
+      (convRow?.messages as { role: 'user' | 'assistant'; content: string }[]) ?? [];
 
-    if (!geminiResult.ok) {
-      console.error('Gemini falhou após todas as tentativas. Status:', geminiResult.status);
+    // deno-lint-ignore no-explicit-any
+    const contents: any[] = [
+      ...historico.slice(-16).map((m) => ({ role: m.role === 'user' ? 'user' : 'model', parts: [{ text: m.content }] })),
+      { role: 'user', parts: [{ text: pergunta }] },
+    ];
 
-      if (geminiResult.status === 503) {
-        return new Response(
-          JSON.stringify({ error: 'O assistente está com alta demanda no momento. Aguarde alguns segundos e tente novamente.' }),
-          { status: 503, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-        );
+    let resposta = '';
+    for (let round = 0; round <= MAX_TOOL_ROUNDS; round++) {
+      const data = await geminiCall(GEMINI_API_KEY, {
+        systemInstruction: { parts: [{ text: systemPrompt }] },
+        contents,
+        tools: TOOLS,
+        generationConfig: { temperature: 0.3, maxOutputTokens: 1200 },
+      });
+      const parts = data?.candidates?.[0]?.content?.parts ?? [];
+      const calls = parts.filter((p: { functionCall?: unknown }) => p.functionCall);
+
+      if (calls.length === 0 || round === MAX_TOOL_ROUNDS) {
+        resposta = parts.filter((p: { text?: string }) => p.text).map((p: { text: string }) => p.text).join('\n').trim();
+        break;
       }
-      if (geminiResult.status === 429) {
-        return new Response(
-          JSON.stringify({ error: 'Limite de requisições atingido. Aguarde um momento e tente novamente.' }),
-          { status: 429, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-        );
+
+      contents.push({ role: 'model', parts });
+      const responses = [];
+      for (const c of calls) {
+        const out = await executarFerramenta(c.functionCall.name, supabase, userId);
+        responses.push({ functionResponse: { name: c.functionCall.name, response: { resultado: out } } });
       }
-      return new Response(
-        JSON.stringify({ error: 'Erro ao consultar a IA. Tente novamente em instantes.' }),
-        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
+      contents.push({ role: 'user', parts: responses });
     }
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const data = geminiResult.data as any;
-    const resposta = data.candidates?.[0]?.content?.parts?.[0]?.text;
-
-    if (!resposta) {
-      return new Response(
-        JSON.stringify({ error: 'Resposta vazia da IA.' }),
-        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
-    }
+    if (!resposta) return json({ error: 'Resposta vazia da IA.' }, 500);
 
     const novoHistorico = [
-      ...historicoSalvo,
+      ...historico,
       { role: 'user' as const, content: pergunta },
       { role: 'assistant' as const, content: resposta },
     ].slice(-40);
-
-    await supabase
-      .from('assistant_conversations')
-      .upsert(
-        { user_id: userId, messages: novoHistorico, updated_at: new Date().toISOString() },
-        { onConflict: 'user_id' }
-      );
-
-    console.log('Resposta gerada. Tamanho:', resposta.length, 'chars');
-
-    return new Response(
-      JSON.stringify({ resposta }),
-      { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+    await supabase.from('assistant_conversations').upsert(
+      { user_id: userId, messages: novoHistorico, updated_at: new Date().toISOString() },
+      { onConflict: 'user_id' },
     );
 
+    return json({ resposta });
   } catch (error) {
-    // Nunca repassar error.message pro client aqui: pode vazar detalhe interno
-    // da API de IA ou do banco.
-    console.error('Erro no financial-assistant:', error);
-    return new Response(
-      JSON.stringify({ error: 'Erro ao gerar resposta do assistente' }),
-      { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-    );
+    const status = (error as { status?: number })?.status;
+    console.error('financial-assistant erro:', error);
+    if (status === 503) return json({ error: 'O assistente está com alta demanda. Tente de novo em alguns segundos.' }, 503);
+    if (status === 429) return json({ error: 'Muitas perguntas em pouco tempo. Aguarde um momento.' }, 429);
+    return json({ error: 'Erro ao gerar resposta do assistente' }, 500);
   }
 });
