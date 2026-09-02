@@ -1,7 +1,7 @@
 import {
   User, TrendingUp, Calculator, Receipt, Sparkles, BarChart3, HandCoins, Wallet,
   Plug, LayoutDashboard, Shield, Zap, Gauge, CalendarDays, Landmark, Wrench,
-  FlaskConical, Target, type LucideIcon,
+  FlaskConical, Target, CalendarClock, type LucideIcon,
 } from 'lucide-react';
 
 // Modelo de navegação da área interna — fonte única, consumida pela
@@ -29,7 +29,8 @@ export const sidebarGroups: NavGroup[] = [
     icon: Gauge,
     items: [
       { title: 'Dashboard', url: '/dashboard', icon: LayoutDashboard },
-      { title: 'Meta do mês', url: '/meta', icon: Target, badge: 'Novo' },
+      { title: 'Meta do mês', url: '/meta', icon: Target },
+      { title: 'Previsão de caixa', url: '/previsao', icon: CalendarClock, badge: 'Novo' },
     ],
   },
   {
@@ -74,6 +75,7 @@ export const contaItems: NavItem[] = [
 // (startsWith) porque virou `/gestao/:marketplace/:view` — ver isSectionActive.
 export const sectionRoutes: Record<string, string[]> = {
   '/dashboard': ['/dashboard'],
+  '/previsao': ['/previsao'],
   '/fluxo-caixa': ['/fluxo-caixa', '/fluxo-caixa/lancamentos', '/fluxo-caixa/categorias'],
 };
 

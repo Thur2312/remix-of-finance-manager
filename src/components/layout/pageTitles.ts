@@ -3,6 +3,7 @@
 // vem de lá; isto cobre as bordas (ex.: /setup-payment).
 const PAGE_TITLES: Record<string, string> = {
   '/dashboard': 'Dashboard',
+  '/previsao': 'Previsão de caixa',
   '/vendas': 'Vendas',
   '/mercadolivre/resultados': 'Gestão Mercado Livre',
   '/mercadolivre/variacoes': 'Gestão Mercado Livre',

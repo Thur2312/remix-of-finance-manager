@@ -368,6 +368,27 @@ export type Database = {
           },
         ]
       }
+      cash_flow_settings: {
+        Row: {
+          opening_balance_cents: number
+          opening_balance_date: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          opening_balance_cents?: number
+          opening_balance_date?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          opening_balance_cents?: number
+          opening_balance_date?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       companies: {
         Row: {
           cnpj: string
@@ -1061,6 +1082,7 @@ export type Database = {
           net_amount_cents: number
           order_id: string | null
           payment_method: string
+          release_date: string | null
           status: string
           synced_at: string
           transaction_date: string
@@ -1080,6 +1102,7 @@ export type Database = {
           net_amount_cents?: number
           order_id?: string | null
           payment_method?: string
+          release_date?: string | null
           status?: string
           synced_at?: string
           transaction_date: string
@@ -1099,6 +1122,7 @@ export type Database = {
           net_amount_cents?: number
           order_id?: string | null
           payment_method?: string
+          release_date?: string | null
           status?: string
           synced_at?: string
           transaction_date?: string

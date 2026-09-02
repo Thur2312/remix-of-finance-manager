@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
-import { useCashFlowCategories, useCashFlowEntries, expandRecurringEntries } from '@/hooks/useCashFlow';
+import { useCashFlowCategories, useCashFlowEntries, expandRecurringEntries, computeAccumulatedBalance } from '@/hooks/useCashFlow';
 import { CashFlowCharts } from '@/components/fluxo-caixa/CashFlowCharts';
 import { Plus, ArrowRight } from 'lucide-react';
 import { PageShell } from '@/components/layout/PageShell';
@@ -57,9 +57,7 @@ function FluxoCaixaDashboardContent() {
   const totalIncome = currentMonthEntries.filter((e) => e.type === 'income' && (e.status === 'received' || e.status === 'paid')).reduce((sum, e) => sum + Number(e.amount), 0);
   const totalExpense = currentMonthEntries.filter((e) => e.type === 'expense' && e.status === 'paid').reduce((sum, e) => sum + Number(e.amount), 0);
   // Saldo atual da conta: acumulado de todas as entradas e saídas já efetivadas até hoje (não reseta a cada mês)
-  const currentBalance = expandedEntries
-    .filter((e) => parseISO(e.date) <= now && (e.status === 'received' || e.status === 'paid'))
-    .reduce((sum, e) => sum + (e.type === 'income' ? Number(e.amount) : -Number(e.amount)), 0);
+  const currentBalance = computeAccumulatedBalance(expandedEntries, now);
   const pendingReceivables = expandedEntries.filter((e) => e.type === 'income' && e.status === 'pending').reduce((sum, e) => sum + Number(e.amount), 0);
   const overduePayables = expandedEntries.filter((e) => {
     if (e.type !== 'expense' || e.status === 'paid') return false;

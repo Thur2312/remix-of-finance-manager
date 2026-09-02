@@ -677,6 +677,10 @@ if (!step || step === 'orders') {
               status: "released",
               description: `Escrow liberado - Pedido ${orderSn}`,
               transaction_date: releaseDate,
+              // Mesma data em release_date pra manter a coluna coerente com o ML
+              // (a previsão de caixa Shopee entra na Fase 2; aqui só o escrow
+              // já liberado, então release_date == transaction_date).
+              release_date: releaseDate,
               synced_at: now.toISOString(),
             }, { onConflict: "integration_id,external_transaction_id" })
 

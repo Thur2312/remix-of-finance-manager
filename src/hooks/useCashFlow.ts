@@ -260,6 +260,18 @@ export function expandRecurringEntries(
   return result;
 }
 
+/**
+ * Saldo acumulado da conta numa data: soma de tudo que já entrou e saiu de fato
+ * (status recebido/pago) até `asOf`. Não reseta por mês. Espera as entradas já
+ * expandidas por `expandRecurringEntries`. Usado no Dashboard do Fluxo de Caixa
+ * e como sugestão de âncora na Previsão de Caixa — mesma conta nos dois lugares.
+ */
+export function computeAccumulatedBalance(expandedEntries: CashFlowEntry[], asOf: Date): number {
+  return expandedEntries
+    .filter((e) => parseISO(e.date) <= asOf && (e.status === 'received' || e.status === 'paid'))
+    .reduce((sum, e) => sum + (e.type === 'income' ? Number(e.amount) : -Number(e.amount)), 0);
+}
+
 export function useCashFlowEntries(filters?: {
   startDate?: string;
   endDate?: string;

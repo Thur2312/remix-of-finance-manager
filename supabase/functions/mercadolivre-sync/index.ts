@@ -445,6 +445,10 @@ async function upsertPayment(supabase, connection, payment) {
     net_amount: netAmount,
     status: col?.status,
     transaction_date: col?.date_approved ?? col?.date_created,
+    // Previsão de caixa: quando o dinheiro fica disponível pro vendedor. O ML
+    // entrega isso pronto; pagamento aprovado mas ainda retido tem essa data no
+    // futuro (money_release_status: "pending").
+    release_date: col?.money_release_date ?? null,
     description: `Pagamento ML pedido ${col?.order_id}`,
     synced_at: now,
   }, { onConflict: "integration_id,external_transaction_id" });
