@@ -10,6 +10,7 @@ const opts: ReplenishmentOptions = {
   todayIso: '2026-09-02',
   reviewCycleDays: 14,
   stockStaleDays: 10,
+  minWindowDays: 7,
 };
 
 const sku = (p: Partial<ReplenishmentSku> = {}): ReplenishmentSku => ({
@@ -17,6 +18,7 @@ const sku = (p: Partial<ReplenishmentSku> = {}): ReplenishmentSku => ({
   itemName: 'Produto A',
   unitsSold: 60,
   windowDays: 60,          // → 1 un/dia
+  daysOutOfStock: 0,
   contributionMarginCents: 10_00,
   purchaseUnitCostCents: 5_00,
   stockUnits: 100,
@@ -102,6 +104,32 @@ describe('computeReplenishmentRow', () => {
     expect(computeReplenishmentRow(sku({ stockUpdatedDaysAgo: 5 }), opts).estoqueVelho).toBe(false);
     expect(computeReplenishmentRow(sku({ stockUpdatedDaysAgo: 20 }), opts).estoqueVelho).toBe(true);
   });
+
+  it('desconta dias sem estoque da janela → velocidade sobe', () => {
+    const cheio = computeReplenishmentRow(sku({ unitsSold: 30, windowDays: 60, daysOutOfStock: 0 }), opts);
+    const comRuptura = computeReplenishmentRow(sku({ unitsSold: 30, windowDays: 60, daysOutOfStock: 30 }), opts);
+    expect(cheio.velocidadeDia).toBe(0.5);          // 30 / 60
+    expect(comRuptura.velocidadeDia).toBe(1);       // 30 / (60 − 30)
+    expect(comRuptura.velocidadeAjustada).toBe(true);
+    expect(cheio.velocidadeAjustada).toBe(false);
+  });
+
+  it('janela efetiva não cai abaixo do piso', () => {
+    const r = computeReplenishmentRow(sku({ unitsSold: 10, windowDays: 60, daysOutOfStock: 58 }), opts);
+    expect(r.velocidadeDia).toBe(10 / 7);           // piso minWindowDays = 7
+  });
+
+  it('custo desconhecido → custo e lucro/dia nulos, mas ainda calcula urgência', () => {
+    const r = computeReplenishmentRow(
+      sku({ stockUnits: 10, unitsSold: 30, windowDays: 30, purchaseUnitCostCents: null, contributionMarginCents: null }),
+      opts,
+    );
+    expect(r.precisaPedir).toBe(true);
+    expect(r.sugestaoUnidades).toBeGreaterThan(0);
+    expect(r.custoCompraCents).toBeNull();
+    expect(r.lucroDiaCents).toBeNull();
+    expect(r.urgencia).toBe('ruptura');
+  });
 });
 
 describe('buildReplenishmentPlan', () => {
@@ -115,8 +143,16 @@ describe('buildReplenishmentPlan', () => {
     expect(plan.rows[2].sku).toBe('OK');            // ok por último
     expect(plan.pedidos.map(r => r.sku).sort()).toEqual(['LUCRO', 'URG']);
     expect(plan.custoTotalCents).toBe(
-      plan.pedidos.reduce((s, r) => s + r.custoCompraCents, 0),
+      plan.pedidos.reduce((s, r) => s + (r.custoCompraCents ?? 0), 0),
     );
+  });
+
+  it('pedido sem custo cadastrado fica fora da conta de R$ e da priorização', () => {
+    const semCusto = sku({ sku: 'SEM', stockUnits: 5, unitsSold: 30, windowDays: 30, purchaseUnitCostCents: null, contributionMarginCents: null });
+    const plan = buildReplenishmentPlan([rentavel, semCusto], opts, 1); // caixa ~zero
+    expect(plan.pedidosSemCusto).toEqual(['SEM']);
+    expect(plan.custoTotalCents).toBe(plan.pedidos.find(r => r.sku === 'LUCRO')!.custoCompraCents);
+    expect(plan.cortadosPorCaixa).toEqual(['LUCRO']); // só o com custo entra no corte
   });
 
   it('sem caixa informado, o plano inteiro cabe', () => {
@@ -128,8 +164,8 @@ describe('buildReplenishmentPlan', () => {
   it('caixa apertado → corta o de menor lucro/dia', () => {
     const plan = buildReplenishmentPlan([rentavel, urgente], opts, null);
     const soUmCabe = Math.max(
-      plan.pedidos.find(r => r.sku === 'LUCRO')!.custoCompraCents,
-      plan.pedidos.find(r => r.sku === 'URG')!.custoCompraCents,
+      plan.pedidos.find(r => r.sku === 'LUCRO')!.custoCompraCents!,
+      plan.pedidos.find(r => r.sku === 'URG')!.custoCompraCents!,
     );
     const apertado = buildReplenishmentPlan([rentavel, urgente], opts, soUmCabe);
     // LUCRO gera 20/un × 1/dia = mais lucro/dia que URG (2/un) → fica; URG corta

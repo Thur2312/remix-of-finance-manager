@@ -7,11 +7,11 @@
 //   2. prioridade por lucro — quando o caixa não cobre repor tudo, corta pelos
 //      SKUs que geram menos lucro por dia (buildReplenishmentPlan).
 //
-// Vieses conhecidos do v1 (documentados de propósito):
-//   - velocidade = unidades / dias da janela, SEM descontar dias em que o SKU
-//     esteve zerado. Se houve ruptura na janela, a velocidade sai subestimada.
-//   - margem de contribuição é estimativa (o hook decide como derivar); serve
-//     pra ordenar, não pra contabilidade.
+// A velocidade desconta `daysOutOfStock` da janela: dia sem estoque não vendeu
+// por falta de produto, não de demanda — contá-lo derrubaria a velocidade e
+// mandaria pedir de menos. Custo e margem podem vir null (SKU sem custo
+// cadastrado): a linha ainda mostra urgência e unidades, mas fica de fora da
+// conta de R$ e da priorização por caixa.
 
 export interface ReplenishmentSku {
   sku: string;
@@ -20,10 +20,12 @@ export interface ReplenishmentSku {
   unitsSold: number;
   /** tamanho da janela de observação, em dias */
   windowDays: number;
-  /** margem de contribuição unitária estimada (receita líquida − custo), centavos */
-  contributionMarginCents: number;
-  /** custo de compra unitário pago ao fornecedor, centavos */
-  purchaseUnitCostCents: number;
+  /** dias da janela em que o SKU esteve sem estoque (não contam pra velocidade) */
+  daysOutOfStock: number;
+  /** margem de contribuição unitária (receita líquida − custo), centavos; null se o custo é desconhecido */
+  contributionMarginCents: number | null;
+  /** custo de compra unitário pago ao fornecedor, centavos; null se desconhecido */
+  purchaseUnitCostCents: number | null;
   /** estoque físico informado */
   stockUnits: number;
   /** há quantos dias o estoque foi informado */
@@ -44,6 +46,8 @@ export interface ReplenishmentOptions {
   reviewCycleDays: number;
   /** acima de quantos dias sem atualizar, o estoque é considerado "velho" */
   stockStaleDays: number;
+  /** piso da janela efetiva depois de descontar dias sem estoque */
+  minWindowDays: number;
 }
 
 export type Urgencia = 'ruptura' | 'critico' | 'atencao' | 'ok' | 'sem_giro';
@@ -55,8 +59,10 @@ const URGENCIA_RANK: Record<Urgencia, number> = {
 export interface ReplenishmentRow {
   sku: string;
   itemName: string;
-  /** unidades/dia */
+  /** unidades/dia (já descontando dias sem estoque da janela) */
   velocidadeDia: number;
+  /** true = a janela foi encurtada por ruptura (velocidade é estimada por baixo) */
+  velocidadeAjustada: boolean;
   estoqueAtual: number;
   emTransito: number;
   /** (estoque + trânsito) / velocidade — Infinity se não há giro */
@@ -68,9 +74,10 @@ export interface ReplenishmentRow {
   precisaPedir: boolean;
   /** unidades sugeridas pro pedido, já ajustadas ao lote mínimo */
   sugestaoUnidades: number;
-  custoCompraCents: number;
-  /** lucro/dia que o SKU gera — usado pra priorizar o capital */
-  lucroDiaCents: number;
+  /** custo do pedido sugerido; null se o custo do SKU é desconhecido */
+  custoCompraCents: number | null;
+  /** lucro/dia que o SKU gera; null se o custo é desconhecido */
+  lucroDiaCents: number | null;
   urgencia: Urgencia;
   estoqueVelho: boolean;
 }
@@ -80,8 +87,10 @@ export interface ReplenishmentPlan {
   rows: ReplenishmentRow[];
   /** só as que precisam de pedido agora, na mesma ordem */
   pedidos: ReplenishmentRow[];
-  /** Σ custo de compra de todos os pedidos */
+  /** Σ custo de compra dos pedidos com custo conhecido */
   custoTotalCents: number;
+  /** SKUs que precisam de pedido mas estão sem custo cadastrado */
+  pedidosSemCusto: string[];
   /** caixa que a previsão diz haver pra comprar (null = não informado) */
   caixaDisponivelCents: number | null;
   /** Σ custo dos pedidos que cabem no caixa (prioriza maior lucro/dia) */
@@ -103,7 +112,10 @@ export function computeReplenishmentRow(
   s: ReplenishmentSku,
   opts: ReplenishmentOptions,
 ): ReplenishmentRow {
-  const janela = Math.max(1, s.windowDays);
+  const janelaBruta = Math.max(1, s.windowDays);
+  const foraDeEstoque = Math.min(Math.max(0, s.daysOutOfStock), janelaBruta - 1);
+  const janela = Math.max(opts.minWindowDays, janelaBruta - foraDeEstoque);
+  const velocidadeAjustada = foraDeEstoque > 0;
   const v = Math.max(0, s.unitsSold) / janela;
 
   const disponivel = Math.max(0, s.stockUnits) + Math.max(0, s.inTransitUnits);
@@ -125,8 +137,13 @@ export function computeReplenishmentRow(
     sugestao = s.moqUnits && s.moqUnits > 0 ? s.moqUnits : Math.max(1, Math.ceil(v * opts.reviewCycleDays));
   }
 
-  const custoCompraCents = sugestao * Math.max(0, s.purchaseUnitCostCents);
-  const lucroDiaCents = Math.max(0, s.contributionMarginCents) * v;
+  const custoConhecido = s.purchaseUnitCostCents !== null;
+  const custoCompraCents = custoConhecido
+    ? sugestao * Math.max(0, s.purchaseUnitCostCents as number)
+    : null;
+  const lucroDiaCents = s.contributionMarginCents !== null
+    ? Math.max(0, s.contributionMarginCents) * v
+    : null;
 
   let urgencia: Urgencia;
   if (v === 0) urgencia = 'sem_giro';
@@ -139,6 +156,7 @@ export function computeReplenishmentRow(
     sku: s.sku,
     itemName: s.itemName,
     velocidadeDia: v,
+    velocidadeAjustada,
     estoqueAtual: Math.max(0, s.stockUnits),
     emTransito: Math.max(0, s.inTransitUnits),
     coberturaDias: cobertura,
@@ -153,10 +171,11 @@ export function computeReplenishmentRow(
   };
 }
 
+// lucro/dia null (custo desconhecido) desce pro fim do bloco de urgência.
 function ordenar(a: ReplenishmentRow, b: ReplenishmentRow): number {
   const r = URGENCIA_RANK[a.urgencia] - URGENCIA_RANK[b.urgencia];
   if (r !== 0) return r;
-  return b.lucroDiaCents - a.lucroDiaCents;
+  return (b.lucroDiaCents ?? -1) - (a.lucroDiaCents ?? -1);
 }
 
 export function buildReplenishmentPlan(
@@ -166,18 +185,22 @@ export function buildReplenishmentPlan(
 ): ReplenishmentPlan {
   const rows = skus.map(s => computeReplenishmentRow(s, opts)).sort(ordenar);
   const pedidos = rows.filter(r => r.precisaPedir);
-  const custoTotalCents = pedidos.reduce((sum, r) => sum + r.custoCompraCents, 0);
+
+  const comCusto = pedidos.filter(r => r.custoCompraCents !== null);
+  const custoTotalCents = comCusto.reduce((sum, r) => sum + (r.custoCompraCents as number), 0);
+  const pedidosSemCusto = pedidos.filter(r => r.custoCompraCents === null).map(r => r.sku);
 
   let custoNoCaixaCents = custoTotalCents;
   const cortadosPorCaixa: string[] = [];
 
   if (caixaDisponivelCents !== null) {
     // Capital escasso → compra primeiro quem devolve mais lucro por dia.
-    const porLucro = [...pedidos].sort((a, b) => b.lucroDiaCents - a.lucroDiaCents);
+    const porLucro = [...comCusto].sort((a, b) => (b.lucroDiaCents ?? 0) - (a.lucroDiaCents ?? 0));
     let acc = 0;
     for (const r of porLucro) {
-      if (acc + r.custoCompraCents <= Math.max(0, caixaDisponivelCents)) {
-        acc += r.custoCompraCents;
+      const custo = r.custoCompraCents as number;
+      if (acc + custo <= Math.max(0, caixaDisponivelCents)) {
+        acc += custo;
       } else {
         cortadosPorCaixa.push(r.sku);
       }
@@ -189,6 +212,7 @@ export function buildReplenishmentPlan(
     rows,
     pedidos,
     custoTotalCents,
+    pedidosSemCusto,
     caixaDisponivelCents,
     custoNoCaixaCents,
     cortadosPorCaixa,

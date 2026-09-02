@@ -5,6 +5,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
 import { isExcludedOrderStatus } from '@/lib/marketplace-order-status';
+import { calcComissaoTaxaReais, type Marketplace } from '@/lib/marketplace-fees';
 import {
   buildReplenishmentPlan,
   type ReplenishmentPlan,
@@ -14,8 +15,11 @@ import { useCashFlowForecast } from '@/hooks/useCashFlowForecast';
 
 // Compõe a Aposta C (reposição de estoque), Fase 1. Junta:
 //   - velocidade de venda por SKU (order_items Shopee + ml_orders + tiktok_orders,
-//     últimos WINDOW_DIAS, fora os cancelados/devolvidos);
-//   - custo (product_costs, com o custo do pedido do marketplace como fallback);
+//     últimos WINDOW_DIAS, fora os cancelados/devolvidos), descontando dias sem
+//     estoque quando o SKU está zerado hoje;
+//   - receita líquida por unidade (taxa real do ML; tabela de comissão pra
+//     Shopee/TikTok) e custo (product_costs → custo do pedido do marketplace →
+//     null se nenhum dos dois);
 //   - estoque + lead time + MOQ informados (inventory_settings);
 //   - pedidos de compra em aberto (purchase_orders) → estoque em trânsito;
 //   - caixa disponível pra compra (previsão de caixa → pior saldo projetado).
@@ -27,21 +31,30 @@ const REVIEW_CYCLE_DIAS = 14;
 const STOCK_STALE_DIAS = 10;
 const LEAD_TIME_PADRAO = 14;
 const SAFETY_DIAS_PADRAO = 7;
-// Haircut médio do marketplace sobre o preço bruto, pra estimar a margem de
-// contribuição usada só na priorização. Grosseiro de propósito (v1).
-const MARKETPLACE_NET_RATIO = 0.85;
+// Estoque zerado hoje → os dias sem venda até a última venda foram ruptura, não
+// falta de demanda. Descontamos da janela, com teto: SKU parado há muito tempo
+// não deve ganhar velocidade inflada.
+const STOCKOUT_TRIM_MAX_DIAS = 21;
 
-const skuKey = (sku: string | null | undefined) => (sku ?? '').trim().toLowerCase();
+// Normaliza agressivo: tira separadores e caixa. Casa "CAM-AZUL-P", "cam_azul_p"
+// e "CAM AZUL P" no mesmo SKU (comum quando o vendedor redigita entre plataformas).
+// Não casa strings de fato diferentes ("CAM" vs "CAMISA") — isso é mapa de
+// alias, Fase 2.
+const skuKey = (sku: string | null | undefined) =>
+  (sku ?? '').toLowerCase().replace(/[\s\-_./\\]+/g, '');
 
 interface SkuAccum {
   sku: string;
   itemName: string;
   units: number;
   grossCents: number;
+  /** receita líquida (bruto − taxa do marketplace) acumulada */
+  netCents: number;
   /** custo unitário do marketplace (ml/tiktok), média ponderada */
   mpCostCentsSum: number;
   mpCostUnits: number;
   earliestIso: string;
+  lastSaleIso: string;
 }
 
 export interface UseReplenishment {
@@ -121,7 +134,7 @@ export function useReplenishment(): UseReplenishment {
           : Promise.resolve({ data: [], error: null }),
         supabase
           .from('ml_orders')
-          .select('sku, nome_produto, quantidade, total_faturado_cents, custo_unitario_cents, status_pedido, data_pedido')
+          .select('sku, nome_produto, quantidade, total_faturado_cents, taxa_ml_cents, frete_ml_cents, custo_unitario_cents, status_pedido, data_pedido')
           .eq('user_id', user!.id)
           .gte('data_pedido', windowStartIso),
         supabase
@@ -140,6 +153,7 @@ export function useReplenishment(): UseReplenishment {
         name: string | null | undefined,
         units: number,
         grossCents: number,
+        netCents: number,
         dateIso: string | null,
         mpUnitCostCents?: number | null,
       ) => {
@@ -149,35 +163,54 @@ export function useReplenishment(): UseReplenishment {
         const cur = acc.get(key) ?? {
           sku: (rawSku ?? '').trim(),
           itemName: (name ?? '').trim() || (rawSku ?? '').trim(),
-          units: 0, grossCents: 0, mpCostCentsSum: 0, mpCostUnits: 0,
-          earliestIso: iso,
+          units: 0, grossCents: 0, netCents: 0, mpCostCentsSum: 0, mpCostUnits: 0,
+          earliestIso: iso, lastSaleIso: iso,
         };
         cur.units += units;
         cur.grossCents += Math.max(0, grossCents);
+        cur.netCents += Math.max(0, netCents);
         if (mpUnitCostCents && mpUnitCostCents > 0) {
           cur.mpCostCentsSum += mpUnitCostCents * units;
           cur.mpCostUnits += units;
         }
         if (iso < cur.earliestIso) cur.earliestIso = iso;
+        if (iso > cur.lastSaleIso) cur.lastSaleIso = iso;
         acc.set(key, cur);
+      };
+
+      // Taxa estimada pela tabela de comissão (Shopee/TikTok), sobre o preço
+      // unitário — mesma fonte da Calculadora.
+      const netByTable = (mp: Marketplace, grossCents: number, units: number) => {
+        if (units <= 0 || grossCents <= 0) return grossCents;
+        const feeReais = calcComissaoTaxaReais(mp, grossCents / units / 100) * units;
+        return Math.max(0, grossCents - Math.round(feeReais * 100));
       };
 
       for (const o of shopeeRes.data ?? []) {
         if (isExcludedOrderStatus((o as { status: string | null }).status)) continue;
         const items = (o as { order_items?: { sku: string | null; quantity: number | null; total_price_cents: number | null }[] }).order_items ?? [];
         for (const it of items) {
-          bump(it.sku, it.sku, Number(it.quantity) || 0, Math.round(Number(it.total_price_cents) || 0),
+          const units = Number(it.quantity) || 0;
+          const gross = Math.round(Number(it.total_price_cents) || 0);
+          bump(it.sku, it.sku, units, gross, netByTable('Shopee', gross, units),
             (o as { order_created_at: string | null }).order_created_at);
         }
       }
       for (const r of mlRes.data ?? []) {
         if (isExcludedOrderStatus(r.status_pedido)) continue;
-        bump(r.sku, r.nome_produto, Number(r.quantidade) || 0, Math.round(Number(r.total_faturado_cents) || 0),
-          r.data_pedido, Math.round(Number(r.custo_unitario_cents) || 0));
+        const units = Number(r.quantidade) || 0;
+        const gross = Math.round(Number(r.total_faturado_cents) || 0);
+        // ML entrega a comissão e o frete reais por pedido.
+        const net = Math.max(0, gross
+          - Math.round(Number(r.taxa_ml_cents) || 0)
+          - Math.round(Number(r.frete_ml_cents) || 0));
+        bump(r.sku, r.nome_produto, units, gross, net, r.data_pedido, Math.round(Number(r.custo_unitario_cents) || 0));
       }
       for (const r of tiktokRes.data ?? []) {
         if (isExcludedOrderStatus(r.status_pedido)) continue;
-        bump(r.sku, r.nome_produto, Number(r.quantidade) || 0, Math.round(Number(r.total_faturado_cents) || 0),
+        const units = Number(r.quantidade) || 0;
+        const gross = Math.round(Number(r.total_faturado_cents) || 0);
+        bump(r.sku, r.nome_produto, units, gross, netByTable('TiktokShop', gross, units),
           r.data_pedido, Math.round(Number(r.custo_unitario_cents) || 0));
       }
 
@@ -312,32 +345,43 @@ export function useReplenishment(): UseReplenishment {
       if (!s && !settings?.active) continue;
 
       const units = s?.units ?? 0;
-      const grossCents = s?.grossCents ?? 0;
       const spanDias = s
         ? Math.min(WINDOW_DIAS, Math.max(WINDOW_MIN_DIAS, differenceInCalendarDays(now, parseISO(s.earliestIso)) + 1))
         : WINDOW_DIAS;
 
-      const avgGrossUnit = units > 0 ? grossCents / units : 0;
-      const mpCostUnit = s && s.mpCostUnits > 0 ? s.mpCostCentsSum / s.mpCostUnits : 0;
-      // Custo pousado: product_costs > custo do pedido do marketplace > estimativa
-      // grosseira (55% do preço) só pra não zerar o custo do pedido sugerido.
+      const stockUnits = settings?.stock_units ?? 0;
+      const inTransitUnits = transitByKey.get(key) ?? 0;
+
+      // Ruptura: estoque + trânsito zerados hoje → os dias sem venda desde a
+      // última venda foram falta de produto. Desconta da janela (com teto).
+      const daysOutOfStock =
+        stockUnits + inTransitUnits === 0 && s
+          ? Math.min(STOCKOUT_TRIM_MAX_DIAS, Math.max(0, differenceInCalendarDays(now, parseISO(s.lastSaleIso))))
+          : 0;
+
+      // Custo pousado: product_costs → custo do pedido do marketplace → null.
       const cadastrado = costs.get(key);
-      const landedCost = cadastrado ?? (mpCostUnit || Math.round(avgGrossUnit * 0.55));
-      if (cadastrado === undefined) semCusto.add(key);
-      const contributionMarginCents = Math.round(avgGrossUnit * MARKETPLACE_NET_RATIO - landedCost);
+      const mpCostUnit = s && s.mpCostUnits > 0 ? Math.round(s.mpCostCentsSum / s.mpCostUnits) : null;
+      const landedCost = cadastrado ?? mpCostUnit;
+      if (landedCost === null && (s?.units ?? 0) > 0) semCusto.add(key);
+
+      // Receita líquida por unidade: taxa real do ML; tabela pra Shopee/TikTok.
+      const netUnit = units > 0 ? Math.round((s?.netCents ?? 0) / units) : 0;
+      const contributionMarginCents = landedCost === null ? null : netUnit - landedCost;
 
       skus.push({
         sku: (s?.sku || key).toUpperCase(),
         itemName: (settings?.item_name || s?.itemName || s?.sku || key) as string,
         unitsSold: units,
         windowDays: spanDias,
+        daysOutOfStock,
         contributionMarginCents,
-        purchaseUnitCostCents: Math.round(landedCost),
-        stockUnits: settings?.stock_units ?? 0,
+        purchaseUnitCostCents: landedCost,
+        stockUnits,
         stockUpdatedDaysAgo: settings?.stock_updated_at
           ? Math.max(0, differenceInCalendarDays(now, parseISO(settings.stock_updated_at)))
           : 999,
-        inTransitUnits: transitByKey.get(key) ?? 0,
+        inTransitUnits,
         leadTimeDays: settings?.lead_time_days ?? LEAD_TIME_PADRAO,
         safetyDays: settings?.safety_days ?? SAFETY_DIAS_PADRAO,
         moqUnits: settings?.moq_units ?? null,
@@ -353,6 +397,7 @@ export function useReplenishment(): UseReplenishment {
       todayIso,
       reviewCycleDays: REVIEW_CYCLE_DIAS,
       stockStaleDays: STOCK_STALE_DIAS,
+      minWindowDays: WINDOW_MIN_DIAS,
     }, caixaCents);
 
     const openPurchaseOrders: OpenPurchaseOrder[] = po

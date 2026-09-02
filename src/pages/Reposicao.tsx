@@ -91,8 +91,16 @@ function ReposicaoContent() {
             <div className="text-sm">
               <p className="font-medium">
                 <strong>{pedir.length}</strong> {pedir.length === 1 ? 'SKU' : 'SKUs'} no ponto de reposição —
-                repor tudo custa <strong>{brl(plan.custoTotalCents)}</strong> ao fornecedor.
+                repor{plan.pedidosSemCusto.length > 0 ? ' os que têm custo cadastrado' : ' tudo'} custa{' '}
+                <strong>{brl(plan.custoTotalCents)}</strong> ao fornecedor.
               </p>
+              {plan.pedidosSemCusto.length > 0 && (
+                <p className="mt-1 text-muted-foreground">
+                  {plan.pedidosSemCusto.length} {plan.pedidosSemCusto.length === 1 ? 'SKU está' : 'SKUs estão'} sem
+                  custo cadastrado e ficaram fora da conta — cadastre em{' '}
+                  <Link to="/precificacao/custos" className="underline underline-offset-2">Custos de produto</Link>.
+                </p>
+              )}
               {plan.caixaDisponivelCents !== null && plan.cortadosPorCaixa.length > 0 && (
                 <p className="mt-1 text-muted-foreground">
                   Seu caixa projetado comporta <strong>{brl(plan.caixaDisponivelCents)}</strong> em compras sem
@@ -176,10 +184,11 @@ function ReposicaoContent() {
       )}
 
       <p className="text-xs text-muted-foreground">
-        A velocidade é a média dos últimos {r.windowDays} dias e não desconta dias em que o SKU esteve zerado —
-        se houve ruptura no período, ela sai um pouco baixa. O estoque é o que você informou (some as unidades
-        quando um pedido chega).
-        {r.skusSemCusto > 0 && ` ${r.skusSemCusto} ${r.skusSemCusto === 1 ? 'SKU está' : 'SKUs estão'} com custo estimado — cadastre em Custos de produto pra afinar o lucro/dia e o custo do pedido.`}
+        A velocidade é a média dos últimos {r.windowDays} dias. Pra SKU zerado hoje, os dias sem venda até a
+        última venda são descontados da janela (marcados com <span className="font-mono">*</span>) — foi falta de
+        produto, não de demanda. O lucro/dia usa a taxa real do Mercado Livre e a tabela de comissão pra
+        Shopee/TikTok. O estoque é o que você informou; some as unidades quando um pedido chega.
+        {r.skusSemCusto > 0 && ` ${r.skusSemCusto} ${r.skusSemCusto === 1 ? 'SKU vendeu mas está' : 'SKUs venderam mas estão'} sem custo cadastrado — sem isso não dá pra calcular lucro/dia nem custo do pedido.`}
       </p>
     </div>
   );
@@ -207,7 +216,10 @@ function SkuRow({
           </span>
         </div>
       </td>
-      <td className="px-2 py-2 text-right tabular-nums">{num(row.velocidadeDia, row.velocidadeDia < 10 ? 1 : 0)}</td>
+      <td className="px-2 py-2 text-right tabular-nums">
+        {num(row.velocidadeDia, row.velocidadeDia < 10 ? 1 : 0)}
+        {row.velocidadeAjustada && <span className="ml-0.5 text-[10px] text-muted-foreground" title="janela ajustada pelos dias sem estoque">*</span>}
+      </td>
       <td className="px-2 py-2 text-right tabular-nums">
         {Number.isFinite(row.coberturaDias) ? (
           <>
@@ -232,8 +244,15 @@ function SkuRow({
       <td className="px-2 py-2 text-right font-mono tabular-nums">
         {row.precisaPedir ? <strong>{num(row.sugestaoUnidades)}</strong> : '—'}
       </td>
-      <td className="px-2 py-2 text-right font-mono tabular-nums">{row.precisaPedir ? brl(row.custoCompraCents) : '—'}</td>
-      <td className="py-2 pl-2 text-right font-mono tabular-nums text-muted-foreground">{brl(row.lucroDiaCents)}</td>
+      <td className="px-2 py-2 text-right font-mono tabular-nums">
+        {!row.precisaPedir ? '—'
+          : row.custoCompraCents === null
+            ? <span className="text-[10px] text-warning">sem custo</span>
+            : brl(row.custoCompraCents)}
+      </td>
+      <td className="py-2 pl-2 text-right font-mono tabular-nums text-muted-foreground">
+        {row.lucroDiaCents === null ? '—' : brl(row.lucroDiaCents)}
+      </td>
     </tr>
   );
 }
