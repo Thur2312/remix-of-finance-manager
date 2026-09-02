@@ -24,5 +24,5 @@ persistQueryClient({
   queryClient,
   persister,
   maxAge: 1000 * 60 * 60 * 24, // expira após 24h
-  buster: "v1",                 // mude para "v2" se alterar estrutura de dados
+  buster: "v2",                 // v1→v2: costsQuery deixou de ser Map (quebrava na re-hidratação)
 });
