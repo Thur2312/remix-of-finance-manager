@@ -783,7 +783,10 @@ if (!step || step === 'orders') {
     // Estoque disponível por SKU do catálogo Shopee → product_stock. Best-
     // effort: não é crítico (a reposição cai no estoque manual), erro só loga.
     let stockCount = 0
+    // deno-lint-ignore no-explicit-any
+    const stockDebug: any = { ran: false }
     if (!step || step === 'stock') {
+      stockDebug.ran = true
       try {
         const MAX_STOCK_ITEMS = 1500
         const itemIds: number[] = []
@@ -800,6 +803,7 @@ if (!step || step === 'orders') {
           if (!list?.has_next_page || items.length === 0 || itemIds.length >= MAX_STOCK_ITEMS) break
           offset += 100
         }
+        stockDebug.itemIds = itemIds.length
         if (itemIds.length >= MAX_STOCK_ITEMS) {
           console.warn(`⚠️ Catálogo com ${itemIds.length}+ itens — sincronizando estoque dos ${MAX_STOCK_ITEMS} primeiros`)
         }
@@ -830,7 +834,9 @@ if (!step || step === 'orders') {
             item_id_list: batch.join(","),
           }, PARTNER_ID, PARTNER_KEY, accessToken, shopId)
 
-          for (const it of info?.item_list ?? []) {
+          const lote = info?.item_list ?? []
+          stockDebug.baseInfoAmostra = stockDebug.baseInfoAmostra ?? lote.slice(0, 1)
+          for (const it of lote) {
             if (it.has_model) {
               try {
                 const models = await shopeeGet<{ model: { model_sku: string; stock_info_v2?: unknown; stock_info?: unknown }[] }>(
@@ -849,6 +855,7 @@ if (!step || step === 'orders') {
           }
         }
 
+        stockDebug.skusColetados = stockBySku.size
         if (stockBySku.size > 0) {
           const nowIso = now.toISOString()
           const rows = [...stockBySku.entries()].map(([sku, v]) => ({
@@ -861,12 +868,13 @@ if (!step || step === 'orders') {
             synced_at: nowIso,
           }))
           const { error } = await supabaseAdmin.from("product_stock").upsert(rows, { onConflict: "user_id,sku" })
-          if (error) console.error("❌ product_stock upsert:", JSON.stringify(error))
+          if (error) { console.error("❌ product_stock upsert:", JSON.stringify(error)); stockDebug.upsertError = error }
           else stockCount = rows.length
         }
         console.log(`📦 ${stockCount} SKUs de estoque Shopee sincronizados`)
       } catch (stockError) {
         console.error("❌ Stock sync error:", stockError)
+        stockDebug.error = String(stockError)
       }
     }
 
@@ -907,7 +915,8 @@ if (!step || step === 'orders') {
           from: new Date(timeFrom * 1000).toISOString(),
           to: new Date(timeTo * 1000).toISOString(),
         },
-        stats: { orders: ordersCount, payments: paymentsCount, wallet_transactions: walletCount },
+        stats: { orders: ordersCount, payments: paymentsCount, wallet_transactions: walletCount, stock: stockCount },
+        stockDebug,
       }),
       { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     )
