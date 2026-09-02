@@ -83,7 +83,7 @@ async function shopeeGet<T>(baseUrl: string, path: string, params: Record<string
   if (!res.ok) {
     const body = await res.text()
     console.error("❌ Shopee error body:", body)
-    throw new Error(`HTTP ${res.status}: ${res.statusText}`)
+    throw new Error(`HTTP ${res.status}: ${res.statusText} — ${body.slice(0, 500)}`)
   }
   const data = await res.json()
   if (data.error && data.error !== "") {

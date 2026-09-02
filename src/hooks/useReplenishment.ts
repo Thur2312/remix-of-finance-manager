@@ -6,6 +6,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
 import { isExcludedOrderStatus } from '@/lib/marketplace-order-status';
 import { calcComissaoTaxaReais, type Marketplace } from '@/lib/marketplace-fees';
+import type { StockImportRow } from '@/lib/stock-import';
 import {
   buildReplenishmentPlan,
   type ReplenishmentPlan,
@@ -72,6 +73,7 @@ export interface UseReplenishment {
   stockSyncDaysAgo: number | null;
   windowDays: number;
   saveInventory: ReturnType<typeof useMutation<void, Error, SaveInventoryInput>>;
+  importStock: ReturnType<typeof useMutation<number, Error, StockImportRow[]>>;
   addPurchaseOrder: ReturnType<typeof useMutation<void, Error, AddPurchaseOrderInput>>;
   receivePurchaseOrder: ReturnType<typeof useMutation<void, Error, string>>;
   openPurchaseOrders: OpenPurchaseOrder[];
@@ -295,6 +297,34 @@ export function useReplenishment(): UseReplenishment {
     onError: () => toast({ title: 'Erro', description: 'Não foi possível salvar.', variant: 'destructive' }),
   });
 
+  const importStock = useMutation<number, Error, StockImportRow[]>({
+    mutationFn: async (rows) => {
+      const nowIso = new Date().toISOString();
+      const payload = rows
+        .filter((r) => r.sku.trim() !== '')
+        .map((r) => ({
+          user_id: user!.id,
+          sku: r.sku.trim(),
+          item_name: r.itemName,
+          stock_units: Math.max(0, Math.round(r.stockUnits)),
+          source: 'import',
+          synced_at: nowIso,
+        }));
+      for (let i = 0; i < payload.length; i += 500) {
+        const { error } = await supabase
+          .from('product_stock')
+          .upsert(payload.slice(i, i + 500), { onConflict: 'user_id,sku' });
+        if (error) throw error;
+      }
+      return payload.length;
+    },
+    onSuccess: (n) => {
+      invalidate();
+      toast({ title: `${n} SKUs importados`, description: 'O estoque da planilha entra na reposição.' });
+    },
+    onError: () => toast({ title: 'Erro', description: 'Não foi possível importar a planilha.', variant: 'destructive' }),
+  });
+
   const addPurchaseOrder = useMutation<void, Error, AddPurchaseOrderInput>({
     mutationFn: async (i) => {
       const { error } = await supabase.from('purchase_orders').insert({
@@ -464,6 +494,7 @@ export function useReplenishment(): UseReplenishment {
       salesQuery.isLoading || costsQuery.isLoading || inventoryQuery.isLoading || forecast.isLoading,
     windowDays: WINDOW_DIAS,
     saveInventory,
+    importStock,
     addPurchaseOrder,
     receivePurchaseOrder,
   };

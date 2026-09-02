@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom';
 import { format, parseISO } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import {
-  PackageSearch, AlertTriangle, Truck, Boxes, Plus, ChevronDown, Coins, Wallet, Settings2,
+  PackageSearch, AlertTriangle, Truck, Boxes, Plus, ChevronDown, Coins, Wallet, Settings2, Upload,
 } from 'lucide-react';
 import { PageShell } from '@/components/layout/PageShell';
 import { Card, CardContent } from '@/components/ui/card';
@@ -22,6 +22,7 @@ import { formatCurrency } from '@/lib/format';
 import { parseMoneyInput } from '@/lib/money';
 import { useReplenishment, type OpenPurchaseOrder, type SaveInventoryInput } from '@/hooks/useReplenishment';
 import type { ReplenishmentRow, Urgencia } from '@/lib/replenishment';
+import { parseStockImport, type StockImportResult } from '@/lib/stock-import';
 
 const brl = (cents: number) => formatCurrency(cents / 100);
 const dataCurta = (iso: string) => {
@@ -146,9 +147,15 @@ function ReposicaoContent() {
       {/* 3 · Pedir agora */}
       <Card>
         <CardContent className="pt-5">
-          <div className="mb-3 flex items-center justify-between gap-2">
+          <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
             <h3 className="text-sm font-semibold">Pedir agora</h3>
-            <NovoPedidoDialog onAdd={(i) => r.addPurchaseOrder.mutate(i)} pending={r.addPurchaseOrder.isPending} />
+            <div className="flex flex-wrap gap-2">
+              <ImportarEstoqueDialog
+                onImport={(rows) => r.importStock.mutate(rows)}
+                pending={r.importStock.isPending}
+              />
+              <NovoPedidoDialog onAdd={(i) => r.addPurchaseOrder.mutate(i)} pending={r.addPurchaseOrder.isPending} />
+            </div>
           </div>
           {pedir.length === 0 ? (
             <p className="py-6 text-center text-xs text-muted-foreground">
@@ -406,6 +413,82 @@ function PurchaseOrderRow({
       </span>
       <Button size="sm" variant="outline" disabled={pending} onClick={onReceive}>Recebi</Button>
     </li>
+  );
+}
+
+function ImportarEstoqueDialog({
+  onImport, pending,
+}: { onImport: (rows: { sku: string; itemName: string | null; stockUnits: number }[]) => void; pending: boolean }) {
+  const [parse, setParse] = useState<StockImportResult | null>(null);
+  const [erro, setErro] = useState<string | null>(null);
+  const [lendo, setLendo] = useState(false);
+
+  const onFile = async (file: File | undefined) => {
+    if (!file) return;
+    setErro(null); setParse(null); setLendo(true);
+    try {
+      const XLSX = await import('xlsx');
+      const buf = await file.arrayBuffer();
+      const wb = XLSX.read(buf, { type: 'array' });
+      const ws = wb.Sheets[wb.SheetNames[0]];
+      const linhas = XLSX.utils.sheet_to_json<Record<string, unknown>>(ws, { defval: '' });
+      const r = parseStockImport(linhas);
+      if (!r.colunaSku || !r.colunaEstoque) {
+        setErro(`Não achei as colunas de SKU e estoque. Cabeçalhos do arquivo: ${r.colunasDetectadas.slice(0, 12).join(', ') || '(nenhum)'}`);
+      } else if (r.rows.length === 0) {
+        setErro('O arquivo foi lido mas não tinha nenhuma linha com SKU e estoque.');
+      } else {
+        setParse(r);
+      }
+    } catch {
+      setErro('Não consegui ler o arquivo. Use o Excel/CSV exportado do Seller Center.');
+    } finally {
+      setLendo(false);
+    }
+  };
+
+  return (
+    <Dialog onOpenChange={(o) => { if (!o) { setParse(null); setErro(null); } }}>
+      <DialogTrigger asChild>
+        <Button size="sm" variant="outline"><Upload className="mr-1 size-3.5" />Importar estoque</Button>
+      </DialogTrigger>
+      <DialogContent>
+        <DialogHeader><DialogTitle>Importar estoque de planilha</DialogTitle></DialogHeader>
+        <div className="space-y-3">
+          <p className="text-xs text-muted-foreground">
+            No Seller Center da Shopee, exporte a lista de produtos (Excel/CSV com SKU e estoque) e suba aqui.
+            Funciona com a planilha de qualquer marketplace que tenha as colunas de SKU e quantidade.
+          </p>
+          <Input
+            type="file"
+            accept=".xlsx,.xls,.csv"
+            disabled={lendo || pending}
+            onChange={(e) => onFile(e.target.files?.[0])}
+          />
+          {lendo && <p className="text-xs text-muted-foreground">Lendo…</p>}
+          {erro && <p className="text-xs text-destructive">{erro}</p>}
+          {parse && (
+            <div className="rounded-md border bg-muted/30 p-3 text-xs">
+              <p><strong>{parse.rows.length}</strong> SKUs prontos pra importar.</p>
+              <p className="mt-1 text-muted-foreground">
+                SKU = coluna “{parse.colunaSku}” · estoque = coluna “{parse.colunaEstoque}”
+                {(parse.semSku > 0 || parse.semEstoque > 0) && ` · ${parse.semSku + parse.semEstoque} linhas ignoradas (sem SKU ou sem estoque)`}
+              </p>
+            </div>
+          )}
+        </div>
+        <DialogFooter>
+          <DialogClose asChild>
+            <Button
+              disabled={!parse || pending}
+              onClick={() => parse && onImport(parse.rows)}
+            >
+              {pending ? 'Importando…' : parse ? `Importar ${parse.rows.length} SKUs` : 'Importar'}
+            </Button>
+          </DialogClose>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
 }
 
