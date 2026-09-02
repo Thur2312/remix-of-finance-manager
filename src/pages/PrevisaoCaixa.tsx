@@ -50,11 +50,17 @@ function PrevisaoContent() {
   const neg = result.primeiroNegativo;
   const showTendencia = f.ritmoLiquidoDiaCents > 0;
   const temProvavel = f.probableReceivables.length > 0;
+  const temShopeeProv = f.probableReceivables.some(r => r.source === 'shopee');
+  const temTiktokProv = f.probableReceivables.some(r => r.source === 'tiktok');
+  const labelEstimado =
+    temShopeeProv && temTiktokProv ? 'Shopee/TikTok estimado'
+    : temTiktokProv ? 'TikTok estimado'
+    : 'Shopee estimado';
   // O zero só vira referência no gráfico quando o saldo chega perto dele —
   // senão comprime a variação semana a semana no topo do gráfico à toa.
   const perigo = !!neg || result.saldoMinimo.saldoCents < Math.max(result.dias[0].saldoCents * 0.25, 0);
 
-  const semMarketplace = !f.hasMercadoLivre && !f.hasShopee;
+  const semMarketplace = !f.hasMercadoLivre && !f.hasShopee && !f.hasTiktok;
   // Sem marketplace E sem nada no Fluxo de Caixa não há o que projetar.
   const semDados = semMarketplace && f.receivables.length === 0 && f.payables.length === 0;
 
@@ -65,7 +71,8 @@ function PrevisaoContent() {
       date: r.dateIso, amount: r.amountCents, positive: true, estimado: false,
     })),
     ...f.probableReceivables.map(r => ({
-      label: 'Shopee', date: r.dateIso, amount: r.amountCents, positive: true, estimado: true,
+      label: r.source === 'tiktok' ? 'TikTok' : 'Shopee',
+      date: r.dateIso, amount: r.amountCents, positive: true, estimado: true,
     })),
   ].sort((a, b) => a.date.localeCompare(b.date)).slice(0, 7);
 
@@ -123,7 +130,7 @@ function PrevisaoContent() {
               Antecipe um recebível, adie uma conta ou reforce o caixa antes disso.
               {temProvavel && (
                 <span className="mt-1 block font-normal text-muted-foreground">
-                  Contando também os recebíveis estimados da Shopee, o pior dia seria{' '}
+                  Contando também os recebíveis estimados ({labelEstimado.replace(' estimado', '')}), o pior dia seria{' '}
                   <strong>{brl(result.saldoMinimoComProvavel.saldoCents)}</strong> em{' '}
                   {dataCurta(result.saldoMinimoComProvavel.dateIso)} — mas isso é estimativa, não conte com ela.
                 </span>
@@ -153,7 +160,7 @@ function PrevisaoContent() {
             <div className="flex flex-wrap gap-x-4 text-[10px] text-muted-foreground">
               <span><span className="mr-1 inline-block h-0.5 w-3 bg-primary align-middle" />confirmado</span>
               {temProvavel && (
-                <span><span className="mr-1 inline-block h-0 w-3 border-t-2 border-dashed border-primary/70 align-middle" />+ Shopee estimado</span>
+                <span><span className="mr-1 inline-block h-0 w-3 border-t-2 border-dashed border-primary/70 align-middle" />+ {labelEstimado}</span>
               )}
               {showTendencia && (
                 <span><span className="mr-1 inline-block size-2 rounded-sm bg-primary/20 align-middle" />+ tendência de vendas</span>
@@ -173,8 +180,12 @@ function PrevisaoContent() {
             <Stat label="Entra (garantido)" value={brl(result.totalEntradasCents)}
               hint="recebíveis com data + entradas pendentes" />
             {temProvavel && (
-              <Stat label="Entra (Shopee estimado)" value={`≈ ${brl(result.totalProvavelCents)}`}
-                hint="escrow projetado por D+N dos pedidos em trânsito" />
+              <Stat label="Entra (estimado)" value={`≈ ${brl(result.totalProvavelCents)}`}
+                hint={
+                  temShopeeProv && temTiktokProv ? 'escrow Shopee projetado + repasses TikTok pendentes'
+                  : temTiktokProv ? 'repasses TikTok pendentes do último upload'
+                  : 'escrow Shopee projetado por D+N dos pedidos em trânsito'
+                } />
             )}
             <Stat label="Sai" value={brl(result.totalSaidasCents)}
               hint="contas a pagar lançadas no período" />
@@ -212,7 +223,8 @@ function PrevisaoContent() {
           acontece — por isso pode divergir do lucro da DRE no mesmo período. Os recebíveis do Mercado Livre
           usam a data real de liberação.
           {f.hasShopee && ` ${textoCalibShopee(f.shopeeCalib)}`}
-          {' '}A tendência é uma estimativa pelo ritmo de vendas dos últimos 30 dias. TikTok ainda não entra.
+          {f.hasTiktok && ' Os do TikTok são os repasses ainda pendentes do último arquivo que você importou — reimporte de vez em quando pra manter a projeção viva.'}
+          {' '}A tendência é uma estimativa pelo ritmo de vendas dos últimos 30 dias.
         </span>
       </p>
     </div>

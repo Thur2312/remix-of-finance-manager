@@ -10,8 +10,9 @@
 //     dispara o alerta de saldo negativo. "Mesmo contando só o que já está
 //     travado, você fica no vermelho dia X."
 //   - PROVÁVEL: recebível estimado — pedido Shopee em trânsito com a liberação
-//     do escrow projetada por D+N. Tem data, mas o valor e o dia são estimativa.
-//     Entra numa linha tracejada / na banda, nunca no alerta.
+//     do escrow projetada por D+N, ou repasse TikTok ainda pendente (status
+//     Pending do último arquivo importado). Tem data, mas o valor e/ou o dia
+//     são estimativa. Entra numa linha tracejada / na banda, nunca no alerta.
 //   - TENDÊNCIA: projeção do ritmo de recebimento atual pros dias mais à frente,
 //     onde ainda não há recebível confirmado. Vira uma BANDA sombreada; nunca
 //     entra no saldo conservador nem no primeiro-negativo.
@@ -20,7 +21,7 @@ export interface ForecastReceivable {
   /** data de liberação (YYYY-MM-DD ou ISO completo) */
   dateIso: string;
   amountCents: number;
-  source: 'ml' | 'manual' | 'shopee';
+  source: 'ml' | 'manual' | 'shopee' | 'tiktok';
 }
 
 export interface ForecastPayable {

@@ -21,20 +21,25 @@ import {
   computeAccumulatedBalance,
 } from '@/hooks/useCashFlow';
 
-// Compõe a Previsão de Caixa (Aposta B). Recebíveis vêm de dois lados:
+// Compõe a Previsão de Caixa (Aposta B). Recebíveis vêm de três lados:
 //   - CONFIRMADO — Mercado Livre: o ML entrega `release_date` (money_release_
 //     date) pronto. Vira a linha sólida e dispara o alerta.
 //   - PROVÁVEL — Shopee: a API só devolve escrow JÁ liberado, então estimamos a
 //     liberação futura por D+N a partir do pagamento do pedido em trânsito,
-//     com haircut da taxa Shopee. Vira linha tracejada / banda, nunca o alerta.
-// As saídas e os recebíveis manuais vêm do Fluxo de Caixa. TikTok (upload
-// manual) entra numa fase futura.
+//     com haircut da taxa Shopee.
+//   - PROVÁVEL — TikTok (upload manual): repasses com status Pending e
+//     `statement_date` na janela à frente, do último arquivo importado.
+// Os prováveis viram linha tracejada / banda, nunca o alerta. As saídas e os
+// recebíveis manuais vêm do Fluxo de Caixa.
 
 const HORIZON_DAYS = 30;
 // Status de pedido Shopee que ainda vão liberar escrow: pago, não cancelado e
 // não concluído (concluído já caiu, ou está pra cair, no get_escrow_list —
 // contá-lo aqui duplicaria).
 const SHOPEE_EM_TRANSITO = ['READY_TO_SHIP', 'PROCESSED', 'SHIPPED', 'TO_CONFIRM_RECEIVE'];
+// Status de repasse TikTok que já caiu — o resto ('Pending', 'FUNDS_PROCESSING'
+// etc.) é dinheiro a receber.
+const TIKTOK_PAGO = ['paid', 'settled'];
 // Piso pro início da tendência: mesmo sem nenhum recebível confirmado mapeado,
 // não somamos o ritmo antes disso — cobre o ciclo típico entrega + liberação
 // do ML de uma venda feita hoje. O valor real sai de `tendenciaStartOffset`,
@@ -65,6 +70,8 @@ export interface CashFlowForecast {
   hasMercadoLivre: boolean;
   /** há pelo menos uma conta Shopee conectada */
   hasShopee: boolean;
+  /** há repasses TikTok importados (upload manual) */
+  hasTiktok: boolean;
 
   /** âncora em uso na projeção */
   openingBalanceCents: number;
@@ -266,6 +273,47 @@ export function useCashFlowForecast(): CashFlowForecast {
     },
   });
 
+  // ── Recebíveis PROVÁVEIS TikTok (repasses pendentes do último upload) ──────
+  const tiktokQuery = useQuery({
+    queryKey: ['cash-flow-forecast-tiktok', user?.id, todayIso],
+    enabled: !!user?.id,
+    queryFn: async () => {
+      // Só a janela à frente: repasse pendente com statement_date fora dela
+      // (arquivo velho) não é caixa previsível.
+      const desdeIso = format(subDays(now, 3), 'yyyy-MM-dd');
+      const { data, error } = await supabase
+        .from('tiktok_settlements')
+        .select('total_settlement_amount_cents, statement_date, status')
+        .eq('user_id', user!.id)
+        .not('statement_date', 'is', null)
+        .gte('statement_date', desdeIso)
+        .lte('statement_date', horizonIso);
+      if (error) throw error;
+
+      const rows = data ?? [];
+      // hasTiktok: existe algum settlement importado (mesmo fora da janela)?
+      // Uma 2ª query mínima só pra decidir o empty-state / banner.
+      const { count } = await supabase
+        .from('tiktok_settlements')
+        .select('*', { count: 'exact', head: true })
+        .eq('user_id', user!.id);
+
+      const loIso = format(now, 'yyyy-MM-dd');
+      const probables: ForecastReceivable[] = rows
+        .filter(s => !TIKTOK_PAGO.includes((s.status ?? '').trim().toLowerCase()))
+        .map(s => {
+          const amountCents = Math.round(Number(s.total_settlement_amount_cents) || 0);
+          if (amountCents <= 0) return null;
+          const d = s.statement_date!.slice(0, 10);
+          return { dateIso: d < loIso ? loIso : d, amountCents, source: 'tiktok' as const };
+        })
+        .filter((r): r is ForecastReceivable => r !== null)
+        .sort((a, b) => a.dateIso.localeCompare(b.dateIso));
+
+      return { probables, hasTiktok: (count ?? 0) > 0 };
+    },
+  });
+
   const saveAnchor = useMutation<void, Error, number>({
     mutationFn: async (balanceCents: number) => {
       const { error } = await supabase
@@ -319,7 +367,10 @@ export function useCashFlowForecast(): CashFlowForecast {
     const mlReceivables = mlQuery.data?.receivables ?? [];
     const receivables = [...mlReceivables, ...manualReceivables].sort((a, b) => a.dateIso.localeCompare(b.dateIso));
 
-    const probableReceivables = shopeeQuery.data?.probables ?? [];
+    const probableReceivables = [
+      ...(shopeeQuery.data?.probables ?? []),
+      ...(tiktokQuery.data?.probables ?? []),
+    ].sort((a, b) => a.dateIso.localeCompare(b.dateIso));
 
     const ritmoLiquidoDiaCents = mlQuery.data?.ritmoLiquidoDiaCents ?? 0;
 
@@ -354,14 +405,16 @@ export function useCashFlowForecast(): CashFlowForecast {
       payables,
       ritmoLiquidoDiaCents,
     };
-  }, [entries, now, settingsQuery.data, mlQuery.data, shopeeQuery.data, todayIso]);
+  }, [entries, now, settingsQuery.data, mlQuery.data, shopeeQuery.data, tiktokQuery.data, todayIso]);
 
   return {
     ...composed,
     isLoading:
-      entriesLoading || settingsQuery.isLoading || mlQuery.isLoading || shopeeQuery.isLoading,
+      entriesLoading || settingsQuery.isLoading || mlQuery.isLoading ||
+      shopeeQuery.isLoading || tiktokQuery.isLoading,
     hasMercadoLivre: mlQuery.data?.hasMercadoLivre ?? false,
     hasShopee: shopeeQuery.data?.hasShopee ?? false,
+    hasTiktok: tiktokQuery.data?.hasTiktok ?? false,
     saveAnchor,
   };
 }

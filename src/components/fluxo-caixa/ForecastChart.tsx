@@ -35,7 +35,7 @@ function ForecastTooltip({ active, payload, label }: TooltipProps<number, string
       </p>
       {row.provavel !== row.saldo && (
         <p className="font-mono tabular-nums text-muted-foreground">
-          Com Shopee estimado: {formatCurrency(row.provavel, { whole: true })}
+          Com estimados: {formatCurrency(row.provavel, { whole: true })}
         </p>
       )}
       {row.tendencia !== row.provavel && (
