@@ -5,13 +5,15 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
 import { toCents } from '@/lib/money';
-import { calcComissaoTaxaReais } from '@/lib/marketplace-fees';
 import {
   computeForecast,
   tendenciaStartOffset,
+  calibrarShopee,
   type ForecastPayable,
   type ForecastReceivable,
   type ForecastResult,
+  type ShopeeCalibration,
+  type ShopeeReleaseSample,
 } from '@/lib/cashflow-forecast';
 import {
   useCashFlowEntries,
@@ -29,10 +31,6 @@ import {
 // manual) entra numa fase futura.
 
 const HORIZON_DAYS = 30;
-// Estimativa de liberação do escrow Shopee: N dias a partir do pagamento do
-// pedido. Cobre envio + trânsito + janela de confirmação do comprador +
-// repasse. Calibrável — a Shopee não expõe a data de liberação futura.
-const SHOPEE_RELEASE_LAG_DIAS = 18;
 // Status de pedido Shopee que ainda vão liberar escrow: pago, não cancelado e
 // não concluído (concluído já caiu, ou está pra cair, no get_escrow_list —
 // contá-lo aqui duplicaria).
@@ -83,6 +81,8 @@ export interface CashFlowForecast {
   receivables: ForecastReceivable[];
   /** recebíveis prováveis (Shopee estimado), ordenados por data */
   probableReceivables: ForecastReceivable[];
+  /** como a estimativa Shopee foi calibrada (null se não há Shopee) */
+  shopeeCalib: ShopeeCalibration | null;
   payables: ForecastPayable[];
   ritmoLiquidoDiaCents: number;
 
@@ -189,32 +189,71 @@ export function useCashFlowForecast(): CashFlowForecast {
       if (connErr) throw connErr;
 
       const ids = (conns ?? []).map(c => c.id);
-      if (ids.length === 0) return { probables: [] as ForecastReceivable[], hasShopee: false };
+      if (ids.length === 0) {
+        return { probables: [] as ForecastReceivable[], hasShopee: false, calib: null as ShopeeCalibration | null };
+      }
 
       // Pedido pago há mais de 45 dias e ainda "em trânsito" está travado
       // (extravio, disputa) — não é caixa previsível, fica de fora.
       const pagoDesdeIso = format(subDays(now, 45), 'yyyy-MM-dd');
-      const { data, error } = await supabase
-        .from('orders')
-        .select('paid_at, total_amount_cents, status')
-        .in('integration_id', ids)
-        .in('status', SHOPEE_EM_TRANSITO)
-        .not('paid_at', 'is', null)
-        .gte('paid_at', pagoDesdeIso);
-      if (error) throw error;
+      // Escrow já liberado nos últimos 120d → calibra o lag e o haircut pelo
+      // histórico real do vendedor.
+      const calibDesdeIso = format(subDays(now, 120), 'yyyy-MM-dd');
 
+      const [transitRes, escrowRes] = await Promise.all([
+        supabase
+          .from('orders')
+          .select('paid_at, total_amount_cents, status')
+          .in('integration_id', ids)
+          .in('status', SHOPEE_EM_TRANSITO)
+          .not('paid_at', 'is', null)
+          .gte('paid_at', pagoDesdeIso),
+        supabase
+          .from('payments')
+          .select('amount_cents, net_amount_cents, release_date, order_id')
+          .in('integration_id', ids)
+          .eq('payment_method', 'escrow')
+          .not('release_date', 'is', null)
+          .gte('release_date', calibDesdeIso),
+      ]);
+      if (transitRes.error) throw transitRes.error;
+      if (escrowRes.error) throw escrowRes.error;
+
+      // ── Calibração: lag pagamento→liberação e razão líquido/bruto ───────────
+      const escrowRows = escrowRes.data ?? [];
+      const paidOrderIds = [...new Set(escrowRows.map(r => r.order_id).filter((x): x is string => !!x))];
+      const paidById = new Map<string, string>();
+      if (paidOrderIds.length > 0) {
+        const { data: paidRows } = await supabase
+          .from('orders')
+          .select('id, paid_at')
+          .in('id', paidOrderIds)
+          .not('paid_at', 'is', null);
+        for (const o of paidRows ?? []) if (o.paid_at) paidById.set(o.id, o.paid_at);
+      }
+      const samples: ShopeeReleaseSample[] = escrowRows.flatMap(r => {
+        const paid = r.order_id ? paidById.get(r.order_id) : undefined;
+        if (!paid || !r.release_date) return [];
+        return [{
+          lagDias: differenceInCalendarDays(parseISO(r.release_date.slice(0, 10)), parseISO(paid.slice(0, 10))),
+          grossCents: Math.round(Number(r.amount_cents) || 0),
+          netCents: Math.round(Number(r.net_amount_cents) || 0),
+        }];
+      });
+      const calib = calibrarShopee(samples);
+
+      // ── Recebíveis prováveis dos pedidos em trânsito ───────────────────────
       // Estimativa é sempre no futuro (pedido preso não some, mas o dinheiro
       // não cai amanhã) e nunca além do horizonte.
       const loIso = format(addDays(now, 2), 'yyyy-MM-dd');
-      const probables: ForecastReceivable[] = (data ?? [])
+      const probables: ForecastReceivable[] = (transitRes.data ?? [])
         .map(o => {
           const grossCents = Math.round(Number(o.total_amount_cents) || 0);
           if (grossCents <= 0) return null;
-          const feeCents = Math.round(calcComissaoTaxaReais('Shopee', grossCents / 100) * 100);
-          const netCents = grossCents - feeCents;
+          const netCents = Math.round(grossCents * calib.netRatio);
           if (netCents <= 0) return null;
           const est = format(
-            addDays(parseISO(o.paid_at!.slice(0, 10)), SHOPEE_RELEASE_LAG_DIAS),
+            addDays(parseISO(o.paid_at!.slice(0, 10)), calib.lagDias),
             'yyyy-MM-dd',
           );
           const dateIso = est < loIso ? loIso : est > horizonIso ? horizonIso : est;
@@ -223,7 +262,7 @@ export function useCashFlowForecast(): CashFlowForecast {
         .filter((r): r is ForecastReceivable => r !== null)
         .sort((a, b) => a.dateIso.localeCompare(b.dateIso));
 
-      return { probables, hasShopee: true };
+      return { probables, hasShopee: true, calib };
     },
   });
 
@@ -311,6 +350,7 @@ export function useCashFlowForecast(): CashFlowForecast {
       suggestedOpeningCents,
       receivables,
       probableReceivables,
+      shopeeCalib: shopeeQuery.data?.calib ?? null,
       payables,
       ritmoLiquidoDiaCents,
     };

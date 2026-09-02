@@ -95,6 +95,67 @@ function addDaysIso(iso: string, n: number): string {
   return new Date(ms).toISOString().slice(0, 10);
 }
 
+// ── Calibração da estimativa Shopee pelo histórico do vendedor ────────────────
+// A Shopee não informa a data de liberação futura, então a previsão estima:
+// liberação = pagamento + N dias, líquido = bruto × razão. N e a razão vêm do
+// próprio histórico de repasses do vendedor quando há amostra suficiente — no
+// mesmo espírito do `ritmo` observado do ML. Sem amostra, cai nos padrões.
+
+export interface ShopeeReleaseSample {
+  /** dias entre o pagamento do pedido e a liberação do escrow */
+  lagDias: number;
+  /** valor bruto pago pelo comprador, em centavos */
+  grossCents: number;
+  /** valor líquido liberado pro vendedor (escrow), em centavos */
+  netCents: number;
+}
+
+export interface ShopeeCalibration {
+  /** dias pra estimar a liberação a partir do pagamento */
+  lagDias: number;
+  /** fração do bruto que sobra pro vendedor (net / gross) */
+  netRatio: number;
+  /** true = calibrado pelo histórico; false = usando os padrões */
+  observado: boolean;
+  /** quantos repasses liberados entraram na observação */
+  amostras: number;
+}
+
+export const SHOPEE_LAG_PADRAO_DIAS = 18;
+export const SHOPEE_NET_RATIO_PADRAO = 0.82;
+const SHOPEE_MIN_AMOSTRAS = 5;
+
+export function calibrarShopee(
+  samples: ShopeeReleaseSample[],
+  padrao: { lagDias?: number; netRatio?: number } = {},
+): ShopeeCalibration {
+  const lagPadrao = padrao.lagDias ?? SHOPEE_LAG_PADRAO_DIAS;
+  const ratioPadrao = padrao.netRatio ?? SHOPEE_NET_RATIO_PADRAO;
+
+  // Descarta o que não faz sentido: lag fora de 1..60d, bruto/líquido não
+  // positivos, líquido maior que o bruto (estorno, ajuste manual).
+  const validos = samples.filter(
+    s =>
+      s.lagDias >= 1 && s.lagDias <= 60 &&
+      s.grossCents > 0 && s.netCents > 0 && s.netCents <= s.grossCents,
+  );
+
+  if (validos.length < SHOPEE_MIN_AMOSTRAS) {
+    return { lagDias: lagPadrao, netRatio: ratioPadrao, observado: false, amostras: validos.length };
+  }
+
+  const lags = validos.map(s => s.lagDias).sort((a, b) => a - b);
+  const mid = Math.floor(lags.length / 2);
+  const lagDias = lags.length % 2
+    ? lags[mid]
+    : Math.round((lags[mid - 1] + lags[mid]) / 2);
+
+  const grossTotal = validos.reduce((s, v) => s + v.grossCents, 0);
+  const netTotal = validos.reduce((s, v) => s + v.netCents, 0);
+
+  return { lagDias, netRatio: netTotal / grossTotal, observado: true, amostras: validos.length };
+}
+
 /**
  * Offset (dias a partir da âncora) a partir do qual a TENDÊNCIA deve começar a
  * somar: o primeiro dia em que `fraction` (padrão 0,75) do valor dos recebíveis

@@ -21,6 +21,15 @@ import { ForecastChart } from '@/components/fluxo-caixa/ForecastChart';
 const dataCurta = (iso: string) => format(parseISO(iso.slice(0, 10)), "dd 'de' MMM", { locale: ptBR });
 const emQuantosDias = (offset: number) =>
   offset === 0 ? 'hoje' : offset === 1 ? 'amanhã' : `daqui a ${offset} dias`;
+
+/** frase sobre como a estimativa Shopee foi calibrada, pro rodapé */
+function textoCalibShopee(c: ReturnType<typeof useCashFlowForecast>['shopeeCalib']): string {
+  if (!c) return '';
+  const pct = Math.round(c.netRatio * 100);
+  return c.observado
+    ? `Os da Shopee são estimados e estão calibrados pelo seu histórico: liberação em ~${c.lagDias} dias e ~${pct}% do valor da venda (média dos seus últimos ${c.amostras} repasses).`
+    : `Os da Shopee são estimados com padrões (liberação ~${c.lagDias} dias, ~${pct}% do valor) porque ainda não há repasses liberados suficientes pra calibrar — vão se ajustar sozinhos conforme seu histórico cresce.`;
+}
 /** cents (number puro vindo da lib de forecast) → "R$ 1.234,56" */
 const brl = (cents: number) => formatCurrency(cents / 100);
 
@@ -198,11 +207,13 @@ function PrevisaoContent() {
 
       <p className="flex items-start gap-1.5 text-xs text-muted-foreground">
         <CalendarClock className="mt-0.5 size-3.5 shrink-0" />
-        Isto é caixa, não competência: mostra quando o dinheiro entra e sai da conta, não quando a venda
-        acontece — por isso pode divergir do lucro da DRE no mesmo período. Os recebíveis do Mercado Livre
-        usam a data real de liberação; os da Shopee são estimados (escrow projetado por D+N a partir do
-        pagamento, menos a taxa da plataforma) porque a Shopee não informa a data de liberação futura.
-        A tendência é uma estimativa pelo ritmo de vendas dos últimos 30 dias. TikTok ainda não entra.
+        <span>
+          Isto é caixa, não competência: mostra quando o dinheiro entra e sai da conta, não quando a venda
+          acontece — por isso pode divergir do lucro da DRE no mesmo período. Os recebíveis do Mercado Livre
+          usam a data real de liberação.
+          {f.hasShopee && ` ${textoCalibShopee(f.shopeeCalib)}`}
+          {' '}A tendência é uma estimativa pelo ritmo de vendas dos últimos 30 dias. TikTok ainda não entra.
+        </span>
       </p>
     </div>
   );

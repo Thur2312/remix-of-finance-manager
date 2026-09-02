@@ -2,8 +2,12 @@ import { describe, it, expect } from 'vitest';
 import {
   computeForecast,
   tendenciaStartOffset,
+  calibrarShopee,
+  SHOPEE_LAG_PADRAO_DIAS,
+  SHOPEE_NET_RATIO_PADRAO,
   type ForecastInputs,
   type ForecastReceivable,
+  type ShopeeReleaseSample,
 } from './cashflow-forecast';
 
 const base = (p: Partial<ForecastInputs> = {}): ForecastInputs => ({
@@ -131,6 +135,55 @@ describe('computeForecast', () => {
       probableReceivables: [{ dateIso: '2026-10-30', amountCents: 999_00, source: 'shopee' }],
     }));
     expect(r.totalProvavelCents).toBe(0);
+  });
+});
+
+describe('calibrarShopee', () => {
+  const s = (lagDias: number, grossCents: number, netCents: number): ShopeeReleaseSample =>
+    ({ lagDias, grossCents, netCents });
+
+  it('sem amostra suficiente, devolve os padrões', () => {
+    const c = calibrarShopee([s(12, 100_00, 80_00), s(14, 100_00, 80_00)]);
+    expect(c.observado).toBe(false);
+    expect(c.lagDias).toBe(SHOPEE_LAG_PADRAO_DIAS);
+    expect(c.netRatio).toBe(SHOPEE_NET_RATIO_PADRAO);
+    expect(c.amostras).toBe(2);
+  });
+
+  it('calibra lag pela mediana e ratio pelo agregado', () => {
+    const c = calibrarShopee([
+      s(10, 100_00, 78_00),
+      s(12, 100_00, 82_00),
+      s(15, 100_00, 80_00),
+      s(20, 100_00, 80_00),
+      s(25, 100_00, 80_00),
+    ]);
+    expect(c.observado).toBe(true);
+    expect(c.lagDias).toBe(15);                 // mediana de 10,12,15,20,25
+    expect(c.netRatio).toBeCloseTo(0.80, 4);    // 400/500
+    expect(c.amostras).toBe(5);
+  });
+
+  it('descarta amostra fora de faixa (lag, líquido > bruto)', () => {
+    const c = calibrarShopee([
+      s(0, 100_00, 80_00),        // lag < 1
+      s(90, 100_00, 80_00),       // lag > 60
+      s(12, 100_00, 120_00),      // líquido > bruto
+      s(12, 0, 0),                // bruto não positivo
+      s(10, 100_00, 80_00),
+      s(11, 100_00, 80_00),
+    ]);
+    // sobram 2 válidas → abaixo do mínimo → padrões
+    expect(c.observado).toBe(false);
+    expect(c.amostras).toBe(2);
+  });
+
+  it('mediana de amostra par é a média arredondada dos dois centrais', () => {
+    const c = calibrarShopee([
+      s(10, 1_00, 1_00), s(12, 1_00, 1_00), s(14, 1_00, 1_00),
+      s(20, 1_00, 1_00), s(22, 1_00, 1_00), s(24, 1_00, 1_00),
+    ]);
+    expect(c.lagDias).toBe(17); // média de 14 e 20
   });
 });
 
