@@ -99,6 +99,39 @@ describe('computeForecast', () => {
     expect(r.saldoMinimo.saldoCents).toBe(20_00);
     expect(r.saldoMinimo.dateIso).toBe('2026-09-05');
   });
+
+  it('recebível provável entra no saldoComProvavel/Tendencia, nunca no conservador nem no alerta', () => {
+    const r = computeForecast(base({
+      openingBalanceCents: 0,
+      probableReceivables: [{ dateIso: '2026-09-10', amountCents: 300_00, source: 'shopee' }],
+      payables: [{ dateIso: '2026-09-12', amountCents: 100_00, label: 'x' }],
+    }));
+    const dia12 = r.dias.find(d => d.dateIso === '2026-09-12')!;
+    expect(dia12.saldoCents).toBe(-100_00);              // só confirmado − saída
+    expect(dia12.saldoComProvavelCents).toBe(200_00);    // + 300 provável do dia 10
+    expect(dia12.saldoComTendenciaCents).toBe(200_00);   // sem ritmo, igual ao provável
+    expect(r.primeiroNegativo!.dateIso).toBe('2026-09-12'); // alerta pela linha conservadora
+    expect(r.totalProvavelCents).toBe(300_00);
+    expect(r.totalEntradasCents).toBe(0);
+  });
+
+  it('saldoMinimoComProvavel afrouxa o pior dia quando há estimativa Shopee', () => {
+    const r = computeForecast(base({
+      openingBalanceCents: 100_00,
+      payables: [{ dateIso: '2026-09-05', amountCents: 90_00, label: 'x' }],
+      probableReceivables: [{ dateIso: '2026-09-04', amountCents: 50_00, source: 'shopee' }],
+    }));
+    expect(r.saldoMinimo.saldoCents).toBe(10_00);            // conservador: 100 − 90
+    expect(r.saldoMinimoComProvavel.saldoCents).toBe(60_00); // + 50 provável do dia 04
+  });
+
+  it('provável além do horizonte é ignorado no total', () => {
+    const r = computeForecast(base({
+      horizonDays: 10,
+      probableReceivables: [{ dateIso: '2026-10-30', amountCents: 999_00, source: 'shopee' }],
+    }));
+    expect(r.totalProvavelCents).toBe(0);
+  });
 });
 
 describe('tendenciaStartOffset', () => {

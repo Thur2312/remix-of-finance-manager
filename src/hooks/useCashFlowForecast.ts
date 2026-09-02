@@ -5,6 +5,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
 import { toCents } from '@/lib/money';
+import { calcComissaoTaxaReais } from '@/lib/marketplace-fees';
 import {
   computeForecast,
   tendenciaStartOffset,
@@ -18,12 +19,24 @@ import {
   computeAccumulatedBalance,
 } from '@/hooks/useCashFlow';
 
-// Compõe a Previsão de Caixa (Aposta B, Fase 1). Só Mercado Livre no lado dos
-// recebíveis: o ML entrega `release_date` (money_release_date) pronto. Shopee e
-// TikTok entram nas próximas fases. As saídas e os recebíveis manuais vêm do
-// Fluxo de Caixa que o vendedor já mantém.
+// Compõe a Previsão de Caixa (Aposta B). Recebíveis vêm de dois lados:
+//   - CONFIRMADO — Mercado Livre: o ML entrega `release_date` (money_release_
+//     date) pronto. Vira a linha sólida e dispara o alerta.
+//   - PROVÁVEL — Shopee: a API só devolve escrow JÁ liberado, então estimamos a
+//     liberação futura por D+N a partir do pagamento do pedido em trânsito,
+//     com haircut da taxa Shopee. Vira linha tracejada / banda, nunca o alerta.
+// As saídas e os recebíveis manuais vêm do Fluxo de Caixa. TikTok (upload
+// manual) entra numa fase futura.
 
 const HORIZON_DAYS = 30;
+// Estimativa de liberação do escrow Shopee: N dias a partir do pagamento do
+// pedido. Cobre envio + trânsito + janela de confirmação do comprador +
+// repasse. Calibrável — a Shopee não expõe a data de liberação futura.
+const SHOPEE_RELEASE_LAG_DIAS = 18;
+// Status de pedido Shopee que ainda vão liberar escrow: pago, não cancelado e
+// não concluído (concluído já caiu, ou está pra cair, no get_escrow_list —
+// contá-lo aqui duplicaria).
+const SHOPEE_EM_TRANSITO = ['READY_TO_SHIP', 'PROCESSED', 'SHIPPED', 'TO_CONFIRM_RECEIVE'];
 // Piso pro início da tendência: mesmo sem nenhum recebível confirmado mapeado,
 // não somamos o ritmo antes disso — cobre o ciclo típico entrega + liberação
 // do ML de uma venda feita hoje. O valor real sai de `tendenciaStartOffset`,
@@ -50,8 +63,10 @@ function centsOf(p: PaymentRow): number {
 export interface CashFlowForecast {
   result: ForecastResult;
   isLoading: boolean;
-  /** há pelo menos uma conta ML conectada (define o empty state) */
+  /** há pelo menos uma conta ML conectada */
   hasMercadoLivre: boolean;
+  /** há pelo menos uma conta Shopee conectada */
+  hasShopee: boolean;
 
   /** âncora em uso na projeção */
   openingBalanceCents: number;
@@ -66,6 +81,8 @@ export interface CashFlowForecast {
 
   /** entradas e saídas que entram na projeção, já ordenadas por data */
   receivables: ForecastReceivable[];
+  /** recebíveis prováveis (Shopee estimado), ordenados por data */
+  probableReceivables: ForecastReceivable[];
   payables: ForecastPayable[];
   ritmoLiquidoDiaCents: number;
 
@@ -158,6 +175,58 @@ export function useCashFlowForecast(): CashFlowForecast {
     },
   });
 
+  // ── Recebíveis PROVÁVEIS Shopee (escrow estimado por D+N) ──────────────────
+  const shopeeQuery = useQuery({
+    queryKey: ['cash-flow-forecast-shopee', user?.id, todayIso],
+    enabled: !!user?.id,
+    queryFn: async () => {
+      const { data: conns, error: connErr } = await supabase
+        .from('integration_connections')
+        .select('id')
+        .eq('user_id', user!.id)
+        .eq('provider', 'shopee')
+        .eq('status', 'connected');
+      if (connErr) throw connErr;
+
+      const ids = (conns ?? []).map(c => c.id);
+      if (ids.length === 0) return { probables: [] as ForecastReceivable[], hasShopee: false };
+
+      // Pedido pago há mais de 45 dias e ainda "em trânsito" está travado
+      // (extravio, disputa) — não é caixa previsível, fica de fora.
+      const pagoDesdeIso = format(subDays(now, 45), 'yyyy-MM-dd');
+      const { data, error } = await supabase
+        .from('orders')
+        .select('paid_at, total_amount_cents, status')
+        .in('integration_id', ids)
+        .in('status', SHOPEE_EM_TRANSITO)
+        .not('paid_at', 'is', null)
+        .gte('paid_at', pagoDesdeIso);
+      if (error) throw error;
+
+      // Estimativa é sempre no futuro (pedido preso não some, mas o dinheiro
+      // não cai amanhã) e nunca além do horizonte.
+      const loIso = format(addDays(now, 2), 'yyyy-MM-dd');
+      const probables: ForecastReceivable[] = (data ?? [])
+        .map(o => {
+          const grossCents = Math.round(Number(o.total_amount_cents) || 0);
+          if (grossCents <= 0) return null;
+          const feeCents = Math.round(calcComissaoTaxaReais('Shopee', grossCents / 100) * 100);
+          const netCents = grossCents - feeCents;
+          if (netCents <= 0) return null;
+          const est = format(
+            addDays(parseISO(o.paid_at!.slice(0, 10)), SHOPEE_RELEASE_LAG_DIAS),
+            'yyyy-MM-dd',
+          );
+          const dateIso = est < loIso ? loIso : est > horizonIso ? horizonIso : est;
+          return { dateIso, amountCents: netCents, source: 'shopee' as const };
+        })
+        .filter((r): r is ForecastReceivable => r !== null)
+        .sort((a, b) => a.dateIso.localeCompare(b.dateIso));
+
+      return { probables, hasShopee: true };
+    },
+  });
+
   const saveAnchor = useMutation<void, Error, number>({
     mutationFn: async (balanceCents: number) => {
       const { error } = await supabase
@@ -211,6 +280,8 @@ export function useCashFlowForecast(): CashFlowForecast {
     const mlReceivables = mlQuery.data?.receivables ?? [];
     const receivables = [...mlReceivables, ...manualReceivables].sort((a, b) => a.dateIso.localeCompare(b.dateIso));
 
+    const probableReceivables = shopeeQuery.data?.probables ?? [];
+
     const ritmoLiquidoDiaCents = mlQuery.data?.ritmoLiquidoDiaCents ?? 0;
 
     // A tendência (ML) só passa a somar depois que o grosso dos recebíveis ML
@@ -225,6 +296,7 @@ export function useCashFlowForecast(): CashFlowForecast {
       todayIso,
       horizonDays: HORIZON_DAYS,
       receivables,
+      probableReceivables,
       payables,
       ritmoLiquidoDiaCents,
       tendenciaComecaEmDias,
@@ -238,15 +310,18 @@ export function useCashFlowForecast(): CashFlowForecast {
       openingAgeDays,
       suggestedOpeningCents,
       receivables,
+      probableReceivables,
       payables,
       ritmoLiquidoDiaCents,
     };
-  }, [entries, now, settingsQuery.data, mlQuery.data, todayIso]);
+  }, [entries, now, settingsQuery.data, mlQuery.data, shopeeQuery.data, todayIso]);
 
   return {
     ...composed,
-    isLoading: entriesLoading || settingsQuery.isLoading || mlQuery.isLoading,
+    isLoading:
+      entriesLoading || settingsQuery.isLoading || mlQuery.isLoading || shopeeQuery.isLoading,
     hasMercadoLivre: mlQuery.data?.hasMercadoLivre ?? false,
+    hasShopee: shopeeQuery.data?.hasShopee ?? false,
     saveAnchor,
   };
 }

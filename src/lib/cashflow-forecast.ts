@@ -4,11 +4,14 @@
 // desce. Puro e testável de propósito, no espírito de goal.ts / scenario.ts —
 // nenhuma query, nenhum hook.
 //
-// Dois baldes, com regras diferentes (ver revisão adversarial no roadmap):
+// Três baldes, com regras diferentes (ver revisão adversarial no roadmap):
 //   - CONFIRMADO: recebível com data de liberação conhecida (ML: money_release_
 //     date) + contas a pagar já lançadas. Vira a LINHA sólida e é o único que
 //     dispara o alerta de saldo negativo. "Mesmo contando só o que já está
 //     travado, você fica no vermelho dia X."
+//   - PROVÁVEL: recebível estimado — pedido Shopee em trânsito com a liberação
+//     do escrow projetada por D+N. Tem data, mas o valor e o dia são estimativa.
+//     Entra numa linha tracejada / na banda, nunca no alerta.
 //   - TENDÊNCIA: projeção do ritmo de recebimento atual pros dias mais à frente,
 //     onde ainda não há recebível confirmado. Vira uma BANDA sombreada; nunca
 //     entra no saldo conservador nem no primeiro-negativo.
@@ -17,7 +20,7 @@ export interface ForecastReceivable {
   /** data de liberação (YYYY-MM-DD ou ISO completo) */
   dateIso: string;
   amountCents: number;
-  source: 'ml' | 'manual';
+  source: 'ml' | 'manual' | 'shopee';
 }
 
 export interface ForecastPayable {
@@ -34,7 +37,11 @@ export interface ForecastInputs {
   todayIso: string;
   /** quantos dias projetar pra frente (ex.: 30) */
   horizonDays: number;
+  /** recebíveis CONFIRMADOS — entram na linha conservadora e no alerta */
   receivables: ForecastReceivable[];
+  /** recebíveis PROVÁVEIS (Shopee estimado) — entram só na linha tracejada /
+   *  na banda, nunca no alerta */
+  probableReceivables?: ForecastReceivable[];
   payables: ForecastPayable[];
   /** média diária de recebimento líquido observada (ex.: últimos 30d) */
   ritmoLiquidoDiaCents: number;
@@ -48,11 +55,16 @@ export interface ForecastDay {
   dateIso: string;
   /** dia relativo à âncora (0 = hoje) */
   offset: number;
+  /** entrada confirmada do dia */
   entradaCents: number;
+  /** entrada provável (Shopee estimado) do dia */
+  entradaProvavelCents: number;
   saidaCents: number;
   /** linha conservadora: âncora + Σ(confirmado − saídas) até este dia */
   saldoCents: number;
-  /** saldoCents + a tendência acumulada até este dia */
+  /** saldoCents + Σ(provável) até este dia — inclui a estimativa Shopee, sem ritmo */
+  saldoComProvavelCents: number;
+  /** saldoComProvavelCents + a tendência acumulada até este dia */
   saldoComTendenciaCents: number;
 }
 
@@ -63,9 +75,13 @@ export interface ForecastResult {
   /** menor saldo conservador da janela e o dia em que acontece */
   saldoMinimo: { dateIso: string; saldoCents: number; offset: number };
   totalEntradasCents: number;
+  /** total dos recebíveis prováveis (Shopee estimado) na janela */
+  totalProvavelCents: number;
   totalSaidasCents: number;
   /** saldo conservador no fim da janela */
   saldoFinalCents: number;
+  /** menor saldo da janela contando também os prováveis, e o dia */
+  saldoMinimoComProvavel: { dateIso: string; saldoCents: number; offset: number };
 }
 
 // ── Datas: aritmética simples em UTC sobre o "dia civil", sem dependência ─────
@@ -121,12 +137,18 @@ export function computeForecast(i: ForecastInputs): ForecastResult {
   // negativo) caem no dia 0 — o dinheiro que você já devia sair hoje. Itens
   // além do horizonte são ignorados.
   const entradaPorDia = new Array(horizon + 1).fill(0);
+  const provavelPorDia = new Array(horizon + 1).fill(0);
   const saidaPorDia = new Array(horizon + 1).fill(0);
 
   for (const r of i.receivables) {
     const off = Math.max(0, isoToUtcDays(r.dateIso) - anchorDay);
     if (off > horizon) continue;
     entradaPorDia[off] += r.amountCents;
+  }
+  for (const r of i.probableReceivables ?? []) {
+    const off = Math.max(0, isoToUtcDays(r.dateIso) - anchorDay);
+    if (off > horizon) continue;
+    provavelPorDia[off] += r.amountCents;
   }
   for (const p of i.payables) {
     const off = Math.max(0, isoToUtcDays(p.dateIso) - anchorDay);
@@ -139,13 +161,17 @@ export function computeForecast(i: ForecastInputs): ForecastResult {
 
   const dias: ForecastDay[] = [];
   let saldo = i.openingBalanceCents;
+  let provavelAcum = 0;
   let tendenciaAcum = 0;
   let totalEntradas = 0;
+  let totalProvavel = 0;
   let totalSaidas = 0;
 
   for (let off = 0; off <= horizon; off++) {
     saldo += entradaPorDia[off] - saidaPorDia[off];
+    provavelAcum += provavelPorDia[off];
     totalEntradas += entradaPorDia[off];
+    totalProvavel += provavelPorDia[off];
     totalSaidas += saidaPorDia[off];
     if (off >= tendDesde) tendenciaAcum += ritmo;
 
@@ -153,14 +179,20 @@ export function computeForecast(i: ForecastInputs): ForecastResult {
       dateIso: addDaysIso(i.todayIso, off),
       offset: off,
       entradaCents: entradaPorDia[off],
+      entradaProvavelCents: provavelPorDia[off],
       saidaCents: saidaPorDia[off],
       saldoCents: saldo,
-      saldoComTendenciaCents: saldo + tendenciaAcum,
+      saldoComProvavelCents: saldo + provavelAcum,
+      saldoComTendenciaCents: saldo + provavelAcum + tendenciaAcum,
     });
   }
 
   const primeiroNegativoDia = dias.find(d => d.saldoCents < 0) ?? null;
   const saldoMinimoDia = dias.reduce((min, d) => (d.saldoCents < min.saldoCents ? d : min), dias[0]);
+  const saldoMinimoProvavelDia = dias.reduce(
+    (min, d) => (d.saldoComProvavelCents < min.saldoComProvavelCents ? d : min),
+    dias[0],
+  );
 
   return {
     dias,
@@ -176,7 +208,13 @@ export function computeForecast(i: ForecastInputs): ForecastResult {
       saldoCents: saldoMinimoDia.saldoCents,
       offset: saldoMinimoDia.offset,
     },
+    saldoMinimoComProvavel: {
+      dateIso: saldoMinimoProvavelDia.dateIso,
+      saldoCents: saldoMinimoProvavelDia.saldoComProvavelCents,
+      offset: saldoMinimoProvavelDia.offset,
+    },
     totalEntradasCents: totalEntradas,
+    totalProvavelCents: totalProvavel,
     totalSaidasCents: totalSaidas,
     saldoFinalCents: saldo,
   };

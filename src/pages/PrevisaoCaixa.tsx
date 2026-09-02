@@ -40,13 +40,25 @@ function PrevisaoContent() {
   const { result } = f;
   const neg = result.primeiroNegativo;
   const showTendencia = f.ritmoLiquidoDiaCents > 0;
+  const temProvavel = f.probableReceivables.length > 0;
   // O zero só vira referência no gráfico quando o saldo chega perto dele —
   // senão comprime a variação semana a semana no topo do gráfico à toa.
   const perigo = !!neg || result.saldoMinimo.saldoCents < Math.max(result.dias[0].saldoCents * 0.25, 0);
 
-  const semMarketplace = !f.hasMercadoLivre;
+  const semMarketplace = !f.hasMercadoLivre && !f.hasShopee;
   // Sem marketplace E sem nada no Fluxo de Caixa não há o que projetar.
   const semDados = semMarketplace && f.receivables.length === 0 && f.payables.length === 0;
+
+  // Entradas confirmadas + prováveis, juntas e ordenadas, pra lista lateral.
+  const proximasEntradas = [
+    ...f.receivables.map(r => ({
+      label: r.source === 'ml' ? 'Mercado Livre' : 'Entrada prevista',
+      date: r.dateIso, amount: r.amountCents, positive: true, estimado: false,
+    })),
+    ...f.probableReceivables.map(r => ({
+      label: 'Shopee', date: r.dateIso, amount: r.amountCents, positive: true, estimado: true,
+    })),
+  ].sort((a, b) => a.date.localeCompare(b.date)).slice(0, 7);
 
   if (semDados) {
     return (
@@ -100,6 +112,13 @@ function PrevisaoContent() {
               )}{' '}
               contando só o dinheiro já garantido (recebíveis com data de liberação + contas lançadas).
               Antecipe um recebível, adie uma conta ou reforce o caixa antes disso.
+              {temProvavel && (
+                <span className="mt-1 block font-normal text-muted-foreground">
+                  Contando também os recebíveis estimados da Shopee, o pior dia seria{' '}
+                  <strong>{brl(result.saldoMinimoComProvavel.saldoCents)}</strong> em{' '}
+                  {dataCurta(result.saldoMinimoComProvavel.dateIso)} — mas isso é estimativa, não conte com ela.
+                </span>
+              )}
             </p>
           </CardContent>
         </Card>
@@ -110,7 +129,8 @@ function PrevisaoContent() {
             <p className="text-sm font-medium">
               Saldo positivo nos próximos 30 dias. O ponto mais baixo é{' '}
               <strong className="text-success">{brl(result.saldoMinimo.saldoCents)}</strong>{' '}
-              em <strong>{dataCurta(result.saldoMinimo.dateIso)}</strong>.
+              em <strong>{dataCurta(result.saldoMinimo.dateIso)}</strong>
+              {temProvavel && ' — contando só o que já está garantido'}.
             </p>
           </CardContent>
         </Card>
@@ -123,22 +143,34 @@ function PrevisaoContent() {
             <h3 className="text-sm font-semibold">Saldo projetado — 30 dias</h3>
             <div className="flex flex-wrap gap-x-4 text-[10px] text-muted-foreground">
               <span><span className="mr-1 inline-block h-0.5 w-3 bg-primary align-middle" />confirmado</span>
+              {temProvavel && (
+                <span><span className="mr-1 inline-block h-0 w-3 border-t-2 border-dashed border-primary/70 align-middle" />+ Shopee estimado</span>
+              )}
               {showTendencia && (
-                <span><span className="mr-1 inline-block size-2 rounded-sm bg-primary/20 align-middle" />com tendência de vendas</span>
+                <span><span className="mr-1 inline-block size-2 rounded-sm bg-primary/20 align-middle" />+ tendência de vendas</span>
               )}
               {perigo && (
                 <span><span className="mr-1 inline-block h-px w-3 bg-destructive align-middle" />zero</span>
               )}
             </div>
           </div>
-          <ForecastChart dias={result.dias} showTendencia={showTendencia} destacarZero={perigo} />
-          <div className="grid gap-3 pt-1 sm:grid-cols-3">
+          <ForecastChart
+            dias={result.dias}
+            showTendencia={showTendencia}
+            showProvavel={temProvavel}
+            destacarZero={perigo}
+          />
+          <div className={cn('grid gap-3 pt-1 sm:grid-cols-2', temProvavel ? 'lg:grid-cols-4' : 'lg:grid-cols-3')}>
             <Stat label="Entra (garantido)" value={brl(result.totalEntradasCents)}
               hint="recebíveis com data + entradas pendentes" />
+            {temProvavel && (
+              <Stat label="Entra (Shopee estimado)" value={`≈ ${brl(result.totalProvavelCents)}`}
+                hint="escrow projetado por D+N dos pedidos em trânsito" />
+            )}
             <Stat label="Sai" value={brl(result.totalSaidasCents)}
               hint="contas a pagar lançadas no período" />
             <Stat label="Saldo em 30 dias" value={brl(result.saldoFinalCents)}
-              hint="linha conservadora, sem tendência" />
+              hint="linha conservadora, sem estimativa" />
           </div>
         </CardContent>
       </Card>
@@ -147,22 +179,18 @@ function PrevisaoContent() {
         <ListCard
           title="Próximas entradas"
           icon={TrendingUp}
-          rows={f.receivables.slice(0, 6).map(r => ({
-            label: r.source === 'ml' ? 'Mercado Livre' : 'Entrada prevista',
-            date: r.dateIso,
-            amount: r.amountCents,
-            positive: true,
-          }))}
-          empty="Nenhum recebível com data de liberação nos próximos 30 dias."
+          rows={proximasEntradas}
+          empty="Nenhum recebível previsto nos próximos 30 dias."
         />
         <ListCard
           title="Próximas saídas"
           icon={Wallet}
-          rows={f.payables.slice(0, 6).map(p => ({
+          rows={f.payables.slice(0, 7).map(p => ({
             label: p.label,
             date: p.dateIso,
             amount: p.amountCents,
             positive: false,
+            estimado: false,
           }))}
           empty="Nenhuma conta a pagar lançada para os próximos 30 dias."
         />
@@ -171,8 +199,10 @@ function PrevisaoContent() {
       <p className="flex items-start gap-1.5 text-xs text-muted-foreground">
         <CalendarClock className="mt-0.5 size-3.5 shrink-0" />
         Isto é caixa, não competência: mostra quando o dinheiro entra e sai da conta, não quando a venda
-        acontece — por isso pode divergir do lucro da DRE no mesmo período. Por enquanto só o Mercado Livre
-        entra nos recebíveis; a tendência é uma estimativa pelo ritmo dos últimos 30 dias.
+        acontece — por isso pode divergir do lucro da DRE no mesmo período. Os recebíveis do Mercado Livre
+        usam a data real de liberação; os da Shopee são estimados (escrow projetado por D+N a partir do
+        pagamento, menos a taxa da plataforma) porque a Shopee não informa a data de liberação futura.
+        A tendência é uma estimativa pelo ritmo de vendas dos últimos 30 dias. TikTok ainda não entra.
       </p>
     </div>
   );
@@ -240,7 +270,7 @@ function Stat({ label, value, hint }: { label: string; value: string; hint: stri
   );
 }
 
-interface ListRow { label: string; date: string; amount: number; positive: boolean }
+interface ListRow { label: string; date: string; amount: number; positive: boolean; estimado: boolean }
 
 function ListCard({
   title, icon: Icon, rows, empty,
@@ -259,11 +289,14 @@ function ListCard({
             {rows.map((r, i) => (
               <li key={i} className="flex items-center justify-between gap-2 text-sm">
                 <span className="min-w-0">
-                  <span className="block truncate">{r.label}</span>
+                  <span className="block truncate">
+                    {r.label}
+                    {r.estimado && <span className="ml-1 text-[10px] text-muted-foreground">estimado</span>}
+                  </span>
                   <span className="text-[10px] text-muted-foreground">{dataCurta(r.date)}</span>
                 </span>
                 <span className={cn('font-mono tabular-nums', r.positive ? 'text-success' : 'text-destructive')}>
-                  {r.positive ? '+' : '−'}{brl(r.amount)}
+                  {r.estimado ? '≈ ' : r.positive ? '+' : '−'}{brl(r.amount)}
                 </span>
               </li>
             ))}

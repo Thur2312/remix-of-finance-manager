@@ -10,6 +10,8 @@ interface ForecastChartProps {
   dias: ForecastDay[];
   /** mostra a banda de tendência (só faz sentido quando há ritmo projetado) */
   showTendencia: boolean;
+  /** mostra a linha tracejada com os recebíveis prováveis (Shopee estimado) */
+  showProvavel: boolean;
   /** força o zero a aparecer no eixo (quando o saldo chega perto do vermelho) */
   destacarZero: boolean;
 }
@@ -17,6 +19,7 @@ interface ForecastChartProps {
 interface Row {
   label: string;
   saldo: number;
+  provavel: number;
   tendencia: number;
 }
 
@@ -30,7 +33,12 @@ function ForecastTooltip({ active, payload, label }: TooltipProps<number, string
       <p className="font-mono tabular-nums">
         Confirmado: {formatCurrency(row.saldo, { whole: true })}
       </p>
-      {row.tendencia !== row.saldo && (
+      {row.provavel !== row.saldo && (
+        <p className="font-mono tabular-nums text-muted-foreground">
+          Com Shopee estimado: {formatCurrency(row.provavel, { whole: true })}
+        </p>
+      )}
+      {row.tendencia !== row.provavel && (
         <p className="font-mono tabular-nums text-muted-foreground">
           Com tendência: {formatCurrency(row.tendencia, { whole: true })}
         </p>
@@ -39,14 +47,18 @@ function ForecastTooltip({ active, payload, label }: TooltipProps<number, string
   );
 }
 
-// Duas séries deliberadamente: a LINHA sólida é só o que está confirmado
-// (recebível com data + contas lançadas) — é ela que carrega o alerta. A ÁREA
-// sombreada por cima é o cenário com a tendência de vendas somada, sempre
-// mostrada como faixa, nunca como número de destaque.
-export function ForecastChart({ dias, showTendencia, destacarZero }: ForecastChartProps) {
+// Camadas deliberadas, do pessimista pro otimista:
+//   - LINHA sólida = só o confirmado (recebível com data + contas lançadas).
+//     É ela que carrega o alerta.
+//   - LINHA tracejada = confirmado + recebível provável da Shopee (escrow
+//     estimado por D+N). Só aparece quando há Shopee conectada.
+//   - ÁREA sombreada = tudo acima + a tendência do ritmo de vendas. Sempre
+//     faixa, nunca número de destaque.
+export function ForecastChart({ dias, showTendencia, showProvavel, destacarZero }: ForecastChartProps) {
   const data: Row[] = dias.map(d => ({
     label: format(parseISO(d.dateIso), 'dd/MM'),
     saldo: d.saldoCents / 100,
+    provavel: d.saldoComProvavelCents / 100,
     tendencia: d.saldoComTendenciaCents / 100,
   }));
 
@@ -89,6 +101,18 @@ export function ForecastChart({ dias, showTendencia, destacarZero }: ForecastCha
             dataKey="tendencia"
             stroke="none"
             fill="url(#forecastBand)"
+            isAnimationActive={false}
+          />
+        )}
+        {showProvavel && (
+          <Line
+            type="monotone"
+            dataKey="provavel"
+            stroke="hsl(var(--primary))"
+            strokeWidth={1.5}
+            strokeDasharray="5 3"
+            strokeOpacity={0.7}
+            dot={false}
             isAnimationActive={false}
           />
         )}
