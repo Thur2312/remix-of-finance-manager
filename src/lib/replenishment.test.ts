@@ -111,6 +111,23 @@ describe('computeReplenishmentRow', () => {
     expect(computeReplenishmentRow(sku({ stockSource: 'nenhum' }), opts).estoqueOrigem).toBe('nenhum');
   });
 
+  it('estoque alto + giro ínfimo não gera data de ruptura absurda', () => {
+    // 1 venda em 60 dias, 999.999 em estoque → cobertura ~6e7 dias
+    const r = computeReplenishmentRow(sku({ unitsSold: 1, windowDays: 60, stockUnits: 999_999 }), opts);
+    expect(r.velocidadeDia).toBeGreaterThan(0);
+    expect(Number.isFinite(r.coberturaDias)).toBe(true);
+    expect(r.rupturaIso).toBeNull();          // longe demais → sem data
+    expect(r.precisaPedir).toBe(false);
+    expect(r.urgencia).toBe('ok');
+  });
+
+  it('data de ruptura só sai dentro de ~10 anos', () => {
+    const perto = computeReplenishmentRow(sku({ unitsSold: 60, windowDays: 60, stockUnits: 30 }), opts);
+    expect(perto.rupturaIso).toBe('2026-10-02'); // 30 dias
+    const longe = computeReplenishmentRow(sku({ unitsSold: 60, windowDays: 60, stockUnits: 300_000 }), opts);
+    expect(longe.rupturaIso).toBeNull();
+  });
+
   it('desconta dias sem estoque da janela → velocidade sobe', () => {
     const cheio = computeReplenishmentRow(sku({ unitsSold: 30, windowDays: 60, daysOutOfStock: 0 }), opts);
     const comRuptura = computeReplenishmentRow(sku({ unitsSold: 30, windowDays: 60, daysOutOfStock: 30 }), opts);

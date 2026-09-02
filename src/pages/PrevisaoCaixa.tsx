@@ -18,7 +18,10 @@ import { parseMoneyInput } from '@/lib/money';
 import { useCashFlowForecast } from '@/hooks/useCashFlowForecast';
 import { ForecastChart } from '@/components/fluxo-caixa/ForecastChart';
 
-const dataCurta = (iso: string) => format(parseISO(iso.slice(0, 10)), "dd 'de' MMM", { locale: ptBR });
+const dataCurta = (iso: string) => {
+  const d = parseISO(iso.slice(0, 10));
+  return Number.isNaN(d.getTime()) ? '—' : format(d, "dd 'de' MMM", { locale: ptBR });
+};
 const emQuantosDias = (offset: number) =>
   offset === 0 ? 'hoje' : offset === 1 ? 'amanhã' : `daqui a ${offset} dias`;
 

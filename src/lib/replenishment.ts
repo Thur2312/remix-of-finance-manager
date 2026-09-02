@@ -112,8 +112,15 @@ function isoToUtcDays(iso: string): number {
   return Math.floor(Date.UTC(y, (m ?? 1) - 1, d ?? 1) / 86_400_000);
 }
 function addDaysIso(iso: string, n: number): string {
-  return new Date((isoToUtcDays(iso) + n) * 86_400_000).toISOString().slice(0, 10);
+  // Clampa o deslocamento: `n` vem de cobertura/velocidade e pode explodir
+  // (estoque alto ÷ giro ínfimo). Sem isto, new Date() estoura a faixa válida
+  // e toISOString() devolve ano estendido ("+275760-…"), que quebra parseISO.
+  const dias = isoToUtcDays(iso) + Math.max(0, Math.min(365_000, Math.floor(n)));
+  return new Date(dias * 86_400_000).toISOString().slice(0, 10);
 }
+
+// Cobertura acima disto = "não rompe tão cedo" — não vira data de ruptura.
+const COBERTURA_LONGA_DIAS = 3650;
 
 export function computeReplenishmentRow(
   s: ReplenishmentSku,
@@ -127,7 +134,10 @@ export function computeReplenishmentRow(
 
   const disponivel = Math.max(0, s.stockUnits) + Math.max(0, s.inTransitUnits);
   const cobertura = v > 0 ? disponivel / v : Infinity;
-  const rupturaIso = v > 0 ? addDaysIso(opts.todayIso, Math.floor(cobertura)) : null;
+  const rupturaIso =
+    v > 0 && Number.isFinite(cobertura) && cobertura <= COBERTURA_LONGA_DIAS
+      ? addDaysIso(opts.todayIso, Math.floor(cobertura))
+      : null;
 
   const pontoReposicao = v * (s.leadTimeDays + s.safetyDays);
   const precisaPedir = v > 0 && disponivel <= pontoReposicao;

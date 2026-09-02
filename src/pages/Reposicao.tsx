@@ -24,7 +24,10 @@ import { useReplenishment, type OpenPurchaseOrder, type SaveInventoryInput } fro
 import type { ReplenishmentRow, Urgencia } from '@/lib/replenishment';
 
 const brl = (cents: number) => formatCurrency(cents / 100);
-const dataCurta = (iso: string) => format(parseISO(iso.slice(0, 10)), "dd 'de' MMM", { locale: ptBR });
+const dataCurta = (iso: string) => {
+  const d = parseISO(iso.slice(0, 10));
+  return Number.isNaN(d.getTime()) ? '—' : format(d, "dd 'de' MMM", { locale: ptBR });
+};
 const num = (n: number, d = 0) => n.toLocaleString('pt-BR', { minimumFractionDigits: d, maximumFractionDigits: d });
 
 const URGENCIA_META: Record<Urgencia, { label: string; cls: string }> = {
@@ -290,12 +293,14 @@ function SkuRow({
         {row.velocidadeAjustada && <span className="ml-0.5 text-[10px] text-muted-foreground" title="janela ajustada pelos dias sem estoque">*</span>}
       </td>
       <td className="px-2 py-2 text-right tabular-nums">
-        {Number.isFinite(row.coberturaDias) ? (
-          <>
-            {num(row.coberturaDias)}d
-            {row.rupturaIso && <span className="block text-[10px] text-muted-foreground">{dataCurta(row.rupturaIso)}</span>}
-          </>
-        ) : '—'}
+        {!Number.isFinite(row.coberturaDias) ? '—'
+          : row.coberturaDias > 3650 ? <span className="text-muted-foreground">10+ anos</span>
+          : (
+            <>
+              {num(row.coberturaDias)}d
+              {row.rupturaIso && <span className="block text-[10px] text-muted-foreground">{dataCurta(row.rupturaIso)}</span>}
+            </>
+          )}
       </td>
       <td className="px-2 py-2 text-right">
         <input
