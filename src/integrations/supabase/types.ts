@@ -732,6 +732,45 @@ export type Database = {
           },
         ]
       }
+      inventory_settings: {
+        Row: {
+          active: boolean
+          item_name: string | null
+          lead_time_days: number
+          moq_units: number | null
+          safety_days: number
+          sku: string
+          stock_units: number
+          stock_updated_at: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          active?: boolean
+          item_name?: string | null
+          lead_time_days?: number
+          moq_units?: number | null
+          safety_days?: number
+          sku: string
+          stock_units?: number
+          stock_updated_at?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          active?: boolean
+          item_name?: string | null
+          lead_time_days?: number
+          moq_units?: number | null
+          safety_days?: number
+          sku?: string
+          stock_units?: number
+          stock_updated_at?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       ml_orders: {
         Row: {
           created_at: string | null
@@ -1328,6 +1367,51 @@ export type Database = {
           trial_ends_at?: string | null
           trial_started_at?: string | null
           updated_at?: string | null
+        }
+        Relationships: []
+      }
+      purchase_orders: {
+        Row: {
+          created_at: string
+          expected_at: string | null
+          id: string
+          item_name: string | null
+          notes: string | null
+          ordered_at: string
+          payment_due_at: string | null
+          qty_units: number
+          received_at: string | null
+          sku: string
+          unit_cost_cents: number
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          expected_at?: string | null
+          id?: string
+          item_name?: string | null
+          notes?: string | null
+          ordered_at?: string
+          payment_due_at?: string | null
+          qty_units: number
+          received_at?: string | null
+          sku: string
+          unit_cost_cents?: number
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          expected_at?: string | null
+          id?: string
+          item_name?: string | null
+          notes?: string | null
+          ordered_at?: string
+          payment_due_at?: string | null
+          qty_units?: number
+          received_at?: string | null
+          sku?: string
+          unit_cost_cents?: number
+          user_id?: string
         }
         Relationships: []
       }
