@@ -37,21 +37,6 @@ function PrevisaoContent() {
     );
   }
 
-  if (!f.hasMercadoLivre) {
-    return (
-      <EmptyState
-        icon={Plug}
-        title="Conecte o Mercado Livre"
-        description="A previsão de caixa usa a data de liberação de cada pagamento do Mercado Livre pra projetar o seu saldo. Shopee e TikTok entram nas próximas versões."
-        action={
-          <Button asChild>
-            <Link to="/integrations">Ir para Integrações</Link>
-          </Button>
-        }
-      />
-    );
-  }
-
   const { result } = f;
   const neg = result.primeiroNegativo;
   const showTendencia = f.ritmoLiquidoDiaCents > 0;
@@ -59,8 +44,42 @@ function PrevisaoContent() {
   // senão comprime a variação semana a semana no topo do gráfico à toa.
   const perigo = !!neg || result.saldoMinimo.saldoCents < Math.max(result.dias[0].saldoCents * 0.25, 0);
 
+  const semMarketplace = !f.hasMercadoLivre;
+  // Sem marketplace E sem nada no Fluxo de Caixa não há o que projetar.
+  const semDados = semMarketplace && f.receivables.length === 0 && f.payables.length === 0;
+
+  if (semDados) {
+    return (
+      <EmptyState
+        icon={CalendarClock}
+        title="Ainda não dá pra projetar"
+        description="A previsão precisa de recebíveis (um marketplace conectado) ou de contas a pagar lançadas no Fluxo de Caixa. Faça um dos dois pra começar."
+        action={
+          <div className="flex flex-wrap gap-2">
+            <Button asChild><Link to="/integrations">Conectar marketplace</Link></Button>
+            <Button asChild variant="outline"><Link to="/fluxo-caixa/lancamentos">Abrir Fluxo de Caixa</Link></Button>
+          </div>
+        }
+      />
+    );
+  }
+
   return (
     <div className="space-y-5">
+      {semMarketplace && (
+        <Card className="ring-1 ring-primary/20 bg-primary/5">
+          <CardContent className="flex items-start gap-3 py-4">
+            <Plug className="mt-0.5 size-5 shrink-0 text-primary" />
+            <p className="text-sm">
+              Nenhum marketplace conectado — a projeção está usando só o que você lançou no Fluxo de Caixa
+              (contas a pagar e entradas previstas).{' '}
+              <Link to="/integrations" className="font-medium underline underline-offset-2">Conecte o Mercado Livre</Link>{' '}
+              pra incluir os recebíveis com data de liberação.
+            </p>
+          </CardContent>
+        </Card>
+      )}
+
       <AnchorCard f={f} />
 
       {/* Veredito */}
