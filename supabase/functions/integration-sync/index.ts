@@ -779,6 +779,97 @@ if (!step || step === 'orders') {
       }
     }
 
+    // ── SYNC STOCK (Aposta C Fase 2) ─────────────────────────────────────────
+    // Estoque disponível por SKU do catálogo Shopee → product_stock. Best-
+    // effort: não é crítico (a reposição cai no estoque manual), erro só loga.
+    let stockCount = 0
+    if (!step || step === 'stock') {
+      try {
+        const MAX_STOCK_ITEMS = 1500
+        const itemIds: number[] = []
+        let offset = 0
+        for (let page = 0; page < 60; page++) {
+          const list = await shopeeGet<{
+            item: { item_id: number; item_status: string }[]
+            has_next_page: boolean
+          }>(BASE_URL, "/api/v2/product/get_item_list", {
+            offset, page_size: 100, item_status: "NORMAL",
+          }, PARTNER_ID, PARTNER_KEY, accessToken, shopId)
+          const items = list?.item ?? []
+          itemIds.push(...items.map(i => i.item_id))
+          if (!list?.has_next_page || items.length === 0 || itemIds.length >= MAX_STOCK_ITEMS) break
+          offset += 100
+        }
+        if (itemIds.length >= MAX_STOCK_ITEMS) {
+          console.warn(`⚠️ Catálogo com ${itemIds.length}+ itens — sincronizando estoque dos ${MAX_STOCK_ITEMS} primeiros`)
+        }
+
+        const stockBySku = new Map<string, { units: number; name: string; itemId: number }>()
+        const readV2 = (info: any): number | null => {
+          const total = info?.stock_info_v2?.summary_info?.total_available_stock
+          if (Number.isFinite(total)) return Number(total)
+          const seller = info?.stock_info_v2?.seller_stock
+          if (Array.isArray(seller) && seller.length) return seller.reduce((s: number, x: any) => s + (Number(x?.stock) || 0), 0)
+          const legacy = info?.stock_info
+          if (Array.isArray(legacy) && legacy.length) return legacy.reduce((s: number, x: any) => s + (Number(x?.current_stock) || 0), 0)
+          return null
+        }
+        const add = (sku: string | null | undefined, units: number | null, name: string, itemId: number) => {
+          const key = (sku ?? "").trim()
+          if (!key || units === null) return
+          const cur = stockBySku.get(key) ?? { units: 0, name, itemId }
+          cur.units += Math.max(0, units)
+          stockBySku.set(key, cur)
+        }
+
+        for (let i = 0; i < itemIds.length; i += 50) {
+          const batch = itemIds.slice(i, i + 50)
+          const info = await shopeeGet<{
+            item_list: { item_id: number; item_name: string; item_sku: string; has_model: boolean; stock_info_v2?: unknown; stock_info?: unknown }[]
+          }>(BASE_URL, "/api/v2/product/get_item_base_info", {
+            item_id_list: batch.join(","),
+          }, PARTNER_ID, PARTNER_KEY, accessToken, shopId)
+
+          for (const it of info?.item_list ?? []) {
+            if (it.has_model) {
+              try {
+                const models = await shopeeGet<{ model: { model_sku: string; stock_info_v2?: unknown; stock_info?: unknown }[] }>(
+                  BASE_URL, "/api/v2/product/get_model_list", { item_id: it.item_id },
+                  PARTNER_ID, PARTNER_KEY, accessToken, shopId,
+                )
+                for (const m of models?.model ?? []) {
+                  add(m.model_sku || it.item_sku, readV2(m), it.item_name, it.item_id)
+                }
+              } catch (e) {
+                console.error("get_model_list falhou p/ item", it.item_id, e)
+              }
+            } else {
+              add(it.item_sku, readV2(it), it.item_name, it.item_id)
+            }
+          }
+        }
+
+        if (stockBySku.size > 0) {
+          const nowIso = now.toISOString()
+          const rows = [...stockBySku.entries()].map(([sku, v]) => ({
+            user_id: connection.user_id,
+            sku,
+            item_name: v.name || null,
+            stock_units: v.units,
+            source: "shopee",
+            external_id: String(v.itemId),
+            synced_at: nowIso,
+          }))
+          const { error } = await supabaseAdmin.from("product_stock").upsert(rows, { onConflict: "user_id,sku" })
+          if (error) console.error("❌ product_stock upsert:", JSON.stringify(error))
+          else stockCount = rows.length
+        }
+        console.log(`📦 ${stockCount} SKUs de estoque Shopee sincronizados`)
+      } catch (stockError) {
+        console.error("❌ Stock sync error:", stockError)
+      }
+    }
+
     // ✅ Atualiza conexão apenas na etapa final ou quando não há step
     if (!step || step === 'wallet') {
       if (!customTimeFrom && !customTimeTo) {

@@ -243,6 +243,15 @@ async function syncConnection(supabase, connection, accessToken: string) {
     });
   }
 
+  // ── 3. Sync de estoque do catálogo (Aposta C Fase 2) ────────────────────────
+  try {
+    const stockCount = await syncStock(supabase, connection, accessToken);
+    console.log(`Sincronizados ${stockCount} SKUs de estoque ML para user ${connection.user_id}`);
+  } catch (err) {
+    // Não é crítico — a reposição cai no estoque manual. Loga e segue.
+    console.error("Erro no sync de estoque ML:", err);
+  }
+
   // ✅ Atualiza last_sync_at na connection
   await supabase
     .from("integration_connections")
@@ -346,6 +355,85 @@ async function syncPayments(
 
   console.log(`Sincronizados ${count} pagamentos ML para user ${connection.user_id}`);
   return count;
+}
+
+// ─── Sync de estoque do catálogo ─────────────────────────────────────────────
+// Varre os anúncios ativos do vendedor e grava a quantidade disponível por SKU
+// em product_stock. SKU = seller_sku da variação, ou seller_custom_field do
+// item. Vários anúncios/variações com o mesmo SKU somam. Best-effort: erro de
+// página só interrompe a varredura, o que já veio é gravado.
+
+async function syncStock(supabase, connection, accessToken: string): Promise<number> {
+  const sellerId = connection.external_shop_id;
+  const auth = { Authorization: `Bearer ${accessToken}` };
+
+  // 1. Coleta os item_ids ativos (scan paginado por scroll_id).
+  const itemIds: string[] = [];
+  let scrollId = "";
+  for (let page = 0; page < 100; page++) {
+    const url = `${ML_API}/users/${sellerId}/items/search?search_type=scan&status=active&limit=100`
+      + (scrollId ? `&scroll_id=${encodeURIComponent(scrollId)}` : "");
+    const res = await fetch(url, { headers: auth });
+    if (!res.ok) {
+      console.error("ML items/search falhou:", await res.text());
+      break;
+    }
+    const data = await res.json();
+    const results: string[] = data.results ?? [];
+    itemIds.push(...results);
+    scrollId = data.scroll_id ?? "";
+    if (results.length === 0 || !scrollId) break;
+  }
+  if (itemIds.length === 0) return 0;
+
+  // 2. Puxa os atributos de estoque em lotes de 20 (multiget).
+  const stockBySku = new Map<string, { units: number; name: string; itemId: string }>();
+  for (let i = 0; i < itemIds.length; i += 20) {
+    const batch = itemIds.slice(i, i + 20);
+    const url = `${ML_API}/items?ids=${batch.join(",")}`
+      + `&attributes=id,title,status,seller_custom_field,available_quantity,variations`;
+    const res = await fetch(url, { headers: auth });
+    if (!res.ok) {
+      console.error("ML multiget items falhou:", await res.text());
+      continue;
+    }
+    const rows = await res.json();
+    for (const row of rows ?? []) {
+      const item = row?.body;
+      if (!item || item.status !== "active") continue;
+      const variations = Array.isArray(item.variations) ? item.variations : [];
+      const add = (sku: string | null | undefined, units: number, name: string) => {
+        const key = (sku ?? "").trim();
+        if (!key) return;
+        const cur = stockBySku.get(key) ?? { units: 0, name, itemId: String(item.id) };
+        cur.units += Math.max(0, Number(units) || 0);
+        stockBySku.set(key, cur);
+      };
+      if (variations.length > 0) {
+        for (const v of variations) {
+          add(v.seller_sku ?? item.seller_custom_field, v.available_quantity, item.title ?? "");
+        }
+      } else {
+        add(item.seller_custom_field, item.available_quantity, item.title ?? "");
+      }
+    }
+  }
+  if (stockBySku.size === 0) return 0;
+
+  // 3. Upsert em product_stock.
+  const nowIso = new Date().toISOString();
+  const rows = [...stockBySku.entries()].map(([sku, v]) => ({
+    user_id: connection.user_id,
+    sku,
+    item_name: v.name || null,
+    stock_units: v.units,
+    source: "mercadolivre",
+    external_id: v.itemId,
+    synced_at: nowIso,
+  }));
+  const { error } = await supabase.from("product_stock").upsert(rows, { onConflict: "user_id,sku" });
+  if (error) throw error;
+  return rows.length;
 }
 
 // ─── Upsert de pedido ────────────────────────────────────────────────────────

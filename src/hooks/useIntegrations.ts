@@ -143,12 +143,23 @@ export function useIntegrations() {
     });
     if (walletError) throw walletError;
 
+    // Estoque do catálogo (best-effort — não bloqueia o resultado do sync)
+    try {
+      await supabase.functions.invoke('integration-sync', {
+        body: { connection_id: connectionId, step: 'stock' },
+      });
+    } catch (e) {
+      console.warn('Sync de estoque Shopee falhou, continuando...', e);
+    }
+
       return walletData;
     },
     onSuccess: (data) => {
       toast({ title: 'Sincronização concluída', description: data?.message });
       queryClient.invalidateQueries({ queryKey: ['integrations'] });
       queryClient.invalidateQueries({ queryKey: ['shopee-sync'] });
+      queryClient.invalidateQueries({ queryKey: ['replenishment-inventory'] });
+      queryClient.invalidateQueries({ queryKey: ['replenishment-sales'] });
     },
     onError: (err: { message: string }) => {
       toast({ title: 'Erro na sincronização', description: err.message, variant: 'destructive' });
