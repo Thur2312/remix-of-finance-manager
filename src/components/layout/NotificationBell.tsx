@@ -8,7 +8,6 @@ import {
   DropdownMenuLabel,
   DropdownMenuSeparator,
 } from '@/components/ui/dropdown-menu';
-import { ScrollArea } from '@/components/ui/scroll-area';
 import { useNotifications, AppNotification } from '@/hooks/useNotifications';
 import { formatDistanceToNow } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
@@ -52,32 +51,30 @@ export function NotificationBell() {
             Nenhum aviso por aqui ainda.
           </p>
         ) : (
-          <ScrollArea className="max-h-96">
-            <div className="space-y-1 p-1">
-              {notifications.map((n) => {
-                const Icon = TYPE_ICON[n.type];
-                return (
-                  <div
-                    key={n.id}
-                    onClick={() => !n.isRead && markAsRead.mutate(n.id)}
-                    className={`rounded-md p-2.5 cursor-default ${!n.isRead ? 'bg-accent/50' : ''}`}
-                  >
-                    <div className="flex items-start gap-2">
-                      <Icon className={`h-4 w-4 mt-0.5 flex-shrink-0 ${TYPE_COLOR[n.type]}`} />
-                      <div className="flex-1 min-w-0">
-                        <p className="text-sm font-medium leading-tight">{n.title}</p>
-                        <p className="text-xs text-muted-foreground mt-0.5 whitespace-pre-wrap">{n.body}</p>
-                        <p className="text-[11px] text-muted-foreground/70 mt-1">
-                          {formatDistanceToNow(new Date(n.published_at), { addSuffix: true, locale: ptBR })}
-                        </p>
-                      </div>
-                      {!n.isRead && <span className="h-2 w-2 rounded-full bg-primary mt-1.5 flex-shrink-0" />}
+          <div className="max-h-[min(70vh,32rem)] space-y-1 overflow-y-auto overscroll-contain p-1">
+            {notifications.map((n) => {
+              const Icon = TYPE_ICON[n.type];
+              return (
+                <div
+                  key={n.id}
+                  onClick={() => !n.isRead && markAsRead.mutate(n.id)}
+                  className={`rounded-md p-2.5 cursor-default ${!n.isRead ? 'bg-accent/50' : ''}`}
+                >
+                  <div className="flex items-start gap-2">
+                    <Icon className={`h-4 w-4 mt-0.5 flex-shrink-0 ${TYPE_COLOR[n.type]}`} />
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-medium leading-tight">{n.title}</p>
+                      <p className="text-xs text-muted-foreground mt-0.5 whitespace-pre-wrap">{n.body}</p>
+                      <p className="text-[11px] text-muted-foreground/70 mt-1">
+                        {formatDistanceToNow(new Date(n.published_at), { addSuffix: true, locale: ptBR })}
+                      </p>
                     </div>
+                    {!n.isRead && <span className="h-2 w-2 rounded-full bg-primary mt-1.5 flex-shrink-0" />}
                   </div>
-                );
-              })}
-            </div>
-          </ScrollArea>
+                </div>
+              );
+            })}
+          </div>
         )}
       </DropdownMenuContent>
     </DropdownMenu>
