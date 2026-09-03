@@ -339,6 +339,11 @@ export default function PrevisaoCaixa() {
       icon={CalendarClock}
       title="Previsão de caixa"
       subtitle="Quanto entra, quanto sai, e em que dia o saldo aperta"
+      action={
+        <Button asChild variant="outline" size="sm">
+          <Link to="/fluxo-caixa">Fluxo de caixa completo</Link>
+        </Button>
+      }
     >
       <PrevisaoContent />
     </PageShell>
