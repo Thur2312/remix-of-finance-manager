@@ -166,6 +166,7 @@ describe('computeShopeeFinance', () => {
     });
     const r = run([cancNaJanela, cancAtualizado, cancForaTudo]);
     expect(r.cancelados).toBe(2);
+    expect(r.devolucoes).toBe(1); // só o TO_RETURN (k2), subconjunto de cancelados
     expect(r.pedidos).toBe(0);
   });
 

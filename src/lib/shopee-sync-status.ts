@@ -20,6 +20,9 @@ import type { Cents } from './money';
 export const SHOPEE_COMPLETED_STATUSES = ["COMPLETED"];
 export const SHOPEE_SHIPPED_STATUSES = ["SHIPPED", "TO_CONFIRM_RECEIVE", "PROCESSED"];
 export const SHOPEE_CANCELLED_STATUSES = ["CANCELLED", "UNPAID", "TO_RETURN"];
+// Devolução/reembolso — subconjunto de CANCELLED_STATUSES, contado à parte pra
+// o dashboard poder separar "cancelou antes de pagar" de "pagou e devolveu".
+export const SHOPEE_RETURN_STATUSES = ["TO_RETURN"];
 export const SHOPEE_IGNORED_STATUSES = ["TEST"];
 export const SHOPEE_FEE_TYPES_TAXAS = ["commission", "service_fee", "shipping_fee", "reverse_shipping_fee"];
 
@@ -49,6 +52,10 @@ export function isShopeeShippedStatus(status: string): boolean {
 
 export function isShopeeCancelledStatus(status: string): boolean {
   return SHOPEE_CANCELLED_STATUSES.includes(status);
+}
+
+export function isShopeeReturnStatus(status: string): boolean {
+  return SHOPEE_RETURN_STATUSES.includes(status);
 }
 
 // ─── Entradas ────────────────────────────────────────────────────────────────
@@ -112,7 +119,8 @@ export interface ShopeeFinance {
 
   // Contexto (não entra no líquido)
   emTransito: number;           // SHIPPED-like, criados na janela — receita a caminho
-  cancelados: number;           // CANCELLED-like na janela
+  cancelados: number;           // CANCELLED-like na janela (inclui devoluções)
+  devolucoes: number;           // TO_RETURN na janela — subconjunto de `cancelados`
 
   // Decomposição visual (não entra no líquido — ver BUG-03b)
   feeBreakdown: { type: string; label: string; amount: number; amountCents: Cents }[];
@@ -198,10 +206,12 @@ export function computeShopeeFinance(
   const emTransito = orders.filter(
     o => isShopeeShippedStatus(o.status) && inWindow(o.order_created_at),
   ).length;
-  const cancelados = orders.filter(
+  const canceladosOrders = orders.filter(
     o => isShopeeCancelledStatus(o.status) &&
       (inWindow(o.order_created_at) || inWindow(o.order_updated_at)),
-  ).length;
+  );
+  const cancelados = canceladosOrders.length;
+  const devolucoes = canceladosOrders.filter(o => isShopeeReturnStatus(o.status)).length;
 
   // ── Decomposição de taxas (visual) — só da coorte ──────────────────────────
   // BUG-03b: rebate de frete entra no bucket "shipping_fee" (subtraindo),
@@ -257,6 +267,7 @@ export function computeShopeeFinance(
     pedidosSemRepasse,
     emTransito,
     cancelados,
+    devolucoes,
     feeBreakdown,
     porDia,
     faturamentoCents: faturamentoCents as Cents,

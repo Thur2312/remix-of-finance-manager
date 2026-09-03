@@ -4,9 +4,10 @@ import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
 import {
-  RefreshCw, ShoppingCart, DollarSign, TrendingUp, Percent,
+  RefreshCw, ShoppingCart, DollarSign, TrendingUp, ChevronDown,
   Store, Trophy, ArrowRight, Zap,
 } from 'lucide-react';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import {
   AreaChart, Area, BarChart, Bar, PieChart, Pie, Cell,
   XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend,
@@ -19,7 +20,7 @@ import { useRecentSaleEvents } from '@/hooks/useSaleEvents';
 import { useDREData } from '@/hooks/useDREData';
 import { useProductCosts } from '@/hooks/useProductCosts';
 import { buildInsights } from '@/lib/insights';
-import { aggregateShopeeSkuFinance } from '@/lib/shopee-sku-finance';
+import { aggregateShopeeSkuFinance, type ShopeeSkuRow } from '@/lib/shopee-sku-finance';
 import { InsightsPanel } from '@/components/insights/InsightsPanel';
 import { CompanySelector } from '@/components/dashboard/CompanySelector';
 import { PageShell } from '@/components/layout/PageShell';
@@ -68,16 +69,6 @@ interface CustomTooltipProps {
   label?: string;
 }
 
-interface OrderItem {
-  external_item_id?: string;
-  item_name?: string;
-  quantity?: number;
-  total_price?: number;
-}
-
-interface Order {
-  order_items?: OrderItem[];
-}
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 function MarketplaceBadge({ mp }: { mp: Marketplace }) {
@@ -230,30 +221,45 @@ function RevenueAreaChart({ data }: { data: { date: string; revenue: number; net
   );
 }
 
-// ── Gráfico de barras: taxas ──────────────────────────────────────────────────
-function FeesBarChart({ breakdown }: { breakdown: { type: string; label: string; amount: number }[] }) {
+// ── Detalhamento de taxas (recolhível) ───────────────────────────────────────
+// Fora da vista principal de propósito: o dashboard prioriza decisão (lucro,
+// produtos, meta), não "quanto o marketplace levou". Fica a um clique pra quem
+// quiser auditar as cobranças do período.
+function FeesBreakdownCollapsible({ breakdown }: { breakdown: { type: string; label: string; amount: number }[] }) {
   const data = breakdown.filter(f => f.type !== 'adjustment' && f.amount > 0);
   if (data.length === 0) return null;
+  const total = data.reduce((a, f) => a + f.amount, 0);
   return (
-    <Card>
-      <CardHeader className="pb-3">
-        <CardTitle className="text-base">Detalhamento de Taxas</CardTitle>
-        <CardDescription>Breakdown das cobranças no período</CardDescription>
-      </CardHeader>
-      <CardContent>
-        <ResponsiveContainer width="100%" height={Math.max(160, data.length * 44)}>
-          <BarChart data={data} layout="vertical" margin={{ top: 0, right: 16, bottom: 0, left: 0 }}>
-            <CartesianGrid strokeDasharray="3 3" horizontal={false} className="stroke-border/50" />
-            <XAxis type="number" tickFormatter={formatK} tick={{ fontSize: 11 }} />
-            <YAxis type="category" dataKey="label" tick={{ fontSize: 11 }} width={130} />
-            <Tooltip formatter={(v: number) => [formatCurrency(v), 'Taxa']} contentStyle={{ fontSize: 12 }} />
-            <Bar dataKey="amount" radius={[0, 4, 4, 0]}>
-              {data.map((_, i) => <Cell key={i} fill={CHART_COLORS[i % CHART_COLORS.length]} />)}
-            </Bar>
-          </BarChart>
-        </ResponsiveContainer>
-      </CardContent>
-    </Card>
+    <Collapsible>
+      <Card>
+        <CollapsibleTrigger asChild>
+          <button className="flex w-full items-center justify-between px-6 py-4 text-left [&[data-state=open]_svg.chev]:rotate-180">
+            <div>
+              <p className="text-base font-semibold">Detalhamento de taxas</p>
+              <p className="text-xs text-muted-foreground">
+                {formatCurrency(total)} em comissão, serviço e frete no período
+              </p>
+            </div>
+            <ChevronDown className="chev size-4 shrink-0 text-muted-foreground transition-transform" />
+          </button>
+        </CollapsibleTrigger>
+        <CollapsibleContent>
+          <CardContent className="pt-0">
+            <ResponsiveContainer width="100%" height={Math.max(160, data.length * 44)}>
+              <BarChart data={data} layout="vertical" margin={{ top: 0, right: 16, bottom: 0, left: 0 }}>
+                <CartesianGrid strokeDasharray="3 3" horizontal={false} className="stroke-border/50" />
+                <XAxis type="number" tickFormatter={formatK} tick={{ fontSize: 11 }} />
+                <YAxis type="category" dataKey="label" tick={{ fontSize: 11 }} width={130} />
+                <Tooltip formatter={(v: number) => [formatCurrency(v), 'Taxa']} contentStyle={{ fontSize: 12 }} />
+                <Bar dataKey="amount" radius={[0, 4, 4, 0]}>
+                  {data.map((_, i) => <Cell key={i} fill={CHART_COLORS[i % CHART_COLORS.length]} />)}
+                </Bar>
+              </BarChart>
+            </ResponsiveContainer>
+          </CardContent>
+        </CollapsibleContent>
+      </Card>
+    </Collapsible>
   );
 }
 
@@ -312,70 +318,103 @@ function MarketplacePieChart({ shopee, tiktok, mercadolivre }: {
   );
 }
 
-// ── Status dos Pedidos ────────────────────────────────────────────────────────
-function OrderStatusCard({ paid, pending, cancelled, total }: {
-  paid: number; pending: number; cancelled: number; total: number;
+// ── Status dos Pedidos (funil enxuto) ────────────────────────────────────────
+// Opção "financeira enxuta": só os estágios que importam pra decisão —
+// realizados (pedidos válidos que entraram) → a caminho → concluídos.
+// Cancelamentos e reembolsos ficam no rodapé, como sinal de alerta, sem
+// competir com o funil.
+function OrderStatusCard({ concluidos, emTransito, cancelados, devolucoes }: {
+  concluidos: number; emTransito: number; cancelados: number; devolucoes: number;
 }) {
-  if (total === 0) return null;
+  const realizados = concluidos + emTransito;
+  if (realizados + cancelados + devolucoes === 0) return null;
+  // cancelados vem com TO_RETURN dentro (ver shopee-sync-status); separa o puro.
+  const canceladosPuro = Math.max(0, cancelados - devolucoes);
+  const consideraveis = realizados + canceladosPuro + devolucoes;
+  const pct = (n: number) => consideraveis > 0 ? (n / consideraveis) * 100 : 0;
+
   return (
     <Card>
       <CardHeader className="pb-3">
-        <CardTitle className="text-base">Status dos Pedidos</CardTitle>
-        <CardDescription>Distribuição no período selecionado</CardDescription>
+        <CardTitle className="text-base">Status dos pedidos</CardTitle>
+        <CardDescription>Funil do período selecionado</CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
-        <div className="flex h-3 rounded-full overflow-hidden gap-0.5">
-          {paid > 0    && <div className="bg-emerald-500 transition-all" style={{ width: `${(paid / total) * 100}%` }} />}
-          {pending > 0 && <div className="bg-yellow-500 transition-all"  style={{ width: `${(pending / total) * 100}%` }} />}
-          {cancelled > 0 && <div className="bg-destructive transition-all" style={{ width: `${(cancelled / total) * 100}%` }} />}
+        <div className="flex h-3 gap-0.5 overflow-hidden rounded-full">
+          {concluidos > 0 && <div className="bg-emerald-500 transition-all" style={{ width: `${pct(concluidos)}%` }} />}
+          {emTransito > 0 && <div className="bg-yellow-500 transition-all" style={{ width: `${pct(emTransito)}%` }} />}
+          {canceladosPuro > 0 && <div className="bg-muted-foreground/40 transition-all" style={{ width: `${pct(canceladosPuro)}%` }} />}
+          {devolucoes > 0 && <div className="bg-destructive transition-all" style={{ width: `${pct(devolucoes)}%` }} />}
         </div>
         <div className="grid grid-cols-3 gap-3 text-center">
           {[
-            { label: 'Concluídos',   value: paid,      textColor: 'text-emerald-600' },
-            { label: 'Em andamento', value: pending,    textColor: 'text-yellow-600'  },
-            { label: 'Cancelados',   value: cancelled,  textColor: 'text-destructive' },
+            { label: 'Realizados', value: realizados, hint: 'pedidos válidos que entraram', textColor: 'text-foreground' },
+            { label: 'A caminho', value: emTransito, hint: 'pagos, ainda em trânsito', textColor: 'text-yellow-600' },
+            { label: 'Concluídos', value: concluidos, hint: 'entregues e reconhecidos', textColor: 'text-emerald-600' },
           ].map(item => (
             <div key={item.label}>
-              <p className={`text-2xl font-bold font-mono ${item.textColor}`}>{item.value}</p>
-              <p className="text-xs text-muted-foreground mt-0.5">{item.label}</p>
-              <p className="text-xs font-medium text-muted-foreground">
-                {((item.value / total) * 100).toFixed(0)}%
-              </p>
+              <p className={`font-mono text-2xl font-bold ${item.textColor}`}>{item.value}</p>
+              <p className="mt-0.5 text-xs font-medium">{item.label}</p>
+              <p className="text-[10px] leading-tight text-muted-foreground">{item.hint}</p>
             </div>
           ))}
         </div>
+        {(canceladosPuro > 0 || devolucoes > 0) && (
+          <p className="border-t border-border/60 pt-3 text-xs text-muted-foreground">
+            {canceladosPuro > 0 && <>{canceladosPuro} cancelado{canceladosPuro !== 1 ? 's' : ''} ({pct(canceladosPuro).toFixed(0)}%)</>}
+            {canceladosPuro > 0 && devolucoes > 0 && ' · '}
+            {devolucoes > 0 && (
+              <span className={pct(devolucoes) >= 5 ? 'font-medium text-destructive' : undefined}>
+                {devolucoes} reembolso{devolucoes !== 1 ? 's' : ''} ({pct(devolucoes).toFixed(0)}%)
+              </span>
+            )}
+            {' '}no período.
+          </p>
+        )}
       </CardContent>
     </Card>
   );
 }
 
-// ── Top Produtos ──────────────────────────────────────────────────────────────
-function TopProductsCard({ orders }: { orders: Order[] }) {
-  const top5 = useMemo(() => {
-    if (!orders?.length) return [];
-    const map = new Map<string, { name: string; qty: number; revenue: number }>();
-    orders.forEach(o => {
-      (o.order_items || []).forEach((item: OrderItem) => {
-        const key = item.external_item_id || item.item_name || 'unknown';
-        const ex = map.get(key) || { name: item.item_name || 'Sem nome', qty: 0, revenue: 0 };
-        map.set(key, { name: ex.name, qty: ex.qty + (item.quantity || 0), revenue: ex.revenue + (item.total_price || 0) });
-      });
-    });
-    return Array.from(map.values()).sort((a, b) => b.revenue - a.revenue).slice(0, 5);
-  }, [orders]);
-  if (!top5.length) return null;
+// ── Top Produtos (por rentabilidade) ─────────────────────────────────────────
+// O ranking NÃO é por faturamento: um produto pode faturar muito e sobrar
+// pouco. Quando há custo cadastrado pros SKUs, ordena por lucro (repasse −
+// custo) e mostra margem. Sem nenhum custo, cai pro faturamento com um aviso.
+function TopProductsCard({ rows }: { rows: ShopeeSkuRow[] | null }) {
+  const view = useMemo(() => {
+    if (!rows?.length) return null;
+    const comCusto = rows.some(r => r.custo_unitario_medio > 0);
+    const rankeadas = [...rows]
+      .filter(r => r.itens_vendidos > 0 && r.total_faturado > 0)
+      .sort((a, b) => comCusto ? b.lucro_reais - a.lucro_reais : b.total_faturado - a.total_faturado)
+      .slice(0, 5)
+      .map(r => ({
+        name: r.nome_produto,
+        qty: r.itens_vendidos,
+        revenue: r.total_faturado,
+        profit: r.lucro_reais,
+        margin: r.total_faturado > 0 ? (r.lucro_reais / r.total_faturado) * 100 : 0,
+        temCusto: r.custo_unitario_medio > 0,
+      }));
+    return rankeadas.length ? { comCusto, rankeadas } : null;
+  }, [rows]);
+  if (!view) return null;
 
   return (
     <Card>
       <CardHeader className="pb-3">
         <div className="flex items-center gap-2">
           <Trophy className="h-4 w-4 text-yellow-500" />
-          <CardTitle className="text-base">Top Produtos</CardTitle>
+          <CardTitle className="text-base">Top produtos</CardTitle>
         </div>
-        <CardDescription>5 produtos com maior faturamento no período</CardDescription>
+        <CardDescription>
+          {view.comCusto
+            ? '5 produtos que mais deram lucro no período'
+            : '5 produtos com maior faturamento — cadastre os custos pra ranquear por lucro'}
+        </CardDescription>
       </CardHeader>
       <CardContent className="space-y-3">
-        {top5.map((p, i) => (
+        {view.rankeadas.map((p, i) => (
           <div key={i} className="flex items-center gap-3">
             <div className={`h-7 w-7 rounded-lg flex items-center justify-center text-xs font-bold shrink-0 ${
               i === 0 ? 'bg-yellow-500/15 text-yellow-600' :
@@ -385,9 +424,22 @@ function TopProductsCard({ orders }: { orders: Order[] }) {
             }`}>{i + 1}</div>
             <div className="flex-1 min-w-0">
               <p className="text-sm font-medium truncate">{p.name.length > 40 ? p.name.slice(0, 40) + '…' : p.name}</p>
-              <p className="text-xs text-muted-foreground">{p.qty} unid.</p>
+              <p className="text-xs text-muted-foreground">
+                {p.qty} un · {formatCurrency(p.revenue)} fat.
+              </p>
             </div>
-            <span className="text-sm font-semibold tabular-nums shrink-0">{formatCurrency(p.revenue)}</span>
+            <div className="shrink-0 text-right">
+              {view.comCusto && p.temCusto ? (
+                <>
+                  <span className={`block text-sm font-semibold tabular-nums ${p.profit >= 0 ? 'text-emerald-600' : 'text-destructive'}`}>
+                    {formatCurrency(p.profit)}
+                  </span>
+                  <span className="text-[10px] text-muted-foreground">{p.margin.toFixed(0)}% margem</span>
+                </>
+              ) : (
+                <span className="block text-sm font-semibold tabular-nums">{formatCurrency(p.revenue)}</span>
+              )}
+            </div>
           </div>
         ))}
       </CardContent>
@@ -569,8 +621,10 @@ function UnifiedDashboardContent() {
             <InsightsPanel insights={insights} loading={dreLoading && insights.length === 0} />
           )}
 
-          {/* Stats Cards */}
-          <KpiRow>
+          {/* Stats Cards — o "retido pelos marketplaces" saiu daqui de propósito
+              (vira o bloco recolhível "Detalhamento de taxas" mais abaixo);
+              o dashboard prioriza o que sobra, não o que o marketplace levou. */}
+          <KpiRow className="lg:grid-cols-3">
             <StatCard title="Pedidos" value={stats.totalOrders.toString()} description="Concluídos no período"
               icon={ShoppingCart} variant="brand" loading={stats.isLoading}
               delta={makeDelta(stats.totalOrders, prevStats?.pedidos)} />
@@ -591,10 +645,6 @@ function UnifiedDashboardContent() {
                 />
               )}
             </StatCard>
-            <StatCard title="Retido pelos marketplaces" value={formatCents((stats.feesCents ?? 0) as Cents)} description="Comissão, serviço, frete e descontos"
-              icon={Percent} variant="warning" loading={stats.isLoading}
-              delta={makeDelta(stats.fees, prevStats ? prevStats.faturamento - prevStats.valorLiquido : undefined)
-                ? { ...makeDelta(stats.fees, prevStats ? prevStats.faturamento - prevStats.valorLiquido : undefined)!, invert: true } : undefined} />
           </KpiRow>
 
           {/* Gráfico de área */}
@@ -605,16 +655,18 @@ function UnifiedDashboardContent() {
             {showPie && <MarketplacePieChart shopee={shopee} tiktok={tiktok} mercadolivre={mercadolivre} />}
             {syncData && (
               <OrderStatusCard
-                paid={syncData.stats.pedidos}
-                pending={syncData.stats.emTransito}
-                cancelled={syncData.stats.cancelados}
-                total={syncData.stats.pedidos + syncData.stats.emTransito + syncData.stats.cancelados}
+                concluidos={syncData.stats.pedidos}
+                emTransito={syncData.stats.emTransito}
+                cancelados={syncData.stats.cancelados}
+                devolucoes={syncData.stats.devolucoes}
               />
             )}
-            {(syncData?.orders?.length ?? 0) > 0 && <TopProductsCard orders={syncData!.orders} />}
-            {feeBreakdown.length > 0 && <FeesBarChart breakdown={feeBreakdown} />}
+            {shopeeSkuRows && shopeeSkuRows.length > 0 && <TopProductsCard rows={shopeeSkuRows} />}
             <RecentSalesActivityCard />
           </div>
+
+          {/* Detalhamento de taxas — recolhido por padrão */}
+          {feeBreakdown.length > 0 && <FeesBreakdownCollapsible breakdown={feeBreakdown} />}
 
           {/* Breakdown por marketplace */}
           {marketplace === 'todos' && (shopee.hasData || tiktok.hasData || mercadolivre.hasData) && (

@@ -45,7 +45,7 @@ function fin(p: Partial<ShopeeFinance> = {}): ShopeeFinance {
   return {
     pedidos: 100, faturamento: 10000, valorLiquido: 6500, margemPct: 65,
     liberado: 6000, aLiberar: 500, pedidosSemRepasse: 8,
-    emTransito: 0, cancelados: 0,
+    emTransito: 0, cancelados: 0, devolucoes: 0,
     feeBreakdown: [
       { type: 'commission', label: 'Comissão', amount: 2000, amountCents: 200000 as Cents },
       { type: 'service_fee', label: 'Taxa de serviço', amount: 1000, amountCents: 100000 as Cents },
