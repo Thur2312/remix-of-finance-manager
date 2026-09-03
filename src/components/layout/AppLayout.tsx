@@ -4,6 +4,7 @@ import { AppSidebar } from './AppSidebar';
 import { FinancialAssistant } from '@/components/assistant/FinancialAssistant';
 import { TrialBanner } from '../TrialBanner';
 import { Breadcrumbs } from './Breadcrumbs';
+import { CompanySwitcher } from './CompanySwitcher';
 import { NotificationBell } from './NotificationBell';
 import { PwaInstallAnnouncement } from '../PwaInstallAnnouncement';
 
@@ -25,6 +26,7 @@ export function AppLayout({ children }: { children: ReactNode }) {
               <SidebarTrigger className="-ml-1 size-8 shrink-0 text-muted-foreground hover:text-foreground" />
               <Breadcrumbs />
               <div className="flex-1" />
+              <CompanySwitcher />
               <NotificationBell />
             </header>
             <TrialBanner />

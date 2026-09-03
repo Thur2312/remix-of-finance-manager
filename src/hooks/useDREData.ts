@@ -2,7 +2,8 @@ import { useState, useEffect, useMemo, useCallback } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { useActiveShopeeConnection } from '@/hooks/useActiveShopeeConnection';
-import { useCompanies, type Company } from '@/hooks/useCompanies';
+import { useSelectedCompany } from '@/hooks/useSelectedCompany';
+import { type Company } from '@/hooks/useCompanies';
 import {
   DREData,
   DREPeriod,
@@ -82,39 +83,24 @@ interface UseDREDataResult {
   refetch: () => Promise<void>;
 }
 
-const DRE_COMPANY_STORAGE_KEY = 'dre:companyId';
-
 // ── Hook principal ──────────────────────────────────────────────────────────
 
 export function useDREData(): UseDREDataResult {
   const { user } = useAuth();
   const { activeConnectionId: activeShopeeConnectionId } = useActiveShopeeConnection();
-  const { companies } = useCompanies();
   const [isLoading, setIsLoading]     = useState(true);
   const [error, setError]             = useState<string | null>(null);
 
-  // Empresa da DRE — modelo de imposto por empresa (companies.tax_rate/tax_base).
-  // Default: 1ª empresa (ou a salva no localStorage), até o usuário escolher
-  // explicitamente — incluindo escolher "nenhuma", que é um estado válido
-  // (DRE sem estimativa de Simples/IRPJ). Ver [[financial-diagnosis-workstream]].
-  const [selectedCompany, setSelectedCompanyState] = useState<Company | null>(null);
-  const [companyTouched, setCompanyTouched] = useState(false);
+  // Empresa selecionada — agora vem do store global (company-scope-store), o
+  // mesmo valor do switcher do topbar e das demais telas. Aqui ele decide o
+  // perfil de imposto (companies.tax_rate/tax_base). `null` = "Todas": DRE
+  // consolidada, sem estimativa de Simples/IRPJ (estado válido).
+  const { company: selectedCompany, setCompanyId: setSelectedCompanyId } = useSelectedCompany();
 
-  useEffect(() => {
-    if (companyTouched || selectedCompany || companies.length === 0) return;
-    let saved: string | null = null;
-    try { saved = localStorage.getItem(DRE_COMPANY_STORAGE_KEY); } catch { /* ignore */ }
-    setSelectedCompanyState(companies.find(c => c.id === saved) ?? companies[0]);
-  }, [companies, companyTouched, selectedCompany]);
-
-  const setSelectedCompany = useCallback((company: Company | null) => {
-    setCompanyTouched(true);
-    setSelectedCompanyState(company);
-    try {
-      if (company) localStorage.setItem(DRE_COMPANY_STORAGE_KEY, company.id);
-      else localStorage.removeItem(DRE_COMPANY_STORAGE_KEY);
-    } catch { /* ignore */ }
-  }, []);
+  const setSelectedCompany = useCallback(
+    (company: Company | null) => setSelectedCompanyId(company?.id ?? null),
+    [setSelectedCompanyId],
+  );
 
   // Estados de dados
   const [shopeeOrders,      setShopeeOrders]      = useState<ShopeeOrder[]>([]);

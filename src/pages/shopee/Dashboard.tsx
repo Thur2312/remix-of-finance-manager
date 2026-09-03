@@ -25,9 +25,8 @@ import { useNavigate } from 'react-router-dom';
 import { ProductOrdersList } from '@/components/dashboard/ProductOrdersList';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { PeriodComparison } from '@/components/dashboard/PeriodComparison';
-import { CompanySelector } from '@/components/dashboard/CompanySelector';
+import { useSelectedCompany } from '@/hooks/useSelectedCompany';
 import { TaxSummaryRow } from '@/hooks/useIntegrationTax';
-import { Company } from '@/hooks/useCompanies';
 
 // ─── Tooltip de info reutilizável ────────────────────────────────────────────
 function InfoPopover({ title, children }: { title: string; children: React.ReactNode }) {
@@ -133,7 +132,7 @@ export function ShopeeDashboardContent() {
   const [isLoading, setIsLoading] = useState(true);
   const [orders, setOrders] = useState<RawOrder[]>([]);
   const [settings, setSettings] = useState<SettingsData | null>(null);
-  const [selectedCompany, setSelectedCompany] = useState<Company | null>(null);
+  const { company: selectedCompany } = useSelectedCompany();
   const [syncPeriod, setSyncPeriod] = useState<'7' | '15' | '30' | '60'>('15');
 
   const { syncNow } = useIntegrations();
@@ -255,10 +254,10 @@ export function ShopeeDashboardContent() {
   return (
     <div className="space-y-8">
 
-      {/* O título vem do breadcrumb / da casca de Gestão. Seletor de loja só
-         aparece com 2+ lojas Shopee conectadas. */}
-      <div className="flex items-center justify-end gap-2">
-        {shopeeConnections.length > 1 && (
+      {/* O título vem do breadcrumb / da casca de Gestão. O seletor de empresa
+         mora no topbar (global). Seletor de loja só com 2+ lojas Shopee. */}
+      {shopeeConnections.length > 1 && (
+        <div className="flex items-center justify-end gap-2">
           <Select value={shopeeConnection?.id} onValueChange={setActiveConnectionId}>
             <SelectTrigger className="w-[200px] h-9">
               <SelectValue placeholder="Selecione a loja" />
@@ -271,9 +270,8 @@ export function ShopeeDashboardContent() {
               ))}
             </SelectContent>
           </Select>
-        )}
-        <CompanySelector selectedCompany={selectedCompany} onSelect={setSelectedCompany} />
-      </div>
+        </div>
+      )}
 
       {/* ── Banner integração ────────────────────────────────────── */}
       {isConnected && (

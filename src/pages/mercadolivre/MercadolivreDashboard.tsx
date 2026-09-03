@@ -8,11 +8,10 @@ import {
   TrendingUp, DollarSign, ShoppingCart, Package,
   CheckCircle2, Clock, XCircle, HelpCircle, RefreshCw, ArrowRight,
 } from 'lucide-react';
-import { CompanySelector } from '@/components/dashboard/CompanySelector';
 import { OnboardingChecklist } from '@/components/dashboard/OnboardingChecklist';
 import { StatCard, KpiRow } from '@/components/ui/stat-card';
 import { TaxSummaryRow } from '@/hooks/useIntegrationTax';
-import { Company } from '@/hooks/useCompanies';
+import { useSelectedCompany } from '@/hooks/useSelectedCompany';
 import { useMercadolivreData } from '@/hooks/useMercadolivreData';
 import { useIntegrations } from '@/hooks/useIntegrations';
 import { formatCents, type Cents } from '@/lib/money';
@@ -81,7 +80,7 @@ const CARD = 'panel bg-card border-transparent';
 
 // ─── Conteúdo interno — exportado para reuso na Gestão unificada ─────────────
 export function MercadolivreDashboardContent() {
-  const [selectedCompany, setSelectedCompany] = useState<Company | null>(null);
+  const { company: selectedCompany } = useSelectedCompany();
   const { orders, stats, loading } = useMercadolivreData();
   const { getConnection, syncNow } = useIntegrations();
 
@@ -139,12 +138,6 @@ export function MercadolivreDashboardContent() {
 
   return (
     <div className="space-y-8">
-
-      {/* O título vem do breadcrumb / da casca de Gestão. Só o seletor de
-         empresa aqui. */}
-      <div className="flex items-center justify-end">
-        <CompanySelector selectedCompany={selectedCompany} onSelect={setSelectedCompany} />
-      </div>
 
       {/* ── Banner integração ────────────────────────────────────── */}
       {isConnected ? (

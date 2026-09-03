@@ -24,7 +24,6 @@ import { aggregateShopeeSkuFinance } from '@/lib/shopee-sku-finance';
 import { useCatalog } from '@/hooks/useCatalog';
 import { rankTopProdutos, type CatalogRow, type TopProdutoCriterio } from '@/lib/catalog';
 import { InsightsPanel } from '@/components/insights/InsightsPanel';
-import { CompanySelector } from '@/components/dashboard/CompanySelector';
 import { PageShell } from '@/components/layout/PageShell';
 import { StatCard, KpiRow } from '@/components/ui/stat-card';
 import { OnboardingChecklist } from '@/components/dashboard/OnboardingChecklist';
@@ -566,20 +565,17 @@ function UnifiedDashboardContent() {
       subtitle="Visão consolidada dos seus marketplaces."
       className="space-y-6"
       action={
-        <div className="flex items-center gap-3 flex-wrap">
-          <div className="flex items-center gap-1 bg-muted/60 rounded-lg p-1">
-            {MARKETPLACE_OPTIONS.map(opt => (
-              <button key={opt.value} onClick={() => setMarketplace(opt.value)}
-                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm font-medium transition-all ${
-                  marketplace === opt.value ? 'bg-background shadow-sm text-foreground' : 'text-muted-foreground hover:text-foreground'
-                }`}
-              >
-                <MarketplaceBadge mp={opt.value} />
-                <span className="hidden sm:inline">{opt.label}</span>
-              </button>
-            ))}
-          </div>
-          <CompanySelector selectedCompany={selectedCompany} onSelect={setSelectedCompany} />
+        <div className="flex items-center gap-1 bg-muted/60 rounded-lg p-1">
+          {MARKETPLACE_OPTIONS.map(opt => (
+            <button key={opt.value} onClick={() => setMarketplace(opt.value)}
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm font-medium transition-all ${
+                marketplace === opt.value ? 'bg-background shadow-sm text-foreground' : 'text-muted-foreground hover:text-foreground'
+              }`}
+            >
+              <MarketplaceBadge mp={opt.value} />
+              <span className="hidden sm:inline">{opt.label}</span>
+            </button>
+          ))}
         </div>
       }
     >
@@ -634,11 +630,8 @@ function UnifiedDashboardContent() {
             <InsightsPanel insights={insights} loading={dreLoading && insights.length === 0} />
           )}
 
-          {/* Produtos — o primeiro tópico do dashboard (item 1 das diretrizes).
-              O ranking vem do catálogo unificado; a tela cheia é /produtos. */}
-          {catalog.rows.length > 0 && <TopProductsCard rows={catalog.rows} />}
-
-          {/* Stats Cards — o "retido pelos marketplaces" saiu daqui de propósito
+          {/* Números crus primeiro — pedidos, faturamento, líquido — antes das
+              listas. O "retido pelos marketplaces" saiu daqui de propósito
               (vira o bloco recolhível "Detalhamento de taxas" mais abaixo);
               o dashboard prioriza o que sobra, não o que o marketplace levou. */}
           <KpiRow className="lg:grid-cols-3">
@@ -664,12 +657,15 @@ function UnifiedDashboardContent() {
             </StatCard>
           </KpiRow>
 
+          {/* Produtos — item 1 das diretrizes: logo após os KPIs. O ranking
+              vem do catálogo unificado; a tela cheia é /produtos. */}
+          {catalog.rows.length > 0 && <TopProductsCard rows={catalog.rows} />}
+
           {/* Gráfico de área */}
           {revenueByDay.length > 0 && <RevenueAreaChart data={revenueByDay} />}
 
-          {/* Segunda linha de gráficos */}
+          {/* Status dos pedidos + vendas recentes */}
           <div className="grid gap-4 md:grid-cols-2">
-            {showPie && <MarketplacePieChart shopee={shopee} tiktok={tiktok} mercadolivre={mercadolivre} />}
             {syncData && (
               <OrderStatusCard
                 concluidos={syncData.stats.pedidos}
@@ -681,8 +677,10 @@ function UnifiedDashboardContent() {
             <RecentSalesActivityCard />
           </div>
 
-          {/* Detalhamento de taxas — recolhido por padrão */}
-          {feeBreakdown.length > 0 && <FeesBreakdownCollapsible breakdown={feeBreakdown} />}
+          {/* Distribuição + breakdown por marketplace — andam juntos */}
+          {showPie && (
+            <MarketplacePieChart shopee={shopee} tiktok={tiktok} mercadolivre={mercadolivre} />
+          )}
 
           {/* Breakdown por marketplace */}
           {marketplace === 'todos' && (shopee.hasData || tiktok.hasData || mercadolivre.hasData) && (
@@ -724,6 +722,9 @@ function UnifiedDashboardContent() {
               </div>
             </div>
           )}
+
+          {/* Detalhamento de taxas — o que o marketplace reteve. Fim, recolhido. */}
+          {feeBreakdown.length > 0 && <FeesBreakdownCollapsible breakdown={feeBreakdown} />}
         </>
       )}
     </PageShell>

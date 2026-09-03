@@ -16,9 +16,8 @@ import { DashboardCharts } from '@/components/charts/DashboardCharts';
 import { StatCard, KpiRow } from '@/components/ui/stat-card';
 import { TopVariationsSection } from '@/components/charts/TopVariationsSection';
 import { OnboardingChecklist } from '@/components/dashboard/OnboardingChecklist';
-import { CompanySelector } from '@/components/dashboard/CompanySelector';
+import { useSelectedCompany } from '@/hooks/useSelectedCompany';
 import { TaxSummaryRow } from '@/hooks/useIntegrationTax';
-import { Company } from '@/hooks/useCompanies';
 
 // Superfície de cartão da área interna — mesma família visual do .glass-card
 // da landing, calibrada pra densidade (ver .panel em index.css).
@@ -30,7 +29,7 @@ export function TikTokDashboardContent() {
   const [isLoading, setIsLoading] = useState(true);
   const [orders, setOrders] = useState<TikTokOrder[]>([]);
   const [settings, setSettings] = useState<TikTokSettingsData | null>(null);
-  const [selectedCompany, setSelectedCompany] = useState<Company | null>(null);
+  const { company: selectedCompany } = useSelectedCompany();
 
   useEffect(() => {
     if (!user) return;
@@ -135,12 +134,6 @@ export function TikTokDashboardContent() {
 
   return (
     <div className="space-y-8">
-
-      {/* O título vem do breadcrumb / da casca de Gestão. Só o seletor de
-         empresa aqui. */}
-      <div className="flex items-center justify-end">
-        <CompanySelector selectedCompany={selectedCompany} onSelect={setSelectedCompany} />
-      </div>
 
       {/* ── Aviso: sem integração ativa ──────────────────────────── */}
       <Card className={`${CARD} border-muted-foreground/20 bg-muted/30`}>
