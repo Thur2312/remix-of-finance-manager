@@ -24,10 +24,16 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
+import {
+  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
+} from '@/components/ui/select';
 import { parseTikTokCSVRow, ParsedTikTokRow, excludedStatusesDescription } from '@/lib/tiktok-helpers';
+import { useIntegrations } from '@/hooks/useIntegrations';
 
 export function TikTokUploadContent() {
   const { user } = useAuth();
+  const { getConnectionsByProvider } = useIntegrations();
+  const tiktokConnections = getConnectionsByProvider('tiktok');
   const [isDragActive, setIsDragActive] = useState(false);
   const [file, setFile] = useState<File | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
@@ -36,6 +42,9 @@ export function TikTokUploadContent() {
   const [parsedData, setParsedData] = useState<ParsedTikTokRow[]>([]);
   const [skippedCount, setSkippedCount] = useState(0);
   const [replaceExisting, setReplaceExisting] = useState(true);
+  // Loja de destino da importação. Com 1 conexão, é ela. Com 2+, o usuário
+  // escolhe no preview (a coluna integration_id liga a venda à empresa — Bloco D).
+  const [connectionId, setConnectionId] = useState<string | null>(null);
 
   const parseCSV = (text: string): Record<string, string>[] => {
     const lines = text.split('\n');
@@ -162,18 +171,29 @@ export function TikTokUploadContent() {
     setStep('upload');
   };
 
+  // Loja de destino: 1 conexão → ela; 2+ → a escolhida; 0 → null (consolidado).
+  const effectiveConnectionId =
+    tiktokConnections.length === 1 ? tiktokConnections[0].id : connectionId;
+
   const handleImport = async () => {
     if (!user || parsedData.length === 0) return;
+    if (tiktokConnections.length > 1 && !effectiveConnectionId) {
+      toast.error('Escolha a loja TikTok de destino antes de importar');
+      return;
+    }
 
     setStep('importing');
     setProgress(0);
 
     try {
       if (replaceExisting) {
-        const { error: deleteError } = await supabase
-          .from('tiktok_orders')
-          .delete()
-          .eq('user_id', user.id);
+        // Com 2+ lojas, "substituir" só limpa os pedidos da loja escolhida —
+        // senão o upload de uma loja apagaria os dados das outras.
+        let del = supabase.from('tiktok_orders').delete().eq('user_id', user.id);
+        if (tiktokConnections.length > 1 && effectiveConnectionId) {
+          del = del.eq('integration_id', effectiveConnectionId);
+        }
+        const { error: deleteError } = await del;
 
         if (deleteError) {
           console.error('Error deleting existing orders:', deleteError);
@@ -190,6 +210,7 @@ export function TikTokUploadContent() {
       for (let i = 0; i < parsedData.length; i += batchSize) {
         const batch = parsedData.slice(i, i + batchSize).map(row => ({
           user_id: user.id,
+          integration_id: effectiveConnectionId,
           order_id: row.order_id,
           sku: row.sku,
           nome_produto: row.nome_produto,
@@ -336,13 +357,37 @@ export function TikTokUploadContent() {
           </div>
         </div>
 
+        {tiktokConnections.length > 1 && (
+          <div className="space-y-1.5">
+            <Label>Loja de destino</Label>
+            <Select value={connectionId ?? undefined} onValueChange={setConnectionId}>
+              <SelectTrigger className="max-w-sm">
+                <SelectValue placeholder="Escolha a loja TikTok" />
+              </SelectTrigger>
+              <SelectContent>
+                {tiktokConnections.map(conn => (
+                  <SelectItem key={conn.id} value={conn.id}>
+                    {conn.shop_name || conn.external_shop_id || 'Loja sem nome'}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <p className="text-xs text-muted-foreground">
+              Liga estes pedidos à empresa dona da loja (usado na DRE por empresa).
+            </p>
+          </div>
+        )}
+
         <div className="flex items-center space-x-3">
           <Switch
             id="replace"
             checked={replaceExisting}
             onCheckedChange={setReplaceExisting}
           />
-          <Label htmlFor="replace">Substituir pedidos anteriores</Label>
+          <Label htmlFor="replace">
+            Substituir pedidos anteriores
+            {tiktokConnections.length > 1 && ' desta loja'}
+          </Label>
         </div>
 
         <div className="rounded-lg border overflow-x-auto">

@@ -11,9 +11,9 @@ import { isExcludedOrderStatus } from '@/lib/marketplace-order-status';
 //
 // Atribuição:
 //   Shopee  → orders.integration_id → integration_connections.company_id
-//   ML/TikTok → a conexão única do provider (ml_orders/tiktok_orders não têm
-//               integration_id; hoje é 1 conexão por provider). Se um dia
-//               houver 2, isto fica errado — ver plano, Fase 2.
+//   ML/TikTok → ml_orders.integration_id / tiktok_orders.integration_id →
+//               integration_connections.company_id. Linhas antigas sem
+//               integration_id caem no fallback: a conexão única do provider.
 
 export interface RevenueByCompany {
   /** company_id → faturamento em centavos */
@@ -42,12 +42,12 @@ export function useRevenueByCompany(windowDays = 30): RevenueByCompany {
           .eq('user_id', user!.id),
         supabase
           .from('ml_orders')
-          .select('total_faturado_cents, status_pedido, data_pedido')
+          .select('total_faturado_cents, status_pedido, data_pedido, integration_id')
           .eq('user_id', user!.id)
           .gte('data_pedido', startIso),
         supabase
           .from('tiktok_orders')
-          .select('total_faturado_cents, status_pedido, data_pedido')
+          .select('total_faturado_cents, status_pedido, data_pedido, integration_id')
           .eq('user_id', user!.id)
           .gte('data_pedido', startIso),
       ]);
@@ -84,15 +84,18 @@ export function useRevenueByCompany(windowDays = 30): RevenueByCompany {
         if (!isShopeeCompletedStatus(o.status)) continue;
         add(companyByConn.get(o.integration_id), Math.round(Number(o.total_amount_cents) || 0));
       }
-      const mlCompany = companyByProvider('mercadolivre');
+      const resolveCompany = (integrationId: string | null, provider: string) =>
+        integrationId && companyByConn.has(integrationId)
+          ? companyByConn.get(integrationId)
+          : companyByProvider(provider);
+
       for (const o of mlRes.data ?? []) {
         if (isExcludedOrderStatus(o.status_pedido)) continue;
-        add(mlCompany, Math.round(Number(o.total_faturado_cents) || 0));
+        add(resolveCompany(o.integration_id, 'mercadolivre'), Math.round(Number(o.total_faturado_cents) || 0));
       }
-      const tiktokCompany = companyByProvider('tiktok');
       for (const o of tiktokRes.data ?? []) {
         if (isExcludedOrderStatus(o.status_pedido)) continue;
-        add(tiktokCompany, Math.round(Number(o.total_faturado_cents) || 0));
+        add(resolveCompany(o.integration_id, 'tiktok'), Math.round(Number(o.total_faturado_cents) || 0));
       }
 
       return { byCompanyCents, naoAtribuidoCents };

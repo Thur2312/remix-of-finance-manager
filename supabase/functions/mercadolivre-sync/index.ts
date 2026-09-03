@@ -472,6 +472,7 @@ async function upsertOrder(supabase, connection, order) {
   // ✅ Fix: onConflict com sku para bater com a constraint da tabela
   await supabase.from("ml_orders").upsert({
     user_id: connection.user_id,
+    integration_id: connection.id,
     order_id: String(order.id),
     sku: item?.item?.seller_sku ?? null,
     nome_produto: item?.item?.title ?? null,

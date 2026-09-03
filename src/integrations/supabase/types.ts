@@ -846,6 +846,7 @@ export type Database = {
           frete_ml: number | null
           frete_ml_cents: number | null
           id: string
+          integration_id: string | null
           nome_produto: string | null
           order_id: string
           quantidade: number | null
@@ -871,6 +872,7 @@ export type Database = {
           frete_ml?: number | null
           frete_ml_cents?: number | null
           id?: string
+          integration_id?: string | null
           nome_produto?: string | null
           order_id: string
           quantidade?: number | null
@@ -896,6 +898,7 @@ export type Database = {
           frete_ml?: number | null
           frete_ml_cents?: number | null
           id?: string
+          integration_id?: string | null
           nome_produto?: string | null
           order_id?: string
           quantidade?: number | null
@@ -909,7 +912,22 @@ export type Database = {
           user_id?: string
           variacao?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "ml_orders_integration_id_fkey"
+            columns: ["integration_id"]
+            isOneToOne: false
+            referencedRelation: "integration_connections"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ml_orders_integration_id_fkey"
+            columns: ["integration_id"]
+            isOneToOne: false
+            referencedRelation: "integration_connections_safe"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       ml_settings: {
         Row: {
@@ -1910,6 +1928,7 @@ export type Database = {
           desconto_vendedor: number | null
           desconto_vendedor_cents: number | null
           id: string
+          integration_id: string | null
           nome_produto: string | null
           order_id: string
           quantidade: number | null
@@ -1931,6 +1950,7 @@ export type Database = {
           desconto_vendedor?: number | null
           desconto_vendedor_cents?: number | null
           id?: string
+          integration_id?: string | null
           nome_produto?: string | null
           order_id: string
           quantidade?: number | null
@@ -1952,6 +1972,7 @@ export type Database = {
           desconto_vendedor?: number | null
           desconto_vendedor_cents?: number | null
           id?: string
+          integration_id?: string | null
           nome_produto?: string | null
           order_id?: string
           quantidade?: number | null
@@ -1963,7 +1984,22 @@ export type Database = {
           user_id?: string
           variacao?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "tiktok_orders_integration_id_fkey"
+            columns: ["integration_id"]
+            isOneToOne: false
+            referencedRelation: "integration_connections"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "tiktok_orders_integration_id_fkey"
+            columns: ["integration_id"]
+            isOneToOne: false
+            referencedRelation: "integration_connections_safe"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       tiktok_settings: {
         Row: {
