@@ -2420,6 +2420,7 @@ export type Database = {
         Returns: undefined
       }
       trigger_auto_sync: { Args: never; Returns: undefined }
+      trigger_finn_alerts: { Args: never; Returns: undefined }
     }
     Enums: {
       [_ in never]: never
