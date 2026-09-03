@@ -1,9 +1,11 @@
 import { useState, useEffect, useMemo, useCallback } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
-import { useActiveShopeeConnection } from '@/hooks/useActiveShopeeConnection';
 import { useSelectedCompany } from '@/hooks/useSelectedCompany';
+import { useRevenueByCompany } from '@/hooks/useRevenueByCompany';
 import { type Company } from '@/hooks/useCompanies';
+import { allocateFixedCosts, type FixedCostScoped } from '@/lib/cost-allocation';
+import { type ScopedConnection } from '@/lib/company-scope';
 import {
   DREData,
   DREPeriod,
@@ -53,6 +55,14 @@ interface ShopeePayment {
   net_amount_cents: number;
 }
 
+interface ConnRow {
+  id: string;
+  provider: string;
+  company_id: string | null;
+  shop_name: string | null;
+  external_shop_id: string | null;
+}
+
 // Classificação de status compartilhada com useShopeeSync/IntegrationDashboard
 // (src/lib/shopee-sync-status.ts) — antes cada um tinha sua própria cópia
 // dessas listas, e podiam divergir sem ninguém notar.
@@ -80,22 +90,31 @@ interface UseDREDataResult {
   setSelectedPeriod: (period: DREPeriod) => void;
   selectedCompany: Company | null;
   setSelectedCompany: (company: Company | null) => void;
+  /** Recorte por empresa ativo + se há loja órfã cujo faturamento fica de fora. */
+  scope: { byCompany: boolean; hasUnassignedConnection: boolean };
   refetch: () => Promise<void>;
 }
 
 // ── Hook principal ──────────────────────────────────────────────────────────
 
-export function useDREData(): UseDREDataResult {
+// `scopeByCompany` (default true): recorta os dados pela empresa selecionada.
+// O UnifiedDashboard passa `false` — lá o filtro financeiro por empresa entra
+// só no Stage 4b (ver plano); o `selectedCompany` continua definindo o imposto.
+export function useDREData(opts?: { scopeByCompany?: boolean }): UseDREDataResult {
+  const scopeByCompany = opts?.scopeByCompany ?? true;
   const { user } = useAuth();
-  const { activeConnectionId: activeShopeeConnectionId } = useActiveShopeeConnection();
   const [isLoading, setIsLoading]     = useState(true);
   const [error, setError]             = useState<string | null>(null);
 
-  // Empresa selecionada — agora vem do store global (company-scope-store), o
-  // mesmo valor do switcher do topbar e das demais telas. Aqui ele decide o
-  // perfil de imposto (companies.tax_rate/tax_base). `null` = "Todas": DRE
-  // consolidada, sem estimativa de Simples/IRPJ (estado válido).
-  const { company: selectedCompany, setCompanyId: setSelectedCompanyId } = useSelectedCompany();
+  // Empresa selecionada — vem do store global (company-scope-store), o mesmo
+  // valor do switcher do topbar e das demais telas. Decide (a) o perfil de
+  // imposto (companies.tax_rate/tax_base) e (b) o RECORTE: com empresa escolhida
+  // a DRE mostra só as lojas dela + o rateio dos custos fixos. `null` = "Todas":
+  // consolidado, sem estimativa de Simples/IRPJ.
+  const { companyId: storeCompanyId, company: selectedCompany, setCompanyId: setSelectedCompanyId } = useSelectedCompany();
+  // Recorte: null desliga o filtro (mantém "Todas"); o imposto segue selectedCompany.
+  const companyId = scopeByCompany ? storeCompanyId : null;
+  const revenueByCompany = useRevenueByCompany(90);
 
   const setSelectedCompany = useCallback(
     (company: Company | null) => setSelectedCompanyId(company?.id ?? null),
@@ -113,13 +132,15 @@ export function useDREData(): UseDREDataResult {
   const [tiktokSettings,    setTiktokSettings]    = useState<TikTokSettings | null>(null);
   const [mlOrders,          setMlOrders]          = useState<MlOrder[]>([]);
   const [cashFlowEntries,   setCashFlowEntries]   = useState<CashFlowEntry[]>([]);
+  const [connections,       setConnections]       = useState<ConnRow[]>([]);
 
   const periods = useMemo(() => getDefaultPeriods(), []);
   const [selectedPeriod, setSelectedPeriod] = useState<DREPeriod>(periods[0]);
 
   // ── Helpers de fetch com paginação ────────────────────────────────────────
 
-  async function fetchShopeeOrders(integrationId: string): Promise<ShopeeOrder[]> {
+  async function fetchShopeeOrders(integrationIds: string[]): Promise<ShopeeOrder[]> {
+    if (integrationIds.length === 0) return [];
     const PAGE_SIZE = 1000;
     let all: ShopeeOrder[] = [];
     let page = 0;
@@ -127,7 +148,7 @@ export function useDREData(): UseDREDataResult {
       const { data, error } = await supabase
         .from('orders')
         .select('id, integration_id, external_order_id, status, total_amount, total_amount_cents, order_created_at')
-        .eq('integration_id', integrationId)
+        .in('integration_id', integrationIds)
         .range(page * PAGE_SIZE, (page + 1) * PAGE_SIZE - 1)
         .order('order_created_at', { ascending: false });
       if (error) { console.warn('[DRE] Shopee orders error:', error); break; }
@@ -139,7 +160,8 @@ export function useDREData(): UseDREDataResult {
     return all;
   }
 
-  async function fetchShopeeFees(integrationId: string): Promise<ShopeeFee[]> {
+  async function fetchShopeeFees(integrationIds: string[]): Promise<ShopeeFee[]> {
+    if (integrationIds.length === 0) return [];
     const PAGE_SIZE = 1000;
     let all: ShopeeFee[] = [];
     let page = 0;
@@ -147,7 +169,7 @@ export function useDREData(): UseDREDataResult {
       const { data, error } = await supabase
         .from('fees')
         .select('id, integration_id, fee_type, amount, amount_cents, fee_date, description')
-        .eq('integration_id', integrationId)
+        .in('integration_id', integrationIds)
         .range(page * PAGE_SIZE, (page + 1) * PAGE_SIZE - 1);
       if (error) { console.warn('[DRE] Shopee fees error:', error); break; }
       if (!data || data.length === 0) break;
@@ -158,7 +180,8 @@ export function useDREData(): UseDREDataResult {
     return all;
   }
 
-  async function fetchShopeePayments(integrationId: string): Promise<ShopeePayment[]> {
+  async function fetchShopeePayments(integrationIds: string[]): Promise<ShopeePayment[]> {
+    if (integrationIds.length === 0) return [];
     const PAGE_SIZE = 1000;
     let all: ShopeePayment[] = [];
     let page = 0;
@@ -166,7 +189,7 @@ export function useDREData(): UseDREDataResult {
       const { data, error } = await supabase
         .from('payments')
         .select('id, integration_id, order_id, payment_method, net_amount, net_amount_cents')
-        .eq('integration_id', integrationId)
+        .in('integration_id', integrationIds)
         .eq('payment_method', 'escrow')
         .range(page * PAGE_SIZE, (page + 1) * PAGE_SIZE - 1);
       if (error) { console.warn('[DRE] Shopee payments error:', error); break; }
@@ -178,15 +201,18 @@ export function useDREData(): UseDREDataResult {
     return all;
   }
 
-  async function fetchTikTokOrders(userId: string): Promise<{ data: TikTokOrder[] | null; error: unknown }> {
+  async function fetchTikTokOrders(userId: string, integrationIds: string[] | null): Promise<{ data: TikTokOrder[] | null; error: unknown }> {
+    if (integrationIds && integrationIds.length === 0) return { data: [], error: null };
     const PAGE_SIZE = 1000;
     let all: TikTokOrder[] = [];
     let page = 0;
     while (true) {
-      const { data, error } = await supabase
+      let q = supabase
         .from('tiktok_orders')
         .select('*')
-        .eq('user_id', userId)
+        .eq('user_id', userId);
+      if (integrationIds) q = q.in('integration_id', integrationIds);
+      const { data, error } = await q
         .range(page * PAGE_SIZE, (page + 1) * PAGE_SIZE - 1)
         .order('data_pedido', { ascending: false });
       if (error) return { data: null, error };
@@ -218,15 +244,18 @@ export function useDREData(): UseDREDataResult {
     return { data: all, error: null };
   }
 
-  async function fetchMlOrders(userId: string): Promise<{ data: MlOrder[] | null; error: unknown }> {
+  async function fetchMlOrders(userId: string, integrationIds: string[] | null): Promise<{ data: MlOrder[] | null; error: unknown }> {
+    if (integrationIds && integrationIds.length === 0) return { data: [], error: null };
     const PAGE_SIZE = 1000;
     let all: MlOrder[] = [];
     let page = 0;
     while (true) {
-      const { data, error } = await supabase
+      let q = supabase
         .from('ml_orders')
         .select('*')
-        .eq('user_id', userId)
+        .eq('user_id', userId);
+      if (integrationIds) q = q.in('integration_id', integrationIds);
+      const { data, error } = await q
         .range(page * PAGE_SIZE, (page + 1) * PAGE_SIZE - 1)
         .order('data_pedido', { ascending: false });
       if (error) return { data: null, error };
@@ -261,21 +290,26 @@ export function useDREData(): UseDREDataResult {
   // ── Função central de carregamento ────────────────────────────────────────
 
   async function loadAllData(userId: string) {
-    // 1. Loja Shopee ativa (mesma seleção usada em Dashboard/Unificado,
-    // compartilhada via useActiveShopeeConnection). No primeiro carregamento,
-    // antes desse hook resolver, cai no fallback de sempre (1ª conectada).
-    let shopeeIntegrationId = activeShopeeConnectionId;
-    if (!shopeeIntegrationId) {
-      const { data: connections } = await supabase
-        .from('integration_connections')
-        .select('id, provider, status')
-        .eq('user_id', userId)
-        .eq('provider', 'shopee')
-        .eq('status', 'connected')
-        .limit(1);
-      shopeeIntegrationId = connections?.[0]?.id ?? null;
-    }
-    logger.debug('[DRE] Shopee integration_id:', shopeeIntegrationId);
+    // 1. Conexões (lojas) do usuário. Definem o RECORTE por empresa (Bloco D
+    // Fase 2): com empresa escolhida, só as lojas dela entram; sem empresa
+    // ("Todas"), tudo — de todas as lojas Shopee, não só a "ativa".
+    const { data: connRows } = await supabase
+      .from('integration_connections')
+      .select('id, provider, company_id, shop_name, external_shop_id, status')
+      .eq('user_id', userId);
+    const conns: ConnRow[] = (connRows ?? []).map((c) => ({
+      id: c.id, provider: c.provider, company_id: c.company_id,
+      shop_name: c.shop_name, external_shop_id: c.external_shop_id,
+    }));
+    setConnections(conns);
+
+    // Recorte: ids das conexões em jogo. companyId setado → só as da empresa;
+    // null → todas (scopedIds = null desliga o filtro em ML/TikTok).
+    const inScope = (c: ConnRow) => !companyId || c.company_id === companyId;
+    const scopedConns = conns.filter(inScope);
+    const shopeeIds = scopedConns.filter((c) => c.provider === 'shopee').map((c) => c.id);
+    const scopedIds = companyId ? scopedConns.map((c) => c.id) : null;
+    logger.debug('[DRE] recorte:', { companyId, shopeeIds, scopedIds });
 
     // 2. Buscar tudo em paralelo
     const [
@@ -290,10 +324,10 @@ export function useDREData(): UseDREDataResult {
       mlOrdersResult,
       cashFlowResult,
     ] = await Promise.all([
-      shopeeIntegrationId ? fetchShopeeOrders(shopeeIntegrationId)   : Promise.resolve([]),
-      shopeeIntegrationId ? fetchShopeeFees(shopeeIntegrationId)     : Promise.resolve([]),
-      shopeeIntegrationId ? fetchShopeePayments(shopeeIntegrationId) : Promise.resolve([]),
-      fetchTikTokOrders(userId),
+      fetchShopeeOrders(shopeeIds),
+      fetchShopeeFees(shopeeIds),
+      fetchShopeePayments(shopeeIds),
+      fetchTikTokOrders(userId, scopedIds),
       fetchTikTokSettlements(userId),
       supabase.from('fixed_costs').select('*').eq('user_id', userId),
       supabase
@@ -308,7 +342,7 @@ export function useDREData(): UseDREDataResult {
         .eq('user_id', userId)
         .eq('is_default', true)
         .maybeSingle(),
-      fetchMlOrders(userId),
+      fetchMlOrders(userId, scopedIds),
       fetchCashFlow(userId),
     ]);
 
@@ -365,8 +399,9 @@ export function useDREData(): UseDREDataResult {
       }
     };
     run();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [user]);
+    // companyId entra aqui: mudar de empresa muda o recorte do fetch, não só o
+    // imposto. eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user, companyId]);
 
   // ── Cálculo da DRE ────────────────────────────────────────────────────────
 
@@ -375,6 +410,42 @@ export function useDREData(): UseDREDataResult {
   // mesmo cálculo em janelas diferentes (período atual + anterior, pra MoM).
   const buildDRE = useMemo((): ((period: DREPeriod) => DREData) | null => {
     if (isLoading || !user) return null;
+
+    // Custo fixo da empresa selecionada — o rateio do Bloco D (exclusivo + loja
+    // + plataforma + parte do geral). Sem empresa ("Todas"), soma tudo como
+    // antes (override = undefined). Ver [[company_scope_bloco_d]].
+    let fixedCostsOverrideCents: number | undefined;
+    if (companyId) {
+      const scopedConns: ScopedConnection[] = connections.map((c) => ({
+        id: c.id,
+        companyId: c.company_id,
+        marketplace: c.provider,
+        label: c.shop_name || c.external_shop_id || c.provider,
+      }));
+      const scoped: FixedCostScoped[] = (fixedCosts as unknown as Array<
+        FixedCost & { scope?: string; company_id?: string | null; integration_id?: string | null;
+          marketplace?: string | null; allocation_pct?: Record<string, number> | null; amount_cents?: number | null }
+      >)
+        .filter((c) => c.is_recurring)
+        .map((c) => ({
+          id: c.id,
+          name: c.name,
+          amountCents: Math.round(Number(c.amount_cents ?? Number(c.amount) * 100)),
+          scope: (c.scope as FixedCostScoped['scope']) ?? 'geral',
+          companyId: c.company_id ?? null,
+          integrationId: c.integration_id ?? null,
+          marketplace: c.marketplace ?? null,
+          allocationPct: c.allocation_pct ?? null,
+        }));
+      const companyIds = Array.from(new Set(connections.map((c) => c.company_id).filter(Boolean) as string[]));
+      if (!companyIds.includes(companyId)) companyIds.push(companyId);
+      const alloc = allocateFixedCosts(scoped, {
+        companyIds,
+        connections: scopedConns,
+        revenueByCompanyCents: revenueByCompany.byCompanyCents,
+      });
+      fixedCostsOverrideCents = alloc.byCompany[companyId]?.totalCents ?? 0;
+    }
 
     // Converter ShopeeOrder[] → ShopeeOrderDRE[] (tipo explícito, sem 'as any')
     const shopeeOrdersMapped: ShopeeOrderDRE[] = shopeeOrders
@@ -446,6 +517,7 @@ export function useDREData(): UseDREDataResult {
       mlOrders,
       cashFlowEntries,
       selectedCompany,
+      fixedCostsOverrideCents,
     );
   }, [
     shopeeOrders,
@@ -459,6 +531,9 @@ export function useDREData(): UseDREDataResult {
     mlOrders,
     cashFlowEntries,
     selectedCompany,
+    companyId,
+    connections,
+    revenueByCompany.byCompanyCents,
     isLoading,
     user,
   ]);
@@ -510,6 +585,14 @@ export function useDREData(): UseDREDataResult {
     }
   };
 
+  const scope = useMemo(
+    () => ({
+      byCompany: !!companyId,
+      hasUnassignedConnection: !!companyId && connections.some((c) => !c.company_id),
+    }),
+    [companyId, connections],
+  );
+
   return {
     dreData,
     dreDataPrev,
@@ -521,6 +604,7 @@ export function useDREData(): UseDREDataResult {
     setSelectedPeriod,
     selectedCompany,
     setSelectedCompany,
+    scope,
     refetch,
   };
 }

@@ -32,6 +32,7 @@ function DREContent() {
     setSelectedPeriod,
     selectedCompany,
     setSelectedCompany,
+    scope,
     dreTrend,
     refetch
   } = useDREData();
@@ -144,11 +145,23 @@ function DREContent() {
       }
     >
       <div className="space-y-6">
-      {/* Empresa da DRE — define o imposto (Simples sobre faturamento / IRPJ
-         sobre lucro) aplicado ao demonstrativo. */}
+      {/* Empresa da DRE — recorta o demonstrativo (só as lojas dela + o rateio
+         dos custos fixos) e define o imposto (Simples sobre faturamento / IRPJ
+         sobre lucro). "Todas" = consolidado. Sincroniza com o switcher do topbar. */}
       <div className="flex items-center justify-end">
         <CompanySelector selectedCompany={selectedCompany} onSelect={setSelectedCompany} />
       </div>
+
+      {scope.byCompany && (
+        <Alert>
+          <AlertCircle className="h-4 w-4" />
+          <AlertDescription>
+            Mostrando só <strong>{selectedCompany?.name ?? 'a empresa selecionada'}</strong>:
+            faturamento das lojas dela, taxas e a fatia rateada dos custos fixos.
+            {scope.hasUnassignedConnection && ' Há loja sem empresa atribuída — o que ela fatura não entra aqui.'}
+          </AlertDescription>
+        </Alert>
+      )}
 
       {/* Period Info - Regra 2: Resumo executivo textual (sem valor numérico duplicado) */}
       <Card className="bg-muted/30">

@@ -272,6 +272,29 @@ describe('calculateDRE — campos *Cents batem (ou ficam próximos) de toCents()
     expect(dre.lucroLiquidoCents).toBe(0);
     expect(Number.isNaN(dre.margemLiquida)).toBe(false);
   });
+
+  it('fixedCostsOverrideCents: usa a fatia da empresa e ignora a soma de fixedCosts', () => {
+    const dre = calculateDRE(
+      [], [], [],
+      [fixedCost({ amount: 9999, category: 'Software' })], // deve ser ignorado
+      shopeeSettings, tiktokSettings, PERIOD, [], [], null,
+      40_000, // R$ 400 = a fatia rateada da empresa
+    );
+    expect(dre.custosFixosTotalCents).toBe(40_000);
+    // período mensal cheio → prorrateado = total
+    expect(dre.custosFixosProrrateadosCents).toBe(40_000);
+    expect(dre.custosFixosPorCategoria['Custos fixos (rateio da empresa)']).toBe(400);
+    expect(dre.custosFixosPorCategoria['Software']).toBeUndefined();
+  });
+
+  it('fixedCostsOverrideCents = 0 → empresa sem custo fixo atribuído', () => {
+    const dre = calculateDRE(
+      [], [], [], [fixedCost({ amount: 500 })],
+      shopeeSettings, tiktokSettings, PERIOD, [], [], null, 0,
+    );
+    expect(dre.custosFixosTotalCents).toBe(0);
+    expect(dre.custosFixosProrrateadosCents).toBe(0);
+  });
 });
 
 describe('getMonthlyPeriods', () => {

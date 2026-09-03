@@ -25,7 +25,9 @@ const VEREDITO: Record<RevenueGoalVeredito, { icon: typeof Target; ring: string;
 const brl = (cents: number) => formatCurrency(cents / 100);
 
 function MetaContent() {
-  const { dreData, isLoading, selectedPeriod } = useDREData();
+  // scopeByCompany:false — o recorte financeiro por empresa entra só na /dre
+  // neste stage (ver plano Bloco D Fase 2). Meta do Mês segue consolidada.
+  const { dreData, isLoading, selectedPeriod } = useDREData({ scopeByCompany: false });
   const goal = useRevenueGoal();
   const [draft, setDraft] = useState('');
 

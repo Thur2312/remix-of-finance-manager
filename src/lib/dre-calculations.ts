@@ -414,7 +414,11 @@ export function calculateDRE(
   period: DREPeriod,
   mlOrders: MlOrder[] = [],
   cashFlowEntries: CashFlowEntry[] = [],
-  company: DRECompanyTax | null = null
+  company: DRECompanyTax | null = null,
+  // Bloco D Fase 2 — quando a DRE é recortada por empresa, o custo fixo não é a
+  // soma de `fixedCosts`, e sim a fatia rateada daquela empresa (já em centavos).
+  // undefined = consolidado (soma tudo, comportamento padrão).
+  fixedCostsOverrideCents?: number,
 ): DREData {
 
   const filteredShopeeOrders  = filterByPeriod(shopeeOrders,    period, 'data_pedido');
@@ -585,13 +589,22 @@ export function calculateDRE(
   const custosFixosPorCategoriaCents: Record<string, Cents> = {};
   let custosFixosTotal = 0;
   let custosFixosTotalCents = 0;
-  fixedCosts.forEach(c => {
-    custosFixosPorCategoria[c.category] = (custosFixosPorCategoria[c.category] || 0) + c.amount;
-    custosFixosTotal += c.amount;
-    const amountCents = Number(c.amount_cents ?? 0);
-    custosFixosPorCategoriaCents[c.category] = ((custosFixosPorCategoriaCents[c.category] ?? 0) + amountCents) as Cents;
-    custosFixosTotalCents += amountCents;
-  });
+  if (fixedCostsOverrideCents !== undefined) {
+    // DRE recortada por empresa: usa a fatia rateada, não a soma. O detalhe por
+    // categoria colapsa numa linha só (o rateio mistura várias origens).
+    custosFixosTotalCents = Math.max(0, Math.round(fixedCostsOverrideCents));
+    custosFixosTotal = custosFixosTotalCents / 100;
+    custosFixosPorCategoria['Custos fixos (rateio da empresa)'] = custosFixosTotal;
+    custosFixosPorCategoriaCents['Custos fixos (rateio da empresa)'] = custosFixosTotalCents as Cents;
+  } else {
+    fixedCosts.forEach(c => {
+      custosFixosPorCategoria[c.category] = (custosFixosPorCategoria[c.category] || 0) + c.amount;
+      custosFixosTotal += c.amount;
+      const amountCents = Number(c.amount_cents ?? 0);
+      custosFixosPorCategoriaCents[c.category] = ((custosFixosPorCategoriaCents[c.category] ?? 0) + amountCents) as Cents;
+      custosFixosTotalCents += amountCents;
+    });
+  }
   const custosFixosProrrateados = custosFixosTotal * proporcaoPeriodo;
   const custosFixosProrrateadosCents = Math.round(custosFixosTotalCents * proporcaoPeriodo);
 

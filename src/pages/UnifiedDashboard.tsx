@@ -523,7 +523,7 @@ function UnifiedDashboardContent() {
   // A empresa é a mesma da DRE (fonte única — dreData é calculado com ela e o
   // TaxSummaryRow / insights leem a mesma). Insights: DRE (user-wide, sempre) +
   // finança Shopee (só na aba relevante). Lógica pura em src/lib/insights.ts.
-  const { dreData, dreDataPrev, isLoading: dreLoading, selectedCompany, setSelectedCompany } = useDREData();
+  const { dreData, dreDataPrev, isLoading: dreLoading, selectedCompany } = useDREData({ scopeByCompany: false });
   const { data: productCosts } = useProductCosts();
   // mesmo período do resto do dashboard → compartilha o cache de useShopeeSync
   const catalog = useCatalog(syncPeriod);
