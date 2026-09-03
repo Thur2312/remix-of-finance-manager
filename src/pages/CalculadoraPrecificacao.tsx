@@ -34,6 +34,7 @@ import {
   Popover, PopoverContent, PopoverTrigger,
 } from "@/components/ui/popover";
 import { useAnuncios, Anuncio, AnuncioInput, CustoAdicionalDB, TipoProduto, KitItemDB } from "@/hooks/useProdutos";
+import { useSelectedCompany } from "@/hooks/useSelectedCompany";
 import { formatCurrency, formatPercent } from "@/lib/format";
 import {
   apurar,
@@ -154,7 +155,7 @@ const deserializeKitItens = (lista: KitItemDB[] | null | undefined): KitItem[] =
 
 // ─── Form anúncio ────────────────────────────────────────────────────────────
 const EMPTY_FORM = {
-  nome_anuncio: "", sku: "", custo: "", valor_venda: "", comissao_taxa: "",
+  nome_anuncio: "", sku: "", company_id: "", custo: "", valor_venda: "", comissao_taxa: "",
   antecipado: "", afiliados: "", imposto_pct: "", custo_var: "",
   marketplace: "" as Plataforma | "",
   custos_adicionais: [] as CustoAdicional[],
@@ -359,6 +360,7 @@ function CalculadoraPrecificacaoContent() {
   // ── Hooks ─────────────────────────────────────────────────────────────────
   const { totalRecurringCosts, isLoading: isLoadingCosts, costs } = useFixedCosts();
   const { anuncios, isLoading: isLoadingAnuncios, addAnuncio, updateAnuncio, deleteAnuncio } = useAnuncios();
+  const { companyId: filtroCompanyId, setCompanyId: setFiltroCompanyId, companies } = useSelectedCompany();
 
   const mediaMargemPortfolio = useMemo(() => {
     if (!anuncios || anuncios.length === 0) return null;
@@ -610,8 +612,10 @@ function CalculadoraPrecificacaoContent() {
     }
 
     setAnuncioForm({
+      ...EMPTY_FORM,
       nome_anuncio:  "",
       sku:           "",
+      company_id:    filtroCompanyId ?? "",
       custo:         custoProduto,
       valor_venda:   precoPromocional,
       comissao_taxa: comissaoTaxaInicial,
@@ -632,8 +636,10 @@ function CalculadoraPrecificacaoContent() {
   const openEditAnuncio = (a: typeof anuncios[0]) => {
     setEditingId(a.id);
     setAnuncioForm({
+      ...EMPTY_FORM,
       nome_anuncio:  a.nome_anuncio,
       sku:           a.sku ?? "",
+      company_id:    a.company_id ?? "",
       custo:         String(a.custo),
       valor_venda:   String(a.valor_venda),
       comissao_taxa: String(a.comissao_taxa),
@@ -650,8 +656,11 @@ function CalculadoraPrecificacaoContent() {
   };
 
   const anunciosFiltrados = useMemo(
-    () => filtroMarketplace === "todos" ? anuncios : anuncios.filter(a => a.marketplace === filtroMarketplace),
-    [anuncios, filtroMarketplace],
+    () => anuncios.filter(a =>
+      (filtroMarketplace === "todos" || a.marketplace === filtroMarketplace) &&
+      (!filtroCompanyId || a.company_id === filtroCompanyId)
+    ),
+    [anuncios, filtroMarketplace, filtroCompanyId],
   );
 
   const isKitProduto = anuncioForm.tipo_produto === "kit";
@@ -667,6 +676,7 @@ function CalculadoraPrecificacaoContent() {
     const payload: AnuncioInput = {
       nome_anuncio:  anuncioForm.nome_anuncio.trim(),
       sku:           anuncioForm.sku.trim() || null,
+      company_id:    anuncioForm.company_id || null,
       custo:         isKitProduto ? kitCustoTotal : parseInput(anuncioForm.custo),
       valor_venda:   parseInput(anuncioForm.valor_venda),
       comissao_taxa: anuncioForm.comissao_taxa,
@@ -785,12 +795,29 @@ function CalculadoraPrecificacaoContent() {
           </div>
         </div>
 
-        <div className="space-y-2">
-          <Label htmlFor="anuncio_sku" className="font-medium">
-            SKU <span className="text-xs font-normal text-muted-foreground">— opcional, liga ao catálogo de Produtos</span>
-          </Label>
-          <Input id="anuncio_sku" value={anuncioForm.sku}
-            onChange={setFormField("sku")} placeholder="Ex: CAMISA-P-AZUL" maxLength={120} />
+        <div className="grid grid-cols-2 gap-4">
+          <div className="space-y-2">
+            <Label htmlFor="anuncio_sku" className="font-medium">
+              SKU <span className="text-xs font-normal text-muted-foreground">— opcional</span>
+            </Label>
+            <Input id="anuncio_sku" value={anuncioForm.sku}
+              onChange={setFormField("sku")} placeholder="Ex: CAMISA-P-AZUL" maxLength={120} />
+          </div>
+          {companies.length > 0 && (
+            <div className="space-y-2">
+              <Label className="font-medium">Empresa <span className="text-xs font-normal text-muted-foreground">— opcional</span></Label>
+              <Select
+                value={anuncioForm.company_id || "none"}
+                onValueChange={v => setAnuncioForm(prev => ({ ...prev, company_id: v === "none" ? "" : v }))}
+              >
+                <SelectTrigger><SelectValue placeholder="Nenhuma" /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="none">Nenhuma</SelectItem>
+                  {companies.map(c => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}
+                </SelectContent>
+              </Select>
+            </div>
+          )}
         </div>
 
         <Separator />
@@ -1663,7 +1690,7 @@ function CalculadoraPrecificacaoContent() {
                   <CardTitle className="text-lg">Anúncios Cadastrados</CardTitle>
                   <CardDescription>
                     {anunciosFiltrados.length} anúncio{anunciosFiltrados.length !== 1 ? "s" : ""} cadastrado{anunciosFiltrados.length !== 1 ? "s" : ""}
-                    {filtroMarketplace !== "todos" && ` (de ${anuncios.length} no total)`}
+                    {(filtroMarketplace !== "todos" || filtroCompanyId) && ` (de ${anuncios.length} no total)`}
                     {panorama.usandoPortfolio && (
                       <span className="ml-2 text-primary font-medium">
                         · Margem média: {formatPercent(panorama.margemPct)}
@@ -1673,6 +1700,18 @@ function CalculadoraPrecificacaoContent() {
                 </div>
                 <ShoppingBag className="h-5 w-5 text-muted-foreground" />
               </div>
+              {companies.length > 0 && (
+                <div className="flex items-center gap-2 pt-1">
+                  <span className="text-xs text-muted-foreground">Empresa:</span>
+                  <Select value={filtroCompanyId ?? "todas"} onValueChange={v => setFiltroCompanyId(v === "todas" ? null : v)}>
+                    <SelectTrigger className="h-7 w-[190px] text-xs"><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="todas">Todas (consolidado)</SelectItem>
+                      {companies.map(c => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
               {anuncios.length > 0 && (
                 <div className="flex flex-wrap items-center gap-1.5 pt-1">
                   {([

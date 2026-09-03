@@ -29,6 +29,7 @@ const PAGE_TITLES: Record<string, string> = {
   '/assistente-anuncio': 'Assistente',
   '/dre': 'DRE',
   '/taxas': 'Detalhamento de taxas',
+  '/empresas': 'Empresas',
   '/perfil': 'Meu Perfil',
   '/integrations': 'Integrações',
   '/planos': 'Planos',

@@ -1,7 +1,12 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
+import type { CostScope } from '@/lib/company-scope';
+import {
+  allocateFixedCosts, type AllocationResult, type FixedCostScoped,
+} from '@/lib/cost-allocation';
+import type { ScopedConnection } from '@/lib/company-scope';
 
 export interface FixedCost {
   id: string;
@@ -11,6 +16,11 @@ export interface FixedCost {
   amount: number;
   is_recurring: boolean;
   notes: string | null;
+  /** Bloco D — a que a despesa pertence */
+  scope: CostScope;
+  company_id: string | null;
+  integration_id: string | null;
+  marketplace: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -133,8 +143,14 @@ export function useFixedCosts() {
     }
   }, [user, fetchCosts, fetchSettings]);
 
+  // A gravação: category/name/amount/is_recurring/notes são obrigatórios; os
+  // campos de escopo do Bloco D têm default no banco (scope 'geral', resto null).
+  type FixedCostWrite =
+    Pick<FixedCost, 'category' | 'name' | 'amount' | 'is_recurring' | 'notes'>
+    & Partial<Pick<FixedCost, 'scope' | 'company_id' | 'integration_id' | 'marketplace'>>;
+
   // Add cost
-  const addCost = async (cost: Omit<FixedCost, 'id' | 'user_id' | 'created_at' | 'updated_at'>) => {
+  const addCost = async (cost: FixedCostWrite) => {
     if (!user) return false;
 
     try {
@@ -158,7 +174,7 @@ export function useFixedCosts() {
   };
 
   // Update cost
-  const updateCost = async (id: string, cost: Partial<Omit<FixedCost, 'id' | 'user_id' | 'created_at' | 'updated_at'>>) => {
+  const updateCost = async (id: string, cost: Partial<FixedCostWrite>) => {
     try {
       const { error } = await supabase
         .from('fixed_costs')
@@ -244,6 +260,35 @@ export function useFixedCosts() {
     return acc;
   }, {} as Record<string, FixedCost[]>);
 
+  const costsByScope = useMemo(
+    () => costs.reduce((acc, c) => {
+      (acc[c.scope] ??= []).push(c);
+      return acc;
+    }, {} as Record<CostScope, FixedCost[]>),
+    [costs],
+  );
+
+  // Bloco D — rateio dos custos recorrentes entre as empresas. A receita do
+  // período vem de fora (useRevenueByCompany) pra não acoplar este hook ao DRE.
+  const allocate = useCallback((
+    companyIds: string[],
+    connections: ScopedConnection[],
+    revenueByCompanyCents: Record<string, number>,
+  ): AllocationResult => {
+    const scoped: FixedCostScoped[] = costs
+      .filter(c => c.is_recurring)
+      .map(c => ({
+        id: c.id,
+        name: c.name,
+        amountCents: Math.round(Number(c.amount) * 100),
+        scope: c.scope,
+        companyId: c.company_id,
+        integrationId: c.integration_id,
+        marketplace: c.marketplace,
+      }));
+    return allocateFixedCosts(scoped, { companyIds, connections, revenueByCompanyCents });
+  }, [costs]);
+
   return {
     costs,
     settings,
@@ -258,6 +303,8 @@ export function useFixedCosts() {
     costPerOrder,
     costPerProduct,
     costPercentage,
-    costsByCategory
+    costsByCategory,
+    costsByScope,
+    allocate,
   };
 }

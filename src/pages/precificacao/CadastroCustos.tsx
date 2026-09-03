@@ -12,6 +12,12 @@ import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useFixedCosts, COST_CATEGORIES, FixedCost } from '@/hooks/useFixedCosts';
 import { useCustomCategories } from '@/hooks/useCustomCategories';
+import { useCompanyConnections } from '@/hooks/useCompanyConnections';
+import { useRevenueByCompany } from '@/hooks/useRevenueByCompany';
+import { SCOPE_LABELS, SCOPE_SHORT, type CostScope } from '@/lib/company-scope';
+import type { AllocationResult } from '@/lib/cost-allocation';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { cn } from '@/lib/utils';
 import { CategorySelect } from '@/components/CategorySelect';
 import { parseCurrencyInput, parseNumericInputSafe } from '@/lib/numeric-validation';
 import { toast } from 'sonner';
@@ -50,6 +56,79 @@ const CUSTOM_ICON_MAP: Record<string, React.ReactNode> = {
   Globe: <Globe className="h-4 w-4" />,
 };
 
+// ── Rateio por empresa (Bloco D, item 13) ───────────────────────────────────
+function AllocationView({
+  result, companies, revenue, hasUnassigned,
+}: {
+  result: AllocationResult;
+  companies: { id: string; name: string }[];
+  revenue: ReturnType<typeof useRevenueByCompany>;
+  hasUnassigned: boolean;
+}) {
+  const nome = (id: string) => companies.find(c => c.id === id)?.name ?? id;
+  const brl = (cents: number) => formatCurrency(cents / 100);
+  const nao = result.naoAtribuido;
+
+  return (
+    <div className="space-y-3">
+      {hasUnassigned && (
+        <div className="rounded-md bg-warning/10 px-3 py-2 text-xs text-warning">
+          Há loja sem empresa atribuída. O que ela fatura não entra no rateio de nenhuma empresa —
+          atribua em Financeiro → Empresas.
+        </div>
+      )}
+      {companies.map(c => {
+        const a = result.byCompany[c.id];
+        if (!a) return null;
+        const rev = revenue.byCompanyCents[c.id] ?? 0;
+        return (
+          <Card key={c.id}>
+            <CardContent className="pt-5">
+              <div className="flex items-baseline justify-between">
+                <h3 className="text-sm font-semibold">{nome(c.id)}</h3>
+                <span className="font-mono text-lg font-bold tabular-nums">{brl(a.totalCents)}<span className="text-xs font-normal text-muted-foreground">/mês</span></span>
+              </div>
+              <p className="mt-0.5 text-xs text-muted-foreground">
+                faturou {brl(rev)} nos últimos 30 dias
+              </p>
+              <div className="mt-3 space-y-1 text-sm">
+                {a.exclusivoCents > 0 && <LinhaAloc label="Exclusivo da empresa" cents={a.exclusivoCents} />}
+                {a.lojaCents > 0 && <LinhaAloc label="Das lojas dela" cents={a.lojaCents} />}
+                {a.plataformaCents > 0 && <LinhaAloc label="Das plataformas onde vende" cents={a.plataformaCents} />}
+                {a.rateioGeralCents > 0 && (
+                  <LinhaAloc label="Parte do custo geral (rateio por faturamento)" cents={a.rateioGeralCents} />
+                )}
+                {a.totalCents === 0 && <p className="text-xs text-muted-foreground">Sem custo atribuído.</p>}
+              </div>
+            </CardContent>
+          </Card>
+        );
+      })}
+      {nao.totalCents > 0 && (
+        <Card className="ring-1 ring-warning/40">
+          <CardContent className="pt-5">
+            <h3 className="text-sm font-semibold text-warning">Não atribuído</h3>
+            <div className="mt-2 space-y-1 text-sm">
+              {nao.geralSemFaturamentoCents > 0 && <LinhaAloc label="Custo geral sem faturamento pra ratear" cents={nao.geralSemFaturamentoCents} />}
+              {nao.lojaSemEmpresaCents > 0 && <LinhaAloc label="Custo de empresa/loja sem vínculo válido" cents={nao.lojaSemEmpresaCents} />}
+              {nao.plataformaSemEmpresaCents > 0 && <LinhaAloc label="Custo de plataforma sem loja atribuída" cents={nao.plataformaSemEmpresaCents} />}
+            </div>
+          </CardContent>
+        </Card>
+      )}
+    </div>
+  );
+}
+
+function LinhaAloc({ label, cents }: { label: string; cents: number }) {
+  return (
+    <div className="flex justify-between text-muted-foreground">
+      <span>{label}</span>
+      <span className="font-mono tabular-nums text-foreground">{formatCurrency(cents / 100)}</span>
+    </div>
+  );
+}
+
 // ── Conteúdo principal ───────────────────────────────────────────────────────
 function CadastroCustosContent() {
   const {
@@ -60,12 +139,16 @@ function CadastroCustosContent() {
     deleteCost,
     totalRecurringCosts,
     costsByCategory,
+    allocate,
   } = useFixedCosts();
 
   const { customCategories } = useCustomCategories();
+  const { connections, companies } = useCompanyConnections();
+  const revenue = useRevenueByCompany(30);
 
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [editingCost, setEditingCost] = useState<FixedCost | null>(null);
+  const [vista, setVista] = useState<'categoria' | 'empresa'>('categoria');
 
   // Form
   const [formCategory, setFormCategory] = useState('');
@@ -73,6 +156,10 @@ function CadastroCustosContent() {
   const [formAmount, setFormAmount] = useState('');
   const [formIsRecurring, setFormIsRecurring] = useState(true);
   const [formNotes, setFormNotes] = useState('');
+  const [formScope, setFormScope] = useState<CostScope>('geral');
+  const [formCompanyId, setFormCompanyId] = useState('');
+  const [formIntegrationId, setFormIntegrationId] = useState('');
+  const [formMarketplace, setFormMarketplace] = useState('');
 
   const resetForm = () => {
     setFormCategory('');
@@ -80,6 +167,10 @@ function CadastroCustosContent() {
     setFormAmount('');
     setFormIsRecurring(true);
     setFormNotes('');
+    setFormScope('geral');
+    setFormCompanyId('');
+    setFormIntegrationId('');
+    setFormMarketplace('');
     setEditingCost(null);
   };
 
@@ -90,6 +181,10 @@ function CadastroCustosContent() {
     setFormAmount(cost.amount.toString());
     setFormIsRecurring(cost.is_recurring);
     setFormNotes(cost.notes || '');
+    setFormScope(cost.scope ?? 'geral');
+    setFormCompanyId(cost.company_id ?? '');
+    setFormIntegrationId(cost.integration_id ?? '');
+    setFormMarketplace(cost.marketplace ?? '');
     setIsAddDialogOpen(true);
   };
 
@@ -107,6 +202,10 @@ function CadastroCustosContent() {
       amount: parseResult.value,
       is_recurring: formIsRecurring,
       notes: formNotes.trim() || null,
+      scope: formScope,
+      company_id: formScope === 'empresa' ? (formCompanyId || null) : null,
+      integration_id: formScope === 'loja' ? (formIntegrationId || null) : null,
+      marketplace: formScope === 'plataforma' ? (formMarketplace || null) : null,
     };
 
     const success = editingCost
@@ -227,6 +326,61 @@ function CadastroCustosContent() {
                   />
                 </div>
 
+                {/* Bloco D — a que a despesa pertence */}
+                <div className="space-y-2">
+                  <Label>Este custo é de</Label>
+                  <Select value={formScope} onValueChange={v => setFormScope(v as CostScope)}>
+                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      {(['geral', 'empresa', 'loja', 'plataforma'] as CostScope[]).map(s => (
+                        <SelectItem key={s} value={s} disabled={s !== 'geral' && companies.length === 0}>
+                          {SCOPE_LABELS[s]}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  {formScope === 'geral' && (
+                    <p className="text-xs text-muted-foreground">
+                      Rateado entre as empresas na proporção do faturamento do período.
+                    </p>
+                  )}
+                  {companies.length === 0 && formScope === 'geral' && (
+                    <p className="text-xs text-muted-foreground">
+                      Cadastre empresas em Financeiro → Empresas pra poder separar por empresa/loja/plataforma.
+                    </p>
+                  )}
+                  {formScope === 'empresa' && (
+                    <Select value={formCompanyId} onValueChange={setFormCompanyId}>
+                      <SelectTrigger><SelectValue placeholder="Escolha a empresa" /></SelectTrigger>
+                      <SelectContent>
+                        {companies.map(c => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}
+                      </SelectContent>
+                    </Select>
+                  )}
+                  {formScope === 'loja' && (
+                    <Select value={formIntegrationId} onValueChange={setFormIntegrationId}>
+                      <SelectTrigger><SelectValue placeholder="Escolha a loja" /></SelectTrigger>
+                      <SelectContent>
+                        {connections.map(c => (
+                          <SelectItem key={c.id} value={c.id}>
+                            {c.label}{c.companyId ? '' : ' · sem empresa'}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  )}
+                  {formScope === 'plataforma' && (
+                    <Select value={formMarketplace} onValueChange={setFormMarketplace}>
+                      <SelectTrigger><SelectValue placeholder="Escolha a plataforma" /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="shopee">Shopee</SelectItem>
+                        <SelectItem value="mercadolivre">Mercado Livre</SelectItem>
+                        <SelectItem value="tiktok">TikTok Shop</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  )}
+                </div>
+
                 <div className="space-y-2">
                   <Label htmlFor="notes">Observações (opcional)</Label>
                   <Textarea
@@ -246,7 +400,12 @@ function CadastroCustosContent() {
                 </Button>
                 <Button
                   onClick={handleSubmit}
-                  disabled={!formCategory || !formName || !formAmount}
+                  disabled={
+                    !formCategory || !formName || !formAmount ||
+                    (formScope === 'empresa' && !formCompanyId) ||
+                    (formScope === 'loja' && !formIntegrationId) ||
+                    (formScope === 'plataforma' && !formMarketplace)
+                  }
                 >
                   {editingCost ? 'Salvar Alterações' : 'Adicionar'}
                 </Button>
@@ -271,6 +430,28 @@ function CadastroCustosContent() {
             </CardContent>
           </Card>
         </div>
+
+        {/* ── Alternador de vista (Bloco D) ──────────────────────────────────── */}
+        {companies.length > 0 && (
+          <div className="flex gap-1 rounded-lg bg-muted/60 p-1 text-sm font-medium">
+            {(['categoria', 'empresa'] as const).map(v => (
+              <button key={v} onClick={() => setVista(v)}
+                className={cn('flex-1 rounded-md px-3 py-1.5 transition-colors',
+                  vista === v ? 'bg-background shadow-sm' : 'text-muted-foreground hover:text-foreground')}>
+                {v === 'categoria' ? 'Por categoria' : 'Por empresa'}
+              </button>
+            ))}
+          </div>
+        )}
+
+        {vista === 'empresa' && companies.length > 0 && (
+          <AllocationView
+            result={allocate(companies.map(c => c.id), connections, revenue.byCompanyCents)}
+            companies={companies}
+            revenue={revenue}
+            hasUnassigned={connections.some(c => !c.companyId)}
+          />
+        )}
 
         {/* ── Lista por categoria ─────────────────────────────────────────────── */}
         <Card>
@@ -327,7 +508,17 @@ function CadastroCustosContent() {
                               className="flex items-center justify-between py-2 px-3 bg-muted/50 rounded-md"
                             >
                               <div>
-                                <p className="font-medium text-sm">{cost.name}</p>
+                                <p className="flex items-center gap-1.5 font-medium text-sm">
+                                  {cost.name}
+                                  {cost.scope && cost.scope !== 'geral' && (
+                                    <Badge variant="secondary" className="text-[10px] font-normal">
+                                      {SCOPE_SHORT[cost.scope]}
+                                      {cost.scope === 'plataforma' && cost.marketplace ? `: ${cost.marketplace}` : ''}
+                                      {cost.scope === 'empresa' && cost.company_id
+                                        ? `: ${companies.find(x => x.id === cost.company_id)?.name ?? ''}` : ''}
+                                    </Badge>
+                                  )}
+                                </p>
                                 {cost.notes && (
                                   <p className="text-xs text-muted-foreground">{cost.notes}</p>
                                 )}

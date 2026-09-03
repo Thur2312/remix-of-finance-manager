@@ -1,11 +1,67 @@
 import { useState } from 'react';
 import {
-  Building2, Plus, Pencil, Trash2, Link2, AlertTriangle,
+  Building2, Plus, Pencil, Trash2, AlertTriangle,
   TrendingDown, Percent, Store, RefreshCw
 } from 'lucide-react';
 import { useCompanies, Company, type CompanyFormData } from '../../hooks/useCompanies';
 import { applyTax } from '../../lib/tax';
 import { CompanyModal } from '../../components/settings/CompanyModal';
+import { PageShell } from '@/components/layout/PageShell';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent } from '@/components/ui/card';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { useCompanyConnections } from '@/hooks/useCompanyConnections';
+
+const UNASSIGNED = '__none__';
+
+// ─── Lojas × Empresa (Bloco D) ──────────────────────────────────────────────
+function StoresSection() {
+  const { connections, companies, assignCompany, isLoading } = useCompanyConnections();
+  if (isLoading || connections.length === 0) return null;
+  return (
+    <Card>
+      <CardContent className="pt-5">
+        <h2 className="text-sm font-semibold">Lojas conectadas</h2>
+        <p className="mt-0.5 text-xs text-muted-foreground">
+          Cada conta de marketplace conectada é uma loja. Diga a que empresa (CNPJ) ela pertence —
+          é isso que separa receita e custo entre as empresas.
+        </p>
+        <div className="mt-3 space-y-2">
+          {connections.map(conn => (
+            <div key={conn.id} className="flex items-center justify-between gap-3 rounded-md bg-muted/50 px-3 py-2">
+              <div className="min-w-0">
+                <p className="truncate text-sm font-medium">{conn.label}</p>
+                <p className="text-xs text-muted-foreground capitalize">
+                  {conn.marketplace}{conn.status !== 'connected' ? ` · ${conn.status}` : ''}
+                </p>
+              </div>
+              <Select
+                value={conn.companyId ?? UNASSIGNED}
+                onValueChange={v => assignCompany.mutate({
+                  connectionId: conn.id,
+                  companyId: v === UNASSIGNED ? null : v,
+                })}
+              >
+                <SelectTrigger className="h-8 w-[190px] text-xs">
+                  <SelectValue placeholder="Sem empresa" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value={UNASSIGNED}>Sem empresa</SelectItem>
+                  {companies.map(c => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}
+                </SelectContent>
+              </Select>
+            </div>
+          ))}
+        </div>
+        {connections.some(c => !c.companyId && c.status === 'connected') && (
+          <p className="mt-3 rounded-md bg-warning/10 px-3 py-2 text-xs text-warning">
+            Loja sem empresa fica no consolidado — não entra no resultado de nenhuma empresa nem no rateio de custo.
+          </p>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
 
 // ─── Confirmation Dialog ────────────────────────────────────────────────────
 function ConfirmDialog({
@@ -124,11 +180,6 @@ function CompanyCard({
       </div>
 
       <TaxPreviewCard taxRate={company.tax_rate} taxBase={company.tax_base} />
-
-      <div className="mt-3 flex items-center gap-2 text-xs text-gray-400 dark:text-gray-500">
-        <Link2 className="w-3.5 h-3.5" />
-        <span>Vincule integrações TikTok/Shopee a esta empresa</span>
-      </div>
     </div>
   );
 }
@@ -188,61 +239,43 @@ export default function CompaniesPage() {
   };
 
   return (
-    <div className="max-w-4xl mx-auto px-4 py-8">
-      {/* Header */}
-      <div className="flex items-center justify-between mb-8">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900 dark:text-white flex items-center gap-2.5">
-            <Building2 className="w-6 h-6 text-indigo-600" />
-            Empresas
-          </h1>
-          <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
-            Gerencie seus CNPJs e alíquotas de imposto vinculadas às integrações.
-          </p>
-        </div>
-
+    <PageShell
+      icon={Building2}
+      title="Empresas"
+      subtitle="Seus CNPJs, a alíquota de imposto de cada um, e a que empresa cada loja pertence."
+      action={
         <div className="flex items-center gap-2">
-          <button
-            onClick={refetch}
-            className="w-9 h-9 rounded-xl border border-gray-200 dark:border-gray-700 flex items-center justify-center text-gray-400 hover:text-gray-600 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
-            title="Atualizar"
-          >
-            <RefreshCw className="w-4 h-4" />
-          </button>
-          <button
-            onClick={handleNew}
-            className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 rounded-xl transition-colors shadow-sm"
-          >
-            <Plus className="w-4 h-4" />
-            Nova Empresa
-          </button>
+          <Button variant="outline" size="icon" className="h-9 w-9" onClick={refetch} title="Atualizar">
+            <RefreshCw className="h-4 w-4" />
+          </Button>
+          <Button onClick={handleNew}>
+            <Plus className="mr-2 h-4 w-4" /> Nova empresa
+          </Button>
         </div>
-      </div>
-
-      {/* Info Banner */}
-      <div className="mb-6 bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-900 rounded-xl px-4 py-3 flex items-start gap-3">
-        <Percent className="w-4 h-4 text-amber-600 dark:text-amber-400 mt-0.5 flex-shrink-0" />
-        <p className="text-xs text-amber-700 dark:text-amber-400">
-          A alíquota cadastrada aqui será usada para calcular o <strong>imposto deduzido do lucro líquido</strong> nos dashboards da Shopee e TikTok Shop, exibindo tanto o valor do imposto separado quanto o lucro já descontado.
+      }
+      className="space-y-6"
+    >
+      <div className="flex items-start gap-3 rounded-xl border bg-muted/40 px-4 py-3">
+        <Percent className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" />
+        <p className="text-xs text-muted-foreground">
+          A alíquota de cada empresa é usada pra calcular o imposto deduzido do lucro nos dashboards e na DRE.
+          Os custos fixos e a Precificação usam a separação por empresa/loja.
         </p>
       </div>
 
-      {/* Content */}
       {loading ? (
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          {[1, 2].map(i => (
-            <div key={i} className="bg-gray-100 dark:bg-gray-800 rounded-2xl h-48 animate-pulse" />
-          ))}
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+          {[1, 2].map(i => <div key={i} className="h-48 animate-pulse rounded-2xl bg-muted" />)}
         </div>
       ) : error ? (
         <div className="flex flex-col items-center justify-center py-16 text-center">
-          <p className="text-sm text-red-500 mb-3">{error}</p>
-          <button onClick={refetch} className="text-sm text-indigo-600 hover:underline">Tentar novamente</button>
+          <p className="mb-3 text-sm text-destructive">{error}</p>
+          <button onClick={refetch} className="text-sm text-primary hover:underline">Tentar novamente</button>
         </div>
       ) : companies.length === 0 ? (
         <EmptyState onNew={handleNew} />
       ) : (
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
           {companies.map(company => (
             <CompanyCard
               key={company.id}
@@ -253,6 +286,8 @@ export default function CompaniesPage() {
           ))}
         </div>
       )}
+
+      <StoresSection />
 
       {/* Modals */}
       <CompanyModal
@@ -270,6 +305,6 @@ export default function CompaniesPage() {
         onCancel={() => setDeletingCompany(null)}
         loading={deleting}
       />
-    </div>
+    </PageShell>
   );
 }

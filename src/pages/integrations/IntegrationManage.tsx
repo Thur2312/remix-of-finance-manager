@@ -11,6 +11,7 @@ import { DisconnectDialog } from '@/components/integrations/DisconnectDialog';
 import { ExportDataSection } from '../../components/integrations/ExportDataSection';
 import { useIntegrations } from '@/hooks/useIntegrations';
 import { useShopeeSync } from '@/hooks/useShopeeSync';
+import { useCompanyConnections } from '@/hooks/useCompanyConnections';
 import { formatCurrency } from '@/lib/calculations';
 import {
   RefreshCw, ArrowLeft, ShoppingBag, Store, AlertCircle,
@@ -47,6 +48,7 @@ export default function IntegrationManage() {
   const { connectionId } = useParams<{ connectionId: string }>();
   const navigate = useNavigate();
   const { getConnectionById, getLogsForConnection, syncNow, disconnect, updateSyncSettings } = useIntegrations();
+  const { companies, connections: scopedConns, assignCompany } = useCompanyConnections();
   const [syncPeriod, setSyncPeriod] = useState<'7' | '15' | '30' | '60' | '90' | '180'>('15');
 
   const connection = getConnectionById(connectionId || '');
@@ -147,6 +149,26 @@ export default function IntegrationManage() {
                   )}
                 </div>
               </div>
+
+              {companies.length > 0 && (
+                <div className="mt-4 flex flex-wrap items-center gap-2 border-t border-success/20 pt-4">
+                  <Store className="h-4 w-4 text-muted-foreground" />
+                  <span className="text-sm text-muted-foreground">Empresa desta loja:</span>
+                  <Select
+                    value={scopedConns.find(c => c.id === connection.id)?.companyId ?? '__none__'}
+                    onValueChange={v => assignCompany.mutate({
+                      connectionId: connection.id,
+                      companyId: v === '__none__' ? null : v,
+                    })}
+                  >
+                    <SelectTrigger className="h-8 w-[200px]"><SelectValue placeholder="Sem empresa" /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="__none__">Sem empresa (consolidado)</SelectItem>
+                      {companies.map(c => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
 
               {connection.last_error_message && (
                 <div className="flex items-start gap-2 text-sm text-destructive bg-destructive/10 rounded-md p-3 mt-4">

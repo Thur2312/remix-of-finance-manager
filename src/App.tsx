@@ -43,6 +43,7 @@ const Simulador                 = lazy(() => import("./pages/Simulador"));
 const DRE                       = lazy(() => import("./pages/DRE"));
 const Taxas                     = lazy(() => import("./pages/Taxas"));
 const Perfil                    = lazy(() => import("./pages/Perfil"));
+const CompaniesPage             = lazy(() => import("./pages/user/CompaniesPage"));
 const NotificacoesAdmin         = lazy(() => import("./pages/admin/Notificacoes"));
 
 // Rotas antigas por marketplace → nova casca /gestao/:marketplace/:view.
@@ -116,6 +117,7 @@ const App = () => {
                 <Route path="/assistente-anuncio" element={<AssistenteAnuncio />} />
                 <Route path="/dre" element={<DRE />} />
                 <Route path="/taxas" element={<Taxas />} />
+                <Route path="/empresas" element={<CompaniesPage />} />
                 <Route path="/perfil" element={<Perfil />} />
                 <Route path="/integrations" element={<IntegrationsOverview />} />
                 <Route path="/integrations/manage/:connectionId" element={<IntegrationManage />} />

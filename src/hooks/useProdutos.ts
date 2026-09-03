@@ -31,6 +31,8 @@ export interface Anuncio {
   nome_anuncio: string;
   /** SKU do produto — liga ao catálogo (/produtos). Opcional. */
   sku: string | null;
+  /** empresa (CNPJ) a que o anúncio pertence — Bloco D. Opcional. */
+  company_id: string | null;
   marketplace: string | null;
   custo: number;
   valor_venda: number;
@@ -50,6 +52,7 @@ export interface Anuncio {
 export interface AnuncioInput {
   nome_anuncio: string;
   sku?: string | null;
+  company_id?: string | null;
   marketplace: string;
   custo: number;
   valor_venda: number;

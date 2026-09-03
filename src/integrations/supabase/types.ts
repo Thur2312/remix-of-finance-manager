@@ -45,6 +45,7 @@ export type Database = {
           antecipado: number
           atualizado_em: string
           comissao_taxa: string
+          company_id: string | null
           criado_em: string
           custo: number
           custo_var: number
@@ -65,6 +66,7 @@ export type Database = {
           antecipado: number
           atualizado_em?: string
           comissao_taxa: string
+          company_id?: string | null
           criado_em?: string
           custo: number
           custo_var: number
@@ -85,6 +87,7 @@ export type Database = {
           antecipado?: number
           atualizado_em?: string
           comissao_taxa?: string
+          company_id?: string | null
           criado_em?: string
           custo?: number
           custo_var?: number
@@ -560,11 +563,15 @@ export type Database = {
           amount: number
           amount_cents: number
           category: string
+          company_id: string | null
           created_at: string
           id: string
+          integration_id: string | null
           is_recurring: boolean
+          marketplace: string | null
           name: string
           notes: string | null
+          scope: string
           updated_at: string
           user_id: string
         }
@@ -572,11 +579,15 @@ export type Database = {
           amount?: number
           amount_cents?: number
           category: string
+          company_id?: string | null
           created_at?: string
           id?: string
+          integration_id?: string | null
           is_recurring?: boolean
+          marketplace?: string | null
           name: string
           notes?: string | null
+          scope?: string
           updated_at?: string
           user_id: string
         }
@@ -584,11 +595,15 @@ export type Database = {
           amount?: number
           amount_cents?: number
           category?: string
+          company_id?: string | null
           created_at?: string
           id?: string
+          integration_id?: string | null
           is_recurring?: boolean
+          marketplace?: string | null
           name?: string
           notes?: string | null
+          scope?: string
           updated_at?: string
           user_id?: string
         }
@@ -629,6 +644,7 @@ export type Database = {
           access_token: string | null
           auto_sync_enabled: boolean | null
           auto_sync_frequency_minutes: number | null
+          company_id: string | null
           created_at: string | null
           external_shop_id: string | null
           id: string
@@ -650,6 +666,7 @@ export type Database = {
           access_token?: string | null
           auto_sync_enabled?: boolean | null
           auto_sync_frequency_minutes?: number | null
+          company_id?: string | null
           created_at?: string | null
           external_shop_id?: string | null
           id?: string
@@ -671,6 +688,7 @@ export type Database = {
           access_token?: string | null
           auto_sync_enabled?: boolean | null
           auto_sync_frequency_minutes?: number | null
+          company_id?: string | null
           created_at?: string | null
           external_shop_id?: string | null
           id?: string
