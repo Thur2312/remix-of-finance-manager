@@ -11,6 +11,17 @@ export default defineConfig(({ mode }) => ({
     react(),
     VitePWA({
       registerType: "autoUpdate",
+      // injectManifest (em vez de generateSW) porque precisamos de código
+      // próprio no service worker pra lidar com push notifications de venda
+      // (self.addEventListener('push'/'notificationclick') em src/sw.ts) —
+      // o generateSW não permite injetar lógica arbitrária.
+      strategies: "injectManifest",
+      srcDir: "src",
+      filename: "sw.ts",
+      injectManifest: {
+        // Mesmo escopo de antes: só o app shell estático entra no precache.
+        globPatterns: ["**/*.{js,css,html,svg,png,ico,woff2}"],
+      },
       includeAssets: ["favicon.svg", "favicon.ico", "apple-touch-icon-180x180.png"],
       manifest: {
         name: "Seller Finance — Gestão Financeira para Vendedores de Marketplace",
@@ -29,13 +40,6 @@ export default defineConfig(({ mode }) => ({
           { src: "pwa-512x512.png", sizes: "512x512", type: "image/png" },
           { src: "maskable-icon-512x512.png", sizes: "512x512", type: "image/png", purpose: "maskable" },
         ],
-      },
-      workbox: {
-        // Só faz cache do app shell (JS/CSS/HTML estático). Chamadas à API do
-        // Supabase (dados financeiros) nunca passam pelo service worker —
-        // sempre direto na rede, sem risco de mostrar dado desatualizado/stale.
-        globPatterns: ["**/*.{js,css,html,svg,png,ico,woff2}"],
-        navigateFallbackDenylist: [/^\/api/],
       },
     }),
   ].filter(Boolean),

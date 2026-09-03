@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Zap, ChevronLeft, ChevronRight, ExternalLink } from 'lucide-react';
+import { Zap, ChevronLeft, ChevronRight, ExternalLink, Bell, BellOff, Loader2 } from 'lucide-react';
 import { PageShell } from '@/components/layout/PageShell';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -8,8 +8,75 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
+import { toast } from 'sonner';
 import { formatCurrency } from '@/lib/calculations';
 import { useSaleEvents, useMarkSaleEventsSeen, SaleEventProvider } from '@/hooks/useSaleEvents';
+import { usePushNotifications } from '@/hooks/usePushNotifications';
+
+function SalePushNotificationCard() {
+  const { isSupported, permission, isSubscribed, isLoading, subscribe, unsubscribe } = usePushNotifications();
+
+  const handleToggle = async () => {
+    if (isSubscribed) {
+      await unsubscribe();
+      toast.success('Notificações de venda desativadas.');
+      return;
+    }
+    const ok = await subscribe();
+    if (ok) {
+      toast.success('Notificações de venda ativadas!');
+    } else if (Notification.permission === 'denied') {
+      toast.error('Você bloqueou as notificações. Habilite manualmente nas configurações do navegador.');
+    }
+  };
+
+  return (
+    <Card className={isSubscribed ? 'border-emerald-500/30 bg-emerald-500/5' : undefined}>
+      <CardContent className="pt-6">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+          <div className="flex items-start gap-3">
+            <div className={`h-9 w-9 rounded-lg flex items-center justify-center shrink-0 ${isSubscribed ? 'bg-emerald-500/15' : 'bg-primary/10'}`}>
+              <Bell className={`h-4 w-4 ${isSubscribed ? 'text-emerald-600' : 'text-primary'}`} />
+            </div>
+            <div>
+              <p className="font-medium">Notificações de venda</p>
+              <p className="text-sm text-muted-foreground">
+                Ative para receber um aviso instantâneo — mesmo com o app fechado — sempre que uma
+                venda for confirmada na conta conectada ao Seller Finance.
+              </p>
+            </div>
+          </div>
+          <Button
+            onClick={handleToggle}
+            disabled={!isSupported || isLoading}
+            variant={isSubscribed ? 'outline' : 'default'}
+            className="shrink-0"
+          >
+            {isLoading ? (
+              <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+            ) : isSubscribed ? (
+              <BellOff className="h-4 w-4 mr-2" />
+            ) : (
+              <Bell className="h-4 w-4 mr-2" />
+            )}
+            {isSubscribed ? 'Desativar notificações' : 'Ativar notificações'}
+          </Button>
+        </div>
+        {permission === 'denied' && (
+          <p className="text-xs text-destructive mt-3">
+            Notificações bloqueadas pelo navegador. Habilite manualmente nas configurações do site
+            pra poder ativar.
+          </p>
+        )}
+        {!isSupported && (
+          <p className="text-xs text-muted-foreground mt-3">
+            Seu navegador não suporta notificações push.
+          </p>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
 
 type ProviderFilter = SaleEventProvider | 'all';
 
@@ -97,6 +164,8 @@ export default function Vendas() {
       subtitle="Atividade de vendas da Shopee e do Mercado Livre em tempo real"
       className="space-y-6"
     >
+      <SalePushNotificationCard />
+
       <div className="flex items-center gap-3 flex-wrap">
         <Select value={provider} onValueChange={(v) => { setProvider(v as ProviderFilter); setPage(0); }}>
           <SelectTrigger className="w-[180px]"><SelectValue /></SelectTrigger>
