@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { computeGoal, type GoalInputs } from './goal';
+import { computeGoal, computeRevenueGoal, type GoalInputs, type RevenueGoalInputs } from './goal';
 
 const g = (p: Partial<GoalInputs> = {}): GoalInputs => ({
   custosFixosMes: 3000,
@@ -58,5 +58,56 @@ describe('computeGoal', () => {
     const r = computeGoal(g({ margemContribuicaoPct: -5 }), 0);
     expect(r.faturamentoBreakEven).toBe(Infinity);
     expect(r.veredito).toBe('vermelho');
+  });
+});
+
+const rg = (p: Partial<RevenueGoalInputs> = {}): RevenueGoalInputs => ({
+  metaFaturamentoMes: 100000,
+  faturamentoAteAgora: 50000,
+  diaDoMes: 15,
+  diasNoMes: 30,
+  custosFixosMes: 10000,
+  margemContribuicaoPct: 40,
+  ...p,
+});
+
+describe('computeRevenueGoal', () => {
+  it('exemplo da diretriz: meta 100k, faturado 50k → 50% feito, 50% restante', () => {
+    const r = computeRevenueGoal(rg());
+    expect(r.pctRealizado).toBe(50);
+    expect(r.pctRestante).toBe(50);
+    expect(r.faltaMeta).toBe(50000);
+  });
+
+  it('projeção linear pelo ritmo e veredito "no_ritmo" quando projeção alcança a meta', () => {
+    const r = computeRevenueGoal(rg({ faturamentoAteAgora: 50000, diaDoMes: 15, diasNoMes: 30 }));
+    expect(r.ritmoDiarioAtual).toBeCloseTo(50000 / 15, 2);
+    expect(r.projecaoFimDoMes).toBeCloseTo(100000, 0);
+    expect(r.veredito).toBe('no_ritmo');
+  });
+
+  it('ritmo necessário usa só os dias que faltam', () => {
+    const r = computeRevenueGoal(rg({ faturamentoAteAgora: 40000, diaDoMes: 20, diasNoMes: 30 }));
+    expect(r.diasRestantes).toBe(10);
+    expect(r.ritmoDiarioNecessario).toBe(6000); // (100000 - 40000) / 10
+  });
+
+  it('meta já batida → veredito "batida" e sem ritmo necessário', () => {
+    const r = computeRevenueGoal(rg({ faturamentoAteAgora: 120000 }));
+    expect(r.veredito).toBe('batida');
+    expect(r.ritmoDiarioNecessario).toBeNull();
+    expect(r.pctRestante).toBe(0);
+  });
+
+  it('ritmo fraco → veredito "longe"', () => {
+    const r = computeRevenueGoal(rg({ faturamentoAteAgora: 20000, diaDoMes: 15 }));
+    // projeção 40000 < 90% de 100000
+    expect(r.veredito).toBe('longe');
+  });
+
+  it('meta zerada não quebra (sem divisão por zero)', () => {
+    const r = computeRevenueGoal(rg({ metaFaturamentoMes: 0 }));
+    expect(Number.isNaN(r.pctRealizado)).toBe(false);
+    expect(r.veredito).toBe('longe');
   });
 });

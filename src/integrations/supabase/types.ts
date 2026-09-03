@@ -370,18 +370,21 @@ export type Database = {
       }
       cash_flow_settings: {
         Row: {
+          monthly_revenue_goal_cents: number | null
           opening_balance_cents: number
           opening_balance_date: string
           updated_at: string
           user_id: string
         }
         Insert: {
+          monthly_revenue_goal_cents?: number | null
           opening_balance_cents?: number
           opening_balance_date?: string
           updated_at?: string
           user_id: string
         }
         Update: {
+          monthly_revenue_goal_cents?: number | null
           opening_balance_cents?: number
           opening_balance_date?: string
           updated_at?: string

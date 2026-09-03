@@ -43,6 +43,75 @@ export interface GoalResult {
 
 const round2 = (n: number) => Math.round(n * 100) / 100;
 
+// ─── Meta em R$ (item 8 das diretrizes) ─────────────────────────────────────
+// O vendedor define uma meta de faturamento do mês em reais; aqui respondemos
+// quanto já foi, quanto falta, e se o ritmo atual leva lá. É a forma direta —
+// `computeGoal` acima parte de uma % de margem alvo.
+
+export interface RevenueGoalInputs {
+  /** meta de faturamento bruto do mês, em R$ */
+  metaFaturamentoMes: number;
+  /** faturamento bruto acumulado do mês até hoje */
+  faturamentoAteAgora: number;
+  /** dia do mês hoje (1..31) */
+  diaDoMes: number;
+  /** total de dias no mês */
+  diasNoMes: number;
+  /** custos fixos mensais — só pro lucro projetado */
+  custosFixosMes: number;
+  /** % de margem de contribuição — só pro lucro projetado */
+  margemContribuicaoPct: number;
+}
+
+export type RevenueGoalVeredito = 'batida' | 'no_ritmo' | 'aperto' | 'longe';
+
+export interface RevenueGoalResult {
+  pctRealizado: number;           // faturado / meta, em % (pode passar de 100)
+  pctRestante: number;            // 100 − pctRealizado, travado em [0, 100]
+  faltaMeta: number;              // R$ que ainda falta (≥ 0)
+  projecaoFimDoMes: number;       // ritmo atual × dias no mês
+  ritmoDiarioAtual: number;
+  ritmoDiarioNecessario: number | null; // pra bater no que falta do mês; null se já bateu
+  diasRestantes: number;
+  lucroProjetado: number;
+  veredito: RevenueGoalVeredito;
+}
+
+export function computeRevenueGoal(i: RevenueGoalInputs): RevenueGoalResult {
+  const dia = Math.min(Math.max(1, i.diaDoMes), i.diasNoMes);
+  const diasRestantes = Math.max(0, i.diasNoMes - dia);
+  const meta = Math.max(0, i.metaFaturamentoMes);
+
+  const pctRealizado = meta > 0 ? (i.faturamentoAteAgora / meta) * 100 : 0;
+  const pctRestante = Math.min(100, Math.max(0, 100 - pctRealizado));
+  const faltaMeta = Math.max(0, meta - i.faturamentoAteAgora);
+
+  const ritmoDiarioAtual = i.faturamentoAteAgora / dia;
+  const projecaoFimDoMes = ritmoDiarioAtual * i.diasNoMes;
+  const ritmoDiarioNecessario = faltaMeta > 0 && diasRestantes > 0 ? faltaMeta / diasRestantes : null;
+
+  const mc = i.margemContribuicaoPct / 100;
+  const lucroProjetado = projecaoFimDoMes * mc - i.custosFixosMes;
+
+  let veredito: RevenueGoalVeredito;
+  if (i.faturamentoAteAgora >= meta && meta > 0) veredito = 'batida';
+  else if (meta > 0 && projecaoFimDoMes >= meta) veredito = 'no_ritmo';
+  else if (meta > 0 && projecaoFimDoMes >= meta * 0.9) veredito = 'aperto';
+  else veredito = 'longe';
+
+  return {
+    pctRealizado: round2(pctRealizado),
+    pctRestante: round2(pctRestante),
+    faltaMeta: round2(faltaMeta),
+    projecaoFimDoMes: round2(projecaoFimDoMes),
+    ritmoDiarioAtual: round2(ritmoDiarioAtual),
+    ritmoDiarioNecessario: ritmoDiarioNecessario != null ? round2(ritmoDiarioNecessario) : null,
+    diasRestantes,
+    lucroProjetado: round2(lucroProjetado),
+    veredito,
+  };
+}
+
 export function computeGoal(i: GoalInputs, alvoMargemPct: number): GoalResult {
   const mc = i.margemContribuicaoPct / 100;
   const dia = Math.min(Math.max(1, i.diaDoMes), i.diasNoMes);

@@ -3,25 +3,31 @@ import { differenceInDays } from 'date-fns';
 import { Target, TrendingUp, AlertTriangle, CheckCircle2, XCircle, CalendarClock } from 'lucide-react';
 import { PageShell } from '@/components/layout/PageShell';
 import { Card, CardContent } from '@/components/ui/card';
+import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Slider } from '@/components/ui/slider';
+import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { EmptyState } from '@/components/ui/empty-state';
 import { cn } from '@/lib/utils';
 import { formatCurrency } from '@/lib/format';
+import { parseMoneyInput, type Cents } from '@/lib/money';
 import { useDREData } from '@/hooks/useDREData';
-import { computeGoal, type GoalVeredito } from '@/lib/goal';
+import { useRevenueGoal } from '@/hooks/useRevenueGoal';
+import { computeRevenueGoal, type RevenueGoalVeredito } from '@/lib/goal';
 
-const VEREDITO: Record<GoalVeredito, { icon: typeof Target; ring: string; color: string }> = {
-  meta:      { icon: CheckCircle2,  ring: 'ring-success/30 bg-success/5',        color: 'text-success' },
-  breakeven: { icon: TrendingUp,    ring: 'ring-primary/30 bg-primary/5',        color: 'text-primary' },
-  aperto:    { icon: AlertTriangle, ring: 'ring-warning/40 bg-warning/5',        color: 'text-warning' },
-  vermelho:  { icon: XCircle,       ring: 'ring-destructive/40 bg-destructive/5', color: 'text-destructive' },
+const VEREDITO: Record<RevenueGoalVeredito, { icon: typeof Target; ring: string; color: string }> = {
+  batida:   { icon: CheckCircle2,  ring: 'ring-success/30 bg-success/5',         color: 'text-success' },
+  no_ritmo: { icon: TrendingUp,    ring: 'ring-success/30 bg-success/5',         color: 'text-success' },
+  aperto:   { icon: AlertTriangle, ring: 'ring-warning/40 bg-warning/5',         color: 'text-warning' },
+  longe:    { icon: XCircle,       ring: 'ring-destructive/40 bg-destructive/5', color: 'text-destructive' },
 };
+
+const brl = (cents: number) => formatCurrency(cents / 100);
 
 function MetaContent() {
   const { dreData, isLoading, selectedPeriod } = useDREData();
-  const [alvoPct, setAlvoPct] = useState(10);
+  const goal = useRevenueGoal();
+  const [draft, setDraft] = useState('');
 
   const dados = useMemo(() => {
     if (!dreData || dreData.receitaBrutaTotal <= 0) return null;
@@ -37,17 +43,10 @@ function MetaContent() {
       mcPct,
       custosFixosMes: dreData.custosFixosTotal,
       faturamentoAteAgora: dreData.receitaBrutaTotal,
-      inputs: {
-        custosFixosMes: dreData.custosFixosTotal,
-        margemContribuicaoPct: mcPct,
-        faturamentoAteAgora: dreData.receitaBrutaTotal,
-        diaDoMes,
-        diasNoMes,
-      },
     };
   }, [dreData, selectedPeriod]);
 
-  if (isLoading) {
+  if (isLoading || goal.isLoading) {
     return (
       <div className="space-y-4">
         <Skeleton className="h-24" />
@@ -61,22 +60,20 @@ function MetaContent() {
       <EmptyState
         icon={Target}
         title="Sem faturamento no mês ainda"
-        description="A meta é calculada a partir das suas vendas do mês corrente e dos custos fixos cadastrados."
+        description="A meta acompanha o faturamento do mês corrente contra o alvo que você definir. Assim que entrarem vendas, ela aparece aqui."
       />
     );
   }
 
-  const alvoMax = Math.max(1, Math.floor(dados.mcPct) - 1);
-  const alvo = Math.min(alvoPct, alvoMax);
-  const g = computeGoal(dados.inputs, alvo);
-  const st = VEREDITO[g.veredito];
-  const Icon = st.icon;
+  const metaCents = goal.goalCents;
+  const parsedDraft = draft.trim() !== '' ? parseMoneyInput(draft) : null;
+  const podeSalvar = parsedDraft !== null && parsedDraft > 0 && !goal.save.isPending;
 
-  // barra de progresso: faturamento até agora vs a meta (ou break-even se sem meta)
-  const escala = g.faturamentoMeta ?? g.faturamentoBreakEven;
-  const pctAteAgora = escala > 0 && Number.isFinite(escala) ? Math.min(100, (dados.faturamentoAteAgora / escala) * 100) : 0;
-  const pctProjecao = escala > 0 && Number.isFinite(escala) ? Math.min(100, (g.projecaoFimDoMes / escala) * 100) : 0;
-  const pctBE = escala > 0 && Number.isFinite(escala) ? Math.min(100, (g.faturamentoBreakEven / escala) * 100) : 0;
+  const salvar = () => {
+    if (parsedDraft !== null && parsedDraft > 0) {
+      goal.save.mutate(parsedDraft as Cents, { onSuccess: () => setDraft('') });
+    }
+  };
 
   return (
     <div className="space-y-5">
@@ -84,86 +81,146 @@ function MetaContent() {
       <Card>
         <CardContent className="grid gap-4 pt-5 sm:grid-cols-3">
           <Stat label="Faturado no mês" value={formatCurrency(dados.faturamentoAteAgora)}
-            hint={`dia ${dados.diaDoMes} de ${dados.diasNoMes} · ${g.diasRestantes} restantes`} />
-          <Stat label="Ritmo atual" value={`${formatCurrency(g.ritmoDiarioAtual)}/dia`}
+            hint={`dia ${dados.diaDoMes} de ${dados.diasNoMes} · ${Math.max(0, dados.diasNoMes - dados.diaDoMes)} restantes`} />
+          <Stat label="Ritmo atual" value={`${formatCurrency(dados.faturamentoAteAgora / dados.diaDoMes)}/dia`}
             hint="média do mês até hoje" />
           <Stat label="Margem de contribuição" value={`${dados.mcPct.toFixed(0)}%`}
             hint="de cada R$ faturado, o que sobra pros custos fixos + lucro" />
         </CardContent>
       </Card>
 
-      {/* Slider da meta */}
+      {/* Definir / editar a meta */}
       <Card>
         <CardContent className="space-y-3 pt-5">
-          <div className="flex items-baseline justify-between">
-            <Label>Margem de lucro que você quer no mês</Label>
-            <span className="font-mono text-sm font-semibold">{alvo}%</span>
+          <Label htmlFor="meta-mes">Meta de faturamento do mês</Label>
+          <div className="flex flex-wrap items-end gap-3">
+            <div className="min-w-0 flex-1">
+              <Input
+                id="meta-mes"
+                inputMode="decimal"
+                className="font-mono"
+                placeholder={metaCents != null ? brl(metaCents) : 'R$ 100.000,00'}
+                value={draft}
+                onChange={e => setDraft(e.target.value)}
+                onKeyDown={e => { if (e.key === 'Enter' && podeSalvar) salvar(); }}
+              />
+            </div>
+            <Button disabled={!podeSalvar} onClick={salvar}>
+              {goal.save.isPending ? 'Salvando…' : metaCents != null ? 'Atualizar' : 'Definir meta'}
+            </Button>
           </div>
-          <Slider min={0} max={alvoMax} step={1} value={[alvo]} onValueChange={([v]) => setAlvoPct(v)} />
-          <div className="flex justify-between text-xs text-muted-foreground">
-            <span>0% (empatar)</span>
-            <span>máx viável: {alvoMax}%</span>
-          </div>
+          <p className="text-xs text-muted-foreground">
+            {draft.trim() !== '' && parsedDraft === null && <span className="text-destructive">Valor inválido. </span>}
+            {metaCents != null
+              ? <>Meta atual: <strong>{brl(metaCents)}</strong>. Usa o faturamento bruto do mês (o número cheio da plataforma).</>
+              : 'Defina quanto você quer faturar neste mês pra acompanhar o quanto já foi e se o ritmo leva lá.'}
+          </p>
         </CardContent>
       </Card>
 
-      {/* Veredito */}
-      <Card className={cn('ring-1', st.ring)}>
-        <CardContent className="space-y-3 py-5">
-          <div className="flex items-start gap-3">
-            <Icon className={cn('mt-0.5 size-5 shrink-0', st.color)} />
-            <p className="text-sm font-medium">
-              {g.veredito === 'meta' && (
-                <>No ritmo de {formatCurrency(g.ritmoDiarioAtual)}/dia, o mês fecha em cerca de{' '}
-                <strong>{formatCurrency(g.projecaoFimDoMes)}</strong> — <strong className={st.color}>acima da meta</strong> de{' '}
-                {g.faturamentoMeta != null ? formatCurrency(g.faturamentoMeta) : '—'}. Lucro projetado:{' '}
-                <strong className={st.color}>{formatCurrency(g.lucroProjetado)}</strong>.</>
-              )}
-              {g.veredito === 'breakeven' && (
-                <>O mês projeta fechar em <strong>{formatCurrency(g.projecaoFimDoMes)}</strong> — cobre os custos, mas fica{' '}
-                {g.faltaMeta != null && <strong>{formatCurrency(g.faltaMeta)}</strong>} abaixo da meta.{' '}
-                {g.ritmoDiarioNecessarioMeta != null && g.diasRestantes > 0 && (
-                  <>Para bater, precisa de <strong className={st.color}>{formatCurrency(g.ritmoDiarioNecessarioMeta)}/dia</strong>{' '}
-                  nos {g.diasRestantes} dias que faltam (hoje: {formatCurrency(g.ritmoDiarioAtual)}/dia).</>
-                )}</>
-              )}
-              {g.veredito === 'aperto' && (
-                <>O mês projeta fechar em <strong>{formatCurrency(g.projecaoFimDoMes)}</strong>, colado no ponto de equilíbrio de{' '}
-                {formatCurrency(g.faturamentoBreakEven)}. Qualquer imprevisto (devolução, alta de frete) e o mês fecha no vermelho.</>
-              )}
-              {g.veredito === 'vermelho' && (
-                <>No ritmo atual, o mês fecha em <strong>{formatCurrency(g.projecaoFimDoMes)}</strong> —{' '}
-                <strong className={st.color}>abaixo do ponto de equilíbrio</strong> de {formatCurrency(g.faturamentoBreakEven)}.{' '}
-                Lucro projetado: <strong className={st.color}>{formatCurrency(g.lucroProjetado)}</strong>. Faltam{' '}
-                <strong>{formatCurrency(g.faltaBreakEven)}</strong> pra pelo menos empatar.</>
-              )}
-            </p>
-          </div>
-
-          {/* barra: faturado → projeção, com marcas de break-even e meta */}
-          <div className="pt-1">
-            <div className="relative h-3 overflow-hidden rounded-full bg-muted">
-              <div className="absolute inset-y-0 left-0 bg-primary/30" style={{ width: `${pctProjecao}%` }} />
-              <div className="absolute inset-y-0 left-0 bg-primary" style={{ width: `${pctAteAgora}%` }} />
-              {Number.isFinite(escala) && (
-                <div className="absolute inset-y-0 w-px bg-foreground/50" style={{ left: `${pctBE}%` }} title="break-even" />
-              )}
-            </div>
-            <div className="mt-1 flex flex-wrap gap-x-4 gap-y-0.5 text-[10px] text-muted-foreground">
-              <span><span className="mr-1 inline-block size-2 rounded-full bg-primary align-middle" />faturado {formatCurrency(dados.faturamentoAteAgora)}</span>
-              <span><span className="mr-1 inline-block size-2 rounded-full bg-primary/30 align-middle" />projeção {formatCurrency(g.projecaoFimDoMes)}</span>
-              <span><span className="mr-1 inline-block h-2 w-px bg-foreground/50 align-middle" />break-even {formatCurrency(g.faturamentoBreakEven)}</span>
-              {g.faturamentoMeta != null && <span>meta {formatCurrency(g.faturamentoMeta)}</span>}
-            </div>
-          </div>
-        </CardContent>
-      </Card>
+      {metaCents != null && metaCents > 0 && (
+        <MetaVeredito
+          metaCents={metaCents}
+          faturamentoAteAgora={dados.faturamentoAteAgora}
+          diaDoMes={dados.diaDoMes}
+          diasNoMes={dados.diasNoMes}
+          custosFixosMes={dados.custosFixosMes}
+          mcPct={dados.mcPct}
+        />
+      )}
 
       <p className="flex items-start gap-1.5 text-xs text-muted-foreground">
         <CalendarClock className="mt-0.5 size-3.5 shrink-0" />
         Projeção linear pelo ritmo do mês até hoje. Não considera sazonalidade nem concentração de vendas no fim do mês (13º, datas). Os custos fixos vêm do que está cadastrado em Fluxo de Caixa.
       </p>
     </div>
+  );
+}
+
+function MetaVeredito({
+  metaCents, faturamentoAteAgora, diaDoMes, diasNoMes, custosFixosMes, mcPct,
+}: {
+  metaCents: number; faturamentoAteAgora: number; diaDoMes: number; diasNoMes: number;
+  custosFixosMes: number; mcPct: number;
+}) {
+  const meta = metaCents / 100;
+  const g = computeRevenueGoal({
+    metaFaturamentoMes: meta,
+    faturamentoAteAgora,
+    diaDoMes,
+    diasNoMes,
+    custosFixosMes,
+    margemContribuicaoPct: mcPct,
+  });
+  const st = VEREDITO[g.veredito];
+  const Icon = st.icon;
+
+  const escala = Math.max(meta, g.projecaoFimDoMes, 1);
+  const pctFaturado = Math.min(100, (faturamentoAteAgora / escala) * 100);
+  const pctProjecao = Math.min(100, (g.projecaoFimDoMes / escala) * 100);
+  const pctMeta = Math.min(100, (meta / escala) * 100);
+
+  return (
+    <>
+      <Card>
+        <CardContent className="grid gap-4 pt-5 sm:grid-cols-2 lg:grid-cols-4">
+          <Stat label="Meta do mês" value={formatCurrency(meta)} hint="alvo de faturamento bruto" />
+          <Stat label="Realizado" value={`${g.pctRealizado.toFixed(0)}%`}
+            hint={`${formatCurrency(faturamentoAteAgora)} faturados`} />
+          <Stat label="Falta" value={formatCurrency(g.faltaMeta)}
+            hint={g.pctRestante > 0 ? `${g.pctRestante.toFixed(0)}% da meta` : 'meta batida'} />
+          <Stat label="Projeção do mês" value={formatCurrency(g.projecaoFimDoMes)}
+            hint="mantendo o ritmo atual" />
+        </CardContent>
+      </Card>
+
+      <Card className={cn('ring-1', st.ring)}>
+        <CardContent className="space-y-3 py-5">
+          <div className="flex items-start gap-3">
+            <Icon className={cn('mt-0.5 size-5 shrink-0', st.color)} />
+            <p className="text-sm font-medium">
+              {g.veredito === 'batida' && (
+                <>Meta batida — <strong className={st.color}>{formatCurrency(faturamentoAteAgora)}</strong> faturados contra a meta de{' '}
+                {formatCurrency(meta)}. No ritmo atual o mês fecha em <strong>{formatCurrency(g.projecaoFimDoMes)}</strong>.</>
+              )}
+              {g.veredito === 'no_ritmo' && (
+                <>No ritmo de {formatCurrency(g.ritmoDiarioAtual)}/dia, o mês projeta fechar em{' '}
+                <strong className={st.color}>{formatCurrency(g.projecaoFimDoMes)}</strong> — <strong>bate a meta</strong> de {formatCurrency(meta)}.{' '}
+                Faltam {formatCurrency(g.faltaMeta)} e {g.diasRestantes} dias.</>
+              )}
+              {g.veredito === 'aperto' && (
+                <>O mês projeta fechar em <strong>{formatCurrency(g.projecaoFimDoMes)}</strong>, colado na meta de {formatCurrency(meta)}.{' '}
+                {g.ritmoDiarioNecessario != null && (
+                  <>Pra garantir, precisa de <strong className={st.color}>{formatCurrency(g.ritmoDiarioNecessario)}/dia</strong>{' '}
+                  nos {g.diasRestantes} dias que faltam (hoje: {formatCurrency(g.ritmoDiarioAtual)}/dia).</>
+                )}</>
+              )}
+              {g.veredito === 'longe' && (
+                <>No ritmo atual, o mês fecha em <strong>{formatCurrency(g.projecaoFimDoMes)}</strong> —{' '}
+                <strong className={st.color}>abaixo da meta</strong> de {formatCurrency(meta)}.{' '}
+                {g.ritmoDiarioNecessario != null
+                  ? <>Bater exigiria <strong className={st.color}>{formatCurrency(g.ritmoDiarioNecessario)}/dia</strong> nos {g.diasRestantes} dias restantes — {(g.ritmoDiarioNecessario / Math.max(g.ritmoDiarioAtual, 1)).toFixed(1)}× o ritmo de hoje.</>
+                  : 'Sem dias restantes no mês pra recuperar.'}</>
+              )}
+            </p>
+          </div>
+
+          {/* barra: faturado → projeção, com a marca da meta */}
+          <div className="pt-1">
+            <div className="relative h-3 overflow-hidden rounded-full bg-muted">
+              <div className="absolute inset-y-0 left-0 bg-primary/30" style={{ width: `${pctProjecao}%` }} />
+              <div className="absolute inset-y-0 left-0 bg-primary" style={{ width: `${pctFaturado}%` }} />
+              <div className="absolute inset-y-0 w-px bg-foreground/60" style={{ left: `${pctMeta}%` }} title="meta" />
+            </div>
+            <div className="mt-1 flex flex-wrap gap-x-4 gap-y-0.5 text-[10px] text-muted-foreground">
+              <span><span className="mr-1 inline-block size-2 rounded-full bg-primary align-middle" />faturado {formatCurrency(faturamentoAteAgora)}</span>
+              <span><span className="mr-1 inline-block size-2 rounded-full bg-primary/30 align-middle" />projeção {formatCurrency(g.projecaoFimDoMes)}</span>
+              <span><span className="mr-1 inline-block h-2 w-px bg-foreground/60 align-middle" />meta {formatCurrency(meta)}</span>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+    </>
   );
 }
 
