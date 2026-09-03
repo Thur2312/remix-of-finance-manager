@@ -392,6 +392,7 @@ const TOP_CRITERIOS: { key: TopProdutoCriterio; label: string }[] = [
 function TopProductsCard({ rows }: { rows: CatalogRow[] }) {
   const [by, setBy] = useState<TopProdutoCriterio>('lucro');
   const top = useMemo(() => rankTopProdutos(rows, { by, limit: 5 }), [rows, by]);
+  const totalSkus = useMemo(() => rows.filter(r => r.temSku && !r.archived).length, [rows]);
   if (top.length === 0) return null;
 
   const headline = (r: CatalogRow) =>
@@ -449,6 +450,9 @@ function TopProductsCard({ rows }: { rows: CatalogRow[] }) {
             </div>
           </div>
         ))}
+        <Link to="/produtos" className="flex items-center gap-1 pt-1 text-xs font-medium text-primary hover:underline">
+          Ver os {totalSkus} produtos do catálogo <ArrowRight className="size-3" />
+        </Link>
       </CardContent>
     </Card>
   );
@@ -630,6 +634,10 @@ function UnifiedDashboardContent() {
             <InsightsPanel insights={insights} loading={dreLoading && insights.length === 0} />
           )}
 
+          {/* Produtos — o primeiro tópico do dashboard (item 1 das diretrizes).
+              O ranking vem do catálogo unificado; a tela cheia é /produtos. */}
+          {catalog.rows.length > 0 && <TopProductsCard rows={catalog.rows} />}
+
           {/* Stats Cards — o "retido pelos marketplaces" saiu daqui de propósito
               (vira o bloco recolhível "Detalhamento de taxas" mais abaixo);
               o dashboard prioriza o que sobra, não o que o marketplace levou. */}
@@ -670,7 +678,6 @@ function UnifiedDashboardContent() {
                 devolucoes={syncData.stats.devolucoes}
               />
             )}
-            {catalog.rows.length > 0 && <TopProductsCard rows={catalog.rows} />}
             <RecentSalesActivityCard />
           </div>
 

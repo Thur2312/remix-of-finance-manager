@@ -36,11 +36,20 @@ export interface SaveMetaInput {
   skuKey: string;
   displayName?: string | null;
   archived?: boolean;
+  /** aponta este sku_key pro "dono" (mescla cross-marketplace); null desfaz */
+  aliasOf?: string | null;
+}
+
+export interface CatalogAlias {
+  skuKey: string;
+  aliasOf: string;
 }
 
 export interface UseCatalog {
   rows: CatalogRow[];
   topProdutos: (by: TopProdutoCriterio, limit?: number) => CatalogRow[];
+  /** SKUs mesclados a outro (alias_of preenchido) */
+  aliases: CatalogAlias[];
   isLoading: boolean;
   windowDays: number;
   /** há venda sincronizada de algum marketplace? */
@@ -225,6 +234,7 @@ export function useCatalog(windowDays = 60): UseCatalog {
         sku_key: i.skuKey,
         display_name: i.displayName !== undefined ? i.displayName : (prev?.display_name ?? null),
         archived: i.archived !== undefined ? i.archived : (prev?.archived ?? false),
+        alias_of: i.aliasOf !== undefined ? i.aliasOf : (prev?.alias_of ?? null),
         updated_at: new Date().toISOString(),
       }, { onConflict: 'user_id,sku_key' });
       if (error) throw error;
@@ -238,9 +248,17 @@ export function useCatalog(windowDays = 60): UseCatalog {
     [rows],
   );
 
+  const aliases = useMemo<CatalogAlias[]>(
+    () => (configQuery.data?.meta ?? [])
+      .filter((m): m is typeof m & { alias_of: string } => !!m.alias_of)
+      .map(m => ({ skuKey: m.sku_key, aliasOf: m.alias_of })),
+    [configQuery.data],
+  );
+
   return {
     rows,
     topProdutos: (by, limit) => rankTopProdutos(rows, { by, limit }),
+    aliases,
     isLoading: salesQuery.isLoading || configQuery.isLoading || (shopeeConnected && shopee.isLoading),
     windowDays,
     hasData: rows.length > 0,

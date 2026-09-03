@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import {
   Boxes, Plug, Search, ArrowUpDown, Archive, ArchiveRestore, PackageSearch,
+  GitMerge, Undo2,
 } from 'lucide-react';
 import { PageShell } from '@/components/layout/PageShell';
 import { Card, CardContent } from '@/components/ui/card';
@@ -11,6 +12,9 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { EmptyState } from '@/components/ui/empty-state';
 import { StatCard, KpiRow } from '@/components/ui/stat-card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import {
+  Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogFooter,
+} from '@/components/ui/dialog';
 import { cn } from '@/lib/utils';
 import { formatCurrency } from '@/lib/format';
 import { useCatalog } from '@/hooks/useCatalog';
@@ -62,13 +66,14 @@ function InlineNumber({
 type SortKey = 'faturamento' | 'unidadesVendidas' | 'retidoPlataforma' | 'lucro' | 'margemPct' | 'diasDeCobertura';
 
 function CatalogTable({
-  rows, saving, onCost, onStock, onArchive,
+  rows, saving, onCost, onStock, onArchive, onMerge,
 }: {
   rows: CatalogRow[];
   saving: boolean;
   onCost: (r: CatalogRow, n: number) => void;
   onStock: (r: CatalogRow, n: number) => void;
   onArchive: (r: CatalogRow, archived: boolean) => void;
+  onMerge: (r: CatalogRow) => void;
 }) {
   const [sort, setSort] = useState<SortKey>('faturamento');
   const sorted = useMemo(() => {
@@ -156,13 +161,22 @@ function CatalogTable({
               </td>
               <td className="py-2 text-right">
                 {r.temSku && (
-                  <button
-                    onClick={() => onArchive(r, !r.archived)}
-                    className="text-muted-foreground hover:text-foreground"
-                    title={r.archived ? 'Desarquivar' : 'Arquivar'}
-                  >
-                    {r.archived ? <ArchiveRestore className="size-3.5" /> : <Archive className="size-3.5" />}
-                  </button>
+                  <div className="flex items-center justify-end gap-2">
+                    <button
+                      onClick={() => onMerge(r)}
+                      className="text-muted-foreground hover:text-foreground"
+                      title="Mesclar com outro SKU (mesmo produto em outra plataforma)"
+                    >
+                      <GitMerge className="size-3.5" />
+                    </button>
+                    <button
+                      onClick={() => onArchive(r, !r.archived)}
+                      className="text-muted-foreground hover:text-foreground"
+                      title={r.archived ? 'Desarquivar' : 'Arquivar'}
+                    >
+                      {r.archived ? <ArchiveRestore className="size-3.5" /> : <Archive className="size-3.5" />}
+                    </button>
+                  </div>
                 )}
               </td>
             </tr>
@@ -170,6 +184,90 @@ function CatalogTable({
         </tbody>
       </table>
     </div>
+  );
+}
+
+// ─── Mesclar SKUs (mapa de alias — Fase 2 do catálogo) ──────────────────────
+
+function MergeDialog({
+  source, rows, onClose, onConfirm,
+}: {
+  source: CatalogRow | null;
+  rows: CatalogRow[];
+  onClose: () => void;
+  onConfirm: (sourceSkuKey: string, targetSkuKey: string) => void;
+}) {
+  const [target, setTarget] = useState('');
+  const candidatos = useMemo(
+    () => rows.filter(r => r.temSku && r.skuKey !== source?.skuKey).sort((a, b) => a.nome.localeCompare(b.nome)),
+    [rows, source],
+  );
+
+  return (
+    <Dialog open={!!source} onOpenChange={o => { if (!o) { setTarget(''); onClose(); } }}>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>Mesclar SKU</DialogTitle>
+          <DialogDescription>
+            <strong>{source?.nome}</strong> ({source?.sku}) passa a somar junto com o produto escolhido —
+            vendas, faturamento, taxas e estoque viram uma linha só. Use quando o mesmo produto tem SKU
+            diferente em cada plataforma.
+          </DialogDescription>
+        </DialogHeader>
+        <div className="space-y-1.5">
+          <label className="text-xs font-medium">É o mesmo produto que:</label>
+          <Select value={target} onValueChange={setTarget}>
+            <SelectTrigger><SelectValue placeholder="Escolha o produto dono" /></SelectTrigger>
+            <SelectContent>
+              {candidatos.map(r => (
+                <SelectItem key={r.skuKey} value={r.skuKey}>
+                  {r.nome} — {r.sku}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+        <DialogFooter>
+          <Button variant="outline" onClick={() => { setTarget(''); onClose(); }}>Cancelar</Button>
+          <Button
+            disabled={!target}
+            onClick={() => { if (source && target) { onConfirm(source.skuKey, target); setTarget(''); } }}
+          >
+            Mesclar
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+function MergedList({
+  aliases, rows, onUndo,
+}: {
+  aliases: { skuKey: string; aliasOf: string }[];
+  rows: CatalogRow[];
+  onUndo: (skuKey: string) => void;
+}) {
+  if (aliases.length === 0) return null;
+  const nomeDe = (k: string) => rows.find(r => r.skuKey === k)?.nome ?? k;
+  return (
+    <Card>
+      <CardContent className="pt-5">
+        <h3 className="text-sm font-semibold">SKUs mesclados</h3>
+        <ul className="mt-3 space-y-1.5 text-sm">
+          {aliases.map(a => (
+            <li key={a.skuKey} className="flex items-center justify-between gap-3">
+              <span className="text-muted-foreground">
+                <span className="font-mono text-xs">{a.skuKey}</span> → conta junto com <strong>{nomeDe(a.aliasOf)}</strong>
+              </span>
+              <button onClick={() => onUndo(a.skuKey)} className="flex items-center gap-1 text-xs text-primary hover:underline">
+                <Undo2 className="size-3" /> desfazer
+              </button>
+            </li>
+          ))}
+        </ul>
+      </CardContent>
+    </Card>
   );
 }
 
@@ -228,6 +326,7 @@ export default function Produtos() {
   const [busca, setBusca] = useState('');
   const [soSemCusto, setSoSemCusto] = useState(false);
   const [mostrarArquivados, setMostrarArquivados] = useState(false);
+  const [mergeSource, setMergeSource] = useState<CatalogRow | null>(null);
 
   const saving = c.saveCost.isPending || c.saveStock.isPending || c.saveMeta.isPending;
 
@@ -304,6 +403,12 @@ export default function Produtos() {
 
         <TopProdutos pick={c.topProdutos} />
 
+        <MergedList
+          aliases={c.aliases}
+          rows={c.rows}
+          onUndo={skuKey => c.saveMeta.mutate({ skuKey, aliasOf: null })}
+        />
+
         <Card>
           <CardContent className="space-y-4 pt-5">
             <div className="flex flex-wrap items-center gap-3">
@@ -330,6 +435,7 @@ export default function Produtos() {
                 onCost={(r, n) => c.saveCost.mutate({ skuRaw: r.sku, itemName: r.nome, cost: n })}
                 onStock={(r, n) => c.saveStock.mutate({ skuRaw: r.sku, itemName: r.nome, stockUnits: n })}
                 onArchive={(r, archived) => c.saveMeta.mutate({ skuKey: r.skuKey, archived })}
+                onMerge={setMergeSource}
               />
             )}
 
@@ -352,6 +458,15 @@ export default function Produtos() {
       action={c.hasData ? seletor : undefined}
     >
       {conteudo}
+      <MergeDialog
+        source={mergeSource}
+        rows={c.rows}
+        onClose={() => setMergeSource(null)}
+        onConfirm={(src, target) => {
+          c.saveMeta.mutate({ skuKey: src, aliasOf: target });
+          setMergeSource(null);
+        }}
+      />
     </PageShell>
   );
 }
