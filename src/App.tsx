@@ -40,6 +40,7 @@ const FluxoCaixaCategorias      = lazy(() => import("./pages/fluxo-caixa/FluxoCa
 const AssistenteAnuncio         = lazy(() => import("./pages/AssistenteAnuncio"));
 const Simulador                 = lazy(() => import("./pages/Simulador"));
 const DRE                       = lazy(() => import("./pages/DRE"));
+const Taxas                     = lazy(() => import("./pages/Taxas"));
 const Perfil                    = lazy(() => import("./pages/Perfil"));
 const NotificacoesAdmin         = lazy(() => import("./pages/admin/Notificacoes"));
 
@@ -112,6 +113,7 @@ const App = () => {
                 <Route path="/fluxo-caixa/categorias" element={<FluxoCaixaCategorias />} />
                 <Route path="/assistente-anuncio" element={<AssistenteAnuncio />} />
                 <Route path="/dre" element={<DRE />} />
+                <Route path="/taxas" element={<Taxas />} />
                 <Route path="/perfil" element={<Perfil />} />
                 <Route path="/integrations" element={<IntegrationsOverview />} />
                 <Route path="/integrations/manage/:connectionId" element={<IntegrationManage />} />

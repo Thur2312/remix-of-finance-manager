@@ -27,6 +27,7 @@ const PAGE_TITLES: Record<string, string> = {
   '/fluxo-caixa/categorias': 'Fluxo de Caixa',
   '/assistente-anuncio': 'Assistente',
   '/dre': 'DRE',
+  '/taxas': 'Detalhamento de taxas',
   '/perfil': 'Meu Perfil',
   '/integrations': 'Integrações',
   '/planos': 'Planos',
