@@ -568,6 +568,7 @@ export type Database = {
       }
       fixed_costs: {
         Row: {
+          allocation_pct: Json | null
           amount: number
           amount_cents: number
           category: string
@@ -584,6 +585,7 @@ export type Database = {
           user_id: string
         }
         Insert: {
+          allocation_pct?: Json | null
           amount?: number
           amount_cents?: number
           category: string
@@ -600,6 +602,7 @@ export type Database = {
           user_id: string
         }
         Update: {
+          allocation_pct?: Json | null
           amount?: number
           amount_cents?: number
           category?: string

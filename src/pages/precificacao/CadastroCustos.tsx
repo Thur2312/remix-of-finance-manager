@@ -96,7 +96,7 @@ function AllocationView({
                 {a.lojaCents > 0 && <LinhaAloc label="Das lojas dela" cents={a.lojaCents} />}
                 {a.plataformaCents > 0 && <LinhaAloc label="Das plataformas onde vende" cents={a.plataformaCents} />}
                 {a.rateioGeralCents > 0 && (
-                  <LinhaAloc label="Parte do custo geral (rateio por faturamento)" cents={a.rateioGeralCents} />
+                  <LinhaAloc label="Parte do custo geral (rateio por faturamento ou manual)" cents={a.rateioGeralCents} />
                 )}
                 {a.totalCents === 0 && <p className="text-xs text-muted-foreground">Sem custo atribuído.</p>}
               </div>
@@ -160,6 +160,13 @@ function CadastroCustosContent() {
   const [formCompanyId, setFormCompanyId] = useState('');
   const [formIntegrationId, setFormIntegrationId] = useState('');
   const [formMarketplace, setFormMarketplace] = useState('');
+  // Rateio manual por % (só geral/plataforma). formPct: companyId → string do input.
+  const [formManualSplit, setFormManualSplit] = useState(false);
+  const [formPct, setFormPct] = useState<Record<string, string>>({});
+
+  const pctSum = Object.values(formPct).reduce((s, v) => s + (parseFloat(v) || 0), 0);
+  const manualSplitApplies = formScope === 'geral' || formScope === 'plataforma';
+  const manualSplitValid = Math.abs(pctSum - 100) < 0.01;
 
   const resetForm = () => {
     setFormCategory('');
@@ -171,6 +178,8 @@ function CadastroCustosContent() {
     setFormCompanyId('');
     setFormIntegrationId('');
     setFormMarketplace('');
+    setFormManualSplit(false);
+    setFormPct({});
     setEditingCost(null);
   };
 
@@ -185,6 +194,13 @@ function CadastroCustosContent() {
     setFormCompanyId(cost.company_id ?? '');
     setFormIntegrationId(cost.integration_id ?? '');
     setFormMarketplace(cost.marketplace ?? '');
+    const savedPct = cost.allocation_pct ?? null;
+    setFormManualSplit(!!savedPct);
+    setFormPct(
+      savedPct
+        ? Object.fromEntries(Object.entries(savedPct).map(([k, v]) => [k, String(v)]))
+        : {},
+    );
     setIsAddDialogOpen(true);
   };
 
@@ -206,7 +222,19 @@ function CadastroCustosContent() {
       company_id: formScope === 'empresa' ? (formCompanyId || null) : null,
       integration_id: formScope === 'loja' ? (formIntegrationId || null) : null,
       marketplace: formScope === 'plataforma' ? (formMarketplace || null) : null,
+      allocation_pct:
+        manualSplitApplies && formManualSplit && manualSplitValid
+          ? Object.fromEntries(
+              Object.entries(formPct)
+                .map(([k, v]) => [k, parseFloat(v) || 0] as const)
+                .filter(([, v]) => v > 0),
+            )
+          : null,
     };
+    if (manualSplitApplies && formManualSplit && !manualSplitValid) {
+      toast.error('Os percentuais do rateio manual precisam somar 100%');
+      return;
+    }
 
     const success = editingCost
       ? await updateCost(editingCost.id, costData)
@@ -379,6 +407,40 @@ function CadastroCustosContent() {
                       </SelectContent>
                     </Select>
                   )}
+
+                  {/* Rateio manual por % — alternativa ao rateio por faturamento */}
+                  {manualSplitApplies && companies.length >= 2 && (
+                    <div className="space-y-2 rounded-md border border-border/60 p-3">
+                      <div className="flex items-center justify-between">
+                        <Label className="text-xs font-medium">
+                          Rateio: {formManualSplit ? 'manual (%)' : 'automático (faturamento)'}
+                        </Label>
+                        <Switch checked={formManualSplit} onCheckedChange={setFormManualSplit} />
+                      </div>
+                      {formManualSplit && (
+                        <>
+                          {companies.map(c => (
+                            <div key={c.id} className="flex items-center gap-2">
+                              <span className="flex-1 truncate text-sm">{c.name}</span>
+                              <Input
+                                type="number"
+                                inputMode="decimal"
+                                min={0}
+                                max={100}
+                                value={formPct[c.id] ?? ''}
+                                onChange={e => setFormPct(p => ({ ...p, [c.id]: e.target.value }))}
+                                className="h-8 w-20 text-right"
+                              />
+                              <span className="text-xs text-muted-foreground">%</span>
+                            </div>
+                          ))}
+                          <p className={`text-xs ${manualSplitValid ? 'text-muted-foreground' : 'text-destructive'}`}>
+                            Soma: {pctSum.toFixed(0)}% {manualSplitValid ? '✓' : '(precisa somar 100%)'}
+                          </p>
+                        </>
+                      )}
+                    </div>
+                  )}
                 </div>
 
                 <div className="space-y-2">
@@ -516,6 +578,11 @@ function CadastroCustosContent() {
                                       {cost.scope === 'plataforma' && cost.marketplace ? `: ${cost.marketplace}` : ''}
                                       {cost.scope === 'empresa' && cost.company_id
                                         ? `: ${companies.find(x => x.id === cost.company_id)?.name ?? ''}` : ''}
+                                    </Badge>
+                                  )}
+                                  {cost.allocation_pct && (
+                                    <Badge variant="outline" className="text-[10px] font-normal">
+                                      rateio manual
                                     </Badge>
                                   )}
                                 </p>

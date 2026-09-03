@@ -21,6 +21,8 @@ export interface FixedCost {
   company_id: string | null;
   integration_id: string | null;
   marketplace: string | null;
+  /** Rateio manual por empresa ({ companyId: % }). null = automático por faturamento. */
+  allocation_pct: Record<string, number> | null;
   created_at: string;
   updated_at: string;
 }
@@ -147,7 +149,7 @@ export function useFixedCosts() {
   // campos de escopo do Bloco D têm default no banco (scope 'geral', resto null).
   type FixedCostWrite =
     Pick<FixedCost, 'category' | 'name' | 'amount' | 'is_recurring' | 'notes'>
-    & Partial<Pick<FixedCost, 'scope' | 'company_id' | 'integration_id' | 'marketplace'>>;
+    & Partial<Pick<FixedCost, 'scope' | 'company_id' | 'integration_id' | 'marketplace' | 'allocation_pct'>>;
 
   // Add cost
   const addCost = async (cost: FixedCostWrite) => {
@@ -285,6 +287,7 @@ export function useFixedCosts() {
         companyId: c.company_id,
         integrationId: c.integration_id,
         marketplace: c.marketplace,
+        allocationPct: c.allocation_pct,
       }));
     return allocateFixedCosts(scoped, { companyIds, connections, revenueByCompanyCents });
   }, [costs]);

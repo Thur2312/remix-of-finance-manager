@@ -2,7 +2,8 @@
 //
 // Cada custo tem um `scope`:
 //   geral      → toda a operação; rateado entre as empresas na PROPORÇÃO DO
-//                FATURAMENTO do período.
+//                FATURAMENTO do período — ou, se `allocationPct` estiver
+//                preenchido, no split manual que o usuário definiu.
 //   empresa    → 100% na empresa vinculada.
 //   loja       → 100% na empresa dona da loja (conexão) vinculada.
 //   plataforma → rateado entre as empresas que vendem naquela plataforma,
@@ -24,6 +25,13 @@ export interface FixedCostScoped {
   companyId?: string | null;
   integrationId?: string | null;
   marketplace?: string | null;
+  /** Rateio manual por empresa ({ companyId: percentual }). Só vale p/ geral/plataforma. */
+  allocationPct?: Record<string, number> | null;
+}
+
+/** true se o mapa de % tem ao menos uma fatia positiva utilizável. */
+function hasManualSplit(pct?: Record<string, number> | null): pct is Record<string, number> {
+  return !!pct && Object.values(pct).some((v) => Number(v) > 0);
 }
 
 export interface AllocationContext {
@@ -122,6 +130,17 @@ export function allocateFixedCosts(
         break;
       }
       case 'plataforma': {
+        // Split manual tem prioridade sobre o rateio por faturamento.
+        if (hasManualSplit(c.allocationPct)) {
+          const split = rateio(amt, c.allocationPct);
+          if (split) {
+            for (const [id, v] of Object.entries(split)) {
+              if (known.has(id)) byCompany[id].plataformaCents += v;
+              else nao.plataformaSemEmpresaCents += v;
+            }
+            break;
+          }
+        }
         const ids = c.marketplace ? companiesOnMarketplace(c.marketplace, ctx.connections) : [];
         const split = rateio(amt, revenueWeights(ids));
         if (split) {
@@ -139,6 +158,17 @@ export function allocateFixedCosts(
       }
       case 'geral':
       default: {
+        // Split manual tem prioridade sobre o rateio por faturamento.
+        if (hasManualSplit(c.allocationPct)) {
+          const split = rateio(amt, c.allocationPct);
+          if (split) {
+            for (const [id, v] of Object.entries(split)) {
+              if (known.has(id)) byCompany[id].rateioGeralCents += v;
+              else nao.geralSemFaturamentoCents += v;
+            }
+            break;
+          }
+        }
         const split = rateio(amt, revenueWeights(ctx.companyIds));
         if (split) {
           for (const [id, v] of Object.entries(split)) byCompany[id].rateioGeralCents += v;

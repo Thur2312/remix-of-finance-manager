@@ -17,7 +17,8 @@ const ctx = (over: Partial<AllocationContext> = {}): AllocationContext => ({
 
 const cost = (p: Partial<FixedCostScoped>): FixedCostScoped => ({
   id: p.id ?? 'c', name: p.name ?? 'x', amountCents: p.amountCents ?? 0,
-  scope: p.scope ?? 'geral', companyId: p.companyId, integrationId: p.integrationId, marketplace: p.marketplace,
+  scope: p.scope ?? 'geral', companyId: p.companyId, integrationId: p.integrationId,
+  marketplace: p.marketplace, allocationPct: p.allocationPct,
 });
 
 describe('allocateFixedCosts', () => {
@@ -79,6 +80,54 @@ describe('allocateFixedCosts', () => {
   it('empresa removida (companyId fora da lista) → não atribuído', () => {
     const r = allocateFixedCosts([cost({ scope: 'empresa', companyId: 'ZZZ', amountCents: 10_00 })], ctx());
     expect(r.naoAtribuido.totalCents).toBe(10_00);
+  });
+
+  it('geral com allocationPct → usa o split manual em vez do faturamento', () => {
+    // faturamento é A 3:1 B, mas o manual diz 40/60
+    const r = allocateFixedCosts(
+      [cost({ scope: 'geral', amountCents: 100_00, allocationPct: { A: 40, B: 60 } })],
+      ctx(),
+    );
+    expect(r.byCompany.A.rateioGeralCents).toBe(40_00);
+    expect(r.byCompany.B.rateioGeralCents).toBe(60_00);
+    expect(r.totalCents).toBe(100_00);
+  });
+
+  it('allocationPct com empresa desconhecida → a fatia dela vai pro não atribuído', () => {
+    const r = allocateFixedCosts(
+      [cost({ scope: 'geral', amountCents: 100_00, allocationPct: { A: 50, GONE: 50 } })],
+      ctx(),
+    );
+    expect(r.byCompany.A.rateioGeralCents).toBe(50_00);
+    expect(r.naoAtribuido.geralSemFaturamentoCents).toBe(50_00);
+    expect(r.totalCents).toBe(100_00);
+  });
+
+  it('allocationPct vazio/zerado → cai no rateio automático por faturamento', () => {
+    const r = allocateFixedCosts(
+      [cost({ scope: 'geral', amountCents: 400_00, allocationPct: { A: 0, B: 0 } })],
+      ctx(),
+    );
+    expect(r.byCompany.A.rateioGeralCents).toBe(300_00);
+    expect(r.byCompany.B.rateioGeralCents).toBe(100_00);
+  });
+
+  it('plataforma com allocationPct → split manual, ignora faturamento e marketplace', () => {
+    const r = allocateFixedCosts(
+      [cost({ scope: 'plataforma', marketplace: 'shopee', amountCents: 200_00, allocationPct: { A: 25, B: 75 } })],
+      ctx(),
+    );
+    expect(r.byCompany.A.plataformaCents).toBe(50_00);
+    expect(r.byCompany.B.plataformaCents).toBe(150_00);
+  });
+
+  it('allocationPct que não soma 100 é normalizado pelo total', () => {
+    const r = allocateFixedCosts(
+      [cost({ scope: 'geral', amountCents: 90_00, allocationPct: { A: 1, B: 2 } })],
+      ctx(),
+    );
+    expect(r.byCompany.A.rateioGeralCents).toBe(30_00);
+    expect(r.byCompany.B.rateioGeralCents).toBe(60_00);
   });
 
   it('total sempre bate: Σ byCompany + naoAtribuido = Σ custos', () => {
