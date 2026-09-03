@@ -5,7 +5,7 @@ import {
 } from 'recharts';
 import {
   FlaskConical, ArrowRight, TrendingUp, TrendingDown, AlertTriangle, CheckCircle2, Sparkles,
-  Save, RotateCcw, Trash2, Scissors,
+  Save, RotateCcw, Trash2, Scissors, Calculator, Handshake,
 } from 'lucide-react';
 import { PageShell } from '@/components/layout/PageShell';
 import { Button } from '@/components/ui/button';
@@ -18,6 +18,7 @@ import { EmptyState } from '@/components/ui/empty-state';
 import { cn } from '@/lib/utils';
 import { formatCurrency } from '@/lib/format';
 import { simulatePrice, priceCurve, projectVolume, type PriceScenarioBaseline } from '@/lib/scenario';
+import { computeMaxCost, type MaxCostInputs } from '@/lib/max-cost';
 import { aggregateShopeeSkuFinance } from '@/lib/shopee-sku-finance';
 import { type Marketplace } from '@/lib/marketplace-fees';
 import { useAnuncios } from '@/hooks/useProdutos';
@@ -384,6 +385,222 @@ function CenariosSalvos({ list, onLoad, onRemove }: {
   );
 }
 
+// ─── Calculadora de Custo (item 16) ─────────────────────────────────────────
+// A pergunta inversa da precificação: "com esse preço de venda, impostos, taxas
+// e a margem que eu quero, quanto posso pagar no MÁXIMO por esse produto?".
+// Ferramenta de compra/negociação — não precisa de volume nem de preço atual.
+
+interface CustoFields {
+  marketplace: MpValue;
+  precoVenda: string;
+  modo: 'margem' | 'lucro';
+  margemAlvoPct: string;
+  lucroAlvo: string;
+  custoVar: string;
+  impostoPct: string;
+  afiliadosPct: string;
+  outrasDespesas: string;
+  comissaoPctManual: string;
+  taxaFixaManual: string;
+  custoOfertado: string;
+}
+
+const CUSTO_EMPTY: CustoFields = {
+  marketplace: 'Shopee', precoVenda: '', modo: 'margem', margemAlvoPct: '20', lucroAlvo: '',
+  custoVar: '0', impostoPct: '0', afiliadosPct: '0', outrasDespesas: '0',
+  comissaoPctManual: '', taxaFixaManual: '', custoOfertado: '',
+};
+
+const VEREDITO_CUSTO = {
+  ok:      { ring: 'ring-success/30 bg-success/5',         icon: CheckCircle2,  color: 'text-success' },
+  aperta:  { ring: 'ring-warning/40 bg-warning/5',         icon: AlertTriangle, color: 'text-warning' },
+  estoura: { ring: 'ring-destructive/40 bg-destructive/5', icon: TrendingDown,  color: 'text-destructive' },
+} as const;
+
+function CalculadoraCusto() {
+  const [c, setC] = useState<CustoFields>(CUSTO_EMPTY);
+  const setCF = (k: keyof CustoFields, v: string) => setC(prev => ({ ...prev, [k]: v }));
+
+  const inputs = useMemo<MaxCostInputs>(() => ({
+    marketplace: c.marketplace === 'outro' ? '' : c.marketplace,
+    precoVenda: num(c.precoVenda),
+    modo: c.modo,
+    margemAlvoPct: num(c.margemAlvoPct),
+    lucroAlvo: num(c.lucroAlvo),
+    custoVar: num(c.custoVar),
+    impostoPct: num(c.impostoPct),
+    afiliadosPct: num(c.afiliadosPct),
+    outrasDespesas: num(c.outrasDespesas),
+    comissaoPctManual: num(c.comissaoPctManual),
+    taxaFixaManual: num(c.taxaFixaManual),
+    custoOfertado: num(c.custoOfertado) || undefined,
+  }), [c]);
+
+  const pronto = inputs.precoVenda > 0
+    && (c.modo === 'margem' ? inputs.margemAlvoPct! > 0 : inputs.lucroAlvo! > 0)
+    && (inputs.marketplace !== '' || (inputs.comissaoPctManual ?? 0) > 0);
+
+  const r = useMemo(() => computeMaxCost(inputs), [inputs]);
+
+  return (
+    <>
+      <Card>
+        <CardContent className="space-y-4 pt-5">
+          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+            <div className="space-y-1.5">
+              <Label className="text-xs">Marketplace</Label>
+              <Select value={c.marketplace} onValueChange={v => setCF('marketplace', v)}>
+                <SelectTrigger className="h-9"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  {MP_OPTIONS.map(o => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}
+                </SelectContent>
+              </Select>
+            </div>
+            <Fld label="Preço de venda desejado (R$)" v={c.precoVenda} onChange={v => setCF('precoVenda', v)} numeric />
+
+            <div className="space-y-1.5">
+              <Label className="text-xs">Alvo</Label>
+              <div className="flex gap-1 rounded-lg bg-muted/60 p-1 text-xs font-medium">
+                {(['margem', 'lucro'] as const).map(m => (
+                  <button key={m} onClick={() => setCF('modo', m)}
+                    className={cn('flex-1 rounded-md px-2 py-1 transition-colors',
+                      c.modo === m ? 'bg-background shadow-sm' : 'text-muted-foreground hover:text-foreground')}>
+                    {m === 'margem' ? 'Margem %' : 'Lucro R$'}
+                  </button>
+                ))}
+              </div>
+            </div>
+            {c.modo === 'margem'
+              ? <Fld label="Margem desejada (%)" v={c.margemAlvoPct} onChange={v => setCF('margemAlvoPct', v)} numeric />
+              : <Fld label="Lucro desejado / un. (R$)" v={c.lucroAlvo} onChange={v => setCF('lucroAlvo', v)} numeric />}
+
+            <Fld label="Imposto (%)" v={c.impostoPct} onChange={v => setCF('impostoPct', v)} numeric />
+            <Fld label="Afiliados (%)" v={c.afiliadosPct} onChange={v => setCF('afiliadosPct', v)} numeric />
+            <Fld label="Custo variável / embalagem (R$)" v={c.custoVar} onChange={v => setCF('custoVar', v)} numeric />
+            <Fld label="Outras despesas por venda (R$)" v={c.outrasDespesas} onChange={v => setCF('outrasDespesas', v)} numeric
+              hint="Frete que você paga, mídia rateada por unidade" />
+            {c.marketplace === 'outro' && (
+              <>
+                <Fld label="Comissão (%)" v={c.comissaoPctManual} onChange={v => setCF('comissaoPctManual', v)} numeric />
+                <Fld label="Taxa fixa por venda (R$)" v={c.taxaFixaManual} onChange={v => setCF('taxaFixaManual', v)} numeric />
+              </>
+            )}
+            <Fld label="Custo do fornecedor (R$) — opcional" v={c.custoOfertado} onChange={v => setCF('custoOfertado', v)} numeric
+              hint="O preço que estão te oferecendo, pra checar se cabe" />
+          </div>
+        </CardContent>
+      </Card>
+
+      {!pronto ? (
+        <EmptyState
+          icon={Calculator}
+          title="Preencha o preço e o alvo"
+          description="Precisa do preço de venda desejado e da margem (ou do lucro) que você quer. A calculadora devolve o custo máximo que o produto pode ter."
+        />
+      ) : (
+        <>
+          <Card className={cn('ring-1', r.precoViavel ? 'ring-primary/30 bg-primary/5' : 'ring-destructive/40 bg-destructive/5')}>
+            <CardContent className="space-y-3 py-6 text-center">
+              <p className="text-xs uppercase tracking-wide text-muted-foreground">
+                Custo máximo do produto pra bater {c.modo === 'margem' ? `${num(c.margemAlvoPct).toFixed(0)}% de margem` : `${formatCurrency(num(c.lucroAlvo))} de lucro/un.`}
+              </p>
+              {r.precoViavel ? (
+                <p className="font-mono text-4xl font-bold tabular-nums text-primary">{formatCurrency(r.custoMaximo)}</p>
+              ) : (
+                <>
+                  <p className="font-mono text-3xl font-bold tabular-nums text-destructive">Inviável</p>
+                  <p className="mx-auto max-w-md text-sm text-muted-foreground">
+                    Nesse preço, depois das taxas e dos custos por venda, sobra no máximo{' '}
+                    <strong>{r.margemTetoPct.toFixed(0)}% de margem</strong> mesmo com o produto de graça.
+                    O alvo pedido é maior que isso — suba o preço de venda ou baixe a margem alvo.
+                  </p>
+                </>
+              )}
+              {r.precoViavel && (
+                <p className="text-sm text-muted-foreground">
+                  Pagando isso, sua margem fica em <strong>{c.modo === 'margem' ? `${num(c.margemAlvoPct).toFixed(0)}%` : `${(r.custoMaximo > 0 ? ((r.lucroAlvoReais / inputs.precoVenda) * 100) : 0).toFixed(0)}%`}</strong> e o lucro em{' '}
+                  <strong>{formatCurrency(r.lucroAlvoReais)}/un.</strong>
+                </p>
+              )}
+            </CardContent>
+          </Card>
+
+          {r.comCustoOfertado && (() => {
+            const st = VEREDITO_CUSTO[r.comCustoOfertado.veredito];
+            const Icon = st.icon;
+            return (
+              <Card className={cn('ring-1', st.ring)}>
+                <CardContent className="flex items-start gap-3 py-5 text-sm">
+                  <Icon className={cn('mt-0.5 size-5 shrink-0', st.color)} />
+                  <div className="space-y-1">
+                    {r.comCustoOfertado.veredito === 'ok' ? (
+                      <p className="font-medium">
+                        O fornecedor a <strong>{formatCurrency(r.comCustoOfertado.custoOfertado)}</strong> cabe:{' '}
+                        <strong className={st.color}>{formatCurrency(r.comCustoOfertado.folga)} de folga</strong> abaixo do teto.
+                        Margem real <strong>{r.comCustoOfertado.margemPct.toFixed(0)}%</strong>, lucro{' '}
+                        <strong>{formatCurrency(r.comCustoOfertado.lucro)}/un.</strong>
+                      </p>
+                    ) : r.comCustoOfertado.veredito === 'aperta' ? (
+                      <p className="font-medium">
+                        A <strong>{formatCurrency(r.comCustoOfertado.custoOfertado)}</strong> passa{' '}
+                        <strong className={st.color}>{formatCurrency(Math.abs(r.comCustoOfertado.folga))} do custo máximo</strong>.
+                        Ainda dá lucro ({formatCurrency(r.comCustoOfertado.lucro)}/un., margem{' '}
+                        {r.comCustoOfertado.margemPct.toFixed(0)}%), mas abaixo do alvo. Negocie até{' '}
+                        <strong>{formatCurrency(r.custoMaximo)}</strong>.
+                      </p>
+                    ) : (
+                      <p className="font-medium">
+                        A <strong>{formatCurrency(r.comCustoOfertado.custoOfertado)}</strong> a operação{' '}
+                        <strong className={st.color}>não fecha</strong> — lucro {formatCurrency(r.comCustoOfertado.lucro)}/un.
+                        O custo teria que cair pra no máximo <strong>{formatCurrency(r.custoMaximo)}</strong>.
+                      </p>
+                    )}
+                  </div>
+                </CardContent>
+              </Card>
+            );
+          })()}
+
+          <Card>
+            <CardContent className="pt-5">
+              <h3 className="text-sm font-semibold">De onde sai o número</h3>
+              <div className="mt-3 space-y-1.5 text-sm">
+                <LinhaCusto label="Preço de venda" valor={formatCurrency(inputs.precoVenda)} />
+                <LinhaCusto label={`Comissão da plataforma (${r.comissaoPct}%)`} valor={`− ${formatCurrency(r.comissaoVal)}`} />
+                {r.impostoVal > 0 && <LinhaCusto label={`Imposto (${num(c.impostoPct).toFixed(0)}%)`} valor={`− ${formatCurrency(r.impostoVal)}`} />}
+                {r.afiliadosVal > 0 && <LinhaCusto label={`Afiliados (${num(c.afiliadosPct).toFixed(0)}%)`} valor={`− ${formatCurrency(r.afiliadosVal)}`} />}
+                {r.taxaFixa > 0 && <LinhaCusto label="Taxa fixa por venda" valor={`− ${formatCurrency(r.taxaFixa)}`} />}
+                {num(c.custoVar) > 0 && <LinhaCusto label="Custo variável / embalagem" valor={`− ${formatCurrency(num(c.custoVar))}`} />}
+                {num(c.outrasDespesas) > 0 && <LinhaCusto label="Outras despesas por venda" valor={`− ${formatCurrency(num(c.outrasDespesas))}`} />}
+                <LinhaCusto label={c.modo === 'margem' ? 'Lucro alvo' : 'Lucro alvo'} valor={`− ${formatCurrency(r.lucroAlvoReais)}`} />
+                <div className="mt-1 flex justify-between border-t border-border/60 pt-2 font-semibold">
+                  <span>Custo máximo do produto</span>
+                  <span className={cn('font-mono tabular-nums', r.precoViavel ? 'text-primary' : 'text-destructive')}>
+                    {formatCurrency(r.custoMaximo)}
+                  </span>
+                </div>
+              </div>
+              <p className="mt-3 text-xs text-muted-foreground">
+                Taxas de marketplace verificadas em {' '}
+                <span className="whitespace-nowrap">tabela por faixa de preço</span>. Confirme na Central do Vendedor se mudou.
+              </p>
+            </CardContent>
+          </Card>
+        </>
+      )}
+    </>
+  );
+}
+
+function LinhaCusto({ label, valor }: { label: string; valor: string }) {
+  return (
+    <div className="flex justify-between text-muted-foreground">
+      <span>{label}</span>
+      <span className="font-mono tabular-nums text-foreground">{valor}</span>
+    </div>
+  );
+}
+
 // ─── Página ─────────────────────────────────────────────────────────────────
 
 const SYNC_DIAS = 15;
@@ -415,6 +632,7 @@ export default function Simulador() {
   const [volPct, setVolPct] = useState<number | null>(null);
   const [cenario, setCenario] = useState<'preco' | 'cortar'>('preco');
   const [salvos, setSalvos] = useState<SavedScenario[]>(loadSaved);
+  const [ferramenta, setFerramenta] = useState<'simulador' | 'custo'>('simulador');
 
   const set = (k: keyof Fields, v: string) => setF(prev => ({ ...prev, [k]: v }));
   const setPreco = (n: number) => { setNovoPrecoRaw(n); setPrecoText(n.toFixed(2)); };
@@ -499,9 +717,25 @@ export default function Simulador() {
     <PageShell
       icon={FlaskConical}
       title="Simulador"
-      subtitle="E se você mexesse no preço de um produto que já vende?"
+      subtitle="Teste cenários antes de mexer nos dados reais da operação."
       className="space-y-6"
     >
+      {/* Ferramenta */}
+      <div className="flex gap-1 rounded-lg bg-muted/60 p-1 text-sm font-medium">
+        <button onClick={() => setFerramenta('simulador')}
+          className={cn('flex flex-1 items-center justify-center gap-1.5 rounded-md px-3 py-1.5 transition-colors',
+            ferramenta === 'simulador' ? 'bg-background shadow-sm' : 'text-muted-foreground hover:text-foreground')}>
+          <FlaskConical className="size-3.5" /> E se…
+        </button>
+        <button onClick={() => setFerramenta('custo')}
+          className={cn('flex flex-1 items-center justify-center gap-1.5 rounded-md px-3 py-1.5 transition-colors',
+            ferramenta === 'custo' ? 'bg-background shadow-sm' : 'text-muted-foreground hover:text-foreground')}>
+          <Handshake className="size-3.5" /> Calculadora de Custo
+        </button>
+      </div>
+
+      {ferramenta === 'custo' ? <CalculadoraCusto /> : (
+      <>
       {/* Setup */}
       <Card>
         <CardContent className="space-y-4 pt-5">
@@ -676,6 +910,8 @@ export default function Simulador() {
 
           <CenariosSalvos list={salvos} onLoad={carregarCenario} onRemove={removerCenario} />
         </>
+      )}
+      </>
       )}
     </PageShell>
   );
