@@ -154,7 +154,7 @@ const deserializeKitItens = (lista: KitItemDB[] | null | undefined): KitItem[] =
 
 // ─── Form anúncio ────────────────────────────────────────────────────────────
 const EMPTY_FORM = {
-  nome_anuncio: "", custo: "", valor_venda: "", comissao_taxa: "",
+  nome_anuncio: "", sku: "", custo: "", valor_venda: "", comissao_taxa: "",
   antecipado: "", afiliados: "", imposto_pct: "", custo_var: "",
   marketplace: "" as Plataforma | "",
   custos_adicionais: [] as CustoAdicional[],
@@ -611,6 +611,7 @@ function CalculadoraPrecificacaoContent() {
 
     setAnuncioForm({
       nome_anuncio:  "",
+      sku:           "",
       custo:         custoProduto,
       valor_venda:   precoPromocional,
       comissao_taxa: comissaoTaxaInicial,
@@ -632,6 +633,7 @@ function CalculadoraPrecificacaoContent() {
     setEditingId(a.id);
     setAnuncioForm({
       nome_anuncio:  a.nome_anuncio,
+      sku:           a.sku ?? "",
       custo:         String(a.custo),
       valor_venda:   String(a.valor_venda),
       comissao_taxa: String(a.comissao_taxa),
@@ -664,6 +666,7 @@ function CalculadoraPrecificacaoContent() {
     }
     const payload: AnuncioInput = {
       nome_anuncio:  anuncioForm.nome_anuncio.trim(),
+      sku:           anuncioForm.sku.trim() || null,
       custo:         isKitProduto ? kitCustoTotal : parseInput(anuncioForm.custo),
       valor_venda:   parseInput(anuncioForm.valor_venda),
       comissao_taxa: anuncioForm.comissao_taxa,
@@ -780,6 +783,14 @@ function CalculadoraPrecificacaoContent() {
               </div>
             )}
           </div>
+        </div>
+
+        <div className="space-y-2">
+          <Label htmlFor="anuncio_sku" className="font-medium">
+            SKU <span className="text-xs font-normal text-muted-foreground">— opcional, liga ao catálogo de Produtos</span>
+          </Label>
+          <Input id="anuncio_sku" value={anuncioForm.sku}
+            onChange={setFormField("sku")} placeholder="Ex: CAMISA-P-AZUL" maxLength={120} />
         </div>
 
         <Separator />

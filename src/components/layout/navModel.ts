@@ -1,7 +1,7 @@
 import {
   User, TrendingUp, Calculator, Receipt, Sparkles, BarChart3, HandCoins, Wallet,
   Plug, LayoutDashboard, Shield, Zap, Gauge, CalendarDays, Landmark, Wrench,
-  FlaskConical, Target, CalendarClock, PackageSearch, Percent, type LucideIcon,
+  FlaskConical, Target, CalendarClock, PackageSearch, Percent, Boxes, type LucideIcon,
 } from 'lucide-react';
 
 // Modelo de navegação da área interna — fonte única, consumida pela
@@ -28,6 +28,7 @@ export const sidebarGroups: NavGroup[] = [
     label: 'Visão Geral',
     icon: Gauge,
     items: [
+      { title: 'Produtos', url: '/produtos', icon: Boxes, badge: 'Novo' },
       { title: 'Dashboard', url: '/dashboard', icon: LayoutDashboard },
       { title: 'Meta do mês', url: '/meta', icon: Target },
       { title: 'Previsão de caixa', url: '/previsao', icon: CalendarClock },
@@ -76,6 +77,7 @@ export const contaItems: NavItem[] = [
 // sidebar + "pai" no breadcrumb). `/gestao` é tratado por prefixo
 // (startsWith) porque virou `/gestao/:marketplace/:view` — ver isSectionActive.
 export const sectionRoutes: Record<string, string[]> = {
+  '/produtos': ['/produtos'],
   '/dashboard': ['/dashboard'],
   '/taxas': ['/taxas'],
   '/previsao': ['/previsao'],

@@ -29,6 +29,8 @@ export interface Anuncio {
   id: string;
   user_id: string | null;
   nome_anuncio: string;
+  /** SKU do produto — liga ao catálogo (/produtos). Opcional. */
+  sku: string | null;
   marketplace: string | null;
   custo: number;
   valor_venda: number;
@@ -47,6 +49,7 @@ export interface Anuncio {
 
 export interface AnuncioInput {
   nome_anuncio: string;
+  sku?: string | null;
   marketplace: string;
   custo: number;
   valor_venda: number;

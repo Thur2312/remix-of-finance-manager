@@ -26,6 +26,7 @@ const IntegrationsOverview      = lazy(() => import("./pages/integrations/Integr
 const IntegrationManage         = lazy(() => import("./pages/integrations/IntegrationManage"));
 
 const UnifiedDashboard          = lazy(() => import("./pages/UnifiedDashboard"));
+const Produtos                  = lazy(() => import("./pages/Produtos"));
 const MetaDoMes                 = lazy(() => import("./pages/MetaDoMes"));
 const PrevisaoCaixa             = lazy(() => import("./pages/PrevisaoCaixa"));
 const Reposicao                 = lazy(() => import("./pages/Reposicao"));
@@ -90,6 +91,7 @@ const App = () => {
                  uma vez só; ver InternalLayout.tsx). Só o conteúdo de cada
                  rota abaixo troca ao navegar. ── */}
               <Route element={<InternalLayout />}>
+                <Route path="/produtos" element={<Produtos />} />
                 <Route path="/dashboard" element={<UnifiedDashboard />} />
                 <Route path="/meta" element={<MetaDoMes />} />
                 <Route path="/previsao" element={<PrevisaoCaixa />} />

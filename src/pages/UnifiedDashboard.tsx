@@ -20,7 +20,9 @@ import { useRecentSaleEvents } from '@/hooks/useSaleEvents';
 import { useDREData } from '@/hooks/useDREData';
 import { useProductCosts } from '@/hooks/useProductCosts';
 import { buildInsights } from '@/lib/insights';
-import { aggregateShopeeSkuFinance, type ShopeeSkuRow } from '@/lib/shopee-sku-finance';
+import { aggregateShopeeSkuFinance } from '@/lib/shopee-sku-finance';
+import { useCatalog } from '@/hooks/useCatalog';
+import { rankTopProdutos, type CatalogRow, type TopProdutoCriterio } from '@/lib/catalog';
 import { InsightsPanel } from '@/components/insights/InsightsPanel';
 import { CompanySelector } from '@/components/dashboard/CompanySelector';
 import { PageShell } from '@/components/layout/PageShell';
@@ -376,46 +378,55 @@ function OrderStatusCard({ concluidos, emTransito, cancelados, devolucoes }: {
   );
 }
 
-// ── Top Produtos (por rentabilidade) ─────────────────────────────────────────
-// O ranking NÃO é por faturamento: um produto pode faturar muito e sobrar
-// pouco. Quando há custo cadastrado pros SKUs, ordena por lucro (repasse −
-// custo) e mostra margem. Sem nenhum custo, cai pro faturamento com um aviso.
-function TopProductsCard({ rows }: { rows: ShopeeSkuRow[] | null }) {
-  const view = useMemo(() => {
-    if (!rows?.length) return null;
-    const comCusto = rows.some(r => r.custo_unitario_medio > 0);
-    const rankeadas = [...rows]
-      .filter(r => r.itens_vendidos > 0 && r.total_faturado > 0)
-      .sort((a, b) => comCusto ? b.lucro_reais - a.lucro_reais : b.total_faturado - a.total_faturado)
-      .slice(0, 5)
-      .map(r => ({
-        name: r.nome_produto,
-        qty: r.itens_vendidos,
-        revenue: r.total_faturado,
-        profit: r.lucro_reais,
-        margin: r.total_faturado > 0 ? (r.lucro_reais / r.total_faturado) * 100 : 0,
-        temCusto: r.custo_unitario_medio > 0,
-      }));
-    return rankeadas.length ? { comCusto, rankeadas } : null;
-  }, [rows]);
-  if (!view) return null;
+// ── Top Produtos (item 3 das diretrizes) ────────────────────────────────────
+// Alimentado pelo catálogo unificado (src/lib/catalog.ts) — soma Shopee, ML e
+// TikTok, não só a Shopee. O ranking NÃO é só por faturamento: um produto pode
+// faturar muito e sobrar pouco. Critério padrão = lucro; o usuário troca.
+const TOP_CRITERIOS: { key: TopProdutoCriterio; label: string }[] = [
+  { key: 'lucro', label: 'Lucro' },
+  { key: 'faturamento', label: 'Faturamento' },
+  { key: 'margem', label: 'Margem' },
+  { key: 'unidades', label: 'Unidades' },
+];
+
+function TopProductsCard({ rows }: { rows: CatalogRow[] }) {
+  const [by, setBy] = useState<TopProdutoCriterio>('lucro');
+  const top = useMemo(() => rankTopProdutos(rows, { by, limit: 5 }), [rows, by]);
+  if (top.length === 0) return null;
+
+  const headline = (r: CatalogRow) =>
+    by === 'faturamento' ? formatCurrency(r.faturamento)
+    : by === 'unidades' ? `${r.unidadesVendidas} un`
+    : by === 'margem' ? (r.margemPct != null ? `${r.margemPct.toFixed(0)}%` : '—')
+    : (r.lucro != null ? formatCurrency(r.lucro) : '—');
 
   return (
     <Card>
       <CardHeader className="pb-3">
-        <div className="flex items-center gap-2">
-          <Trophy className="h-4 w-4 text-yellow-500" />
-          <CardTitle className="text-base">Top produtos</CardTitle>
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <div className="flex items-center gap-2">
+            <Trophy className="h-4 w-4 text-yellow-500" />
+            <CardTitle className="text-base">Top produtos</CardTitle>
+          </div>
+          <div className="flex gap-0.5 rounded-lg bg-muted/60 p-0.5 text-xs font-medium">
+            {TOP_CRITERIOS.map(c => (
+              <button key={c.key} onClick={() => setBy(c.key)}
+                className={`rounded-md px-2 py-1 transition-colors ${
+                  by === c.key ? 'bg-background shadow-sm text-foreground' : 'text-muted-foreground hover:text-foreground'
+                }`}>
+                {c.label}
+              </button>
+            ))}
+          </div>
         </div>
         <CardDescription>
-          {view.comCusto
-            ? '5 produtos que mais deram lucro no período'
-            : '5 produtos com maior faturamento — cadastre os custos pra ranquear por lucro'}
+          <Link to="/produtos" className="hover:underline">5 produtos no topo por {TOP_CRITERIOS.find(c => c.key === by)!.label.toLowerCase()}</Link>
+          {' '}— soma as três plataformas
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-3">
-        {view.rankeadas.map((p, i) => (
-          <div key={i} className="flex items-center gap-3">
+        {top.map((p, i) => (
+          <div key={p.skuKey} className="flex items-center gap-3">
             <div className={`h-7 w-7 rounded-lg flex items-center justify-center text-xs font-bold shrink-0 ${
               i === 0 ? 'bg-yellow-500/15 text-yellow-600' :
               i === 1 ? 'bg-slate-400/15 text-slate-600' :
@@ -423,21 +434,17 @@ function TopProductsCard({ rows }: { rows: ShopeeSkuRow[] | null }) {
               'bg-muted text-muted-foreground'
             }`}>{i + 1}</div>
             <div className="flex-1 min-w-0">
-              <p className="text-sm font-medium truncate">{p.name.length > 40 ? p.name.slice(0, 40) + '…' : p.name}</p>
+              <p className="text-sm font-medium truncate">{p.nome.length > 40 ? p.nome.slice(0, 40) + '…' : p.nome}</p>
               <p className="text-xs text-muted-foreground">
-                {p.qty} un · {formatCurrency(p.revenue)} fat.
+                {p.unidadesVendidas} un · {formatCurrency(p.faturamento)} fat.{p.marketplaces.length > 1 ? ` · ${p.marketplaces.length} plataformas` : ''}
               </p>
             </div>
             <div className="shrink-0 text-right">
-              {view.comCusto && p.temCusto ? (
-                <>
-                  <span className={`block text-sm font-semibold tabular-nums ${p.profit >= 0 ? 'text-emerald-600' : 'text-destructive'}`}>
-                    {formatCurrency(p.profit)}
-                  </span>
-                  <span className="text-[10px] text-muted-foreground">{p.margin.toFixed(0)}% margem</span>
-                </>
-              ) : (
-                <span className="block text-sm font-semibold tabular-nums">{formatCurrency(p.revenue)}</span>
+              <span className={`block text-sm font-semibold tabular-nums ${
+                by === 'lucro' && p.lucro != null && p.lucro < 0 ? 'text-destructive' : ''
+              }`}>{headline(p)}</span>
+              {by !== 'margem' && p.margemPct != null && (
+                <span className="text-[10px] text-muted-foreground">{p.margemPct.toFixed(0)}% margem</span>
               )}
             </div>
           </div>
@@ -515,6 +522,8 @@ function UnifiedDashboardContent() {
   // finança Shopee (só na aba relevante). Lógica pura em src/lib/insights.ts.
   const { dreData, dreDataPrev, isLoading: dreLoading, selectedCompany, setSelectedCompany } = useDREData();
   const { data: productCosts } = useProductCosts();
+  // mesmo período do resto do dashboard → compartilha o cache de useShopeeSync
+  const catalog = useCatalog(syncPeriod);
   const showShopeeInsights = marketplace === 'shopee' || marketplace === 'todos';
 
   // Resultado por SKU do path sync da Shopee (order_items × escrow × custos).
@@ -661,7 +670,7 @@ function UnifiedDashboardContent() {
                 devolucoes={syncData.stats.devolucoes}
               />
             )}
-            {shopeeSkuRows && shopeeSkuRows.length > 0 && <TopProductsCard rows={shopeeSkuRows} />}
+            {catalog.rows.length > 0 && <TopProductsCard rows={catalog.rows} />}
             <RecentSalesActivityCard />
           </div>
 

@@ -54,6 +54,7 @@ export type Database = {
           kit_itens: Json
           marketplace: string | null
           nome_anuncio: string
+          sku: string | null
           taxafixa: number | null
           tipo_produto: string
           user_id: string | null
@@ -73,6 +74,7 @@ export type Database = {
           kit_itens?: Json
           marketplace?: string | null
           nome_anuncio: string
+          sku?: string | null
           taxafixa?: number | null
           tipo_produto?: string
           user_id?: string | null
@@ -92,6 +94,7 @@ export type Database = {
           kit_itens?: Json
           marketplace?: string | null
           nome_anuncio?: string
+          sku?: string | null
           taxafixa?: number | null
           tipo_produto?: string
           user_id?: string | null
@@ -1280,6 +1283,33 @@ export type Database = {
         Update: {
           processed_at?: string | null
           transaction_id?: string
+        }
+        Relationships: []
+      }
+      product_catalog: {
+        Row: {
+          alias_of: string | null
+          archived: boolean
+          display_name: string | null
+          sku_key: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          alias_of?: string | null
+          archived?: boolean
+          display_name?: string | null
+          sku_key: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          alias_of?: string | null
+          archived?: boolean
+          display_name?: string | null
+          sku_key?: string
+          updated_at?: string
+          user_id?: string
         }
         Relationships: []
       }

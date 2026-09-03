@@ -6,6 +6,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
 import { isExcludedOrderStatus } from '@/lib/marketplace-order-status';
 import { calcComissaoTaxaReais, type Marketplace } from '@/lib/marketplace-fees';
+import { skuKey } from '@/lib/sku';
 import type { StockImportRow } from '@/lib/stock-import';
 import {
   buildReplenishmentPlan,
@@ -36,13 +37,6 @@ const SAFETY_DIAS_PADRAO = 7;
 // falta de demanda. Descontamos da janela, com teto: SKU parado há muito tempo
 // não deve ganhar velocidade inflada.
 const STOCKOUT_TRIM_MAX_DIAS = 21;
-
-// Normaliza agressivo: tira separadores e caixa. Casa "CAM-AZUL-P", "cam_azul_p"
-// e "CAM AZUL P" no mesmo SKU (comum quando o vendedor redigita entre plataformas).
-// Não casa strings de fato diferentes ("CAM" vs "CAMISA") — isso é mapa de
-// alias, Fase 2.
-const skuKey = (sku: string | null | undefined) =>
-  (sku ?? '').toLowerCase().replace(/[\s\-_./\\]+/g, '');
 
 interface SkuAccum {
   sku: string;
