@@ -266,7 +266,7 @@ export function useCashFlowForecast(): CashFlowForecast {
           const dateIso = est < loIso ? loIso : est > horizonIso ? horizonIso : est;
           return { dateIso, amountCents: netCents, source: 'shopee' as const };
         })
-        .filter((r): r is ForecastReceivable => r !== null)
+        .filter((r): r is NonNullable<typeof r> => r !== null)
         .sort((a, b) => a.dateIso.localeCompare(b.dateIso));
 
       return { probables, hasShopee: true, calib };
@@ -307,7 +307,7 @@ export function useCashFlowForecast(): CashFlowForecast {
           const d = s.statement_date!.slice(0, 10);
           return { dateIso: d < loIso ? loIso : d, amountCents, source: 'tiktok' as const };
         })
-        .filter((r): r is ForecastReceivable => r !== null)
+        .filter((r): r is NonNullable<typeof r> => r !== null)
         .sort((a, b) => a.dateIso.localeCompare(b.dateIso));
 
       return { probables, hasTiktok: (count ?? 0) > 0 };

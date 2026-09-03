@@ -7,6 +7,7 @@ import { useToast } from '@/hooks/use-toast';
 import { isExcludedOrderStatus } from '@/lib/marketplace-order-status';
 import { calcComissaoTaxaReais, type Marketplace } from '@/lib/marketplace-fees';
 import { skuKey } from '@/lib/sku';
+import type { TablesInsert } from '@/integrations/supabase/types';
 import type { StockImportRow } from '@/lib/stock-import';
 import {
   buildReplenishmentPlan,
@@ -276,7 +277,7 @@ export function useReplenishment(): UseReplenishment {
 
   const saveInventory = useMutation<void, Error, SaveInventoryInput>({
     mutationFn: async (i) => {
-      const row: Record<string, unknown> = { user_id: user!.id, sku: i.sku.trim() };
+      const row: TablesInsert<'inventory_settings'> = { user_id: user!.id, sku: i.sku.trim() };
       if (i.itemName !== undefined) row.item_name = i.itemName;
       if (i.stockUnits !== undefined) { row.stock_units = Math.max(0, Math.round(i.stockUnits)); row.stock_updated_at = new Date().toISOString(); }
       if (i.leadTimeDays !== undefined) row.lead_time_days = Math.max(0, Math.round(i.leadTimeDays));
