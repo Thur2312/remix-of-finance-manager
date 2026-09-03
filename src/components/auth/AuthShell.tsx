@@ -22,7 +22,7 @@ export function AuthShell({ title, description, highlights, backTo = "/", childr
   const navigate = useNavigate();
 
   return (
-    <div className="min-h-screen flex bg-white">
+    <div className="min-h-dvh flex bg-white">
       <button
         onClick={() => navigate(backTo)}
         className="fixed top-5 left-5 z-50 flex items-center gap-2 text-gray-500 hover:text-gray-900 lg:text-white/70 lg:hover:text-white transition-colors text-sm"
