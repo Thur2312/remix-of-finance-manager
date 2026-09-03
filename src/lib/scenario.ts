@@ -27,6 +27,16 @@ export interface PriceScenarioBaseline {
   custoExtraPorVenda?: number;
   impostoPct: number;
   afiliadosPct: number;
+  // ── Item 15: despesas ligadas à venda que o vendedor quer testar isoladas ──
+  /** frete que o vendedor banca pra oferecer "frete grátis", R$ por venda */
+  freteSubsidiadoPorVenda?: number;
+  /** cupom do vendedor (não o da plataforma), R$ por venda */
+  cupomPorVenda?: number;
+  /** investimento em mídia/ads como % da receita (ACOS) */
+  midiaPct?: number;
+  /** desconto sobre o preço anunciado, % — informativo (o "de/por"); o preço
+   *  que entra no cálculo já é o promocional */
+  descontoPct?: number;
   /** usados só quando marketplace === '' */
   comissaoPctManual?: number;
   taxaFixaManual?: number;
@@ -66,12 +76,24 @@ function inputsAt(base: PriceScenarioBaseline, preco: number): PricingInputs {
   };
 }
 
+// Despesas do item 15 que não passam pelo apurar (pra não mexer na fórmula
+// validada do pricing.ts): frete subsidiado + cupom do vendedor (R$ fixos por
+// venda) e mídia (% da receita, escala com o preço).
+function despesasVendaExtras(base: PriceScenarioBaseline, preco: number): number {
+  const frete = Math.max(0, base.freteSubsidiadoPorVenda ?? 0);
+  const cupom = Math.max(0, base.cupomPorVenda ?? 0);
+  const midia = preco * (Math.max(0, base.midiaPct ?? 0) / 100);
+  return frete + cupom + midia;
+}
+
 export interface PriceScenarioPoint {
   preco: number;
   lucroUnit: number;
   margemPct: number;
   comissaoPct: number;
   taxaFixa: number;
+  /** frete subsidiado + cupom + mídia nesse preço, R$ por venda (item 15) */
+  extrasVendaReais: number;
   /** lucro total do mês mantendo o volume atual */
   lucroMesVolumeConstante: number;
   /** delta vs o lucro total de hoje, volume constante */
@@ -93,27 +115,36 @@ export interface PriceScenario {
 
 const round2 = (n: number) => Math.round(n * 100) / 100;
 
+// lucro unitário num preço, já descontadas as despesas do item 15.
+function lucroUnitAt(base: PriceScenarioBaseline, preco: number): number {
+  return apurar(inputsAt(base, preco), preco).lucro - despesasVendaExtras(base, preco);
+}
+
 export function simulatePrice(base: PriceScenarioBaseline, novoPreco: number): PriceScenario {
-  const lucroUnitAtual = apurar(inputsAt(base, base.precoAtual), base.precoAtual).lucro;
+  const lucroUnitAtual = lucroUnitAt(base, base.precoAtual);
   const lucroMesAtual = lucroUnitAtual * base.unidadesMes;
 
   const evalAt = (preco: number): PriceScenarioPoint => {
     const inputs = inputsAt(base, preco);
     const ap = apurar(inputs, preco);
-    const viavel = ap.lucro > 0;
-    const volumeBreakEven = viavel && lucroMesAtual > 0 ? lucroMesAtual / ap.lucro : null;
+    const extras = despesasVendaExtras(base, preco);
+    const lucro = ap.lucro - extras;
+    const margemPct = preco > 0 ? (lucro / preco) * 100 : 0;
+    const viavel = lucro > 0;
+    const volumeBreakEven = viavel && lucroMesAtual > 0 ? lucroMesAtual / lucro : null;
     const deltaVolumePct =
       volumeBreakEven != null && base.unidadesMes > 0
         ? ((volumeBreakEven - base.unidadesMes) / base.unidadesMes) * 100
         : null;
     return {
       preco: round2(preco),
-      lucroUnit: round2(ap.lucro),
-      margemPct: round2(ap.margemPct),
+      lucroUnit: round2(lucro),
+      margemPct: round2(margemPct),
       comissaoPct: inputs.comissaoPct,
       taxaFixa: inputs.taxaFixa,
-      lucroMesVolumeConstante: round2(ap.lucro * base.unidadesMes),
-      deltaLucroVolumeConstante: round2(ap.lucro * base.unidadesMes - lucroMesAtual),
+      extrasVendaReais: round2(extras),
+      lucroMesVolumeConstante: round2(lucro * base.unidadesMes),
+      deltaLucroVolumeConstante: round2(lucro * base.unidadesMes - lucroMesAtual),
       volumeBreakEven: volumeBreakEven != null ? Math.ceil(volumeBreakEven) : null,
       deltaVolumePct: deltaVolumePct != null ? round2(deltaVolumePct) : null,
       viavel,
@@ -181,11 +212,11 @@ export function priceCurve(
   const out: PriceCurvePoint[] = [];
   for (let k = 0; k <= steps; k++) {
     const preco = lo + ((hi - lo) * k) / steps;
-    const ap = apurar(inputsAt(base, preco), preco);
+    const lucro = lucroUnitAt(base, preco);
     out.push({
       preco: round2(preco),
-      lucroMes: round2(ap.lucro * base.unidadesMes),
-      margemPct: round2(ap.margemPct),
+      lucroMes: round2(lucro * base.unidadesMes),
+      margemPct: round2(preco > 0 ? (lucro / preco) * 100 : 0),
     });
   }
   return out;

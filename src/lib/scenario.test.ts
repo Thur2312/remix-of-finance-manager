@@ -62,6 +62,34 @@ describe('simulatePrice', () => {
     expect(s.simulado.comissaoPct).toBe(10);
     expect(s.simulado.taxaFixa).toBe(2);
   });
+
+  // ── Item 15: despesas ligadas à venda ──────────────────────────────────────
+  it('frete subsidiado + cupom (R$ fixos) baixam o lucro/un no mesmo valor', () => {
+    const sem = simulatePrice(base(), 90);
+    const com = simulatePrice(base({ freteSubsidiadoPorVenda: 3, cupomPorVenda: 2 }), 90);
+    expect(com.simulado.lucroUnit).toBeCloseTo(sem.simulado.lucroUnit - 5, 5);
+    expect(com.simulado.extrasVendaReais).toBe(5);
+  });
+
+  it('mídia (% da receita) escala com o preço', () => {
+    const s = simulatePrice(base({ midiaPct: 10 }), 100);
+    // 10% de 100 = 10 de mídia no preço simulado
+    expect(s.simulado.extrasVendaReais).toBe(10);
+    const semMidia = simulatePrice(base(), 100);
+    expect(s.simulado.lucroUnit).toBeCloseTo(semMidia.simulado.lucroUnit - 10, 5);
+  });
+
+  it('extras pesados podem virar o cenário inviável', () => {
+    const s = simulatePrice(base({ custo: 55, freteSubsidiadoPorVenda: 20, midiaPct: 15 }), 90);
+    expect(s.simulado.viavel).toBe(false);
+    expect(s.veredito).toBe('inviavel');
+  });
+
+  it('sem os campos novos, o resultado é idêntico ao de antes (extrasVendaReais = 0)', () => {
+    const s = simulatePrice(base(), 90);
+    expect(s.simulado.extrasVendaReais).toBe(0);
+    expect(s.simulado.lucroUnit).toBe(s.baseline.lucroUnit);
+  });
 });
 
 describe('priceCurve', () => {

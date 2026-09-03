@@ -56,6 +56,9 @@ interface Fields {
   custo: string;
   custoVar: string;
   custoExtra: string;
+  freteSubsidiado: string;
+  cupom: string;
+  midiaPct: string;
   impostoPct: string;
   afiliadosPct: string;
   comissaoPctManual: string;
@@ -66,6 +69,7 @@ interface Fields {
 
 const EMPTY: Fields = {
   nome: '', marketplace: 'Shopee', custo: '', custoVar: '0', custoExtra: '0',
+  freteSubsidiado: '0', cupom: '0', midiaPct: '0',
   impostoPct: '0', afiliadosPct: '0', comissaoPctManual: '', taxaFixaManual: '',
   precoAtual: '', unidadesMes: '',
 };
@@ -77,6 +81,9 @@ function fieldsToBaseline(f: Fields): PriceScenarioBaseline {
     custo: num(f.custo),
     custoVar: num(f.custoVar),
     custoExtraPorVenda: num(f.custoExtra),
+    freteSubsidiadoPorVenda: num(f.freteSubsidiado),
+    cupomPorVenda: num(f.cupom),
+    midiaPct: num(f.midiaPct),
     impostoPct: num(f.impostoPct),
     afiliadosPct: num(f.afiliadosPct),
     comissaoPctManual: num(f.comissaoPctManual),
@@ -160,6 +167,16 @@ function Veredito({ base, novoPreco }: { base: PriceScenarioBaseline; novoPreco:
             nov={formatCurrency(s.simulado.lucroMesVolumeConstante)}
           />
         </div>
+
+        {s.simulado.extrasVendaReais > 0 && (
+          <p className="text-center text-xs text-muted-foreground">
+            Inclui <strong className="text-foreground">{formatCurrency(s.simulado.extrasVendaReais)}/venda</strong> de
+            frete subsidiado + cupom + mídia
+            {s.baseline.extrasVendaReais !== s.simulado.extrasVendaReais && (
+              <> (era {formatCurrency(s.baseline.extrasVendaReais)} — a mídia acompanha o preço)</>
+            )}.
+          </p>
+        )}
       </CardContent>
     </Card>
   );
@@ -645,17 +662,15 @@ export default function Simulador() {
       (acc, c) => acc + (c.tipo === 'percent' ? a.custo * (c.valor / 100) : c.valor), 0,
     );
     setF({
+      ...EMPTY,
       nome: a.nome_anuncio,
       marketplace: toMpValue(a.marketplace),
       custo: String(a.custo + custoAdd + (a.antecipado || 0)),
       custoVar: String(a.custo_var || 0),
-      custoExtra: '0',
       impostoPct: String(a.imposto_pct || 0),
       afiliadosPct: String(a.afiliados || 0),
       comissaoPctManual: String(parseFloat(String(a.comissao_taxa)) || 0),
-      taxaFixaManual: '0',
       precoAtual: String(a.valor_venda),
-      unidadesMes: '',
     });
     setNovoPrecoRaw(null);
     setPrecoText(null);
@@ -703,7 +718,7 @@ export default function Simulador() {
     persist(next);
   };
   const carregarCenario = (s: SavedScenario) => {
-    setF(s.fields);
+    setF({ ...EMPTY, ...s.fields }); // cenários salvos antes do item 15 não têm os campos novos
     setPreco(s.novoPreco);
     setCenario('preco');
   };
@@ -809,8 +824,14 @@ export default function Simulador() {
             <Fld label="Unidades vendidas / mês" v={f.unidadesMes} onChange={v => set('unidadesMes', v)} numeric />
             <Fld label="Custo do produto (R$)" v={f.custo} onChange={v => set('custo', v)} numeric />
             <Fld label="Custo variável / embalagem (R$)" v={f.custoVar} onChange={v => set('custoVar', v)} numeric />
-            <Fld label="Frete / ads por venda (R$)" v={f.custoExtra} onChange={v => set('custoExtra', v)} numeric
+            <Fld label="Outras despesas por venda (R$)" v={f.custoExtra} onChange={v => set('custoExtra', v)} numeric
               hint="O que você paga por venda e não muda com o preço" />
+            <Fld label="Frete subsidiado por venda (R$)" v={f.freteSubsidiado} onChange={v => set('freteSubsidiado', v)} numeric
+              hint="Frete que você banca pra oferecer frete grátis" />
+            <Fld label="Cupom do vendedor por venda (R$)" v={f.cupom} onChange={v => set('cupom', v)} numeric
+              hint="Cupom que sai do seu bolso (não o da plataforma)" />
+            <Fld label="Mídia / ads (% da receita)" v={f.midiaPct} onChange={v => set('midiaPct', v)} numeric
+              hint="Quanto da venda vai pra anúncio (ACOS)" />
             <Fld label="Imposto (%)" v={f.impostoPct} onChange={v => set('impostoPct', v)} numeric />
             <Fld label="Afiliados (%)" v={f.afiliadosPct} onChange={v => set('afiliadosPct', v)} numeric />
             {f.marketplace === 'outro' && (
@@ -880,6 +901,20 @@ export default function Simulador() {
                 <span>{formatCurrency(base.precoAtual * 0.75)}</span>
                 <span>atual: {formatCurrency(base.precoAtual)}</span>
                 <span>{formatCurrency(base.precoAtual * 1.3)}</span>
+              </div>
+              <div className="flex flex-wrap items-center gap-2 border-t border-border/60 pt-3 text-xs">
+                <span className="text-muted-foreground">Aplicar desconto:</span>
+                {[5, 10, 15, 20].map(d => (
+                  <button key={d} onClick={() => setPreco(round1(base.precoAtual * (1 - d / 100)))}
+                    className="rounded-md border px-2 py-1 font-medium text-muted-foreground transition-colors hover:bg-muted hover:text-foreground">
+                    −{d}%
+                  </button>
+                ))}
+                {novoPreco < base.precoAtual - 0.01 && (
+                  <span className="text-muted-foreground">
+                    anuncia por {formatCurrency(base.precoAtual)}, vende por {formatCurrency(novoPreco)}
+                  </span>
+                )}
               </div>
             </CardContent>
           </Card>
