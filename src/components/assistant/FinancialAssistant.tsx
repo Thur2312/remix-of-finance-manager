@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect } from "react";
 import { Send, Sparkles, TrendingUp, CalendarClock, PackageSearch, X, ChevronDown, Trash2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
+import { cn } from "@/lib/utils";
 
 interface Mensagem {
   role: "user" | "assistant";
@@ -217,7 +218,7 @@ export function FinancialAssistant() {
     return (
       <button
         onClick={() => setAberto(true)}
-        className="fixed bottom-6 right-6 z-50 h-14 w-14 rounded-full bg-primary shadow-lg hover:shadow-xl hover:scale-105 transition-all duration-200 flex items-center justify-center"
+        className="fixed bottom-5 right-5 z-50 h-14 w-14 rounded-full bg-primary shadow-lg hover:shadow-xl hover:scale-105 transition-all duration-200 flex items-center justify-center sm:bottom-6 sm:right-6"
         title="Assistente Financeiro"
       >
         <Sparkles className="h-6 w-6 text-primary-foreground" />
@@ -227,7 +228,26 @@ export function FinancialAssistant() {
   }
 
   return (
-    <div className={`fixed bottom-6 right-6 z-50 flex flex-col bg-background border border-border rounded-2xl shadow-2xl transition-all duration-300 ${minimizado ? "h-14 w-80" : "h-[600px] w-[380px]"}`}>
+    <>
+      {/* Scrim só no mobile — dá o dismiss por toque fora e separa do conteúdo */}
+      {!minimizado && (
+        <div
+          className="fixed inset-0 z-40 bg-foreground/20 backdrop-blur-[1px] sm:hidden"
+          onClick={() => setAberto(false)}
+        />
+      )}
+      <div
+        className={cn(
+          "fixed z-50 flex flex-col bg-background shadow-2xl transition-all duration-300",
+          // mobile: folha encostada embaixo, largura cheia, canto só em cima
+          "inset-x-0 bottom-0 rounded-t-2xl border-t border-border",
+          // desktop: cartão flutuante no canto
+          "sm:inset-x-auto sm:right-6 sm:bottom-6 sm:rounded-2xl sm:border",
+          minimizado
+            ? "h-14 sm:w-80"
+            : "h-[85dvh] sm:h-[600px] sm:max-h-[calc(100dvh-3rem)] sm:w-[380px]",
+        )}
+      >
       {/* Header */}
       <div className="flex items-center gap-3 px-4 py-3 border-b border-border/60 shrink-0">
         <div className="h-8 w-8 rounded-full bg-primary/10 border border-primary/20 flex items-center justify-center">
@@ -338,6 +358,7 @@ export function FinancialAssistant() {
           </div>
         </>
       )}
-    </div>
+      </div>
+    </>
   );
 }
