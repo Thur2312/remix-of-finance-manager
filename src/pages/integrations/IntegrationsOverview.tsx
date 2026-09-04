@@ -139,6 +139,10 @@ export default function IntegrationsOverview() {
             onConnect={() => setConnectProvider('tiktok')}
             onManage={() => navigate('/integrations/tiktok')}
             isConnecting={startAuth.isPending}
+            // API da TikTok Shop ainda não liberou o acesso pra gente — o
+            // fluxo de conectar fica em espera; quem já usa segue via
+            // planilha (/tiktok/upload). Tira isso quando a API for aprovada.
+            comingSoon
           />
           {/* ✅ Card do Mercado Livre */}
           <IntegrationCard

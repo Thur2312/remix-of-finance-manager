@@ -1,6 +1,7 @@
+import { Link } from 'react-router-dom';
 import { Badge } from '@/components/ui/badge';
 import { Card } from '@/components/ui/card';
-import { Clock, RefreshCw, AlertCircle, CheckCircle2, XCircle } from 'lucide-react';
+import { Clock, RefreshCw, AlertCircle, CheckCircle2, XCircle, Sparkles } from 'lucide-react';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import logoShopee from '@/assets/logo-shopee.jpg';
@@ -17,6 +18,10 @@ interface IntegrationCardProps {
   onConnect: () => void;
   onManage: () => void;
   isConnecting?: boolean;
+  /** Integração automática ainda não liberada (ex: aprovação de API pendente) —
+   * mostra "Em breve" no lugar do botão de conectar. Ignorado se já houver uma
+   * conexão ativa (não esconde quem já está conectado). */
+  comingSoon?: boolean;
 }
 
 const providerConfig = {
@@ -48,10 +53,44 @@ export function IntegrationCard({
   onConnect,
   onManage,
   isConnecting,
+  comingSoon,
 }: IntegrationCardProps) {
   const config = providerConfig[provider];
   const isConnected = status === 'connected';
   const statusInfo = statusConfig[status] ?? statusConfig.disconnected;
+  const showComingSoon = !!comingSoon && !isConnected;
+
+  if (showComingSoon) {
+    return (
+      <Card className="p-5 border-dashed">
+        <div className="flex items-start gap-4">
+          <div className="h-14 w-14 rounded-lg bg-background flex items-center justify-center overflow-hidden shrink-0 grayscale opacity-70">
+            <img src={config.logo} alt={config.name} className="h-full w-full object-contain p-1" />
+          </div>
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center gap-2 flex-wrap">
+              <span className="text-base font-semibold text-muted-foreground">{config.name}</span>
+              <Badge variant="outline" className="flex items-center gap-1 text-xs">
+                <Sparkles className="h-3 w-3" />
+                Em breve
+              </Badge>
+            </div>
+            <p className="text-sm text-muted-foreground mt-0.5">
+              Integração automática ainda não disponível — estamos liberando o acesso com a {config.name}.
+            </p>
+            {provider === 'tiktok' && (
+              <Link
+                to="/gestao/tiktok/upload"
+                className="text-sm font-semibold text-primary hover:underline mt-2 inline-block"
+              >
+                Por enquanto, importe pedidos por planilha
+              </Link>
+            )}
+          </div>
+        </div>
+      </Card>
+    );
+  }
 
   return (
     <Card className="p-5">
