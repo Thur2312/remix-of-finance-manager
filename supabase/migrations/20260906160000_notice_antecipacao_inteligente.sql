@@ -4,7 +4,7 @@
 insert into public.notifications (title, body, type, target_type, target_user_ids, created_by)
 select
   'Novo: Antecipação inteligente',
-  'Quando a Previsão de caixa mostra que o saldo vai ficar negativo, a tela agora calcula o valor MÍNIMO que você precisa antecipar pra não ficar no vermelho — não "antecipe tudo". Mostra quais recebíveis do Mercado Livre antecipar (os mais próximos primeiro, que custam menos), quanto custa e se cobre o buraco todo. Informe a sua taxa de antecipação real (Central do Vendedor) pra ver o cálculo.',
+  'Quando a Previsão de caixa mostra que o saldo vai ficar negativo, a tela agora calcula o valor MÍNIMO que você precisa antecipar pra não ficar no vermelho — não "antecipe tudo". Mostra quais recebíveis do Mercado Livre antecipar (os mais próximos primeiro, que custam menos), quanto custa e se cobre o buraco todo. Informe a sua taxa de antecipação real (Central do Vendedor) pra ver o cálculo. Importante: é uma projeção baseada nos recebíveis e contas que você já lançou, não uma garantia — confira o saldo real da sua conta e as datas antes de decidir antecipar.',
   'feature',
   'all',
   null,

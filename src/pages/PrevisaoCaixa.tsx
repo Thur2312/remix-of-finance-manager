@@ -330,6 +330,10 @@ function AntecipacaoCard({ f }: { f: ReturnType<typeof useCashFlowForecast> }) {
                 {' '}— se der pra esperar, não precisa antecipar nada.
               </p>
             )}
+            <p className="mt-2 text-xs font-medium text-warning">
+              ⚠️ Isso é uma projeção (recebíveis + contas lançadas), não uma garantia. Confira o saldo real
+              em conta e as datas antes de decidir antecipar.
+            </p>
           </div>
         </div>
 
