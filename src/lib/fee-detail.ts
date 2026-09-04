@@ -96,3 +96,15 @@ export function effectiveFeeRatePct(faturamento: number, valorLiquido: number): 
   if (faturamento <= 0) return 0;
   return ((faturamento - valorLiquido) / faturamento) * 100;
 }
+
+// Frete (ida e reverso) não é taxa da plataforma — é custo de logística /
+// repasse ao transportador. O usuário pediu (04/09) pra tirar do detalhamento
+// de taxas: some das listas de decomposição, mas o total retido continua sendo
+// `faturamento − líquido` (que já embute o frete que a Shopee abateu do repasse).
+// `computeShopeeFinance.feeBreakdown` segue trazendo o bucket de frete — quem
+// exibe "Detalhamento de taxas" passa a lista por aqui.
+const FRETE_FEE_TYPES = new Set(['shipping_fee', 'reverse_shipping_fee']);
+
+export function feeBreakdownSemFrete<T extends { type: string }>(breakdown: T[]): T[] {
+  return breakdown.filter(f => !FRETE_FEE_TYPES.has(f.type));
+}

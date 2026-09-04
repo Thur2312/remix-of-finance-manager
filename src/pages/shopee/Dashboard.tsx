@@ -19,6 +19,7 @@ import { calculateResults, formatCurrency, RawOrder, SettingsData } from '@/lib/
 import { formatCents, type Cents } from '@/lib/money';
 import { fetchAllOrders } from '@/lib/supabase-helpers';
 import { useShopeeSync } from '@/hooks/useShopeeSync';
+import { feeBreakdownSemFrete } from '@/lib/fee-detail';
 import { useIntegrations } from '@/hooks/useIntegrations';
 import { useActiveShopeeConnection } from '@/hooks/useActiveShopeeConnection';
 import { useNavigate } from 'react-router-dom';
@@ -245,7 +246,7 @@ export function ShopeeDashboardContent() {
     ...(usingSyncData ? [{
       title: 'Taxas Shopee',
       value: formatCents(totalFeesCentsCard),
-      description: 'Comissão, serviço, frete e descontos',
+      description: 'Tudo que a Shopee abateu do repasse',
       icon: Package,
       variant: 'warning' as const,
     }] : []),
@@ -375,20 +376,21 @@ export function ShopeeDashboardContent() {
       )}
 
       {/* ── Detalhamento de Taxas ────────────────────────────────── */}
-      {usingSyncData && syncData.stats.feeBreakdown.length > 0 && (
+      {/* Frete fora da lista — logística, não taxa da plataforma (pedido do usuário 04/09). */}
+      {usingSyncData && feeBreakdownSemFrete(syncData.stats.feeBreakdown).length > 0 && (
         <Card className={CARD}>
           <CardHeader className="pb-3">
             <div className="flex items-center gap-2">
               <CardTitle className="text-base">Detalhamento de Taxas</CardTitle>
               <InfoPopover title="De onde vêm essas taxas?">
-                A Shopee cobra diferentes tipos de taxa sobre cada venda. Elas são deduzidas automaticamente antes do repasse ao vendedor.
+                A Shopee cobra diferentes tipos de taxa sobre cada venda. Elas são deduzidas automaticamente antes do repasse ao vendedor. O frete não entra aqui — é custo de logística, não taxa.
               </InfoPopover>
             </div>
             <CardDescription>Taxas cobradas pela Shopee nos últimos {syncPeriod} dias</CardDescription>
           </CardHeader>
           <CardContent>
             <div className="space-y-3">
-              {syncData.stats.feeBreakdown.filter(f => f.type !== 'adjustment').map((fee) => {
+              {feeBreakdownSemFrete(syncData.stats.feeBreakdown).filter(f => f.type !== 'adjustment').map((fee) => {
                 const key = Object.keys(feeLabels).find(k => fee.label.toLowerCase().includes(k)) ?? '';
                 const explanation = feeInfo[key];
                 // BUG-03b: com o rebate de frete abatido, o bucket "shipping_fee"
@@ -419,8 +421,9 @@ export function ShopeeDashboardContent() {
                 <div className="rounded-lg bg-muted/50 px-3 py-2">
                   <p className="text-xs text-muted-foreground">
                     💡 O total retido é <span className="font-medium text-foreground">faturamento − valor líquido</span>{' '}
-                    dos pedidos concluídos no período. A lista acima é a decomposição estimada;
-                    pode não fechar exato com o total enquanto o frete não usar o valor real.
+                    dos pedidos concluídos no período. A lista acima mostra só as taxas da plataforma
+                    (comissão, serviço, ajustes) — o frete descontado no repasse não aparece, então a
+                    soma da lista fica abaixo do total.
                   </p>
                 </div>
               )}

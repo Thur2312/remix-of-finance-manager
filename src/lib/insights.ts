@@ -1,5 +1,6 @@
 import type { DREData, DRECompanyTax } from './dre-calculations';
 import type { ShopeeFinance } from './shopee-sync-status';
+import { feeBreakdownSemFrete } from './fee-detail';
 import { formatCurrency } from './format';
 
 // Camada de insight — transforma os números que o app já calcula (DRE,
@@ -224,7 +225,8 @@ export function shopeeFinanceInsights(fin: ShopeeFinance, prev?: ShopeeFinance |
   const retido = fin.faturamento - fin.valorLiquido;
   if (retido > 0) {
     const share = (retido / fin.faturamento) * 100;
-    const top3 = fin.feeBreakdown
+    // Frete fica de fora da decomposição — logística, não taxa da plataforma.
+    const top3 = feeBreakdownSemFrete(fin.feeBreakdown)
       .filter(f => f.amount > 0)
       .slice(0, 3)
       .map(f => `${f.label} ${formatCurrency(f.amount)}`)

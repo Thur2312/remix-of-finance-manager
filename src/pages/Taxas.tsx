@@ -18,7 +18,7 @@ import { formatCents, type Cents } from '@/lib/money';
 import { useActiveShopeeConnection } from '@/hooks/useActiveShopeeConnection';
 import { useShopeeSync } from '@/hooks/useShopeeSync';
 import {
-  aggregateShopeeFeesBySku, feeRateSeries, effectiveFeeRatePct,
+  aggregateShopeeFeesBySku, feeRateSeries, effectiveFeeRatePct, feeBreakdownSemFrete,
 } from '@/lib/fee-detail';
 
 const PERIODOS = ['7', '15', '30', '60'] as const;
@@ -34,7 +34,7 @@ function PorTipo({
   breakdown: { type: string; label: string; amount: number; amountCents: Cents }[];
   faturamento: number;
 }) {
-  const linhas = breakdown.filter(f => f.type !== 'adjustment');
+  const linhas = feeBreakdownSemFrete(breakdown).filter(f => f.type !== 'adjustment');
   if (linhas.length === 0) return null;
   const maxAbs = Math.max(...linhas.map(l => Math.abs(l.amount)), 1);
 
@@ -43,7 +43,8 @@ function PorTipo({
       <CardContent className="pt-5">
         <h3 className="text-sm font-semibold">Por tipo de cobrança</h3>
         <p className="mt-0.5 text-xs text-muted-foreground">
-          Decomposição estimada do que a Shopee retém — comissão, serviço, frete e frete reverso.
+          Decomposição estimada do que a Shopee retém — comissão, taxa de serviço e ajustes.
+          O frete fica de fora: é logística, não taxa da plataforma.
         </p>
         <div className="mt-4 space-y-3">
           {linhas.map(l => {
@@ -202,7 +203,7 @@ function PorPlataforma({ faturamento, retido, taxaPct }: { faturamento: number; 
         </div>
         <p className="mt-3 text-xs text-muted-foreground">
           Só a Shopee entrega hoje a linha de taxa por pedido (tabela de repasses). ML e TikTok
-          aparecem aqui conforme os syncs passarem a capturar comissão e frete por venda.
+          aparecem aqui conforme os syncs passarem a capturar a comissão por venda.
         </p>
       </CardContent>
     </Card>
@@ -276,7 +277,7 @@ export default function Taxas() {
           <StatCard
             title="Total retido pela plataforma"
             value={<span className="text-destructive">−{formatCents(retidoCents)}</span>}
-            description="Comissão, serviço, frete e descontos"
+            description="Tudo que a Shopee abateu do repasse (faturamento − líquido)"
             icon={Package}
             variant="warning"
             delta={retidoPrev > 0 ? { current: retido, previous: retidoPrev, invert: true } : undefined}

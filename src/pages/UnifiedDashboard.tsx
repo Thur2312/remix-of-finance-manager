@@ -23,6 +23,7 @@ import { useCompanyConnections } from '@/hooks/useCompanyConnections';
 import { useProductCosts } from '@/hooks/useProductCosts';
 import { buildInsights } from '@/lib/insights';
 import { aggregateShopeeSkuFinance } from '@/lib/shopee-sku-finance';
+import { feeBreakdownSemFrete } from '@/lib/fee-detail';
 import { useCatalog } from '@/hooks/useCatalog';
 import { rankTopProdutos, type CatalogRow, type TopProdutoCriterio } from '@/lib/catalog';
 import { InsightsPanel } from '@/components/insights/InsightsPanel';
@@ -229,7 +230,8 @@ function RevenueAreaChart({ data }: { data: { date: string; revenue: number; net
 // produtos, meta), não "quanto o marketplace levou". Fica a um clique pra quem
 // quiser auditar as cobranças do período.
 function FeesBreakdownCollapsible({ breakdown }: { breakdown: { type: string; label: string; amount: number }[] }) {
-  const data = breakdown.filter(f => f.type !== 'adjustment' && f.amount > 0);
+  // Frete fora — é logística, não taxa da plataforma (pedido do usuário 04/09).
+  const data = feeBreakdownSemFrete(breakdown).filter(f => f.type !== 'adjustment' && f.amount > 0);
   if (data.length === 0) return null;
   const total = data.reduce((a, f) => a + f.amount, 0);
   return (
@@ -240,7 +242,7 @@ function FeesBreakdownCollapsible({ breakdown }: { breakdown: { type: string; la
             <div>
               <p className="text-base font-semibold">Detalhamento de taxas</p>
               <p className="text-xs text-muted-foreground">
-                {formatCurrency(total)} em comissão, serviço e frete no período
+                {formatCurrency(total)} em comissão e taxa de serviço no período
               </p>
             </div>
             <ChevronDown className="chev size-4 shrink-0 text-muted-foreground transition-transform" />

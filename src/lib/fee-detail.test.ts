@@ -1,5 +1,7 @@
 import { describe, it, expect } from 'vitest';
-import { aggregateShopeeFeesBySku, feeRateSeries, effectiveFeeRatePct } from './fee-detail';
+import {
+  aggregateShopeeFeesBySku, feeRateSeries, effectiveFeeRatePct, feeBreakdownSemFrete,
+} from './fee-detail';
 
 const order = (id: string, items: { sku: string; name?: string; qty: number; price: number }[]) => ({
   id,
@@ -70,5 +72,24 @@ describe('effectiveFeeRatePct', () => {
   });
   it('sem faturamento → 0', () => {
     expect(effectiveFeeRatePct(0, 0)).toBe(0);
+  });
+});
+
+describe('feeBreakdownSemFrete', () => {
+  const bd = [
+    { type: 'commission', amount: 20 },
+    { type: 'shipping_fee', amount: 15 },
+    { type: 'service_fee', amount: 5 },
+    { type: 'reverse_shipping_fee', amount: 3 },
+    { type: 'adjustment', amount: -2 },
+  ];
+
+  it('remove frete e frete reverso, mantém o resto na ordem', () => {
+    expect(feeBreakdownSemFrete(bd).map(f => f.type)).toEqual(['commission', 'service_fee', 'adjustment']);
+  });
+
+  it('lista sem frete passa intacta', () => {
+    const semFrete = [{ type: 'commission', amount: 1 }];
+    expect(feeBreakdownSemFrete(semFrete)).toEqual(semFrete);
   });
 });
