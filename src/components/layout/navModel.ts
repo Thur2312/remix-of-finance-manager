@@ -1,7 +1,8 @@
 import {
   User, TrendingUp, Calculator, Receipt, Sparkles, BarChart3, HandCoins, Wallet,
   Plug, LayoutDashboard, Shield, Zap, Gauge, CalendarDays, Landmark, Wrench,
-  FlaskConical, Target, CalendarClock, PackageSearch, Percent, Boxes, Building2, type LucideIcon,
+  FlaskConical, Target, CalendarClock, PackageSearch, Percent, Boxes, Building2,
+  ShieldCheck, type LucideIcon,
 } from 'lucide-react';
 
 // Modelo de navegação da área interna — fonte única, consumida pela
@@ -52,6 +53,7 @@ export const sidebarGroups: NavGroup[] = [
       { title: 'Precificação', url: '/calculadora', icon: Calculator },
       { title: 'Custos Fixos', url: '/precificacao/custos', icon: Receipt },
       { title: 'Detalhamento de taxas', url: '/taxas', icon: Percent },
+      { title: 'Auditoria de repasse', url: '/repasses', icon: ShieldCheck, badge: 'Novo' },
       { title: 'DRE', url: '/dre', icon: BarChart3 },
     ],
   },
