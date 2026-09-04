@@ -25,8 +25,10 @@ const VEREDITO: Record<RevenueGoalVeredito, { icon: typeof Target; ring: string;
 const brl = (cents: number) => formatCurrency(cents / 100);
 
 function MetaContent() {
-  // scopeByCompany:false — o recorte financeiro por empresa entra só na /dre
-  // neste stage (ver plano Bloco D Fase 2). Meta do Mês segue consolidada.
+  // scopeByCompany:false de propósito — a meta (monthly_revenue_goal) é um valor
+  // por usuário, não por empresa. Recortar só o faturamento por empresa deixaria
+  // a comparação torta (parte da receita vs. meta do todo). Uma meta por empresa
+  // é uma feature à parte; até lá, Meta do Mês é sempre consolidada.
   const { dreData, isLoading, selectedPeriod } = useDREData({ scopeByCompany: false });
   const goal = useRevenueGoal();
   const [draft, setDraft] = useState('');

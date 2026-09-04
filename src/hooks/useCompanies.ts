@@ -85,20 +85,6 @@ export function useCompanies() {
     setCompanies(prev => prev.filter(c => c.id !== id));
   };
 
-  const linkIntegration = async (
-    platform: 'tiktok' | 'shopee',
-    integrationId: string,
-    companyId: string
-  ): Promise<void> => {
-    const table = platform === 'tiktok' ? 'tiktok_integrations' : 'shopee_integrations';
-    const { error: err } = await supabase
-      .from(table)
-      .update({ company_id: companyId })
-      .eq('id', integrationId);
-
-    if (err) throw err;
-  };
-
   return {
     companies,
     loading,
@@ -107,7 +93,6 @@ export function useCompanies() {
     createCompany,
     updateCompany,
     deleteCompany,
-    linkIntegration,
   };
 }
 

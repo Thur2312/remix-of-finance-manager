@@ -306,7 +306,20 @@ export function useDREData(opts?: { scopeByCompany?: boolean }): UseDREDataResul
     // Recorte: ids das conexões em jogo. companyId setado → só as da empresa;
     // null → todas (scopedIds = null desliga o filtro em ML/TikTok).
     const inScope = (c: ConnRow) => !companyId || c.company_id === companyId;
-    const scopedConns = conns.filter(inScope);
+    let scopedConns = conns.filter(inScope);
+
+    // Reconexão: se a empresa tem uma loja e existe OUTRA conexão da mesma loja
+    // (mesmo external_shop_id) ainda sem empresa — provavelmente a conexão antiga
+    // que ninguém reatribuiu. Puxa os pedidos históricos dela também. Só quando
+    // company_id é null (nunca rouba loja explicitamente de outra empresa).
+    if (companyId) {
+      const shopKeys = new Set(scopedConns.map((c) => c.external_shop_id).filter(Boolean));
+      const strays = conns.filter(
+        (c) => !c.company_id && c.external_shop_id && shopKeys.has(c.external_shop_id),
+      );
+      if (strays.length) scopedConns = [...scopedConns, ...strays];
+    }
+
     const shopeeIds = scopedConns.filter((c) => c.provider === 'shopee').map((c) => c.id);
     const scopedIds = companyId ? scopedConns.map((c) => c.id) : null;
     logger.debug('[DRE] recorte:', { companyId, shopeeIds, scopedIds });

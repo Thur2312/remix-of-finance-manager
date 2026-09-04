@@ -18,6 +18,8 @@ import { useDashboardData, Marketplace, MarketplaceStats } from '@/hooks/useDash
 import { useActiveShopeeConnection } from '@/hooks/useActiveShopeeConnection';
 import { useRecentSaleEvents } from '@/hooks/useSaleEvents';
 import { useDREData } from '@/hooks/useDREData';
+import { useSelectedCompany } from '@/hooks/useSelectedCompany';
+import { useCompanyConnections } from '@/hooks/useCompanyConnections';
 import { useProductCosts } from '@/hooks/useProductCosts';
 import { buildInsights } from '@/lib/insights';
 import { aggregateShopeeSkuFinance } from '@/lib/shopee-sku-finance';
@@ -516,14 +518,28 @@ function UnifiedDashboardContent() {
   const [marketplace, setMarketplace] = useState<Marketplace>('shopee');
   const [syncPeriod, setSyncPeriod] = useState<number>(15);
 
+  // Recorte por empresa (Bloco D Fase 2 Stage 4b): a empresa selecionada no
+  // switcher do topbar filtra o dashboard pelas lojas dela. Sem empresa
+  // ("Todas") → consolidado (loja Shopee ativa + todo o ML).
+  const { companyId } = useSelectedCompany();
+  const { connections: companyConnections } = useCompanyConnections();
+  const scope = useMemo(() => {
+    if (!companyId) return null;
+    const mine = companyConnections.filter(c => c.companyId === companyId);
+    return {
+      shopeeConnectionIds: mine.filter(c => c.provider === 'shopee').map(c => c.id),
+      mlConnectionIds: mine.filter(c => c.provider === 'mercadolivre').map(c => c.id),
+    };
+  }, [companyId, companyConnections]);
+
   const { shopee, tiktok, mercadolivre, combined, isShopeeConnected, syncData, syncNow, shopeeConnection } =
-    useDashboardData(syncPeriod);
+    useDashboardData(syncPeriod, scope);
   const { shopeeConnections, setActiveConnectionId } = useActiveShopeeConnection();
 
   // A empresa é a mesma da DRE (fonte única — dreData é calculado com ela e o
-  // TaxSummaryRow / insights leem a mesma). Insights: DRE (user-wide, sempre) +
-  // finança Shopee (só na aba relevante). Lógica pura em src/lib/insights.ts.
-  const { dreData, dreDataPrev, isLoading: dreLoading, selectedCompany } = useDREData({ scopeByCompany: false });
+  // TaxSummaryRow / insights leem a mesma). Insights: DRE + finança Shopee
+  // (só na aba relevante). Lógica pura em src/lib/insights.ts.
+  const { dreData, dreDataPrev, isLoading: dreLoading, selectedCompany } = useDREData();
   const { data: productCosts } = useProductCosts();
   // mesmo período do resto do dashboard → compartilha o cache de useShopeeSync
   const catalog = useCatalog(syncPeriod);
@@ -562,7 +578,9 @@ function UnifiedDashboardContent() {
   return (
     <PageShell
       title="Dashboard"
-      subtitle="Visão consolidada dos seus marketplaces."
+      subtitle={scope
+        ? `Só ${selectedCompany?.name ?? 'a empresa selecionada'} — lojas dela nos marketplaces.`
+        : 'Visão consolidada dos seus marketplaces.'}
       className="space-y-6"
       action={
         <div className="flex items-center gap-1 bg-muted/60 rounded-lg p-1">
@@ -583,7 +601,9 @@ function UnifiedDashboardContent() {
       {/* ── Sync Shopee ───────────────────────────────────────────── */}
       {(marketplace === 'shopee' || marketplace === 'todos') && isShopeeConnected && (
         <div className="flex items-center gap-3 flex-wrap">
-          {shopeeConnections.length > 1 && (
+          {/* Sem recorte por empresa, o seletor de loja ativa aparece com 2+
+              lojas. Com recorte, as lojas da empresa já estão implícitas. */}
+          {!scope && shopeeConnections.length > 1 && (
             <Select value={shopeeConnection?.id} onValueChange={setActiveConnectionId}>
               <SelectTrigger className="h-8 w-[180px] text-xs"><SelectValue placeholder="Selecione a loja" /></SelectTrigger>
               <SelectContent>
@@ -605,7 +625,10 @@ function UnifiedDashboardContent() {
             </Select>
           </div>
           <Button size="sm" variant="outline"
-            onClick={() => syncNow.mutate({ connectionId: shopeeConnection!.id, days: syncPeriod })}
+            onClick={() => {
+              const target = scope ? scope.shopeeConnectionIds[0] : shopeeConnection?.id;
+              if (target) syncNow.mutate({ connectionId: target, days: syncPeriod });
+            }}
             disabled={syncNow.isPending}
           >
             {syncNow.isPending
@@ -614,7 +637,7 @@ function UnifiedDashboardContent() {
           </Button>
           {syncData && (
             <Badge variant="secondary" className="text-xs">
-              {syncData.stats.pedidos} pedidos concluídos{shopeeConnection?.shop_name ? ` · ${shopeeConnection.shop_name}` : ''}
+              {syncData.stats.pedidos} pedidos concluídos{!scope && shopeeConnection?.shop_name ? ` · ${shopeeConnection.shop_name}` : ''}
             </Badge>
           )}
         </div>

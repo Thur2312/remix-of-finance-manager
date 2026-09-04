@@ -5,6 +5,7 @@ import type { Cents } from '@/lib/money';
 
 export interface MlOrder {
   user_id: string;
+  integration_id?: string | null;
   order_id: string;
   sku: string | null;
   nome_produto: string | null;
@@ -45,11 +46,24 @@ export interface MlStats {
   profitCents?: Cents;
 }
 
-export function useMercadolivreData() {
+// `scopeIntegrationIds` (opcional): recorta os pedidos por loja (Bloco D). null/
+// undefined = todas as lojas ML do usuário (comportamento padrão).
+export function useMercadolivreData(scopeIntegrationIds?: string[] | null) {
   const { user } = useAuth();
-  const [orders, setOrders] = useState<MlOrder[]>([]);
+  const [allOrders, setAllOrders] = useState<MlOrder[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+
+  // null/undefined = sem recorte (todas as lojas). Array (mesmo vazio) = recorta:
+  // [] significa "nenhuma loja desta empresa" → zero pedidos, não todos.
+  const scoped = scopeIntegrationIds != null;
+  const scopeKey = scoped ? [...scopeIntegrationIds].sort().join('|') : null;
+  const orders = useMemo(() => {
+    if (!scoped) return allOrders;
+    const set = new Set(scopeKey ? scopeKey.split('|').filter(Boolean) : []);
+    return allOrders.filter(o => o.integration_id && set.has(o.integration_id));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [allOrders, scoped, scopeKey]);
 
   useEffect(() => {
     if (!user) return;
@@ -65,7 +79,7 @@ export function useMercadolivreData() {
           .order('data_pedido', { ascending: false });
 
         if (err) throw err;
-        setOrders((data ?? []) as MlOrder[]);
+        setAllOrders((data ?? []) as MlOrder[]);
       } catch (e: unknown) {
         setError(e instanceof Error ? e.message : 'Erro ao buscar pedidos do Mercado Livre');
       } finally {

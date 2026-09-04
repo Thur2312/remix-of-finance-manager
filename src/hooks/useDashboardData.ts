@@ -44,20 +44,27 @@ const EMPTY_STATS: MarketplaceStats = {
   hasData: false,
 };
 
-export function useDashboardData(syncPeriod: number = 15) {
+// `scope` (opcional, Bloco D Fase 2 Stage 4b): recorta o dashboard pelas lojas
+// de uma empresa. `null`/omitido = consolidado (loja Shopee ativa + todo o ML).
+export function useDashboardData(
+  syncPeriod: number = 15,
+  scope?: { shopeeConnectionIds: string[]; mlConnectionIds: string[] } | null,
+) {
   const { user } = useAuth();
 
   // ── Shopee ───────────────────────────────────────────────────────────────
   const { syncNow } = useIntegrations();
   const { activeConnection: shopeeConnection } = useActiveShopeeConnection();
-  const isShopeeConnected = shopeeConnection?.status === 'connected';
-  const { data: syncData, isLoading: syncLoading } = useShopeeSync(
-    isShopeeConnected ? shopeeConnection!.id : null,
-    syncPeriod
-  );
+  const isShopeeConnected = scope
+    ? scope.shopeeConnectionIds.length > 0
+    : shopeeConnection?.status === 'connected';
+  const shopeeArg = scope
+    ? scope.shopeeConnectionIds
+    : (shopeeConnection?.status === 'connected' ? shopeeConnection.id : null);
+  const { data: syncData, isLoading: syncLoading } = useShopeeSync(shopeeArg, syncPeriod);
 
   // ── Mercado Livre ────────────────────────────────────────────────────────
-  const { stats: mlStats } = useMercadolivreData();
+  const { stats: mlStats } = useMercadolivreData(scope?.mlConnectionIds ?? null);
 
   // ── Stats Shopee ─────────────────────────────────────────────────────────
   const shopeeStats: MarketplaceStats = useMemo(() => {

@@ -64,10 +64,14 @@ export interface SyncedFee {
 // Nome mantido para os imports existentes; a forma é a de `computeShopeeFinance`.
 export type ShopeeSyncStats = ShopeeFinance;
 
-export function useShopeeSync(connectionId: string | null, days: number = 15) {
+// `connection` aceita 1 id (caso comum) ou vários (recorte por empresa no
+// UnifiedDashboard — uma empresa tem N lojas Shopee). null/[] = desabilitado.
+export function useShopeeSync(connection: string | string[] | null, days: number = 15) {
+  const connectionIds = (Array.isArray(connection) ? connection : connection ? [connection] : [])
+    .filter(Boolean);
   return useQuery({
-    queryKey: ['shopee-sync', connectionId, days],
-    enabled: !!connectionId,
+    queryKey: ['shopee-sync', [...connectionIds].sort().join(','), days],
+    enabled: connectionIds.length > 0,
     staleTime: 5 * 60 * 1000,
     gcTime: 10 * 60 * 1000,
     queryFn: async () => {
@@ -91,7 +95,7 @@ export function useShopeeSync(connectionId: string | null, days: number = 15) {
         const { data, error } = await supabase
           .from('orders')
           .select('*, order_items(*)')
-          .eq('integration_id', connectionId!)
+          .in('integration_id', connectionIds)
           .or(`order_updated_at.gte.${sinceIso},order_created_at.gte.${sinceIso}`)
           .order('order_created_at', { ascending: false })
           .range(page * pageSize, (page + 1) * pageSize - 1);
@@ -110,7 +114,7 @@ export function useShopeeSync(connectionId: string | null, days: number = 15) {
         const { data, error } = await supabase
           .from('orders')
           .select('id, status, total_amount, total_amount_cents, order_created_at, order_updated_at')
-          .eq('integration_id', connectionId!)
+          .in('integration_id', connectionIds)
           .gte('order_updated_at', prevStartIso)
           .lt('order_updated_at', prevEndIso)
           .range(prevPage * pageSize, (prevPage + 1) * pageSize - 1);
@@ -129,7 +133,7 @@ export function useShopeeSync(connectionId: string | null, days: number = 15) {
         const { data, error } = await supabase
           .from('fees')
           .select('*')
-          .eq('integration_id', connectionId!)
+          .in('integration_id', connectionIds)
           .gte('fee_date', prevStartIso)
           .range(feePage * pageSize, (feePage + 1) * pageSize - 1);
         if (error) throw error;
@@ -147,7 +151,7 @@ export function useShopeeSync(connectionId: string | null, days: number = 15) {
         const { data, error } = await supabase
           .from('payments')
           .select('*')
-          .eq('integration_id', connectionId!)
+          .in('integration_id', connectionIds)
           .eq('payment_method', 'escrow')
           .range(payPage * pageSize, (payPage + 1) * pageSize - 1);
         if (error) throw error;

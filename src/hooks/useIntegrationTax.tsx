@@ -1,65 +1,10 @@
-import { useState, useEffect } from 'react';
-import { supabase } from '../integrations/supabase/client';
 import { applyTax, type TaxBase } from '../lib/tax';
 import { formatCurrency } from '../lib/format';
 
-interface TaxInfo {
-  companyId: string | null;
-  companyName: string | null;
-  taxRate: number;
-  loading: boolean;
-}
-
-interface IntegrationWithCompany {
-  company_id: string | null;
-  companies: {
-    id: string;
-    name: string;
-    tax_rate: number;
-  } | null;
-}
-
-export function useIntegrationTax(
-  platform: 'tiktok' | 'shopee',
-  integrationId: string | null | undefined
-): TaxInfo {
-  const [info, setInfo] = useState<TaxInfo>({
-    companyId: null,
-    companyName: null,
-    taxRate: 0,
-    loading: false,
-  });
-
-  useEffect(() => {
-    if (!integrationId) return;
-
-    const table = platform === 'tiktok' ? 'tiktok_integrations' : 'shopee_integrations';
-
-    setInfo(p => ({ ...p, loading: true }));
-
-    void supabase  // ← era `db`, corrigido para `supabase`
-      .from(table)
-      .select('company_id, companies(id, name, tax_rate)')
-      .eq('id', integrationId)
-      .single()
-      .then((result) => {
-        if (result.error || !result.data) {
-          setInfo({ companyId: null, companyName: null, taxRate: 0, loading: false });
-          return;
-        }
-        const raw = result.data as unknown as IntegrationWithCompany;
-        const company = raw.companies;
-        setInfo({
-          companyId: company?.id ?? null,
-          companyName: company?.name ?? null,
-          taxRate: company?.tax_rate ?? 0,
-          loading: false,
-        });
-      });
-  }, [platform, integrationId]);
-
-  return info;
-}
+// Nota: o hook `useIntegrationTax` foi removido (Bloco D Fase 2) — apontava pras
+// tabelas legadas shopee_integrations/tiktok_integrations e ninguém o chamava.
+// O imposto por empresa hoje vem do company-scope-store → companies.tax_rate.
+// Este arquivo mantém só o <TaxSummaryRow> (importado pelos dashboards).
 
 export function TaxSummaryRow({
   netProfit,
