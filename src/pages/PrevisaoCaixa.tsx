@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom';
 import { format, parseISO } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import {
-  CalendarClock, AlertTriangle, CheckCircle2, TrendingUp, Wallet, Plug,
+  CalendarClock, AlertTriangle, CheckCircle2, TrendingUp, Wallet, Plug, TrendingDown, Clock3,
 } from 'lucide-react';
 import { PageShell } from '@/components/layout/PageShell';
 import { Card, CardContent } from '@/components/ui/card';
@@ -17,6 +17,7 @@ import { formatCurrency } from '@/lib/format';
 import { parseMoneyInput } from '@/lib/money';
 import { useCashFlowForecast } from '@/hooks/useCashFlowForecast';
 import { ForecastChart } from '@/components/fluxo-caixa/ForecastChart';
+import { planejarAntecipacao, diasParaRecuperar, type AntecipacaoCandidato } from '@/lib/antecipacao';
 
 const dataCurta = (iso: string) => {
   const d = parseISO(iso.slice(0, 10));
@@ -155,6 +156,8 @@ function PrevisaoContent() {
         </Card>
       )}
 
+      <AntecipacaoCard f={f} />
+
       {/* Gráfico */}
       <Card>
         <CardContent className="space-y-3 pt-5">
@@ -280,6 +283,111 @@ function AnchorCard({ f }: { f: ReturnType<typeof useCashFlowForecast> }) {
               Confirme com o saldo real do seu banco pra projeção ficar precisa.
             </>
           )}
+        </p>
+      </CardContent>
+    </Card>
+  );
+}
+
+// Antecipação inteligente: só aparece quando o pior dia da janela fica no
+// vermelho. Calcula o valor MÍNIMO a antecipar pra cobrir o buraco, não
+// "antecipe tudo" — e só em cima de recebíveis do Mercado Livre (o único com
+// data de liberação real hoje; Shopee/TikTok são estimativa, não dá pra
+// antecipar em cima de estimativa).
+function AntecipacaoCard({ f }: { f: ReturnType<typeof useCashFlowForecast> }) {
+  const [taxaDraft, setTaxaDraft] = useState('');
+  const { result } = f;
+  const gapCents = Math.max(0, -result.saldoMinimo.saldoCents);
+  if (gapCents <= 0) return null;
+
+  const recupera = diasParaRecuperar(result.dias, result.saldoMinimo.offset);
+
+  const taxaNum = parseFloat(taxaDraft.trim().replace(',', '.'));
+  const taxaValida = taxaDraft.trim() !== '' && Number.isFinite(taxaNum) && taxaNum > 0;
+
+  const candidatos: AntecipacaoCandidato[] = f.receivables
+    .filter(r => r.source === 'ml')
+    .map(r => ({ dateIso: r.dateIso, amountCents: r.amountCents, source: r.source }));
+
+  const plano = taxaValida
+    ? planejarAntecipacao(gapCents, format(new Date(), 'yyyy-MM-dd'), candidatos, { taxaDiariaPct: taxaNum })
+    : null;
+
+  return (
+    <Card className="ring-1 ring-warning/40 bg-warning/5">
+      <CardContent className="space-y-4 py-5">
+        <div className="flex items-start gap-3">
+          <TrendingDown className="mt-0.5 size-5 shrink-0 text-warning" />
+          <div>
+            <p className="text-sm font-medium">
+              Pra não fechar no vermelho em <strong>{dataCurta(result.saldoMinimo.dateIso)}</strong>, faltam{' '}
+              <strong className="text-warning">{brl(gapCents)}</strong>.
+            </p>
+            {recupera != null && (
+              <p className="mt-1 flex items-center gap-1.5 text-xs text-muted-foreground">
+                <Clock3 className="size-3 shrink-0" />
+                Sem fazer nada, o saldo se recupera sozinho {recupera === 0 ? 'no dia seguinte' : `em ${recupera} dia${recupera === 1 ? '' : 's'}`}
+                {' '}— se der pra esperar, não precisa antecipar nada.
+              </p>
+            )}
+          </div>
+        </div>
+
+        <div className="flex flex-wrap items-end gap-3">
+          <div>
+            <Label htmlFor="taxa-antecipacao" className="text-xs">Taxa de antecipação (% ao dia)</Label>
+            <Input
+              id="taxa-antecipacao"
+              inputMode="decimal"
+              className="mt-1 w-32 font-mono"
+              placeholder="ex.: 0,15"
+              value={taxaDraft}
+              onChange={e => setTaxaDraft(e.target.value)}
+            />
+          </div>
+          <p className="max-w-sm text-xs text-muted-foreground">
+            Confira a sua taxa real na Central do Vendedor — varia por marketplace e por quantos dias faltam
+            pro repasse cair sozinho.
+          </p>
+        </div>
+
+        {plano && plano.itens.length > 0 && (
+          <div className="space-y-2 rounded-lg border border-border/60 bg-background px-3 py-3">
+            <p className="text-xs font-semibold">
+              {plano.cobre ? 'Antecipando isso, cobre o buraco todo:' : 'Não cobre tudo, mas é o que dá pra antecipar:'}
+            </p>
+            <ul className="space-y-1.5">
+              {plano.itens.map((it, i) => (
+                <li key={i} className="flex items-center justify-between gap-3 text-xs">
+                  <span className="min-w-0 truncate">
+                    {it.fracaoUsada < 0.99 ? `${(it.fracaoUsada * 100).toFixed(0)}% do ` : ''}recebível de {dataCurta(it.dateIso)}
+                    <span className="text-muted-foreground"> · {it.diasAntecipados}d antecipados</span>
+                  </span>
+                  <span className="shrink-0 font-mono tabular-nums">
+                    +{brl(it.valorLiquidoCents)} <span className="text-muted-foreground">(−{brl(it.custoCents)})</span>
+                  </span>
+                </li>
+              ))}
+            </ul>
+            <div className="flex items-center justify-between border-t border-border/60 pt-2 text-xs font-semibold">
+              <span>Total líquido hoje</span>
+              <span className="font-mono">
+                {brl(plano.totalLiquidoCents)}{' '}
+                <span className="font-normal text-muted-foreground">({plano.taxaMediaEfetivaPct.toFixed(2)}% de custo médio)</span>
+              </span>
+            </div>
+          </div>
+        )}
+        {plano && plano.itens.length === 0 && (
+          <p className="text-xs text-muted-foreground">
+            Não há recebível do Mercado Livre com data futura pra antecipar nesse período — só dá pra esperar
+            ou reforçar o caixa de outra forma.
+          </p>
+        )}
+
+        <p className="text-[11px] text-muted-foreground">
+          Só considera recebíveis do Mercado Livre com data de liberação confirmada — é o único hoje com uma
+          data real. Estimativa de Shopee/TikTok fica de fora (não dá pra antecipar em cima de estimativa).
         </p>
       </CardContent>
     </Card>
