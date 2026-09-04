@@ -34,7 +34,6 @@ export const sidebarGroups: NavGroup[] = [
       { title: 'Meta do mês', url: '/meta', icon: Target },
       { title: 'Previsão de caixa', url: '/previsao', icon: CalendarClock },
       { title: 'Reposição de estoque', url: '/reposicao', icon: PackageSearch, badge: 'Novo' },
-      { title: 'Radar de margem', url: '/radar-margem', icon: Radar, badge: 'Novo' },
     ],
   },
   {
@@ -55,6 +54,7 @@ export const sidebarGroups: NavGroup[] = [
       { title: 'Custos Fixos', url: '/precificacao/custos', icon: Receipt },
       { title: 'Detalhamento de taxas', url: '/taxas', icon: Percent },
       { title: 'Auditoria de repasse', url: '/repasses', icon: ShieldCheck, badge: 'Novo' },
+      { title: 'Radar de margem', url: '/radar-margem', icon: Radar, badge: 'Novo' },
       { title: 'DRE', url: '/dre', icon: BarChart3 },
     ],
   },
