@@ -12,7 +12,7 @@ import {
   ShoppingBag, TrendingUp, CheckCircle2, XCircle,
   HelpCircle, BarChart3, DollarSign, Tag,
   Percent, Package, Trash2, Pencil, Plus, X, ChevronRight, ChevronDown,
-  Trophy, Crown,
+  Trophy, Crown, Search, Check, Sparkles,
 } from "lucide-react";
 import { Separator } from "@/components/ui/separator";
 import { Badge } from "@/components/ui/badge";
@@ -33,8 +33,15 @@ import {
 import {
   Popover, PopoverContent, PopoverTrigger,
 } from "@/components/ui/popover";
+import {
+  Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList,
+} from "@/components/ui/command";
 import { useAnuncios, Anuncio, AnuncioInput, CustoAdicionalDB, TipoProduto, KitItemDB } from "@/hooks/useProdutos";
 import { useSelectedCompany } from "@/hooks/useSelectedCompany";
+import { useSkuCosts } from "@/hooks/useSkuCosts";
+import { findSkuCost, type SkuCostOption } from "@/lib/sku-cost-lookup";
+import { skuKey } from "@/lib/sku";
+import { cn } from "@/lib/utils";
 import { formatCurrency, formatPercent } from "@/lib/format";
 import {
   apurar,
@@ -163,6 +170,100 @@ const EMPTY_FORM = {
   kit_itens: [] as KitItem[],
 };
 type AnuncioForm = typeof EMPTY_FORM;
+
+// ─── Seletor de SKU com puxada de custo (A+B) ────────────────────────────────
+// Junta os SKUs que têm custo cadastrado (product_costs, via useSkuCosts) com os
+// SKUs já usados em anúncios. Ao escolher um da lista, o custo/embalagem descem
+// pro formulário. Digitar um SKU conhecido à mão mostra um atalho "aplicar".
+type SkuOption = { key: string; sku: string; nome: string | null; cost: SkuCostOption | null };
+
+const fmtNumInput = (n: number): string =>
+  n > 0 ? String(Math.round(n * 100) / 100).replace(".", ",") : "";
+
+function SkuField({
+  value, onChange, onPick, options, custoJaPreenchido,
+}: {
+  value: string;
+  onChange: (sku: string) => void;
+  onPick: (opt: SkuOption) => void;
+  options: SkuOption[];
+  custoJaPreenchido: boolean;
+}) {
+  const [open, setOpen] = useState(false);
+  const match = useMemo(() => {
+    const k = skuKey(value);
+    return k ? options.find(o => o.key === k) ?? null : null;
+  }, [value, options]);
+  const mostrarAtalho = !custoJaPreenchido && !!match?.cost;
+
+  return (
+    <div className="space-y-1.5">
+      <div className="flex gap-2">
+        <Input
+          id="anuncio_sku"
+          value={value}
+          onChange={e => onChange(e.target.value)}
+          placeholder="Ex: CAMISA-P-AZUL"
+          maxLength={120}
+          className="flex-1"
+        />
+        {options.length > 0 && (
+          <Popover open={open} onOpenChange={setOpen} modal>
+            <PopoverTrigger asChild>
+              <Button type="button" variant="outline" size="icon" className="shrink-0" title="Buscar SKU cadastrado">
+                <Search className="h-4 w-4" />
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent className="w-[320px] p-0" align="end">
+              <Command
+                filter={(val, search) =>
+                  val.toLowerCase().includes(search.toLowerCase()) ? 1 : 0
+                }
+              >
+                <CommandInput placeholder="Buscar por nome ou SKU…" />
+                <CommandList>
+                  <CommandEmpty>Nenhum SKU encontrado.</CommandEmpty>
+                  <CommandGroup>
+                    {options.map(opt => (
+                      <CommandItem
+                        key={opt.key}
+                        value={`${opt.nome ?? ""} ${opt.sku}`}
+                        onSelect={() => { onPick(opt); setOpen(false); }}
+                        className="flex items-center gap-2"
+                      >
+                        <Check className={cn("h-4 w-4 shrink-0", match?.key === opt.key ? "opacity-100" : "opacity-0")} />
+                        <span className="flex min-w-0 flex-col">
+                          <span className="truncate">{opt.nome ?? opt.sku}</span>
+                          <span className="truncate text-[11px] text-muted-foreground">
+                            {opt.sku}
+                            {opt.cost
+                              ? ` · custo ${formatCurrency(opt.cost.custo)}`
+                              : " · sem custo cadastrado"}
+                          </span>
+                        </span>
+                      </CommandItem>
+                    ))}
+                  </CommandGroup>
+                </CommandList>
+              </Command>
+            </PopoverContent>
+          </Popover>
+        )}
+      </div>
+
+      {mostrarAtalho && match && (
+        <button
+          type="button"
+          onClick={() => onPick(match)}
+          className="flex items-center gap-1.5 rounded-md bg-primary/10 px-2 py-1 text-[11px] font-medium text-primary hover:bg-primary/15"
+        >
+          <Sparkles className="h-3 w-3" />
+          Esse SKU tem custo cadastrado ({formatCurrency(match.cost!.custo)}) — aplicar
+        </button>
+      )}
+    </div>
+  );
+}
 
 // ─── Editor reutilizável de custos adicionais ────────────────────────────────
 function CustosAdicionaisEditor({
@@ -361,6 +462,25 @@ function CalculadoraPrecificacaoContent() {
   const { totalRecurringCosts, isLoading: isLoadingCosts, costs } = useFixedCosts();
   const { anuncios, isLoading: isLoadingAnuncios, addAnuncio, updateAnuncio, deleteAnuncio } = useAnuncios();
   const { companyId: filtroCompanyId, setCompanyId: setFiltroCompanyId, companies } = useSelectedCompany();
+  const { data: skuCostOptions = [] } = useSkuCosts();
+
+  // SKUs oferecidos no seletor do formulário: os que têm custo cadastrado
+  // (product_costs) + os já usados em anúncios (sem custo, mas reaproveitáveis).
+  const skuOptions = useMemo<SkuOption[]>(() => {
+    const map = new Map<string, SkuOption>();
+    for (const o of skuCostOptions) {
+      map.set(o.key, { key: o.key, sku: o.sku, nome: o.nome, cost: o });
+    }
+    for (const a of anuncios) {
+      if (!a.sku) continue;
+      const k = skuKey(a.sku);
+      if (!k || map.has(k)) continue;
+      map.set(k, { key: k, sku: a.sku, nome: a.nome_anuncio || null, cost: null });
+    }
+    return [...map.values()].sort((x, y) =>
+      (x.nome ?? x.sku).localeCompare(y.nome ?? y.sku, "pt-BR"),
+    );
+  }, [skuCostOptions, anuncios]);
 
   const mediaMargemPortfolio = useMemo(() => {
     if (!anuncios || anuncios.length === 0) return null;
@@ -434,6 +554,27 @@ function CalculadoraPrecificacaoContent() {
   const setFormField = (field: keyof AnuncioForm) =>
     (e: React.ChangeEvent<HTMLInputElement>) =>
       setAnuncioForm(prev => ({ ...prev, [field]: e.target.value }));
+
+  // Escolheu um SKU no seletor do formulário → puxa o que dá do product_costs.
+  // Só preenche campo vazio: nunca sobrescreve o que o usuário já digitou. Em
+  // produto tipo "kit" o Custo é a soma dos itens, então nem toca.
+  const applySkuOption = (opt: SkuOption) => {
+    setAnuncioForm(prev => {
+      const next: AnuncioForm = { ...prev, sku: opt.sku };
+      const c = opt.cost;
+      if (c && prev.tipo_produto !== "kit") {
+        if (parseInput(prev.custo) === 0 && c.custo > 0) next.custo = fmtNumInput(c.custo);
+        if (parseInput(prev.custo_var) === 0 && c.custoVar > 0) next.custo_var = fmtNumInput(c.custoVar);
+      }
+      if (!prev.nome_anuncio.trim() && opt.nome) next.nome_anuncio = opt.nome;
+      return next;
+    });
+    if (opt.cost && opt.cost.custo > 0) {
+      toast.success(`Custo ${formatCurrency(opt.cost.custo)} puxado do SKU — confira e ajuste se precisar`);
+    } else {
+      toast.info("Esse SKU ainda não tem custo cadastrado — preencha o Custo manualmente");
+    }
+  };
 
   const resetForm = () => { setAnuncioForm(EMPTY_FORM); setEditingId(null); };
 
@@ -798,10 +939,15 @@ function CalculadoraPrecificacaoContent() {
         <div className="grid grid-cols-2 gap-4">
           <div className="space-y-2">
             <Label htmlFor="anuncio_sku" className="font-medium">
-              SKU <span className="text-xs font-normal text-muted-foreground">— opcional</span>
+              SKU <span className="text-xs font-normal text-muted-foreground">— opcional, puxa o custo cadastrado</span>
             </Label>
-            <Input id="anuncio_sku" value={anuncioForm.sku}
-              onChange={setFormField("sku")} placeholder="Ex: CAMISA-P-AZUL" maxLength={120} />
+            <SkuField
+              value={anuncioForm.sku}
+              onChange={v => setAnuncioForm(prev => ({ ...prev, sku: v }))}
+              onPick={applySkuOption}
+              options={skuOptions}
+              custoJaPreenchido={isKitProduto || parseInput(anuncioForm.custo) > 0}
+            />
           </div>
           {companies.length > 0 && (
             <div className="space-y-2">
