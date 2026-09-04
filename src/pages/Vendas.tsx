@@ -1,16 +1,20 @@
 import { useEffect, useState } from 'react';
-import { Zap, ChevronLeft, ChevronRight, ExternalLink, Bell, BellOff, Loader2 } from 'lucide-react';
+import { Zap, ChevronLeft, ChevronRight, ExternalLink, Bell, BellOff, Loader2, ListFilter } from 'lucide-react';
 import { PageShell } from '@/components/layout/PageShell';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Select, SelectContent, SelectItem, SelectSeparator, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { toast } from 'sonner';
+import { cn } from '@/lib/utils';
 import { formatCurrency } from '@/lib/calculations';
-import { useSaleEvents, useMarkSaleEventsSeen, SaleEventProvider } from '@/hooks/useSaleEvents';
+import {
+  useSaleEvents, useSaleEventStatusCounts, useMarkSaleEventsSeen,
+  SaleEventProvider, SaleStatusGroup, saleStatusGroupOf,
+} from '@/hooks/useSaleEvents';
 import { usePushNotifications } from '@/hooks/usePushNotifications';
 
 function SalePushNotificationCard() {
@@ -114,7 +118,25 @@ function statusLabel(status: string): string {
     ?? (status.charAt(0).toUpperCase() + status.slice(1).toLowerCase()).replace(/_/g, ' ');
 }
 
-const CANCELLED_STATUSES = ['CANCELLED', 'IN_CANCEL', 'TO_RETURN', 'cancelled', 'invalid'];
+type StatusFilter = SaleStatusGroup | 'all';
+
+// Cada balde tem uma cor — o mesmo ponto colorido aparece no dropdown e o
+// badge da tabela herda a intenção (verde = entrou, âmbar = pendente,
+// vermelho = caiu).
+const STATUS_GROUP_META: Record<SaleStatusGroup, { label: string; hint: string; dot: string }> = {
+  sold:      { label: 'Vendidos',             hint: 'pagos e em andamento',        dot: 'bg-emerald-500' },
+  awaiting:  { label: 'Aguardando pagamento', hint: 'pedido criado, sem pagamento', dot: 'bg-amber-500'  },
+  cancelled: { label: 'Cancelados',           hint: 'cancelados e devoluções',      dot: 'bg-rose-500'   },
+};
+
+const STATUS_FILTER_ORDER: SaleStatusGroup[] = ['sold', 'awaiting', 'cancelled'];
+
+function statusBadgeVariant(status: string): 'secondary' | 'outline' | 'destructive' {
+  const g = saleStatusGroupOf(status);
+  if (g === 'cancelled') return 'destructive';
+  if (g === 'awaiting') return 'outline';
+  return 'secondary';
+}
 
 // `external_order_id` guardado pelo sync/webhook:
 //  - Shopee: `order_sn` (integration-sync/index.ts) — é o mesmo id que a rota
@@ -132,14 +154,23 @@ const PAGE_SIZE = 20;
 
 export default function Vendas() {
   const [provider, setProvider] = useState<ProviderFilter>('all');
+  const [status, setStatus] = useState<StatusFilter>('all');
   const [days, setDays] = useState('15');
   const [page, setPage] = useState(0);
 
+  const providerParam = provider === 'all' ? undefined : provider;
+
   const { data, isLoading } = useSaleEvents({
-    provider: provider === 'all' ? undefined : provider,
+    provider: providerParam,
+    statusGroup: status === 'all' ? undefined : status,
     days: Number(days),
     page,
     pageSize: PAGE_SIZE,
+  });
+
+  const { data: statusCounts } = useSaleEventStatusCounts({
+    provider: providerParam,
+    days: Number(days),
   });
 
   const markSeen = useMarkSaleEventsSeen();
@@ -166,9 +197,61 @@ export default function Vendas() {
     >
       <SalePushNotificationCard />
 
-      <div className="flex items-center gap-3 flex-wrap">
+      <div className="flex flex-wrap items-center gap-2 rounded-xl border bg-card/60 p-2 shadow-sm">
+        <div className="flex items-center gap-1.5 pl-1.5 pr-1 text-xs font-medium text-muted-foreground">
+          <ListFilter className="h-3.5 w-3.5" />
+          <span className="hidden sm:inline">Filtros</span>
+        </div>
+
+        {/* Status — dropdown com ponto colorido + contagem por balde */}
+        <Select
+          value={status}
+          onValueChange={(v) => { setStatus(v as StatusFilter); setPage(0); }}
+        >
+          <SelectTrigger className="h-9 w-[220px] gap-2 bg-background">
+            <div className="flex min-w-0 items-center gap-2">
+              <span
+                className={cn(
+                  'h-2 w-2 shrink-0 rounded-full',
+                  status === 'all' ? 'bg-muted-foreground/40' : STATUS_GROUP_META[status].dot,
+                )}
+              />
+              <span className="truncate">
+                {status === 'all' ? 'Todos os status' : STATUS_GROUP_META[status].label}
+              </span>
+            </div>
+          </SelectTrigger>
+          <SelectContent className="w-[260px]">
+            <SelectItem value="all">
+              <span className="flex items-center gap-2">
+                <span className="h-2 w-2 shrink-0 rounded-full bg-muted-foreground/40" />
+                Todos os status
+              </span>
+            </SelectItem>
+            <SelectSeparator />
+            {STATUS_FILTER_ORDER.map((g) => (
+              <SelectItem key={g} value={g}>
+                <span className="flex w-full items-center gap-2 pr-1">
+                  <span className={cn('h-2 w-2 shrink-0 rounded-full', STATUS_GROUP_META[g].dot)} />
+                  <span className="flex flex-col">
+                    <span className="leading-tight">{STATUS_GROUP_META[g].label}</span>
+                    <span className="text-[11px] leading-tight text-muted-foreground">
+                      {STATUS_GROUP_META[g].hint}
+                    </span>
+                  </span>
+                  {statusCounts && (
+                    <span className="ml-auto rounded-md bg-muted px-1.5 py-0.5 text-[11px] font-semibold tabular-nums text-muted-foreground">
+                      {statusCounts[g]}
+                    </span>
+                  )}
+                </span>
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+
         <Select value={provider} onValueChange={(v) => { setProvider(v as ProviderFilter); setPage(0); }}>
-          <SelectTrigger className="w-[180px]"><SelectValue /></SelectTrigger>
+          <SelectTrigger className="h-9 w-[180px] bg-background"><SelectValue /></SelectTrigger>
           <SelectContent>
             <SelectItem value="all">Todos os marketplaces</SelectItem>
             <SelectItem value="shopee">Shopee</SelectItem>
@@ -177,11 +260,22 @@ export default function Vendas() {
         </Select>
 
         <Select value={days} onValueChange={(v) => { setDays(v); setPage(0); }}>
-          <SelectTrigger className="w-[120px]"><SelectValue /></SelectTrigger>
+          <SelectTrigger className="h-9 w-[120px] bg-background"><SelectValue /></SelectTrigger>
           <SelectContent>
             {['7', '15', '30', '60'].map(v => <SelectItem key={v} value={v}>{v} dias</SelectItem>)}
           </SelectContent>
         </Select>
+
+        {(status !== 'all' || provider !== 'all') && (
+          <Button
+            variant="ghost"
+            size="sm"
+            className="h-9 text-xs text-muted-foreground"
+            onClick={() => { setStatus('all'); setProvider('all'); setPage(0); }}
+          >
+            Limpar
+          </Button>
+        )}
       </div>
 
       <Card>
@@ -190,7 +284,9 @@ export default function Vendas() {
             <p className="text-sm text-muted-foreground text-center py-6">Carregando...</p>
           ) : !data?.events?.length ? (
             <p className="text-sm text-muted-foreground text-center py-6">
-              Nenhuma venda no período selecionado.
+              {status === 'all' && provider === 'all'
+                ? 'Nenhuma venda no período selecionado.'
+                : 'Nenhuma venda com esses filtros no período selecionado.'}
             </p>
           ) : (
             <>
@@ -219,7 +315,7 @@ export default function Vendas() {
                       <TableCell className="text-sm max-w-[240px] truncate">{ev.product_name || '-'}</TableCell>
                       <TableCell className="text-sm font-semibold tabular-nums">{formatCurrency(ev.total_amount)}</TableCell>
                       <TableCell>
-                        <Badge variant={CANCELLED_STATUSES.includes(ev.status) ? 'destructive' : 'secondary'}>
+                        <Badge variant={statusBadgeVariant(ev.status)}>
                           {statusLabel(ev.status)}
                         </Badge>
                       </TableCell>
