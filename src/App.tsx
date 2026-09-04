@@ -30,6 +30,7 @@ const Produtos                  = lazy(() => import("./pages/Produtos"));
 const MetaDoMes                 = lazy(() => import("./pages/MetaDoMes"));
 const PrevisaoCaixa             = lazy(() => import("./pages/PrevisaoCaixa"));
 const Reposicao                 = lazy(() => import("./pages/Reposicao"));
+const RadarMargem               = lazy(() => import("./pages/RadarMargem"));
 const GestaoShell               = lazy(() => import("./pages/gestao/GestaoShell"));
 const Vendas                    = lazy(() => import("./pages/Vendas"));
 
@@ -98,6 +99,7 @@ const App = () => {
                 <Route path="/meta" element={<MetaDoMes />} />
                 <Route path="/previsao" element={<PrevisaoCaixa />} />
                 <Route path="/reposicao" element={<Reposicao />} />
+                <Route path="/radar-margem" element={<RadarMargem />} />
                 <Route path="/vendas" element={<Vendas />} />
 
                 {/* Gestão: casca única marketplace × view */}

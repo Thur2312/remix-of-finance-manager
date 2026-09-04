@@ -2,7 +2,7 @@ import {
   User, TrendingUp, Calculator, Receipt, Sparkles, BarChart3, HandCoins, Wallet,
   Plug, LayoutDashboard, Shield, Zap, Gauge, CalendarDays, Landmark, Wrench,
   FlaskConical, Target, CalendarClock, PackageSearch, Percent, Boxes, Building2,
-  ShieldCheck, type LucideIcon,
+  ShieldCheck, Radar, type LucideIcon,
 } from 'lucide-react';
 
 // Modelo de navegação da área interna — fonte única, consumida pela
@@ -34,6 +34,7 @@ export const sidebarGroups: NavGroup[] = [
       { title: 'Meta do mês', url: '/meta', icon: Target },
       { title: 'Previsão de caixa', url: '/previsao', icon: CalendarClock },
       { title: 'Reposição de estoque', url: '/reposicao', icon: PackageSearch, badge: 'Novo' },
+      { title: 'Radar de margem', url: '/radar-margem', icon: Radar, badge: 'Novo' },
     ],
   },
   {
