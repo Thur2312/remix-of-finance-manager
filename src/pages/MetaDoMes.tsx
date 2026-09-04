@@ -1,17 +1,20 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { differenceInDays } from 'date-fns';
-import { Target, TrendingUp, AlertTriangle, CheckCircle2, XCircle, CalendarClock } from 'lucide-react';
+import { Target, TrendingUp, AlertTriangle, CheckCircle2, XCircle, CalendarClock, AlertCircle } from 'lucide-react';
 import { PageShell } from '@/components/layout/PageShell';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { EmptyState } from '@/components/ui/empty-state';
+import { CompanySelector } from '@/components/dashboard/CompanySelector';
 import { cn } from '@/lib/utils';
 import { formatCurrency } from '@/lib/format';
 import { parseMoneyInput, type Cents } from '@/lib/money';
 import { useDREData } from '@/hooks/useDREData';
+import { useSelectedCompany } from '@/hooks/useSelectedCompany';
 import { useRevenueGoal } from '@/hooks/useRevenueGoal';
 import { computeRevenueGoal, type RevenueGoalVeredito } from '@/lib/goal';
 
@@ -25,13 +28,34 @@ const VEREDITO: Record<RevenueGoalVeredito, { icon: typeof Target; ring: string;
 const brl = (cents: number) => formatCurrency(cents / 100);
 
 function MetaContent() {
-  // scopeByCompany:false de propósito — a meta (monthly_revenue_goal) é um valor
-  // por usuário, não por empresa. Recortar só o faturamento por empresa deixaria
-  // a comparação torta (parte da receita vs. meta do todo). Uma meta por empresa
-  // é uma feature à parte; até lá, Meta do Mês é sempre consolidada.
-  const { dreData, isLoading, selectedPeriod } = useDREData({ scopeByCompany: false });
-  const goal = useRevenueGoal();
+  // Bloco D: a meta segue a empresa selecionada (mesmo store global do topbar/DRE).
+  //   - empresa X → faturamento/ritmo/projeção só de X, contra a meta de X
+  //     (companies.monthly_revenue_goal_cents).
+  //   - "Todas" → consolidado, contra a meta da operação
+  //     (cash_flow_settings.monthly_revenue_goal_cents).
+  // Como o dreData já vem recortado (Stage 4), faturamento e meta ficam no
+  // mesmo escopo — a comparação fecha.
+  const { dreData, isLoading, selectedPeriod, selectedCompany, setSelectedCompany, scope } = useDREData();
+  const { companies } = useSelectedCompany();
+  const companyId = selectedCompany?.id ?? null;
+  const multiEmpresa = companies.length >= 2;
+  const goal = useRevenueGoal(companyId);
   const [draft, setDraft] = useState('');
+
+  // troca de empresa → limpa o rascunho pra não vazar a meta digitada de uma
+  // empresa pro campo de outra.
+  useEffect(() => { setDraft(''); }, [companyId]);
+
+  const header = multiEmpresa ? (
+    <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+      <p className="text-sm text-muted-foreground">
+        {companyId
+          ? <>Meta e faturamento de <strong className="text-foreground">{selectedCompany?.name}</strong>.</>
+          : 'Meta consolidada — todas as empresas somadas.'}
+      </p>
+      <CompanySelector selectedCompany={selectedCompany} onSelect={setSelectedCompany} />
+    </div>
+  ) : null;
 
   const dados = useMemo(() => {
     if (!dreData || dreData.receitaBrutaTotal <= 0) return null;
@@ -53,6 +77,7 @@ function MetaContent() {
   if (isLoading || goal.isLoading) {
     return (
       <div className="space-y-4">
+        {header}
         <Skeleton className="h-24" />
         <Skeleton className="h-40" />
       </div>
@@ -61,11 +86,14 @@ function MetaContent() {
 
   if (!dados) {
     return (
-      <EmptyState
-        icon={Target}
-        title="Sem faturamento no mês ainda"
-        description="A meta acompanha o faturamento do mês corrente contra o alvo que você definir. Assim que entrarem vendas, ela aparece aqui."
-      />
+      <div className="space-y-4">
+        {header}
+        <EmptyState
+          icon={Target}
+          title={companyId ? `Sem faturamento de ${selectedCompany?.name} no mês` : 'Sem faturamento no mês ainda'}
+          description="A meta acompanha o faturamento do mês corrente contra o alvo que você definir. Assim que entrarem vendas, ela aparece aqui."
+        />
+      </div>
     );
   }
 
@@ -81,6 +109,18 @@ function MetaContent() {
 
   return (
     <div className="space-y-5">
+      {header}
+
+      {scope.byCompany && (multiEmpresa || scope.hasUnassignedConnection) && (
+        <Alert>
+          <AlertCircle className="h-4 w-4" />
+          <AlertDescription>
+            Faturamento, ritmo e projeção são só das lojas de <strong>{selectedCompany?.name}</strong>.
+            {scope.hasUnassignedConnection && ' Há loja sem empresa atribuída — o que ela fatura não entra aqui.'}
+          </AlertDescription>
+        </Alert>
+      )}
+
       {/* Onde você está */}
       <Card>
         <CardContent className="grid gap-4 pt-5 sm:grid-cols-3">
@@ -96,7 +136,14 @@ function MetaContent() {
       {/* Definir / editar a meta */}
       <Card>
         <CardContent className="space-y-3 pt-5">
-          <Label htmlFor="meta-mes">Meta de faturamento do mês</Label>
+          <Label htmlFor="meta-mes">
+            Meta de faturamento do mês
+            {multiEmpresa && (
+              <span className="ml-1 font-normal text-muted-foreground">
+                — {companyId ? selectedCompany?.name : 'consolidada'}
+              </span>
+            )}
+          </Label>
           <div className="flex flex-wrap items-end gap-3">
             <div className="min-w-0 flex-1">
               <Input

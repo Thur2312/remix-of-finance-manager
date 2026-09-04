@@ -411,6 +411,7 @@ export type Database = {
           cnpj: string
           created_at: string | null
           id: string
+          monthly_revenue_goal_cents: number | null
           name: string
           tax_base: string
           tax_rate: number
@@ -421,6 +422,7 @@ export type Database = {
           cnpj: string
           created_at?: string | null
           id?: string
+          monthly_revenue_goal_cents?: number | null
           name: string
           tax_base?: string
           tax_rate?: number
@@ -431,6 +433,7 @@ export type Database = {
           cnpj?: string
           created_at?: string | null
           id?: string
+          monthly_revenue_goal_cents?: number | null
           name?: string
           tax_base?: string
           tax_rate?: number

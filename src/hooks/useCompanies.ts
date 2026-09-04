@@ -9,6 +9,8 @@ export interface Company {
   cnpj: string;
   tax_rate: number;
   tax_base: TaxBase;
+  /** Meta de faturamento bruto do mês desta empresa, em centavos. null = sem meta. */
+  monthly_revenue_goal_cents: number | null;
   created_at: string;
   updated_at: string;
 }
