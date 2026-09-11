@@ -59,11 +59,13 @@ function FluxoCaixaDashboardContent() {
   // Saldo atual da conta: acumulado de todas as entradas e saídas já efetivadas até hoje (não reseta a cada mês)
   const currentBalance = computeAccumulatedBalance(expandedEntries, now);
   const pendingReceivables = expandedEntries.filter((e) => e.type === 'income' && e.status === 'pending').reduce((sum, e) => sum + Number(e.amount), 0);
-  const overduePayables = expandedEntries.filter((e) => {
-    if (e.type !== 'expense' || e.status === 'paid') return false;
-    if (!e.due_date) return false;
-    return isBefore(parseISO(e.due_date), now);
-  });
+  // "A Pagar" = TODA conta ainda não paga (mesmo critério de "A Receber" ao
+  // lado). Antes o filtro exigia due_date no passado (isBefore(now)) — uma
+  // conta a pagar lançada com vencimento futuro (o caso normal) nunca
+  // aparecia no card. `overdue` vira só um destaque de quem já venceu.
+  const pendingPayables = expandedEntries.filter((e) => e.type === 'expense' && e.status !== 'paid');
+  const pendingPayablesTotal = pendingPayables.reduce((sum, e) => sum + Number(e.amount), 0);
+  const overduePayables = pendingPayables.filter((e) => e.due_date && isBefore(parseISO(e.due_date), now));
   const overdueTotal = overduePayables.reduce((sum, e) => sum + Number(e.amount), 0);
   const upcomingEntries = expandedEntries.filter((e) => {
     if (e.status === 'paid' || e.status === 'received') return false;
@@ -137,17 +139,20 @@ function FluxoCaixaDashboardContent() {
             </CardContent>
           </Card>
 
-          <Card className={`${CARD} ${overdueTotal > 0 ? 'border-warning/40' : ''}`}>
+          <Card className={`${CARD} ${overduePayables.length > 0 ? 'border-warning/40' : ''}`}>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium">A Pagar</CardTitle>
-              
+
             </CardHeader>
             <CardContent>
               {isLoading ? <Skeleton className="h-8 w-24" /> : (
-                <Money reais={overdueTotal} className={`text-2xl font-bold ${overdueTotal > 0 ? 'text-warning' : 'text-muted-foreground'}`} />
+                <Money reais={pendingPayablesTotal} className={`text-2xl font-bold ${overduePayables.length > 0 ? 'text-warning' : pendingPayablesTotal > 0 ? 'text-foreground' : 'text-muted-foreground'}`} />
               )}
               <p className="text-xs text-muted-foreground">
-                {overduePayables.length} {overduePayables.length === 1 ? 'conta' : 'contas'}
+                {pendingPayables.length} {pendingPayables.length === 1 ? 'conta' : 'contas'} pendente{pendingPayables.length === 1 ? '' : 's'}
+                {overduePayables.length > 0 && (
+                  <span className="font-medium text-warning"> · {overduePayables.length} vencida{overduePayables.length === 1 ? '' : 's'} ({formatCurrency(overdueTotal)})</span>
+                )}
               </p>
             </CardContent>
           </Card>
