@@ -71,9 +71,13 @@ export function useIntegrations() {
   }, [data]);
 
   const startAuth = useMutation({
-    mutationFn: async (provider: string) => {
-      const { data, error } = await supabase.functions.invoke('integration-auth-start', {
-        body: { provider },
+    // Só TikTok chama isto (Shopee/ML têm entry points próprios — shopee-auth/
+    // mercadolivre-auth). Reescrita: tiktok-oauth-start substitui o branch
+    // "tiktok" de integration-auth-start (função antiga, não deletada ainda —
+    // ver memory da sessão).
+    mutationFn: async (_provider: string) => {
+      const { data, error } = await supabase.functions.invoke('tiktok-oauth-start', {
+        body: {},
       });
       if (error) throw error;
       return data as { authorization_url: string };
