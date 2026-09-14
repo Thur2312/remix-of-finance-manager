@@ -2385,6 +2385,90 @@ export type Database = {
         }
         Relationships: []
       }
+      tiktok_sync_state: {
+        Row: {
+          attempts: number
+          connection_id: string
+          cursor: string | null
+          id: string
+          last_error: string | null
+          resource: string
+          status: string
+          updated_at: string
+          window_since: string
+        }
+        Insert: {
+          attempts?: number
+          connection_id: string
+          cursor?: string | null
+          id?: string
+          last_error?: string | null
+          resource: string
+          status?: string
+          updated_at?: string
+          window_since: string
+        }
+        Update: {
+          attempts?: number
+          connection_id?: string
+          cursor?: string | null
+          id?: string
+          last_error?: string | null
+          resource?: string
+          status?: string
+          updated_at?: string
+          window_since?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "tiktok_sync_state_connection_id_fkey"
+            columns: ["connection_id"]
+            isOneToOne: false
+            referencedRelation: "integration_connections"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "tiktok_sync_state_connection_id_fkey"
+            columns: ["connection_id"]
+            isOneToOne: false
+            referencedRelation: "integration_connections_safe"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      tiktok_webhook_events: {
+        Row: {
+          error: string | null
+          event_type: string
+          external_event_id: string | null
+          id: string
+          payload: Json
+          processed_at: string | null
+          received_at: string
+          status: string
+        }
+        Insert: {
+          error?: string | null
+          event_type?: string
+          external_event_id?: string | null
+          id?: string
+          payload: Json
+          processed_at?: string | null
+          received_at?: string
+          status?: string
+        }
+        Update: {
+          error?: string | null
+          event_type?: string
+          external_event_id?: string | null
+          id?: string
+          payload?: Json
+          processed_at?: string | null
+          received_at?: string
+          status?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       integration_connections_safe: {
@@ -2515,6 +2599,23 @@ export type Database = {
       }
     }
     Functions: {
+      claim_tiktok_sync: {
+        Args: { p_connection_id: string; p_resource: string }
+        Returns: {
+          attempts: number
+          cursor: string
+          id: string
+          window_since: string
+        }[]
+      }
+      claim_tiktok_token_refresh: {
+        Args: { p_connection_id: string; p_margin_seconds?: number }
+        Returns: {
+          external_shop_id: string
+          id: string
+          refresh_token: string
+        }[]
+      }
       get_permission_limit: {
         Args: { permission_name: string; user_id: string }
         Returns: number
@@ -2547,8 +2648,11 @@ export type Database = {
         }
         Returns: undefined
       }
+      reconcile_tiktok_orders_window: { Args: never; Returns: undefined }
       trigger_auto_sync: { Args: never; Returns: undefined }
       trigger_finn_alerts: { Args: never; Returns: undefined }
+      trigger_tiktok_sync: { Args: never; Returns: undefined }
+      trigger_tiktok_token_refresh: { Args: never; Returns: undefined }
     }
     Enums: {
       [_ in never]: never
@@ -2684,3 +2788,5 @@ export const Constants = {
     Enums: {},
   },
 } as const
+A new version of Supabase CLI is available: v2.117.0 (currently installed v2.115.0)
+We recommend updating regularly for new features and bug fixes: https://supabase.com/docs/guides/cli/getting-started#updating-the-supabase-cli
