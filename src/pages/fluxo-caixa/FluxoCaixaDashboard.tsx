@@ -33,7 +33,7 @@ function FluxoCaixaDashboardContent() {
 
   // Initialize default categories if none exist
   useEffect(() => {
-    if (!categoriesLoading && categories.length === 0) {
+    if (!categoriesLoading && categories.length === 0 && !initializeDefaultCategories.isPending) {
       initializeDefaultCategories.mutate();
     }
   }, [categoriesLoading, categories.length, initializeDefaultCategories]);

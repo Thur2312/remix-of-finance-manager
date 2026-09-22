@@ -95,7 +95,7 @@ export function useCashFlowCategories() {
 
       const { error } = await supabase
         .from('cash_flow_categories')
-        .insert(categories);
+        .upsert(categories, { onConflict: 'user_id,name', ignoreDuplicates: true });
 
       if (error) throw error;
     },
