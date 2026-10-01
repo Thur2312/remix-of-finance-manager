@@ -38,7 +38,25 @@ function timingSafeEqual(a: string, b: string): boolean {
   return diff === 0
 }
 
-async function refreshShopeeToken(baseUrl: string, partnerId: number, partnerKey: string, refreshToken: string, shopId: number): Promise<{ access_token: string; refresh_token: string; expire_in: number; refresh_token_expire_in: number } | null> {
+type ShopeeRefreshResult =
+  | { ok: true; access_token: string; refresh_token: string; expire_in: number; refresh_token_expire_in: number }
+  // "denied": a Shopee recusou o refresh_token especificamente (ex.: error_auth
+  // com refresh_token inválido/revogado) — a loja precisa reconectar de verdade.
+  // "retry": qualquer outra coisa (rede, HTTP 5xx, erro de assinatura/partner
+  // key, exceção) — pode ser um blip sistêmico, não é culpa dessa loja.
+  | { ok: false; kind: "denied" | "retry"; code: string; message: string }
+
+// Códigos da Shopee V2 que indicam especificamente refresh_token inválido/
+// revogado (ref: docs Open Platform, auth.access_token.get). Qualquer coisa
+// fora dessa lista (ex.: erro de assinatura por partner key vencida) cai em
+// "retry" por padrão — mais seguro do que presumir "loja precisa reconectar".
+const SHOPEE_REFRESH_TOKEN_DENIED_CODES = new Set([
+  "error_auth_token_invalid",
+  "error_auth_token_expired",
+  "invalid_refresh_token",
+])
+
+async function refreshShopeeToken(baseUrl: string, partnerId: number, partnerKey: string, refreshToken: string, shopId: number): Promise<ShopeeRefreshResult> {
   try {
     const timestamp = ts()
     const path = "/api/v2/auth/access_token/get"
@@ -48,10 +66,18 @@ async function refreshShopeeToken(baseUrl: string, partnerId: number, partnerKey
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ refresh_token: refreshToken, partner_id: partnerId, shop_id: shopId }),
     })
-    if (!res.ok) { console.error("Refresh token HTTP error:", res.status); return null }
+    if (!res.ok) {
+      console.error("Refresh token HTTP error:", res.status)
+      return { ok: false, kind: "retry", code: `http_${res.status}`, message: `HTTP ${res.status}` }
+    }
     const data = await res.json()
-    if (data.error && data.error !== "") { console.error("Token refresh error:", data.message); return null }
+    if (data.error && data.error !== "") {
+      console.error("Token refresh error:", data.error, data.message)
+      const kind = SHOPEE_REFRESH_TOKEN_DENIED_CODES.has(data.error) ? "denied" : "retry"
+      return { ok: false, kind, code: data.error, message: data.message || data.error }
+    }
     return {
+      ok: true,
       access_token: data.access_token || "",
       refresh_token: data.refresh_token || "",
       expire_in: data.expire_in || 0,
@@ -59,7 +85,7 @@ async function refreshShopeeToken(baseUrl: string, partnerId: number, partnerKey
     }
   } catch (err) {
     console.error("Token refresh exception:", err)
-    return null
+    return { ok: false, kind: "retry", code: "exception", message: err instanceof Error ? err.message : String(err) }
   }
 }
 
@@ -247,7 +273,7 @@ serve(async (req) => {
       console.log("🔄 Token expiring soon, refreshing...")
       const decryptedRefreshToken = await decryptToken(connection.refresh_token) || ""
       const refreshed = await refreshShopeeToken(BASE_URL, PARTNER_ID, PARTNER_KEY, decryptedRefreshToken, shopId)
-      if (refreshed && refreshed.access_token) {
+      if (refreshed.ok) {
         const now2 = new Date()
         const expireAt = refreshed.expire_in > 0 ? new Date(now2.getTime() + refreshed.expire_in * 1000).toISOString() : null
         const refreshExpireAt = refreshed.refresh_token_expire_in > 0 ? new Date(now2.getTime() + refreshed.refresh_token_expire_in * 1000).toISOString() : null
@@ -256,16 +282,40 @@ serve(async (req) => {
           refresh_token: await encryptToken(refreshed.refresh_token),
           token_expires_at: expireAt,
           refresh_token_expires_at: refreshExpireAt,
+          consecutive_refresh_failures: 0,
+          last_error_code: null,
+          last_error_message: null,
           updated_at: now2.toISOString(),
         }).eq("id", connection_id)
         if (updateError) console.error("Erro ao atualizar tokens:", updateError)
         accessToken = refreshed.access_token
         console.log("✅ Token refreshed successfully")
       } else {
-        console.error("❌ Failed to refresh token")
-        await supabaseAdmin.from("integration_connections").update({ status: "expired", updated_at: new Date().toISOString() }).eq("id", connection_id)
-        return new Response(JSON.stringify({ error: "Token expirado. Reconecte." }), {
-          status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" }
+        console.error("❌ Failed to refresh token:", refreshed.kind, refreshed.code, refreshed.message)
+
+        // "denied" = a Shopee recusou ESSE refresh_token especificamente
+        // (inválido/revogado) -- não adianta tentar de novo, a loja precisa
+        // reconectar. "retry" = pode ser blip sistêmico (rede, partner key,
+        // Shopee fora do ar) -- só desiste depois de algumas falhas seguidas,
+        // pra um incidente pontual não derrubar o auto-sync de todo mundo de
+        // uma vez (foi exatamente isso que aconteceu quando a partner key do
+        // app expirou em 22/09: 1ª falha já marcava 'expired' pra sempre).
+        const failureCount = (connection.consecutive_refresh_failures || 0) + 1
+        const FAILURE_THRESHOLD = 3
+        const shouldExpire = refreshed.kind === "denied" || failureCount >= FAILURE_THRESHOLD
+
+        await supabaseAdmin.from("integration_connections").update({
+          status: shouldExpire ? "expired" : connection.status,
+          consecutive_refresh_failures: failureCount,
+          last_error_code: refreshed.code,
+          last_error_message: refreshed.message,
+          updated_at: new Date().toISOString(),
+        }).eq("id", connection_id)
+
+        return new Response(JSON.stringify({
+          error: shouldExpire ? "Token expirado. Reconecte." : "Falha temporária ao renovar token, tentando de novo no próximo ciclo.",
+        }), {
+          status: shouldExpire ? 401 : 503, headers: { ...corsHeaders, "Content-Type": "application/json" }
         })
       }
     }
