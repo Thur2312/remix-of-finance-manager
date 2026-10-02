@@ -1,8 +1,9 @@
 import { useState } from "react";
 import { ChevronDown, Check } from "lucide-react";
 import { AnimatePresence, motion } from "framer-motion";
-import { Reveal } from "./Reveal";
+import { Reveal, EXPO_OUT } from "./Reveal";
 import { SectionTag } from "./SectionTag";
+import { useCountUp, useInView, useStaggeredFlags } from "./hooks";
 
 function AccordionPanel({ children }: { children: React.ReactNode }) {
   return (
@@ -63,20 +64,32 @@ const marginBars = [
 ];
 
 function MarginMockup() {
+  const [ref, visible] = useInView<HTMLDivElement>();
+  const flags = useStaggeredFlags(visible, marginBars.length, 150, 100);
+
   return (
-    <div className="glass-card rounded-2xl p-6 max-w-md">
+    <div ref={ref} className="glass-card rounded-2xl p-6 max-w-md">
       <p className="text-xs font-semibold uppercase tracking-wider text-gray-400 mb-5">Margem por produto</p>
       <div className="space-y-4">
-        {marginBars.map((row) => (
+        {marginBars.map((row, i) => (
           <div key={row.label}>
             <div className="flex items-center justify-between text-sm mb-1.5">
               <span className="text-gray-600">{row.label}</span>
-              <span className="font-mono font-semibold text-[#0A1628]">{row.pct}%</span>
+              <motion.span
+                className="font-mono font-semibold text-[#0A1628]"
+                initial={{ opacity: 0 }}
+                animate={flags[i] ? { opacity: 1 } : {}}
+                transition={{ duration: 0.3 }}
+              >
+                {row.pct}%
+              </motion.span>
             </div>
             <div className="h-2 rounded-full bg-gray-100 overflow-hidden">
-              <div
+              <motion.div
                 className="h-full rounded-full bg-gradient-to-r from-[#318EF1] to-[#5BA6F5]"
-                style={{ width: `${row.pct}%` }}
+                initial={{ width: 0 }}
+                animate={flags[i] ? { width: `${row.pct}%` } : {}}
+                transition={{ duration: 0.6, ease: EXPO_OUT }}
               />
             </div>
           </div>
@@ -87,8 +100,11 @@ function MarginMockup() {
 }
 
 function PricingCalcMockup() {
+  const [ref, visible] = useInView<HTMLDivElement>();
+  const priceCents = useCountUp(4635, 700, visible);
+
   return (
-    <div className="glass-card rounded-2xl p-6 max-w-xs mx-auto lg:mx-0">
+    <div ref={ref} className="glass-card rounded-2xl p-6 max-w-xs mx-auto lg:mx-0">
       <p className="text-xs font-semibold uppercase tracking-wider text-gray-400 mb-4">Calculadora de preço</p>
       <div className="space-y-3 text-sm">
         {[
@@ -104,7 +120,9 @@ function PricingCalcMockup() {
       </div>
       <div className="mt-4 rounded-xl p-4 text-center" style={{ backgroundColor: "#0A1628" }}>
         <p className="text-white/50 text-[11px] uppercase tracking-wide mb-1">Preço ideal de venda</p>
-        <p className="font-display text-white text-2xl font-bold">R$ 46,35</p>
+        <p className="font-display text-white text-2xl font-bold tabular-nums">
+          R$ {(priceCents / 100).toFixed(2).replace(".", ",")}
+        </p>
       </div>
     </div>
   );
@@ -117,8 +135,10 @@ const invoiceFields = [
 ];
 
 function InvoiceMockup() {
+  const [ref, visible] = useInView<HTMLDivElement>();
+
   return (
-    <div className="glass-card rounded-2xl p-6 max-w-sm mx-auto lg:mx-0">
+    <div ref={ref} className="glass-card rounded-2xl p-6 max-w-sm mx-auto lg:mx-0">
       <div className="flex items-center justify-between mb-5">
         <p className="text-xs font-semibold uppercase tracking-wider text-gray-400">Dados pra nota fiscal</p>
         <span className="text-[10px] font-bold uppercase tracking-wider text-[#318EF1] bg-[#318EF1]/10 rounded-full px-2 py-1">
@@ -126,15 +146,20 @@ function InvoiceMockup() {
         </span>
       </div>
       <div className="space-y-3">
-        {invoiceFields.map((f) => (
+        {invoiceFields.map((f, i) => (
           <div key={f.label} className="flex items-center justify-between gap-3 py-2 border-b border-gray-100 last:border-0">
             <div className="min-w-0">
               <p className="text-[11px] text-gray-400">{f.label}</p>
               <p className="text-sm font-medium text-[#0A1628] truncate">{f.value}</p>
             </div>
-            <div className="shrink-0 w-6 h-6 rounded-full bg-emerald-50 flex items-center justify-center">
+            <motion.div
+              className="shrink-0 w-6 h-6 rounded-full bg-emerald-50 flex items-center justify-center"
+              initial={{ scale: 0, opacity: 0 }}
+              animate={visible ? { scale: 1, opacity: 1 } : {}}
+              transition={{ duration: 0.35, delay: 0.3 + i * 0.18, ease: EXPO_OUT }}
+            >
               <Check className="w-3.5 h-3.5 text-emerald-600" />
-            </div>
+            </motion.div>
           </div>
         ))}
       </div>

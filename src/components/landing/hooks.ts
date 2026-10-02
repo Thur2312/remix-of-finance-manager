@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 const NAV_OFFSET = 2; // espaço pra seção não ficar escondida atrás da navbar flutuante
 const OVERSHOOT_PX = 30; // "quique" sutil no fim do scroll — não um salto exagerado
@@ -52,6 +52,45 @@ export function scrollToSection(hash: string) {
     }
   };
   requestAnimationFrame(runTravel);
+}
+
+// Dispara `visible` uma vez quando o elemento referenciado entra na tela —
+// base pra qualquer cartão de prova (DRE, margem, calculadora) que deve
+// "acontecer" ao rolar até ele, em vez de já aparecer pronto.
+export function useInView<T extends HTMLElement>(threshold = 0.4) {
+  const ref = useRef<T>(null);
+  const [visible, setVisible] = useState(false);
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        if (entry.isIntersecting) {
+          setVisible(true);
+          observer.disconnect();
+        }
+      },
+      { threshold },
+    );
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, [threshold]);
+  return [ref, visible] as const;
+}
+
+// Liga um booleano por vez, em sequência, a partir do momento que `trigger`
+// vira true — a cadência "receita aparece, depois taxas, depois custo,
+// depois lucro" sem repetir setTimeout manual em cada seção.
+export function useStaggeredFlags(trigger: boolean, count: number, stepMs: number, startDelay = 0) {
+  const [flags, setFlags] = useState<boolean[]>(() => Array(count).fill(false));
+  useEffect(() => {
+    if (!trigger) return;
+    const timers = Array.from({ length: count }, (_, i) =>
+      setTimeout(() => setFlags((prev) => prev.map((v, idx) => (idx === i ? true : v))), startDelay + i * stepMs),
+    );
+    return () => timers.forEach(clearTimeout);
+  }, [trigger, count, stepMs, startDelay]);
+  return flags;
 }
 
 export function useCountUp(target: number, duration = 1500, start = false) {

@@ -1,11 +1,15 @@
 import { ArrowRight, Calculator, TrendingUp } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
-import { Reveal } from "./Reveal";
+import { Reveal, EXPO_OUT } from "./Reveal";
 import { RollButton } from "./RollButton";
+import { useCountUp, useInView } from "./hooks";
 
 export function CTASection() {
   const navigate = useNavigate();
+  const [statsRef, statsVisible] = useInView<HTMLDivElement>();
+  const profit = useCountUp(8420, 900, statsVisible);
+  const marginTenths = useCountUp(325, 700, statsVisible);
 
   return (
     <section className="relative py-16 md:py-24 text-white">
@@ -30,7 +34,7 @@ export function CTASection() {
           </Reveal>
 
           <Reveal delay={0.15} className="hidden lg:block">
-            <div className="relative">
+            <div ref={statsRef} className="relative">
               <motion.div
                 whileHover={{ y: -4 }}
                 transition={{ type: "spring", stiffness: 300, damping: 20 }}
@@ -42,11 +46,18 @@ export function CTASection() {
                   </div>
                   <div>
                     <p className="text-gray-500 text-xs">Lucro do mês</p>
-                    <p className="text-[#0A1628] font-bold text-xl">R$ 8.420,00</p>
+                    <p className="text-[#0A1628] font-bold text-xl tabular-nums">
+                      R$ {profit.toLocaleString("pt-BR")},00
+                    </p>
                   </div>
                 </div>
-                <div className="h-2 bg-gray-100 rounded-full">
-                  <div className="h-2 bg-[#318EF1] rounded-full w-3/4" />
+                <div className="h-2 bg-gray-100 rounded-full overflow-hidden">
+                  <motion.div
+                    className="h-2 bg-[#318EF1] rounded-full"
+                    initial={{ width: 0 }}
+                    animate={statsVisible ? { width: "75%" } : {}}
+                    transition={{ duration: 0.8, delay: 0.3, ease: EXPO_OUT }}
+                  />
                 </div>
                 <p className="text-gray-400 text-xs mt-1">75% da meta atingida</p>
               </motion.div>
@@ -61,7 +72,7 @@ export function CTASection() {
                   </div>
                   <div>
                     <p className="text-gray-500 text-xs">Margem média</p>
-                    <p className="text-[#0A1628] font-bold text-xl">32,5%</p>
+                    <p className="text-[#0A1628] font-bold text-xl tabular-nums">{(marginTenths / 10).toFixed(1)}%</p>
                   </div>
                 </div>
               </motion.div>
