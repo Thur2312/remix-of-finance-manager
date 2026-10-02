@@ -29,8 +29,8 @@ export function Navbar() {
     <>
       <div className="fixed top-0 left-0 right-0 z-50 p-2 sm:p-3">
         <nav
-          className={`max-w-[1200px] mx-auto flex items-center justify-between rounded-full pl-5 pr-2 py-2 transition-all duration-300 paper-panel ${
-            scrolled ? "shadow-[0_10px_30px_-10px_hsl(var(--landing-ink)/0.25)]" : ""
+          className={`max-w-[1200px] mx-auto flex items-center justify-between rounded-full pl-5 pr-2 py-2 transition-all duration-300 glass-panel ${
+            scrolled ? "shadow-[0_10px_30px_-10px_rgba(0,0,0,0.5)]" : ""
           }`}
         >
           <a
@@ -53,10 +53,10 @@ export function Navbar() {
                   e.preventDefault();
                   scrollToSection(link.href);
                 }}
-                className="group relative text-landing-ink-muted hover:text-landing-ink text-sm font-medium transition-colors py-1"
+                className="group relative text-white/70 hover:text-white text-sm font-medium transition-colors py-1"
               >
                 {link.label}
-                <span className="absolute left-0 -bottom-0.5 h-px w-full origin-left scale-x-0 bg-landing-stamp transition-transform duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] group-hover:scale-x-100" />
+                <span className="absolute left-0 -bottom-0.5 h-px w-full origin-left scale-x-0 bg-[#318EF1] transition-transform duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] group-hover:scale-x-100" />
               </a>
             ))}
           </div>
@@ -64,7 +64,7 @@ export function Navbar() {
           <div className="hidden md:flex items-center gap-2">
             <button
               onClick={() => (user ? navigate("/fluxo-caixa") : navigate("/user/auth"))}
-              className="group relative flex items-center gap-1.5 text-landing-ink/80 hover:text-landing-ink text-sm font-medium pl-4 pr-3.5 py-2 rounded-full hover:bg-landing-ink/[0.06] transition-colors duration-300"
+              className="group relative flex items-center gap-1.5 text-white/80 hover:text-white text-sm font-medium pl-4 pr-3.5 py-2 rounded-full hover:bg-white/[0.06] transition-colors duration-300"
             >
               <span>{user ? "Dashboard" : "Login"}</span>
               <ArrowRight className="w-3.5 h-3.5 -ml-1.5 scale-0 opacity-0 group-hover:ml-0 group-hover:scale-100 group-hover:opacity-100 transition-all duration-300 ease-[cubic-bezier(0.16,1,0.3,1)]" />
@@ -73,13 +73,13 @@ export function Navbar() {
               label="Assine já"
               icon={<ArrowRight size={14} className="text-white" />}
               onClick={() => navigate("/user/auth?redirect=/planos")}
-              className="bg-landing-stamp hover:bg-landing-stamp-dark text-white pl-5 pr-4 py-2.5 shadow-[0_10px_25px_-8px_hsl(var(--landing-stamp)/0.5)]"
+              className="bg-[#318EF1] hover:bg-[#2678d1] text-white pl-5 pr-4 py-2.5 shadow-[0_10px_25px_-8px_rgba(49,142,241,0.6)]"
               textWrapperClassName="text-sm font-semibold"
               circleClassName="w-4 h-4"
             />
           </div>
 
-          <button className="md:hidden text-landing-ink p-2" onClick={() => setMobileOpen((v) => !v)} aria-label={mobileOpen ? "Fechar menu" : "Abrir menu"}>
+          <button className="md:hidden text-white p-2" onClick={() => setMobileOpen((v) => !v)} aria-label={mobileOpen ? "Fechar menu" : "Abrir menu"}>
             {mobileOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
           </button>
         </nav>
@@ -100,14 +100,14 @@ export function Navbar() {
               animate={{ y: 0 }}
               exit={{ y: "100%" }}
               transition={{ duration: 0.4, ease: [0.32, 0.72, 0, 1] }}
-              className="md:hidden fixed inset-x-0 bottom-0 z-50 mx-3 mb-3 rounded-2xl bg-landing-paper-raised border border-landing-ink/10 p-6"
+              className="md:hidden fixed inset-x-0 bottom-0 z-50 mx-3 mb-3 rounded-2xl bg-[#0F2038] border border-white/10 p-6"
             >
               <div className="flex flex-col mb-6">
                 {navLinks.map((link) => (
                   <a
                     key={link.href}
                     href={link.href}
-                    className="py-2.5 text-2xl font-medium text-landing-ink"
+                    className="py-2.5 text-2xl font-medium text-white"
                     onClick={(e) => {
                       e.preventDefault();
                       setMobileOpen(false);
@@ -125,7 +125,7 @@ export function Navbar() {
                   setMobileOpen(false);
                   navigate("/user/auth?redirect=/planos");
                 }}
-                className="btn-cta-stamp w-full justify-center"
+                className="btn-cta w-full justify-center"
               >
                 ASSINE AGORA →
               </button>

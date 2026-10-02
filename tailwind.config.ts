@@ -125,22 +125,6 @@ export default {
   				DEFAULT: 'hsl(var(--gold))',
   				light: 'hsl(var(--gold-light))',
   				foreground: 'hsl(var(--gold-foreground))'
-  			},
-  			'landing-paper': {
-  				DEFAULT: 'hsl(var(--landing-paper))',
-  				raised: 'hsl(var(--landing-paper-raised))'
-  			},
-  			'landing-ink': {
-  				DEFAULT: 'hsl(var(--landing-ink))',
-  				muted: 'hsl(var(--landing-ink-muted))'
-  			},
-  			'landing-stamp': {
-  				DEFAULT: 'hsl(var(--landing-stamp))',
-  				dark: 'hsl(var(--landing-stamp-dark))'
-  			},
-  			'landing-ledger': {
-  				DEFAULT: 'hsl(var(--landing-ledger))',
-  				light: 'hsl(var(--landing-ledger-light))'
   			}
   		},
   		borderRadius: {

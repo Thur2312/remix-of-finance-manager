@@ -15,8 +15,8 @@ type GrowthMotifProps = {
 // seções de conteúdo com clusters de barrinhas e chips de dado, tem um
 // "flash" de chegada ao fim da vitrine (Pricing) e depois segue, bem mais
 // quieta, como um fio residual até o fim da página, esmaecendo pouco antes
-// do rodapé acabar. A cor evolui de vermelho-selo (a maior parte do trajeto,
-// a "ação") pra verde-ledger só na reta final — o resultado (lucro) da jornada.
+// do rodapé acabar. A cor evolui de azul (a maior parte do trajeto) pra um
+// dourado sutil só na reta final — o resultado da jornada.
 // Scroll-scrub via GSAP ScrollTrigger (stroke-dasharray), técnica herdada do
 // motivo botânico da Selva Nutrition, com vocabulário financeiro.
 const VIEW_W = 1000;
@@ -68,11 +68,8 @@ const PARTICLES: { x: number; y: number; r: number; dur: number; delay: number }
 
 const GRID_LINES = 9;
 
-const TIP_COLOR_START = "#C4452E";
-const TIP_COLOR_LEDGER = "#2F5233";
-// Tom mais claro do selo, pro brilho da ponta/arrival-glow e barra de destaque
-// (papel equivalente ao antigo azul-claro de highlight).
-const LIGHT_STAMP = "#DD9080";
+const TIP_COLOR_START = "#5BA6F5";
+const TIP_COLOR_GOLD = "#F2C078";
 
 function lerpColor(a: string, b: string, t: number) {
   const pa = parseInt(a.slice(1), 16);
@@ -214,7 +211,7 @@ export function GrowthMotif({ containerRef }: GrowthMotifProps) {
             const t = drawn / length;
             const shiftT = Math.max(0, Math.min(1, (t - 0.66) / 0.34));
             if (shiftT > 0) {
-              tip?.setAttribute("fill", lerpColor(TIP_COLOR_START, TIP_COLOR_LEDGER, shiftT));
+              tip?.setAttribute("fill", lerpColor(TIP_COLOR_START, TIP_COLOR_GOLD, shiftT));
             }
           },
         },
@@ -298,11 +295,11 @@ export function GrowthMotif({ containerRef }: GrowthMotifProps) {
         >
           <defs>
             <linearGradient id="growthGradient" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="0%" stopColor="#C4452E" stopOpacity="0.55" />
-              <stop offset="40%" stopColor="#C4452E" stopOpacity="0.4" />
-              <stop offset="68%" stopColor="#C4452E" stopOpacity="0.35" />
-              <stop offset="88%" stopColor="#5F7249" stopOpacity="0.4" />
-              <stop offset="100%" stopColor="#2F5233" stopOpacity="0.65" />
+              <stop offset="0%" stopColor="#5BA6F5" stopOpacity="0.7" />
+              <stop offset="40%" stopColor="#318EF1" stopOpacity="0.55" />
+              <stop offset="68%" stopColor="#318EF1" stopOpacity="0.48" />
+              <stop offset="88%" stopColor="#E3A75C" stopOpacity="0.55" />
+              <stop offset="100%" stopColor="#F2C078" stopOpacity="0.8" />
             </linearGradient>
             <filter id="growthTipGlow" x="-150%" y="-150%" width="400%" height="400%">
               <feGaussianBlur stdDeviation="4" />
@@ -320,15 +317,15 @@ export function GrowthMotif({ containerRef }: GrowthMotifProps) {
               y1={(VIEW_H / (GRID_LINES + 1)) * (i + 1)}
               x2={VIEW_W}
               y2={(VIEW_H / (GRID_LINES + 1)) * (i + 1)}
-              stroke="hsl(var(--landing-ink))"
-              strokeOpacity={0.05}
+              stroke="#FFFFFF"
+              strokeOpacity={0.025}
               strokeWidth={1}
             />
           ))}
 
           {/* Motas ambientes flutuando devagar, soltas do scroll — companhia pro traço */}
           {PARTICLES.map((p, i) => (
-            <circle key={i} data-particle cx={p.x} cy={p.y} r={p.r} fill="#C4452E" opacity={0.18} />
+            <circle key={i} data-particle cx={p.x} cy={p.y} r={p.r} fill="#5BA6F5" opacity={0.22} />
           ))}
 
           <path
@@ -355,7 +352,7 @@ export function GrowthMotif({ containerRef }: GrowthMotifProps) {
                     width={6}
                     height={h}
                     rx={1.5}
-                    fill={i === BAR_HEIGHTS.length - 1 ? LIGHT_STAMP : "#C4452E"}
+                    fill={i === BAR_HEIGHTS.length - 1 ? "#8CC4FF" : "#318EF1"}
                     fillOpacity={0.55 + i * 0.15}
                   />
                 );
@@ -363,8 +360,8 @@ export function GrowthMotif({ containerRef }: GrowthMotifProps) {
             </g>
           ))}
 
-          <circle ref={arrivalGlowRef} cx={ARRIVAL_X} cy={ARRIVAL_Y} r={6} fill={LIGHT_STAMP} filter="url(#growthEndGlow)" />
-          <circle ref={tipRef} r={5} fill={LIGHT_STAMP} filter="url(#growthTipGlow)" />
+          <circle ref={arrivalGlowRef} cx={ARRIVAL_X} cy={ARRIVAL_Y} r={6} fill="#8CC4FF" filter="url(#growthEndGlow)" />
+          <circle ref={tipRef} r={5} fill="#8CC4FF" filter="url(#growthTipGlow)" />
         </svg>
 
         {MARKS.map((m) => {
@@ -374,17 +371,17 @@ export function GrowthMotif({ containerRef }: GrowthMotifProps) {
             <div
               key={m.label}
               data-chip
-              className="absolute flex items-center gap-1.5 rounded-full border border-landing-ink/10 bg-landing-paper-raised/80 backdrop-blur-sm px-2.5 py-1.5"
+              className="absolute flex items-center gap-1.5 rounded-full border border-white/10 bg-white/[0.05] backdrop-blur-sm px-2.5 py-1.5"
               style={{
                 left: `${left}%`,
                 top: `${top}%`,
                 transform: `translate(${m.chipDir === 1 ? "18px" : "calc(-100% - 18px)"}, -50%)`,
               }}
             >
-              <TrendingUp className="w-3 h-3 text-landing-ledger shrink-0" />
-              <span className="text-[11px] font-semibold text-landing-ink leading-none whitespace-nowrap">
+              <TrendingUp className="w-3 h-3 text-[#8CC4FF] shrink-0" />
+              <span className="text-[11px] font-semibold text-white/80 leading-none whitespace-nowrap">
                 {m.label}
-                <span className="ml-1 font-normal text-landing-ink-muted">{m.sub}</span>
+                <span className="ml-1 font-normal text-white/40">{m.sub}</span>
               </span>
             </div>
           );

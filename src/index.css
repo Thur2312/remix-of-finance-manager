@@ -44,26 +44,11 @@
 
     --radius: 1rem;
 
-    /* Landing (Fase 1, legado): navy de destaque + accent dourado/ambar. Ainda
-       usado pelo app interno (sidebar/chrome) -- não mexer sem atualizar lá
-       também. A landing pública migrou pra --landing-* (ver abaixo, Fase 2,
-       docs/design-system.md) e não usa mais estes tokens. */
+    /* Landing (Fase 1): navy de destaque + accent dourado/ambar, fora da familia azul */
     --navy: 216 60% 10%;
     --gold: 38 61% 56%;
     --gold-light: 42 77% 60%;
     --gold-foreground: 216 60% 10%;
-
-    /* Landing (Fase 2) — "Recibo & Caderno de contas", docs/design-system.md.
-       Só a landing pública (/) usa isto; o app interno logado continua nos
-       tokens --navy/--gold/--primary acima, sem mudança. */
-    --landing-paper: 40 45% 92%;
-    --landing-paper-raised: 40 50% 97%;
-    --landing-ink: 209 34% 17%;
-    --landing-ink-muted: 205 15% 40%;
-    --landing-stamp: 9 62% 47%;
-    --landing-stamp-dark: 9 62% 38%;
-    --landing-ledger: 127 27% 25%;
-    --landing-ledger-light: 127 22% 36%;
 
     /* Sidebar/topbar — mesma superfície quase-branca do conteúdo, diferenciada
        só por uma borda fina (ver AppSidebar.tsx). --sidebar-primary/-ring
@@ -283,30 +268,6 @@ input[type="number"] {
     box-shadow: 0 8px 24px hsl(var(--gold) / 0.4);
   }
 
-  /* CTA da landing "Recibo & Caderno de contas" — vermelho-carimbo em vez do
-     azul/dourado do app interno (docs/design-system.md). Só pra landing. */
-  .btn-cta-stamp {
-    background-color: hsl(var(--landing-stamp));
-    color: white;
-    font-weight: 700;
-    padding: 0.875rem 2rem;
-    border-radius: 9999px;
-    font-size: 1rem;
-    letter-spacing: 0.01em;
-    transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
-    display: inline-flex;
-    align-items: center;
-    gap: 0.5rem;
-    border: none;
-    text-decoration: none;
-  }
-
-  .btn-cta-stamp:hover {
-    background-color: hsl(var(--landing-stamp-dark));
-    transform: translateY(-1px);
-    box-shadow: 0 8px 24px hsl(var(--landing-stamp) / 0.4);
-  }
-
   .btn-outline-white {
     background-color: transparent;
     color: white;
@@ -380,28 +341,6 @@ input[type="number"] {
     -webkit-mask-composite: xor;
     mask-composite: exclude;
     pointer-events: none;
-  }
-
-  /* Landing "Recibo & Caderno de contas" (docs/design-system.md) — substitui
-     .glass-card/.glass-panel só nos componentes de landing (essas duas
-     continuam em uso no app interno, não mexer nelas). Cartão de papel
-     elevado sobre o fundo --landing-paper: sombra tingida de ink (não preto
-     puro), borda fina, sem blur/vidro (não faz sentido sobre fundo sólido). */
-  .paper-card {
-    position: relative;
-    background: hsl(var(--landing-paper-raised));
-    border: 1px solid hsl(var(--landing-ink) / 0.08);
-    box-shadow: 0 2px 4px -2px hsl(var(--landing-ink) / 0.08), 0 16px 32px -16px hsl(var(--landing-ink) / 0.22);
-  }
-
-  /* Variante mais discreta — blocos dentro da página (navbar, accordion),
-     não "flutuando" como peça de destaque. */
-  .paper-panel {
-    position: relative;
-    background: hsl(var(--landing-paper-raised) / 0.75);
-    backdrop-filter: blur(12px);
-    -webkit-backdrop-filter: blur(12px);
-    border: 1px solid hsl(var(--landing-ink) / 0.08);
   }
 
   /* Cartão da área interna (dashboards). Sombra tingida de navy (não preto
