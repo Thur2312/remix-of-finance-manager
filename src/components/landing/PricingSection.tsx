@@ -4,6 +4,7 @@ import { useNavigate } from "react-router-dom";
 import { EnterpriseLeadDialog } from "@/components/EnterpriseLeadDialog";
 import { Reveal } from "./Reveal";
 import { SectionTag } from "./SectionTag";
+import { TiltCard } from "./TiltCard";
 
 // Espelha plan_permissions.contas_por_marketplace (migration
 // 20261001210000_marketplace_account_limit.sql) — única diferenciação real
@@ -79,10 +80,8 @@ export function PricingSection() {
             // o Reveal interno cuida só da entrada, pra não brigarem pelo mesmo transform.
             <div key={plan.id} className={`relative h-full ${plan.popular ? "xl:-translate-y-5 xl:scale-[1.05] xl:z-10" : ""}`}>
             {plan.popular && <div className="absolute -inset-3 rounded-[2rem] bg-[#318EF1]/25 blur-2xl pointer-events-none" />}
-            <Reveal
-              delay={i * 0.08}
-              className="glass-card relative rounded-3xl overflow-hidden flex flex-col h-full"
-            >
+            <Reveal delay={i * 0.08} className="h-full">
+            <TiltCard className="glass-card relative rounded-3xl overflow-hidden flex flex-col h-full">
               {plan.popular && (
                 <div className="absolute top-4 right-4 bg-[#0A1628] text-white text-[10px] font-bold uppercase tracking-wider px-3 py-1 rounded-full">
                   Mais popular
@@ -125,6 +124,7 @@ export function PricingSection() {
                   ))}
                 </div>
               </div>
+            </TiltCard>
             </Reveal>
             </div>
           ))}
@@ -176,8 +176,8 @@ export function PricingSection() {
             <Zap className="w-5 h-5 text-[#318EF1]" />
           </div>
           <p className="text-white/80 text-sm">
-            Assine agora e tenha acesso imediato a todas as funcionalidades, incluindo integrações com Shopee e TikTok
-            Shop.
+            Assine agora e tenha acesso imediato a todas as funcionalidades, incluindo integrações com Shopee,
+            Mercado Livre e TikTok Shop.
           </p>
         </Reveal>
       </div>

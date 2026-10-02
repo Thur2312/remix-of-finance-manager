@@ -4,16 +4,21 @@ import { motion, useMotionValue, useSpring, useTransform } from "framer-motion";
 import { useEffect, useState, type MouseEvent } from "react";
 import { Reveal, EXPO_OUT } from "./Reveal";
 import { RollButton } from "./RollButton";
+import { ReceiptTear } from "./ReceiptTear";
 import { useCountUp } from "./hooks";
 import logoShopee from "@/assets/logo-shopee.jpg";
 import logoTikTok from "@/assets/logo-tiktok.png";
 
+// "Lucro líquido" é tratada à parte (ver abaixo, fora deste array) — é o
+// único ponto de quebra tipográfica deliberada do Hero (ver docs/
+// DESIGN-DIRECTION.md, addendum P4): as outras 3 linhas ficam na mesma
+// escala/peso entre si de propósito, pra essa ser a exceção que chama o olho.
 const breakdown = [
   { label: "Preço de venda", value: 89.9, pct: 100, color: "bg-white/25" },
   { label: "Taxas do marketplace", value: 17.98, pct: 20, color: "bg-red-400/70" },
   { label: "Custo do produto", value: 24.1, pct: 27, color: "bg-white/25" },
-  { label: "Lucro líquido", value: 47.82, pct: 53, color: "bg-[#318EF1]" },
 ];
+const netProfit = { label: "Lucro líquido", value: 47.82, pct: 53, color: "bg-gold" };
 
 const headline = [
   { text: "Descubra" },
@@ -74,12 +79,12 @@ function OrderProfitMockup() {
             </span>
           </div>
 
-          <div className="space-y-3 mb-6">
+          <div className="space-y-3 mb-4">
             {breakdown.map((row, i) => (
               <div key={row.label}>
                 <div className="flex items-center justify-between text-xs mb-1.5">
                   <span className="text-white/60">{row.label}</span>
-                  <span className={`font-mono font-medium ${row.label === "Lucro líquido" ? "text-[#318EF1]" : "text-white/80"}`}>
+                  <span className="font-mono font-medium text-white/80">
                     R$ {row.value.toFixed(2).replace(".", ",")}
                   </span>
                 </div>
@@ -96,7 +101,30 @@ function OrderProfitMockup() {
             ))}
           </div>
 
-          <div className="flex items-center justify-between pt-4 border-t border-white/10">
+          <ReceiptTear className="text-white/25 mb-4" />
+
+          {/* Momento de exceção tipográfica (P4) — único número do Hero fora
+             da escala normal, em Fraunces pesada e dourado (o token --gold
+             reservado pra "lucro real" no design system, ver index.css). */}
+          <div className="mb-5 pb-5 border-b border-white/10">
+            <div className="flex items-end justify-between gap-3">
+              <span className="text-white/50 text-xs uppercase tracking-wider mb-1.5">{netProfit.label}</span>
+              <span className="font-display font-bold text-gold text-4xl leading-none tabular-nums -mr-1">
+                R$ {netProfit.value.toFixed(2).replace(".", ",")}
+              </span>
+            </div>
+            <div className="h-1.5 rounded-full bg-white/5 overflow-hidden mt-2">
+              <motion.div
+                className={`h-full rounded-full ${netProfit.color}`}
+                initial={{ width: 0 }}
+                whileInView={{ width: `${netProfit.pct}%` }}
+                viewport={{ once: true }}
+                transition={{ duration: 0.8, delay: 0.4 + breakdown.length * 0.12, ease: EXPO_OUT }}
+              />
+            </div>
+          </div>
+
+          <div className="flex items-center justify-between pt-1">
             <span className="text-white/50 text-sm">Margem líquida</span>
             <span className="text-white font-display font-semibold text-xl tabular-nums">{(margin / 10).toFixed(1)}%</span>
           </div>
@@ -178,6 +206,7 @@ export function HeroSection() {
                 className="bg-[#318EF1] hover:bg-[#2678d1] text-white pl-6 pr-4 py-2 shadow-[0_10px_30px_-6px_rgba(49,142,241,0.55)] hover:shadow-[0_14px_36px_-6px_rgba(49,142,241,0.65)] hover:-translate-y-0.5 transition-all"
                 textWrapperClassName="text-[15px] font-semibold"
                 circleClassName="w-4 h-4"
+                magnetic
               />
               <span className="text-white/50 text-sm">Cancele quando quiser</span>
             </div>
@@ -193,12 +222,19 @@ export function HeroSection() {
                   <img src={logoShopee} alt="Shopee" className="w-6 h-6 object-contain" />
                 </div>
                 <div className="w-9 h-9 rounded-xl bg-white flex items-center justify-center overflow-hidden shadow-sm">
+                  <img
+                    src="https://http2.mlstatic.com/frontend-assets/ml-web-navigation/ui-navigation/6.6.92/mercadolibre/logo_large_25years@2x.png"
+                    alt="Mercado Livre"
+                    className="w-7 h-7 object-contain"
+                  />
+                </div>
+                <div className="w-9 h-9 rounded-xl bg-white flex items-center justify-center overflow-hidden shadow-sm">
                   <img src={logoTikTok} alt="TikTok Shop" className="w-7 h-7 object-contain" />
                 </div>
               </div>
               <div>
                 <p className="text-white text-sm font-semibold">Conecta direto com sua loja</p>
-                <p className="text-white/50 text-xs">Shopee · TikTok Shop</p>
+                <p className="text-white/50 text-xs">Shopee · Mercado Livre · TikTok Shop</p>
               </div>
             </div>
           </Reveal>
