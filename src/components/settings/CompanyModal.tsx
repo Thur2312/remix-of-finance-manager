@@ -1,6 +1,21 @@
 import { useState, useEffect } from 'react';
-import { X, Building2, FileText, Percent, AlertCircle, CheckCircle2 } from 'lucide-react';
-import { Company, CompanyFormData, formatCNPJ, validateCNPJ } from '../../hooks/useCompanies';
+import { X, Building2, FileText, Percent, AlertCircle, CheckCircle2, ChevronDown, Receipt } from 'lucide-react';
+import {
+  Company, CompanyFormData, formatCNPJ, validateCNPJ,
+  type RegimeTributario, REGIME_TRIBUTARIO_LABELS,
+} from '../../hooks/useCompanies';
+
+const UFS = [
+  'AC', 'AL', 'AP', 'AM', 'BA', 'CE', 'DF', 'ES', 'GO', 'MA', 'MT', 'MS', 'MG',
+  'PA', 'PB', 'PR', 'PE', 'PI', 'RJ', 'RN', 'RS', 'RO', 'RR', 'SC', 'SP', 'SE', 'TO',
+] as const;
+
+const EMPTY_FORM: CompanyFormData = {
+  name: '', cnpj: '', tax_rate: 0, tax_base: 'revenue',
+  ie: null, regime_tributario: null,
+  endereco_logradouro: null, endereco_numero: null, endereco_complemento: null,
+  endereco_bairro: null, endereco_cidade: null, endereco_uf: null, endereco_cep: null,
+};
 
 interface CompanyModalProps {
   open: boolean;
@@ -20,17 +35,27 @@ export function CompanyModal({
   initialData,
   onSuccess,
 }: CompanyModalProps) {
-  const [form, setForm] = useState<CompanyFormData>({ name: '', cnpj: '', tax_rate: 0, tax_base: 'revenue' });
+  const [form, setForm] = useState<CompanyFormData>(EMPTY_FORM);
   const [errors, setErrors] = useState<Partial<Record<keyof CompanyFormData, string>>>({});
   const [formError, setFormError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
+  const [showFiscal, setShowFiscal] = useState(false);
 
   useEffect(() => {
     if (initialData) {
-      setForm({ name: initialData.name, cnpj: initialData.cnpj, tax_rate: initialData.tax_rate, tax_base: initialData.tax_base });
+      setForm({
+        name: initialData.name, cnpj: initialData.cnpj, tax_rate: initialData.tax_rate, tax_base: initialData.tax_base,
+        ie: initialData.ie, regime_tributario: initialData.regime_tributario,
+        endereco_logradouro: initialData.endereco_logradouro, endereco_numero: initialData.endereco_numero,
+        endereco_complemento: initialData.endereco_complemento, endereco_bairro: initialData.endereco_bairro,
+        endereco_cidade: initialData.endereco_cidade, endereco_uf: initialData.endereco_uf, endereco_cep: initialData.endereco_cep,
+      });
+      // Se já tem algum dado fiscal preenchido, abre a seção expandida direto.
+      setShowFiscal(!!(initialData.ie || initialData.regime_tributario || initialData.endereco_logradouro));
     } else {
-      setForm({ name: '', cnpj: '', tax_rate: 0, tax_base: 'revenue' });
+      setForm(EMPTY_FORM);
+      setShowFiscal(false);
     }
     setErrors({});
     setFormError(null);
@@ -236,6 +261,159 @@ export function CompanyModal({
             <p className="mt-1.5 text-xs text-gray-500 dark:text-gray-400">
               O imposto incide sobre o faturamento (Simples) ou sobre o lucro (Presumido/Real). Nunca sobre resultado negativo.
             </p>
+          </div>
+
+          {/* Dados fiscais — opcional, só pro assistente de nota fiscal */}
+          <div className="pt-1">
+            <button
+              type="button"
+              onClick={() => setShowFiscal(v => !v)}
+              className="flex w-full items-center justify-between rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 px-3 py-2.5 text-left transition-colors hover:border-gray-300 dark:hover:border-gray-600"
+            >
+              <span className="flex items-center gap-2 text-sm font-medium text-gray-700 dark:text-gray-300">
+                <Receipt className="h-4 w-4 text-gray-400" />
+                Dados fiscais (nota fiscal)
+              </span>
+              <ChevronDown className={`h-4 w-4 text-gray-400 transition-transform ${showFiscal ? 'rotate-180' : ''}`} />
+            </button>
+
+            {showFiscal && (
+              <div className="mt-3 space-y-3 rounded-xl border border-gray-200 dark:border-gray-700 p-3">
+                <p className="text-xs text-gray-500 dark:text-gray-400">
+                  Opcional pra cadastrar a empresa, mas obrigatório pra usar o assistente de nota fiscal depois.
+                </p>
+
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label htmlFor="company-ie" className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">
+                      Inscrição Estadual
+                    </label>
+                    <input
+                      id="company-ie"
+                      type="text"
+                      placeholder="000.000.000.000"
+                      value={form.ie ?? ''}
+                      onChange={e => setForm(p => ({ ...p, ie: e.target.value || null }))}
+                      className="w-full px-3 py-2 rounded-lg border border-gray-200 dark:border-gray-700 text-sm bg-gray-50 dark:bg-gray-800 text-gray-900 dark:text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                    />
+                  </div>
+                  <div>
+                    <label htmlFor="company-regime" className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">
+                      Regime tributário
+                    </label>
+                    <select
+                      id="company-regime"
+                      value={form.regime_tributario ?? ''}
+                      onChange={e => setForm(p => ({ ...p, regime_tributario: (e.target.value || null) as RegimeTributario | null }))}
+                      className="w-full px-3 py-2 rounded-lg border border-gray-200 dark:border-gray-700 text-sm bg-gray-50 dark:bg-gray-800 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                    >
+                      <option value="">Selecione</option>
+                      {(Object.keys(REGIME_TRIBUTARIO_LABELS) as RegimeTributario[]).map(r => (
+                        <option key={r} value={r}>{REGIME_TRIBUTARIO_LABELS[r]}</option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-3 gap-3">
+                  <div className="col-span-2">
+                    <label htmlFor="company-logradouro" className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">
+                      Logradouro
+                    </label>
+                    <input
+                      id="company-logradouro"
+                      type="text"
+                      placeholder="Rua, avenida..."
+                      value={form.endereco_logradouro ?? ''}
+                      onChange={e => setForm(p => ({ ...p, endereco_logradouro: e.target.value || null }))}
+                      className="w-full px-3 py-2 rounded-lg border border-gray-200 dark:border-gray-700 text-sm bg-gray-50 dark:bg-gray-800 text-gray-900 dark:text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                    />
+                  </div>
+                  <div>
+                    <label htmlFor="company-numero" className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">
+                      Número
+                    </label>
+                    <input
+                      id="company-numero"
+                      type="text"
+                      value={form.endereco_numero ?? ''}
+                      onChange={e => setForm(p => ({ ...p, endereco_numero: e.target.value || null }))}
+                      className="w-full px-3 py-2 rounded-lg border border-gray-200 dark:border-gray-700 text-sm bg-gray-50 dark:bg-gray-800 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                    />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label htmlFor="company-complemento" className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">
+                      Complemento
+                    </label>
+                    <input
+                      id="company-complemento"
+                      type="text"
+                      placeholder="Sala, bloco..."
+                      value={form.endereco_complemento ?? ''}
+                      onChange={e => setForm(p => ({ ...p, endereco_complemento: e.target.value || null }))}
+                      className="w-full px-3 py-2 rounded-lg border border-gray-200 dark:border-gray-700 text-sm bg-gray-50 dark:bg-gray-800 text-gray-900 dark:text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                    />
+                  </div>
+                  <div>
+                    <label htmlFor="company-bairro" className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">
+                      Bairro
+                    </label>
+                    <input
+                      id="company-bairro"
+                      type="text"
+                      value={form.endereco_bairro ?? ''}
+                      onChange={e => setForm(p => ({ ...p, endereco_bairro: e.target.value || null }))}
+                      className="w-full px-3 py-2 rounded-lg border border-gray-200 dark:border-gray-700 text-sm bg-gray-50 dark:bg-gray-800 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                    />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-3 gap-3">
+                  <div>
+                    <label htmlFor="company-cidade" className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">
+                      Cidade
+                    </label>
+                    <input
+                      id="company-cidade"
+                      type="text"
+                      value={form.endereco_cidade ?? ''}
+                      onChange={e => setForm(p => ({ ...p, endereco_cidade: e.target.value || null }))}
+                      className="w-full px-3 py-2 rounded-lg border border-gray-200 dark:border-gray-700 text-sm bg-gray-50 dark:bg-gray-800 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                    />
+                  </div>
+                  <div>
+                    <label htmlFor="company-uf" className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">
+                      UF
+                    </label>
+                    <select
+                      id="company-uf"
+                      value={form.endereco_uf ?? ''}
+                      onChange={e => setForm(p => ({ ...p, endereco_uf: e.target.value || null }))}
+                      className="w-full px-3 py-2 rounded-lg border border-gray-200 dark:border-gray-700 text-sm bg-gray-50 dark:bg-gray-800 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                    >
+                      <option value="">-</option>
+                      {UFS.map(uf => <option key={uf} value={uf}>{uf}</option>)}
+                    </select>
+                  </div>
+                  <div>
+                    <label htmlFor="company-cep" className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">
+                      CEP
+                    </label>
+                    <input
+                      id="company-cep"
+                      type="text"
+                      placeholder="00000-000"
+                      value={form.endereco_cep ?? ''}
+                      onChange={e => setForm(p => ({ ...p, endereco_cep: e.target.value || null }))}
+                      className="w-full px-3 py-2 rounded-lg border border-gray-200 dark:border-gray-700 text-sm bg-gray-50 dark:bg-gray-800 text-gray-900 dark:text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                    />
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
         </div>
 

@@ -2,7 +2,7 @@ import {
   User, TrendingUp, Calculator, Receipt, Sparkles, BarChart3, HandCoins, Wallet,
   Plug, LayoutDashboard, Shield, Zap, Gauge, CalendarDays, Landmark, Wrench,
   FlaskConical, Target, CalendarClock, PackageSearch, Percent, Boxes, Building2,
-  ShieldCheck, Radar, type LucideIcon,
+  ShieldCheck, Radar, FileText, type LucideIcon,
 } from 'lucide-react';
 
 // Modelo de navegação da área interna — fonte única, consumida pela
@@ -55,6 +55,7 @@ export const sidebarGroups: NavGroup[] = [
       { title: 'Detalhamento de taxas', url: '/taxas', icon: Percent },
       { title: 'Auditoria de repasse', url: '/repasses', icon: ShieldCheck, badge: 'Novo' },
       { title: 'Radar de margem', url: '/radar-margem', icon: Radar, badge: 'Novo' },
+      { title: 'Nota Fiscal', url: '/nota-fiscal', icon: FileText, badge: 'Novo' },
       { title: 'DRE', url: '/dre', icon: BarChart3 },
     ],
   },

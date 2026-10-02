@@ -2,6 +2,15 @@ import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '../integrations/supabase/client';
 import type { TaxBase } from '../lib/tax';
 
+export type RegimeTributario = 'mei' | 'simples_nacional' | 'lucro_presumido' | 'lucro_real';
+
+export const REGIME_TRIBUTARIO_LABELS: Record<RegimeTributario, string> = {
+  mei: 'MEI',
+  simples_nacional: 'Simples Nacional',
+  lucro_presumido: 'Lucro Presumido',
+  lucro_real: 'Lucro Real',
+};
+
 export interface Company {
   id: string;
   user_id: string;
@@ -11,6 +20,17 @@ export interface Company {
   tax_base: TaxBase;
   /** Meta de faturamento bruto do mês desta empresa, em centavos. null = sem meta. */
   monthly_revenue_goal_cents: number | null;
+  // Dados fiscais do emitente, pro assistente de nota fiscal -- null até o
+  // vendedor preencher (não é obrigatório na criação da empresa).
+  ie: string | null;
+  regime_tributario: RegimeTributario | null;
+  endereco_logradouro: string | null;
+  endereco_numero: string | null;
+  endereco_complemento: string | null;
+  endereco_bairro: string | null;
+  endereco_cidade: string | null;
+  endereco_uf: string | null;
+  endereco_cep: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -20,6 +40,26 @@ export interface CompanyFormData {
   cnpj: string;
   tax_rate: number;
   tax_base: TaxBase;
+  ie?: string | null;
+  regime_tributario?: RegimeTributario | null;
+  endereco_logradouro?: string | null;
+  endereco_numero?: string | null;
+  endereco_complemento?: string | null;
+  endereco_bairro?: string | null;
+  endereco_cidade?: string | null;
+  endereco_uf?: string | null;
+  endereco_cep?: string | null;
+}
+
+// Dados fiscais mínimos pra montar uma nota -- usado pelo assistente de NF
+// pra avisar o vendedor que falta completar o cadastro antes de gerar a
+// primeira nota.
+export function hasFiscalDataComplete(c: Company): boolean {
+  return !!(
+    c.ie && c.regime_tributario &&
+    c.endereco_logradouro && c.endereco_numero && c.endereco_bairro &&
+    c.endereco_cidade && c.endereco_uf && c.endereco_cep
+  );
 }
 
 export function useCompanies() {

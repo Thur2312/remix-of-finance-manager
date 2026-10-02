@@ -7,6 +7,7 @@ export type SaleEventProvider = 'shopee' | 'mercadolivre';
 export interface SaleEvent {
   id: string;
   provider: SaleEventProvider;
+  integration_id: string;
   external_order_id: string;
   status: string;
   total_amount: number;
@@ -17,7 +18,7 @@ export interface SaleEvent {
   seen_at: string | null;
 }
 
-const SALE_EVENT_COLUMNS = 'id, provider, external_order_id, status, total_amount, currency, buyer_username, product_name, order_created_at, seen_at';
+const SALE_EVENT_COLUMNS = 'id, provider, integration_id, external_order_id, status, total_amount, currency, buyer_username, product_name, order_created_at, seen_at';
 
 // Os marketplaces devolvem dezenas de status crus ("READY_TO_SHIP",
 // "payment_in_process"...). O vendedor pensa em 3 baldes: já vendeu, ainda

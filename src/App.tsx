@@ -44,6 +44,7 @@ const Simulador                 = lazy(() => import("./pages/Simulador"));
 const DRE                       = lazy(() => import("./pages/DRE"));
 const Taxas                     = lazy(() => import("./pages/Taxas"));
 const Repasses                  = lazy(() => import("./pages/Repasses"));
+const NotaFiscal                = lazy(() => import("./pages/NotaFiscal"));
 const Perfil                    = lazy(() => import("./pages/Perfil"));
 const CompaniesPage             = lazy(() => import("./pages/user/CompaniesPage"));
 const NotificacoesAdmin         = lazy(() => import("./pages/admin/Notificacoes"));
@@ -121,6 +122,7 @@ const App = () => {
                 <Route path="/dre" element={<DRE />} />
                 <Route path="/taxas" element={<Taxas />} />
                 <Route path="/repasses" element={<Repasses />} />
+                <Route path="/nota-fiscal" element={<NotaFiscal />} />
                 <Route path="/empresas" element={<CompaniesPage />} />
                 <Route path="/perfil" element={<Perfil />} />
                 <Route path="/integrations" element={<IntegrationsOverview />} />

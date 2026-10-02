@@ -410,9 +410,18 @@ export type Database = {
         Row: {
           cnpj: string
           created_at: string | null
+          endereco_bairro: string | null
+          endereco_cep: string | null
+          endereco_cidade: string | null
+          endereco_complemento: string | null
+          endereco_logradouro: string | null
+          endereco_numero: string | null
+          endereco_uf: string | null
           id: string
+          ie: string | null
           monthly_revenue_goal_cents: number | null
           name: string
+          regime_tributario: string | null
           tax_base: string
           tax_rate: number
           updated_at: string | null
@@ -421,9 +430,18 @@ export type Database = {
         Insert: {
           cnpj: string
           created_at?: string | null
+          endereco_bairro?: string | null
+          endereco_cep?: string | null
+          endereco_cidade?: string | null
+          endereco_complemento?: string | null
+          endereco_logradouro?: string | null
+          endereco_numero?: string | null
+          endereco_uf?: string | null
           id?: string
+          ie?: string | null
           monthly_revenue_goal_cents?: number | null
           name: string
+          regime_tributario?: string | null
           tax_base?: string
           tax_rate?: number
           updated_at?: string | null
@@ -432,9 +450,18 @@ export type Database = {
         Update: {
           cnpj?: string
           created_at?: string | null
+          endereco_bairro?: string | null
+          endereco_cep?: string | null
+          endereco_cidade?: string | null
+          endereco_complemento?: string | null
+          endereco_logradouro?: string | null
+          endereco_numero?: string | null
+          endereco_uf?: string | null
           id?: string
+          ie?: string | null
           monthly_revenue_goal_cents?: number | null
           name?: string
+          regime_tributario?: string | null
           tax_base?: string
           tax_rate?: number
           updated_at?: string | null
@@ -681,6 +708,7 @@ export type Database = {
           auto_sync_enabled: boolean | null
           auto_sync_frequency_minutes: number | null
           company_id: string | null
+          consecutive_refresh_failures: number
           created_at: string | null
           external_shop_id: string | null
           id: string
@@ -703,6 +731,7 @@ export type Database = {
           auto_sync_enabled?: boolean | null
           auto_sync_frequency_minutes?: number | null
           company_id?: string | null
+          consecutive_refresh_failures?: number
           created_at?: string | null
           external_shop_id?: string | null
           id?: string
@@ -725,6 +754,7 @@ export type Database = {
           auto_sync_enabled?: boolean | null
           auto_sync_frequency_minutes?: number | null
           company_id?: string | null
+          consecutive_refresh_failures?: number
           created_at?: string | null
           external_shop_id?: string | null
           id?: string
