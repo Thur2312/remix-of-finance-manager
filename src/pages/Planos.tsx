@@ -41,10 +41,22 @@ interface ProfileData {
 
 // ─── Static data ──────────────────────────────────────────────────────────────
 
-const sharedFeatures = [
+// Espelha plan_permissions.contas_por_marketplace (migration
+// 20261001210000_marketplace_account_limit.sql) — é a ÚNICA diferenciação
+// real entre os planos pagos hoje. Toda outra feature listada abaixo
+// (dashboard avançado, DRE, etc.) está liberada igual nos 3 planos; não
+// existe trava de backend pra elas, então não faz sentido fingir que são
+// exclusivas de um tier. Antes o card dizia "Integrações ilimitadas", que
+// parou de ser verdade quando o limite por marketplace entrou em produção.
+const CONTAS_POR_MARKETPLACE: Record<'mensal' | 'semestral' | 'anual', number> = {
+  mensal: 2,
+  semestral: 3,
+  anual: 5,
+};
+
+const commonFeatures = [
   'Lucro real por venda',
   'Dashboard avançado',
-  'Integrações ilimitadas',
   'Análise inteligente por produto',
   'DRE automatizado',
   'Precificação otimizada',
@@ -52,6 +64,12 @@ const sharedFeatures = [
   'Fluxo de caixa avançado',
   'Relatórios customizados',
   'Consultoria dedicada',
+];
+
+const featuresFor = (planId: 'mensal' | 'semestral' | 'anual') => [
+  commonFeatures[0],
+  `Até ${CONTAS_POR_MARKETPLACE[planId]} contas por marketplace`,
+  ...commonFeatures.slice(1),
 ];
 
 const plans = [
@@ -78,7 +96,7 @@ const plans = [
     billingNote: PLAN_PRICING.mensal.billingNote,
     description: 'Flexibilidade sem compromisso',
     icon: Zap,
-    features: sharedFeatures,
+    features: featuresFor('mensal'),
     popular: false,
   },
   {
@@ -89,7 +107,7 @@ const plans = [
     billingNote: PLAN_PRICING.semestral.billingNote,
     description: 'Economize pagando por 6 meses',
     icon: Sparkles,
-    features: sharedFeatures,
+    features: featuresFor('semestral'),
     popular: false,
   },
   {
@@ -100,7 +118,7 @@ const plans = [
     billingNote: PLAN_PRICING.anual.billingNote,
     description: 'O melhor custo-benefício',
     icon: Crown,
-    features: sharedFeatures,
+    features: featuresFor('anual'),
     popular: true,
   },
 ];
@@ -120,7 +138,7 @@ const faqs = [
   },
   {
     question: 'Qual a diferença entre os planos Mensal, Semestral e Anual?',
-    answer: 'Todos liberam exatamente os mesmos recursos. A diferença é só o ciclo de cobrança: Mensal é cobrado todo mês (R$ 74,99), Semestral a cada 6 meses (R$ 347,40, equivalente a R$ 57,90/mês) e Anual a cada 12 meses (R$ 454,80, equivalente a R$ 37,90/mês).',
+    answer: 'O ciclo de cobrança: Mensal é cobrado todo mês (R$ 74,99), Semestral a cada 6 meses (R$ 347,40, equivalente a R$ 57,90/mês) e Anual a cada 12 meses (R$ 454,80, equivalente a R$ 37,90/mês). Também muda o número de contas que você pode conectar por marketplace: 2 no Mensal, 3 no Semestral e 5 no Anual.',
   },
   {
     question: 'Quais marketplaces são suportados?',

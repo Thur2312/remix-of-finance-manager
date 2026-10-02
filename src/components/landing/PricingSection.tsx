@@ -5,12 +5,17 @@ import { EnterpriseLeadDialog } from "@/components/EnterpriseLeadDialog";
 import { Reveal } from "./Reveal";
 import { SectionTag } from "./SectionTag";
 
-const pricingFeatures = [
+// Espelha plan_permissions.contas_por_marketplace (migration
+// 20261001210000_marketplace_account_limit.sql) — única diferenciação real
+// entre os planos pagos hoje. Ver mesmo comentário em src/pages/Planos.tsx.
+const CONTAS_POR_MARKETPLACE: Record<string, number> = { mensal: 2, semestral: 3, anual: 5 };
+
+const pricingFeaturesBase = [
   "Cálculo de lucro por pedido",
   "Calculadora de precificação",
   "DRE automático",
   "Integração com Shopee",
-  "Integração com TikTok Shop",
+  "Integração com Mercado Livre",
   "Histórico financeiro completo",
   "Análise de margem por produto",
   "Suporte por e-mail",
@@ -112,7 +117,7 @@ export function PricingSection() {
               <div className="px-6 pb-8 flex-1">
                 <p className="text-gray-500 text-xs font-semibold uppercase tracking-wider mb-4">Funcionalidades incluídas:</p>
                 <div className="space-y-2.5">
-                  {pricingFeatures.map((f, fi) => (
+                  {[`Até ${CONTAS_POR_MARKETPLACE[plan.id]} contas por marketplace`, ...pricingFeaturesBase].map((f, fi) => (
                     <div key={fi} className="flex items-center gap-2.5">
                       <CheckCircle2 className="w-4 h-4 text-[#318EF1] flex-shrink-0" />
                       <span className="text-gray-700 text-sm">{f}</span>
