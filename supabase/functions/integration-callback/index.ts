@@ -2,6 +2,7 @@ import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
 import { createHmac } from "https://deno.land/std@0.168.0/node/crypto.ts"
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2"
 import { encryptToken } from "../_shared/token-crypto.ts"
+import { checkMarketplaceAccountLimit } from "../_shared/marketplace-account-limit.ts"
 
 // Permite sobrescrever via env var (ex: testar OAuth contra um preview
 // deploy) sem alterar o comportamento padrão de produção.
@@ -126,6 +127,11 @@ serve(async (req) => {
       if (!expireSeconds || expireSeconds <= 0) return null
       const futureDate = new Date(now.getTime() + expireSeconds * 1000)
       return isNaN(futureDate.getTime()) ? null : futureDate.toISOString()
+    }
+
+    const limitCheck = await checkMarketplaceAccountLimit(supabase, userId, "shopee", resolvedShopId)
+    if (!limitCheck.allowed) {
+      return Response.redirect(`${FRONTEND_URL}/integrations?error=plan_limit_reached`, 302)
     }
 
     // ✅ Salva na tabela integration_connections (100% seguro)

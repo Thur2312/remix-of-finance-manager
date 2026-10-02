@@ -2,6 +2,7 @@ import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2"
 import { encryptToken } from "../_shared/token-crypto.ts"
 import { OAUTH_STATE_TTL_MS, isStateValid } from "../_shared/tiktok-oauth.ts"
+import { checkMarketplaceAccountLimit } from "../_shared/marketplace-account-limit.ts"
 
 // Perna 2 do fluxo OAuth da TikTok Shop — chamada pelo servidor da TikTok
 // via redirect do navegador do usuário, com `?code&state` na query string.
@@ -102,6 +103,9 @@ serve(async (req) => {
     }
 
     const now = new Date()
+
+    const limitCheck = await checkMarketplaceAccountLimit(supabase, userId, "tiktok", open_id)
+    if (!limitCheck.allowed) return fail("plan_limit_reached")
 
     // ── Persistência — upsert por (user_id, provider, external_shop_id) ───
     // Esse é o unique constraint REAL da tabela hoje

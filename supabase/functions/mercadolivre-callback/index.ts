@@ -1,6 +1,7 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { encryptToken } from "../_shared/token-crypto.ts";
+import { checkMarketplaceAccountLimit } from "../_shared/marketplace-account-limit.ts";
 
 const FRONTEND_URL = Deno.env.get("FRONTEND_URL")?.trim() || "https://sellerfinance.com.br";
 
@@ -91,6 +92,21 @@ serve(async (req) => {
       return isNaN(futureDate.getTime()) ? null : futureDate.toISOString();
     };
 
+    const resolvedMlUserId = String(mlUserId);
+
+    // Até aqui o upsert usava onConflict: "user_id,provider" -- um par de 2
+    // colunas que não corresponde a nenhum constraint único da tabela desde
+    // 20260826160000_integration_connections_multi_shop.sql (trocou pra
+    // (user_id, provider, external_shop_id), pra habilitar multi-loja no
+    // Shopee). Isso fazia TODO upsert aqui falhar com erro do Postgres
+    // ("no unique or exclusion constraint matching...") -- ninguém
+    // conseguia conectar ou reconectar uma conta ML desde então. Mesmo bug
+    // que o tiktok-oauth-callback teve e já corrigiu.
+    const limitCheck = await checkMarketplaceAccountLimit(supabase, userId, "mercadolivre", resolvedMlUserId);
+    if (!limitCheck.allowed) {
+      return Response.redirect(`${FRONTEND_URL}/integrations?error=plan_limit_reached`, 302);
+    }
+
     // Salva na integration_connections
     const { error: dbError } = await supabase
       .from("integration_connections")
@@ -99,7 +115,7 @@ serve(async (req) => {
           user_id: userId,
           provider: "mercadolivre",
           status: "connected",
-          external_shop_id: String(mlUserId),
+          external_shop_id: resolvedMlUserId,
           shop_name: shopName,
           access_token: await encryptToken(access_token),
           refresh_token: await encryptToken(refresh_token),
@@ -107,7 +123,7 @@ serve(async (req) => {
           refresh_token_expires_at: null,
           updated_at: now.toISOString(),
         },
-        { onConflict: "user_id,provider" }
+        { onConflict: "user_id,provider,external_shop_id" }
       );
 
     if (dbError) {
