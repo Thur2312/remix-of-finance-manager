@@ -97,9 +97,16 @@ export default function IntegrationCallback() {
 
       } else {
         setStatus('Conectando com o TikTok...');
+        // tiktok-callback (antiga) ficou pra trás na reescrita do fluxo OAuth
+        // do TikTok (tiktok-oauth-start/tiktok-oauth-callback) -- mesmo bug de
+        // onConflict que o mercadolivre-callback tinha (ver
+        // 20261001210000_marketplace_account_limit.sql), nunca corrigido aqui
+        // porque esse branch provavelmente nem é alcançado (o redirect_uri
+        // real da TikTok deve ir direto na function, não por essa página --
+        // ver comentário em tiktok-oauth-start/index.ts).
         const params = new URLSearchParams({ code: finalCode, state: finalState ?? '' });
         window.location.href =
-          `https://opzsrqdvotozawuqpapo.functions.supabase.co/tiktok-callback?${params.toString()}`;
+          `https://opzsrqdvotozawuqpapo.functions.supabase.co/tiktok-oauth-callback?${params.toString()}`;
       }
     };
 

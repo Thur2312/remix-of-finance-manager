@@ -17,7 +17,7 @@ export default function IntegrationsOverview() {
   const navigate = useNavigate();
   const { toast } = useToast();
   const queryClient = useQueryClient();
-  const { connections, logs, isLoading, getConnection, getConnectionsByProvider, startAuth, manualAuth, syncNow, refetch } = useIntegrations();
+  const { connections, logs, isLoading, getConnectionsByProvider, startAuth, manualAuth, syncNow, refetch } = useIntegrations();
   const [connectProvider, setConnectProvider] = useState<Provider | null>(null);
   const [isSyncing, setIsSyncing] = useState(false);
 
@@ -36,14 +36,17 @@ export default function IntegrationsOverview() {
     }
     const error = searchParams.get('error');
     if (error) {
-      toast({ title: 'Erro na conexão', description: error, variant: 'destructive' });
+      const description = error === 'plan_limit_reached'
+        ? 'Seu plano atingiu o limite de contas conectadas nesse marketplace. Faça upgrade pra conectar mais.'
+        : error;
+      toast({ title: 'Erro na conexão', description, variant: 'destructive' });
       window.history.replaceState({}, '', '/integrations');
     }
   }, [searchParams, toast, queryClient, refetch]);
 
   const shopeeConnections = getConnectionsByProvider('shopee');
-  const tiktok = getConnection('tiktok');
-  const mercadolivre = getConnection('mercadolivre');
+  const tiktokConnections = getConnectionsByProvider('tiktok');
+  const mercadolivreConnections = getConnectionsByProvider('mercadolivre');
 
   const allErrors = connections
     .filter(c => c.last_error_message)
@@ -128,35 +131,79 @@ export default function IntegrationsOverview() {
               Adicionar outra loja Shopee
             </button>
           )}
-          <IntegrationCard
-            provider="tiktok"
-            status={tiktok?.status || 'disconnected'}
-            shopName={tiktok?.shop_name}
-            shopId={tiktok?.external_shop_id}
-            lastSyncAt={tiktok?.last_sync_at}
-            nextSyncAt={tiktok?.next_sync_at}
-            lastErrorMessage={tiktok?.last_error_message}
-            onConnect={() => setConnectProvider('tiktok')}
-            onManage={() => navigate('/integrations/tiktok')}
-            isConnecting={startAuth.isPending}
-            // API da TikTok Shop ainda não liberou o acesso pra gente — o
-            // fluxo de conectar fica em espera; quem já usa segue via
-            // planilha (/tiktok/upload). Tira isso quando a API for aprovada.
-            comingSoon
-          />
-          {/* ✅ Card do Mercado Livre */}
-          <IntegrationCard
-            provider="mercadolivre"
-            status={mercadolivre?.status || 'disconnected'}
-            shopName={mercadolivre?.shop_name}
-            shopId={mercadolivre?.external_shop_id}
-            lastSyncAt={mercadolivre?.last_sync_at}
-            nextSyncAt={mercadolivre?.next_sync_at}
-            lastErrorMessage={mercadolivre?.last_error_message}
-            onConnect={() => setConnectProvider('mercadolivre')}
-            onManage={() => navigate('/integrations/mercadolivre')}
-            isConnecting={startAuth.isPending}
-          />
+          {tiktokConnections.length === 0 ? (
+            <IntegrationCard
+              provider="tiktok"
+              status="disconnected"
+              onConnect={() => setConnectProvider('tiktok')}
+              onManage={() => {}}
+              isConnecting={startAuth.isPending}
+              // API da TikTok Shop ainda não liberou o acesso pra gente — o
+              // fluxo de conectar fica em espera; quem já usa segue via
+              // planilha (/tiktok/upload). Tira isso quando a API for aprovada.
+              comingSoon
+            />
+          ) : (
+            tiktokConnections.map(conn => (
+              <IntegrationCard
+                key={conn.id}
+                provider="tiktok"
+                status={conn.status}
+                shopName={conn.shop_name}
+                shopId={conn.external_shop_id}
+                lastSyncAt={conn.last_sync_at}
+                nextSyncAt={conn.next_sync_at}
+                lastErrorMessage={conn.last_error_message}
+                onConnect={() => setConnectProvider('tiktok')}
+                onManage={() => navigate(`/integrations/manage/${conn.id}`)}
+                isConnecting={startAuth.isPending}
+              />
+            ))
+          )}
+          {tiktokConnections.length > 0 && (
+            <button
+              onClick={() => setConnectProvider('tiktok')}
+              className="flex items-center justify-center gap-2 rounded-lg border border-dashed p-5 text-sm font-medium text-muted-foreground hover:text-foreground hover:border-foreground/30 transition-colors"
+            >
+              <Plug className="h-4 w-4" />
+              Adicionar outra conta TikTok
+            </button>
+          )}
+
+          {mercadolivreConnections.length === 0 ? (
+            <IntegrationCard
+              provider="mercadolivre"
+              status="disconnected"
+              onConnect={() => setConnectProvider('mercadolivre')}
+              onManage={() => {}}
+              isConnecting={startAuth.isPending}
+            />
+          ) : (
+            mercadolivreConnections.map(conn => (
+              <IntegrationCard
+                key={conn.id}
+                provider="mercadolivre"
+                status={conn.status}
+                shopName={conn.shop_name}
+                shopId={conn.external_shop_id}
+                lastSyncAt={conn.last_sync_at}
+                nextSyncAt={conn.next_sync_at}
+                lastErrorMessage={conn.last_error_message}
+                onConnect={() => setConnectProvider('mercadolivre')}
+                onManage={() => navigate(`/integrations/manage/${conn.id}`)}
+                isConnecting={startAuth.isPending}
+              />
+            ))
+          )}
+          {mercadolivreConnections.length > 0 && (
+            <button
+              onClick={() => setConnectProvider('mercadolivre')}
+              className="flex items-center justify-center gap-2 rounded-lg border border-dashed p-5 text-sm font-medium text-muted-foreground hover:text-foreground hover:border-foreground/30 transition-colors"
+            >
+              <Plug className="h-4 w-4" />
+              Adicionar outra conta Mercado Livre
+            </button>
+          )}
         </div>
 
         <IntegrationHealthPanel
