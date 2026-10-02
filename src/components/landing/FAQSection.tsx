@@ -7,7 +7,7 @@ import { SectionTag } from "./SectionTag";
 const faqs = [
   {
     q: "O que diferencia o Seller Finance de outras ferramentas?",
-    a: "O Seller Finance é focado exclusivamente em gestão financeira para vendedores de marketplace, entregando cálculo de lucro real por pedido, DRE automático e calculadora de precificação — tudo integrado com Shopee e TikTok Shop.",
+    a: "O Seller Finance é focado exclusivamente em gestão financeira para vendedores de marketplace, entregando cálculo de lucro real por pedido, DRE automático e calculadora de precificação — tudo integrado com Shopee, Mercado Livre e TikTok Shop.",
   },
   {
     q: "Há suporte disponível?",
@@ -22,12 +22,12 @@ const faqs = [
     a: "Aceitamos cartão de crédito como forma de pagamento. Assim, você nunca será pego de surpresa e seu acesso sempre ficará ativo.",
   },
   {
-    q: "A integração com Shopee e TikTok Shop é segura?",
+    q: "A integração com Shopee, Mercado Livre e TikTok Shop é segura?",
     a: "Sim. Nossa integração utiliza as APIs oficiais dos marketplaces, garantindo segurança e fidelidade nos dados. Seus dados financeiros são protegidos com criptografia.",
   },
   {
-    q: "Funciona com outros marketplaces?",
-    a: "Sim. O Seller Finance é integrado com Shopee, TikTok Shop e Mercado Livre. Estamos trabalhando para adicionar Amazon em breve.",
+    q: "Funciona com a Amazon também?",
+    a: "Ainda não — hoje a integração automática cobre Shopee, Mercado Livre e TikTok Shop. Amazon está no roadmap.",
   },
   {
     q: "Posso cancelar a qualquer momento?",

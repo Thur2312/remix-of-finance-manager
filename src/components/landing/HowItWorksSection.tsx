@@ -8,7 +8,7 @@ const steps = [
   {
     step: "01",
     title: "Conecte sua loja",
-    desc: "Integre sua conta da Shopee ou TikTok Shop em poucos cliques, sem necessidade de conhecimento técnico.",
+    desc: "Integre sua conta da Shopee, Mercado Livre ou TikTok Shop em poucos cliques, sem necessidade de conhecimento técnico.",
     icon: ShoppingBag,
   },
   {

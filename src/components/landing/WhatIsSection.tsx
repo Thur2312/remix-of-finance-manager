@@ -16,7 +16,7 @@ const content = [
     text: "Com funcionalidades exclusivas de gestão financeira, cálculo de lucro e precificação, o Seller Finance elimina a confusão das planilhas manuais e entrega ao vendedor um painel completo para enxergar a real lucratividade de cada pedido.",
   },
   {
-    title: "Para quem vende na Shopee e no TikTok Shop e quer saber de verdade quanto lucra.",
+    title: "Para quem vende na Shopee, no Mercado Livre ou no TikTok Shop e quer saber de verdade quanto lucra.",
     text: "Se você usa planilhas para calcular seu lucro, perde horas somando taxas e custos, ou simplesmente não sabe se está ganhando ou perdendo dinheiro em cada venda — o Seller Finance foi feito para você.",
   },
   {

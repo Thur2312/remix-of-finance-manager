@@ -21,7 +21,7 @@ export function Footer() {
               <img src={logo} alt="Seller Finance" className="h-12 w-auto" />
             </div>
             <p className="text-white/50 text-sm leading-relaxed max-w-xs">
-              Gestão financeira completa para vendedores de Shopee e TikTok Shop.
+              Gestão financeira completa para vendedores de Shopee, Mercado Livre e TikTok Shop.
             </p>
           </div>
 

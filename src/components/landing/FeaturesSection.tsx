@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { ChevronDown } from "lucide-react";
+import { ChevronDown, Check } from "lucide-react";
 import { AnimatePresence, motion } from "framer-motion";
 import { Reveal } from "./Reveal";
 import { SectionTag } from "./SectionTag";
@@ -21,7 +21,7 @@ function AccordionPanel({ children }: { children: React.ReactNode }) {
 const analyticsItems = [
   {
     title: "Cálculo de Lucro por Pedido",
-    desc: "Descubra o lucro real de cada venda. O Seller Finance calcula automaticamente o lucro líquido descontando taxas da Shopee e TikTok Shop, custo do produto e outras despesas.",
+    desc: "Descubra o lucro real de cada venda. O Seller Finance calcula automaticamente o lucro líquido descontando taxas da Shopee, Mercado Livre e TikTok Shop, custo do produto e outras despesas.",
   },
   {
     title: "Análise de Margem por Produto",
@@ -41,6 +41,17 @@ const controlItems = [
   {
     title: "DRE Automático",
     desc: "Gere o Demonstrativo de Resultado do Exercício da sua loja automaticamente. Tenha uma visão clara de receitas, custos e lucro sem precisar de contador.",
+  },
+];
+
+const invoiceItems = [
+  {
+    title: "Dados do comprador prontos pra copiar",
+    desc: "Pra pedidos do Mercado Livre, o Seller Finance busca nome, CPF/CNPJ e endereço do comprador direto na API — você só copia e cola no seu emissor de nota.",
+  },
+  {
+    title: "Emitente sempre atualizado",
+    desc: "Cadastre os dados fiscais da sua empresa uma vez (IE, regime tributário, endereço) e eles aparecem prontos em cada nota, sem redigitar.",
   },
 ];
 
@@ -94,6 +105,38 @@ function PricingCalcMockup() {
       <div className="mt-4 rounded-xl p-4 text-center" style={{ backgroundColor: "#0A1628" }}>
         <p className="text-white/50 text-[11px] uppercase tracking-wide mb-1">Preço ideal de venda</p>
         <p className="font-display text-white text-2xl font-bold">R$ 46,35</p>
+      </div>
+    </div>
+  );
+}
+
+const invoiceFields = [
+  { label: "Destinatário", value: "Mariana Costa Lima" },
+  { label: "CPF", value: "123.456.789-00" },
+  { label: "Endereço", value: "Rua das Flores, 240 — SP" },
+];
+
+function InvoiceMockup() {
+  return (
+    <div className="glass-card rounded-2xl p-6 max-w-sm mx-auto lg:mx-0">
+      <div className="flex items-center justify-between mb-5">
+        <p className="text-xs font-semibold uppercase tracking-wider text-gray-400">Dados pra nota fiscal</p>
+        <span className="text-[10px] font-bold uppercase tracking-wider text-[#318EF1] bg-[#318EF1]/10 rounded-full px-2 py-1">
+          Mercado Livre
+        </span>
+      </div>
+      <div className="space-y-3">
+        {invoiceFields.map((f) => (
+          <div key={f.label} className="flex items-center justify-between gap-3 py-2 border-b border-gray-100 last:border-0">
+            <div className="min-w-0">
+              <p className="text-[11px] text-gray-400">{f.label}</p>
+              <p className="text-sm font-medium text-[#0A1628] truncate">{f.value}</p>
+            </div>
+            <div className="shrink-0 w-6 h-6 rounded-full bg-emerald-50 flex items-center justify-center">
+              <Check className="w-3.5 h-3.5 text-emerald-600" />
+            </div>
+          </div>
+        ))}
       </div>
     </div>
   );
@@ -179,6 +222,40 @@ export function FeaturesSection() {
                 </div>
               ))}
             </div>
+          </Reveal>
+        </div>
+
+        {/* Block 3: Nota Fiscal */}
+        <div className="grid lg:grid-cols-[1.1fr_0.9fr] gap-12 items-center mt-16">
+          <Reveal>
+            <p className="text-[#318EF1] font-bold text-lg mb-2">Nota fiscal:</p>
+            <h3 className="text-2xl md:text-3xl font-bold text-white mb-6">
+              Emita nota sem redigitar nada do comprador
+            </h3>
+            <div className="space-y-3">
+              {invoiceItems.map((item, i) => (
+                <div key={i} className="glass-panel rounded-xl overflow-hidden">
+                  <button
+                    className="w-full flex items-center justify-between p-4 text-left hover:bg-white/[0.03] transition-colors"
+                    onClick={() => setOpenAccordion(openAccordion === i + 20 ? null : i + 20)}
+                  >
+                    <span className="font-semibold text-white">{item.title}</span>
+                    <ChevronDown className={`w-5 h-5 text-[#318EF1] transition-transform ${openAccordion === i + 20 ? "rotate-180" : ""}`} />
+                  </button>
+                  <AnimatePresence initial={false}>
+                    {openAccordion === i + 20 && (
+                      <AccordionPanel>
+                        <div className="px-4 pb-4 text-white/60 text-sm leading-relaxed">{item.desc}</div>
+                      </AccordionPanel>
+                    )}
+                  </AnimatePresence>
+                </div>
+              ))}
+            </div>
+          </Reveal>
+
+          <Reveal delay={0.1} className="lg:pt-10">
+            <InvoiceMockup />
           </Reveal>
         </div>
       </div>
