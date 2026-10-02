@@ -46,6 +46,31 @@ function OrderProfitMockup() {
   const monthProfit = useCountUp(4820, 1400, start);
   const trend = useCountUp(124, 1000, start);
 
+  // Entrada em cadência: preço -> taxas -> custo -> lucro líquido, cada
+  // linha contando em tempo real (não só a barra enchendo) antes da
+  // próxima começar — a composição do pedido "se monta" na tela em vez de
+  // aparecer pronta, terminando no número de exceção (dourado) com um
+  // respiro a mais antes de chegar.
+  const [rowStart, setRowStart] = useState([false, false, false]);
+  const [profitStart, setProfitStart] = useState(false);
+  useEffect(() => {
+    const delays = [500, 1000, 1500];
+    const timers = delays.map((delay, i) =>
+      setTimeout(() => setRowStart((prev) => prev.map((v, idx) => (idx === i ? true : v))), delay),
+    );
+    const profitTimer = setTimeout(() => setProfitStart(true), 2050);
+    return () => {
+      timers.forEach(clearTimeout);
+      clearTimeout(profitTimer);
+    };
+  }, []);
+
+  const priceCents = useCountUp(Math.round(breakdown[0].value * 100), 600, rowStart[0]);
+  const feesCents = useCountUp(Math.round(breakdown[1].value * 100), 600, rowStart[1]);
+  const costCents = useCountUp(Math.round(breakdown[2].value * 100), 600, rowStart[2]);
+  const rowCents = [priceCents, feesCents, costCents];
+  const netProfitCents = useCountUp(Math.round(netProfit.value * 100), 900, profitStart);
+
   const handleMouseMove = (e: MouseEvent<HTMLDivElement>) => {
     const rect = e.currentTarget.getBoundingClientRect();
     px.set((e.clientX - rect.left) / rect.width - 0.5);
@@ -84,17 +109,16 @@ function OrderProfitMockup() {
               <div key={row.label}>
                 <div className="flex items-center justify-between text-xs mb-1.5">
                   <span className="text-white/60">{row.label}</span>
-                  <span className="font-mono font-medium text-white/80">
-                    R$ {row.value.toFixed(2).replace(".", ",")}
+                  <span className="font-mono font-medium text-white/80 tabular-nums">
+                    R$ {(rowCents[i] / 100).toFixed(2).replace(".", ",")}
                   </span>
                 </div>
                 <div className="h-1.5 rounded-full bg-white/5 overflow-hidden">
                   <motion.div
                     className={`h-full rounded-full ${row.color}`}
                     initial={{ width: 0 }}
-                    whileInView={{ width: `${row.pct}%` }}
-                    viewport={{ once: true }}
-                    transition={{ duration: 0.8, delay: 0.4 + i * 0.12, ease: EXPO_OUT }}
+                    animate={rowStart[i] ? { width: `${row.pct}%` } : {}}
+                    transition={{ duration: 0.6, ease: EXPO_OUT }}
                   />
                 </div>
               </div>
@@ -110,16 +134,15 @@ function OrderProfitMockup() {
             <div className="flex items-end justify-between gap-3">
               <span className="text-white/50 text-xs uppercase tracking-wider mb-1.5">{netProfit.label}</span>
               <span className="font-display font-bold text-gold text-4xl leading-none tabular-nums -mr-1">
-                R$ {netProfit.value.toFixed(2).replace(".", ",")}
+                R$ {(netProfitCents / 100).toFixed(2).replace(".", ",")}
               </span>
             </div>
             <div className="h-1.5 rounded-full bg-white/5 overflow-hidden mt-2">
               <motion.div
                 className={`h-full rounded-full ${netProfit.color}`}
                 initial={{ width: 0 }}
-                whileInView={{ width: `${netProfit.pct}%` }}
-                viewport={{ once: true }}
-                transition={{ duration: 0.8, delay: 0.4 + breakdown.length * 0.12, ease: EXPO_OUT }}
+                animate={profitStart ? { width: `${netProfit.pct}%` } : {}}
+                transition={{ duration: 0.9, ease: EXPO_OUT }}
               />
             </div>
           </div>

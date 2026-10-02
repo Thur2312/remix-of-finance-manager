@@ -40,56 +40,48 @@ function DREMockup() {
 
   return (
     <div ref={ref} className="relative max-w-[480px] ml-auto">
-      <div className="rounded-2xl overflow-hidden border border-white/[0.07] shadow-[0_24px_48px_-14px_rgba(5,10,20,0.55),0_2px_6px_-1px_rgba(5,10,20,0.4)] bg-[#0F1E33]">
-        <div className="flex items-center gap-2.5 px-4 py-3 bg-white/[0.03] border-b border-white/[0.06]">
-          <div className="flex gap-1.5">
-            <span className="w-2 h-2 rounded-full bg-white/[0.18]" />
-            <span className="w-2 h-2 rounded-full bg-white/[0.18]" />
-            <span className="w-2 h-2 rounded-full bg-white/[0.18]" />
+      {/* Mesmo glass-card usado no DrePreviewMockup (WhatIsSection), nos 3
+         mockups do FeaturesSection e nos stat cards do CTA — um único
+         vocabulário de "cartão de prova" na página inteira, em vez de cada
+         seção inventar seu próprio chrome (este já teve uma falsa janela
+         de navegador só aqui, sem razão pra existir). */}
+      <div className="glass-card rounded-2xl p-7">
+        <div className="flex items-center justify-between mb-5">
+          <div>
+            <p className="text-[11px] uppercase tracking-wider font-semibold text-[#0A1628]/40 mb-1">DRE · Outubro</p>
+            <p className="text-[15px] font-semibold text-[#0A1628]">Shopee + TikTok Shop + ML</p>
           </div>
-          <div className="flex-1 bg-white/[0.04] rounded-md px-2.5 py-1 text-center">
-            <span className="font-mono text-[11px] text-white/40">sellerfinance.com.br/dre</span>
-          </div>
+          <span className="text-[10px] font-bold uppercase tracking-wide text-[#B45309] bg-[#D97706]/10 px-2.5 py-1 rounded-md whitespace-nowrap">
+            Dado ilustrativo
+          </span>
         </div>
 
-        <div className="bg-white/[0.97] px-7 py-6">
-          <div className="flex items-center justify-between mb-5">
-            <div>
-              <p className="text-[11px] uppercase tracking-wider font-semibold text-[#0A1628]/40 mb-1">DRE · Outubro</p>
-              <p className="text-[15px] font-semibold text-[#0A1628]">Shopee + TikTok Shop + ML</p>
-            </div>
-            <span className="text-[10px] font-bold uppercase tracking-wide text-[#B45309] bg-[#D97706]/10 px-2.5 py-1 rounded-md whitespace-nowrap">
-              Dado ilustrativo
-            </span>
-          </div>
-
-          <div className="flex flex-col gap-4 mb-5">
-            {rows.map((row, i) => (
-              <div key={row.label}>
-                <div className="flex items-center justify-between text-[13px] mb-1.5">
-                  <span className={row.highlight ? "text-[#0A1628]/70 font-medium" : "text-[#0A1628]/55"}>
-                    {row.label}
-                  </span>
-                  <span className={`font-mono font-bold ${row.highlight ? "text-[#1F5FC4]" : "text-[#0A1628]"}`}>
-                    {formatBRL(counts[i])}
-                  </span>
-                </div>
-                <div className="h-1.5 rounded-full bg-[#0A1628]/[0.07] overflow-hidden">
-                  <motion.div
-                    className={`h-full rounded-full ${row.color}`}
-                    initial={{ width: 0 }}
-                    animate={visible ? { width: `${row.fill}%` } : {}}
-                    transition={{ duration: 0.8, delay: 0.3 + i * 0.12, ease: EXPO_OUT }}
-                  />
-                </div>
+        <div className="flex flex-col gap-4 mb-5">
+          {rows.map((row, i) => (
+            <div key={row.label}>
+              <div className="flex items-center justify-between text-[13px] mb-1.5">
+                <span className={row.highlight ? "text-[#0A1628]/70 font-medium" : "text-[#0A1628]/55"}>
+                  {row.label}
+                </span>
+                <span className={`font-mono font-bold ${row.highlight ? "text-[#1F5FC4]" : "text-[#0A1628]"}`}>
+                  {formatBRL(counts[i])}
+                </span>
               </div>
-            ))}
-          </div>
+              <div className="h-1.5 rounded-full bg-[#0A1628]/[0.07] overflow-hidden">
+                <motion.div
+                  className={`h-full rounded-full ${row.color}`}
+                  initial={{ width: 0 }}
+                  animate={visible ? { width: `${row.fill}%` } : {}}
+                  transition={{ duration: 0.8, delay: 0.3 + i * 0.12, ease: EXPO_OUT }}
+                />
+              </div>
+            </div>
+          ))}
+        </div>
 
-          <div className="flex items-center justify-between pt-4 border-t border-[#0A1628]/[0.08]">
-            <span className="text-[13px] text-[#0A1628]/50">Margem líquida</span>
-            <span className="font-display font-bold text-xl text-[#0A1628]">27,1%</span>
-          </div>
+        <div className="flex items-center justify-between pt-4 border-t border-[#0A1628]/[0.08]">
+          <span className="text-[13px] text-[#0A1628]/50">Margem líquida</span>
+          <span className="font-display font-bold text-xl text-[#0A1628]">27,1%</span>
         </div>
       </div>
     </div>
