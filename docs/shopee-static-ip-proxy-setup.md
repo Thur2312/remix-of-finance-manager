@@ -109,9 +109,28 @@ try {
 }
 ```
 
-## Depois de validar
+## Status (02/10/2026)
 
-Rodar de novo o mesmo teste empírico que já fizemos hoje (function
-descartável chamando `get_order_detail` com `recipient_address` e
-conferindo se ainda vem mascarado) — só que agora passando pelo proxy —
-antes de considerar isso resolvido de verdade.
+Infra 100% no ar e validada: VM `shopee-proxy` (Oracle Cloud, São Paulo,
+IP `163.176.130.101`), Tinyproxy rodando, secret `SHOPEE_PROXY_URL` já
+setado no Supabase. Confirmado via teste real que a chamada sai pelo IP
+fixo da VM.
+
+**Mas o whitelist da Shopee não desmascarou `recipient_address`/
+`buyer_cpf_id` mesmo assim** — só `city` veio aberto, `name`/`phone`/
+`full_address`/`buyer_cpf_id` continuaram mascarados mesmo com o IP
+cadastrado e "Access to Sensitive Data: Can access" no console. Tentado
+esperar propagação (10min) e reconectar a loja — nenhum dos dois mudou
+o resultado até agora.
+
+**Decisão:** não vale mais a pena perseguir isso pro assistente de nota
+fiscal. Em vez de pré-preencher o formulário com o dado do comprador
+pra Shopee, o fluxo vai apontar o vendedor pro **emissor de nota fiscal
+nativo da própria Shopee** (ela já tem acesso irrestrito aos dados dela
+mesma — não tem mascaramento nesse caminho). O ML continua com o
+formulário completo nosso, via a API de billing-info dele (sem
+restrição de IP).
+
+A VM/proxy continuam no ar (grátis, sem custo de manter) — podem servir
+pra alguma outra necessidade de IP fixo no futuro, mas não são mais
+bloqueador de nada hoje.
