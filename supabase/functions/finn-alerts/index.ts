@@ -1,5 +1,7 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient, SupabaseClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { auditShopeeRepasses } from "../_shared/finance/repasse-audit.ts";
+import { buildMarginPoints, detectMarginErosion } from "../_shared/finance/margin-erosion.ts";
 
 // Finn proativo (Aposta F, parte 1) — cron diário que roda gatilhos
 // DETERMINÍSTICOS (nada de LLM) e, quando algum dispara, cria uma notificação
@@ -18,6 +20,10 @@ const LEAD_TIME_PADRAO = 14;
 // Só alerta ruptura de SKU com giro mínimo (≥ isto por dia) — um SKU que
 // vendeu 2 unidades em 60 dias não é urgência.
 const RUPTURA_VELOCIDADE_MIN = 0.15;
+// Mesma janela padrão da tela /repasses (PERIODOS, Repasses.tsx).
+const REPASSE_JANELA_DIAS = 60;
+// Mesmo padrão "14 vs os 14 antes" default da tela /radar-margem.
+const MARGEM_PERIODO_DIAS = 14;
 
 function timingSafeEqual(a: string, b: string): boolean {
   if (a.length !== b.length) return false;
@@ -238,6 +244,115 @@ async function checarRuptura(supabase: SupabaseClient, userId: string): Promise<
   };
 }
 
+// ── Gatilho 3: Shopee cobrou acima da tabela ou ficou sem repassar ──────────
+// Mesma lib pura da tela /repasses (Auditoria de repasse) — Shopee-first,
+// mesma limitação de checarMargem (só a Shopee tem repasse por pedido hoje).
+async function checarRepasse(supabase: SupabaseClient, userId: string): Promise<Alerta | null> {
+  const { data: conns } = await supabase
+    .from("integration_connections")
+    .select("id")
+    .eq("user_id", userId)
+    .eq("provider", "shopee")
+    .eq("status", "connected");
+  const shopeeIds = (conns ?? []).map((c) => c.id);
+  if (shopeeIds.length === 0) return null;
+
+  const desde = addDaysIso(isoDay(new Date()), -REPASSE_JANELA_DIAS);
+
+  const [ordersRes, feesRes, paymentsRes] = await Promise.all([
+    supabase.from("orders")
+      .select("id, external_order_id, status, total_amount, order_updated_at")
+      .in("integration_id", shopeeIds)
+      .gte("order_updated_at", desde)
+      .limit(2000),
+    supabase.from("fees")
+      .select("order_id, fee_type, amount")
+      .in("integration_id", shopeeIds)
+      .gte("fee_date", desde)
+      .limit(4000),
+    supabase.from("payments")
+      .select("order_id, payment_method, net_amount")
+      .in("integration_id", shopeeIds)
+      .eq("payment_method", "escrow")
+      .limit(2000),
+  ]);
+
+  const result = auditShopeeRepasses(ordersRes.data ?? [], feesRes.data ?? [], paymentsRes.data ?? []);
+  if (result.issues.length === 0) return null;
+
+  const partes: string[] = [];
+  if (result.pedidosComTaxaAcima > 0) {
+    partes.push(
+      `${result.pedidosComTaxaAcima} pedido${result.pedidosComTaxaAcima > 1 ? "s" : ""} cobrado${result.pedidosComTaxaAcima > 1 ? "s" : ""} acima da tabela ` +
+      `(${brl(Math.round(result.totalDivergenciaTaxa * 100))} a mais)`
+    );
+  }
+  if (result.pedidosSemRepasseAtrasado > 0) {
+    partes.push(
+      `${result.pedidosSemRepasseAtrasado} pedido${result.pedidosSemRepasseAtrasado > 1 ? "s" : ""} concluído${result.pedidosSemRepasseAtrasado > 1 ? "s" : ""} sem repasse há mais de 20 dias ` +
+      `(${brl(Math.round(result.totalSemRepasseAtrasado * 100))})`
+    );
+  }
+
+  return {
+    title: "Divergência no repasse da Shopee",
+    body: `${partes.join("; ")}. Veja o detalhe pedido a pedido em Auditoria de repasse.`,
+  };
+}
+
+// ── Gatilho 4: margem de algum SKU caiu forte (Shopee) ──────────────────────
+// Mesma lib pura da tela /radar-margem — compara os últimos
+// MARGEM_PERIODO_DIAS contra os MARGEM_PERIODO_DIAS anteriores.
+async function checarMargem(supabase: SupabaseClient, userId: string): Promise<Alerta | null> {
+  const { data: conns } = await supabase
+    .from("integration_connections")
+    .select("id")
+    .eq("user_id", userId)
+    .eq("provider", "shopee")
+    .eq("status", "connected");
+  const shopeeIds = (conns ?? []).map((c) => c.id);
+  if (shopeeIds.length === 0) return null;
+
+  const agora = new Date();
+  const cutRecente = new Date(agora.getTime() - MARGEM_PERIODO_DIAS * 86_400_000).toISOString();
+  const cutAnterior = new Date(agora.getTime() - MARGEM_PERIODO_DIAS * 2 * 86_400_000).toISOString();
+
+  const [ordersRes, paymentsRes, costsRes] = await Promise.all([
+    supabase.from("orders")
+      .select("id, status, order_updated_at, order_items(external_item_id, item_name, sku, quantity, total_price)")
+      .in("integration_id", shopeeIds)
+      .gte("order_updated_at", cutAnterior)
+      .limit(2000),
+    supabase.from("payments")
+      .select("order_id, payment_method, net_amount")
+      .in("integration_id", shopeeIds)
+      .eq("payment_method", "escrow")
+      .limit(2000),
+    supabase.from("product_costs")
+      .select("external_item_id, sku, cost, packaging_cost, other_costs")
+      .eq("user_id", userId),
+  ]);
+
+  const orders = ordersRes.data ?? [];
+  const payments = paymentsRes.data ?? [];
+  const costs = costsRes.data ?? [];
+
+  const atual = buildMarginPoints(orders, payments, costs, { sinceIso: cutRecente, untilIso: agora.toISOString() });
+  const anterior = buildMarginPoints(orders, payments, costs, { sinceIso: cutAnterior, untilIso: cutRecente });
+  const erosions = detectMarginErosion(atual, anterior);
+  if (erosions.length === 0) return null;
+
+  const top = erosions.slice(0, 3).map((e) => `${e.nome} (${e.deltaMargemPct.toFixed(0)}pp)`).join(", ");
+  const resto = erosions.length > 3 ? ` e mais ${erosions.length - 3}` : "";
+
+  return {
+    title: `${erosions.length} ${erosions.length === 1 ? "produto" : "produtos"} com queda forte de margem`,
+    body:
+      `Nos últimos ${MARGEM_PERIODO_DIAS} dias vs os ${MARGEM_PERIODO_DIAS} anteriores: ${top}${resto}. ` +
+      `Veja a causa provável de cada um em Radar de margem.`,
+  };
+}
+
 async function jaAlertou(supabase: SupabaseClient, userId: string, title: string): Promise<boolean> {
   const desde = new Date(Date.now() - DEDUP_DIAS * 86_400_000).toISOString();
   const { data } = await supabase
@@ -285,7 +400,12 @@ serve(async (req: Request) => {
     let alertas = 0;
     for (const p of ativos) {
       try {
-        const checks = await Promise.all([checarCaixa(supabase, p.id), checarRuptura(supabase, p.id)]);
+        const checks = await Promise.all([
+          checarCaixa(supabase, p.id),
+          checarRuptura(supabase, p.id),
+          checarRepasse(supabase, p.id),
+          checarMargem(supabase, p.id),
+        ]);
         for (const a of checks) {
           if (!a) continue;
           if (await jaAlertou(supabase, p.id, a.title)) continue;
