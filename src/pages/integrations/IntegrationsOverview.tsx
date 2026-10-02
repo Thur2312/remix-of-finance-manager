@@ -12,6 +12,23 @@ import { PageShell } from '@/components/layout/PageShell';
 
 type Provider = 'shopee' | 'tiktok' | 'mercadolivre';
 
+// Repetido 3x (uma por marketplace) assim que uma conta já está conectada.
+// Borda tracejada (marca "ação de adicionar", não conteúdo, por isso fica
+// fora do sistema .panel — que já desenha sua própria borda sólida via
+// ::before) com a mesma curva de easing assinatura do resto do app
+// (cubic-bezier(0.16,1,0.3,1), ver .panel em index.css) no hover-lift.
+function AddAccountButton({ label, onClick }: { label: string; onClick: () => void }) {
+  return (
+    <button
+      onClick={onClick}
+      className="flex items-center justify-center gap-2 rounded-[var(--radius)] border border-dashed border-border p-5 text-sm font-medium text-muted-foreground transition-all duration-200 ease-[cubic-bezier(0.16,1,0.3,1)] hover:-translate-y-0.5 hover:border-primary/40 hover:text-foreground hover:bg-primary/5"
+    >
+      <Plug className="h-4 w-4" />
+      {label}
+    </button>
+  );
+}
+
 export default function IntegrationsOverview() {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
@@ -96,7 +113,7 @@ export default function IntegrationsOverview() {
       subtitle="Conecte seus marketplaces para sincronização automática de pedidos, produtos, pagamentos e taxas."
       className="space-y-6"
     >
-        <div className="grid gap-3 md:grid-cols-2">
+        <div className="grid gap-4 md:grid-cols-2">
           {shopeeConnections.length === 0 ? (
             <IntegrationCard
               provider="shopee"
@@ -123,13 +140,7 @@ export default function IntegrationsOverview() {
             ))
           )}
           {shopeeConnections.length > 0 && (
-            <button
-              onClick={() => setConnectProvider('shopee')}
-              className="flex items-center justify-center gap-2 rounded-lg border border-dashed p-5 text-sm font-medium text-muted-foreground hover:text-foreground hover:border-foreground/30 transition-colors"
-            >
-              <Plug className="h-4 w-4" />
-              Adicionar outra loja Shopee
-            </button>
+            <AddAccountButton label="Adicionar outra loja Shopee" onClick={() => setConnectProvider('shopee')} />
           )}
           {tiktokConnections.length === 0 ? (
             <IntegrationCard
@@ -161,13 +172,7 @@ export default function IntegrationsOverview() {
             ))
           )}
           {tiktokConnections.length > 0 && (
-            <button
-              onClick={() => setConnectProvider('tiktok')}
-              className="flex items-center justify-center gap-2 rounded-lg border border-dashed p-5 text-sm font-medium text-muted-foreground hover:text-foreground hover:border-foreground/30 transition-colors"
-            >
-              <Plug className="h-4 w-4" />
-              Adicionar outra conta TikTok
-            </button>
+            <AddAccountButton label="Adicionar outra conta TikTok" onClick={() => setConnectProvider('tiktok')} />
           )}
 
           {mercadolivreConnections.length === 0 ? (
@@ -196,13 +201,7 @@ export default function IntegrationsOverview() {
             ))
           )}
           {mercadolivreConnections.length > 0 && (
-            <button
-              onClick={() => setConnectProvider('mercadolivre')}
-              className="flex items-center justify-center gap-2 rounded-lg border border-dashed p-5 text-sm font-medium text-muted-foreground hover:text-foreground hover:border-foreground/30 transition-colors"
-            >
-              <Plug className="h-4 w-4" />
-              Adicionar outra conta Mercado Livre
-            </button>
+            <AddAccountButton label="Adicionar outra conta Mercado Livre" onClick={() => setConnectProvider('mercadolivre')} />
           )}
         </div>
 
