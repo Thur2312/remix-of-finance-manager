@@ -1,50 +1,25 @@
-import { motion } from "framer-motion";
-
-// Camada fixa por trás de toda a landing — substitui a antiga sequência de
-// seções coloridas por um único fundo navy com movimento sutil, pra dar vida
-// sem competir com o conteúdo. Só CSS/framer-motion, sem dependência nova.
+// Camada fixa por trás de toda a landing. Era um fundo navy com blobs de
+// glow azul flutuante (direção antiga, ver docs/DESIGN-DIRECTION.md) —
+// trocado pela textura de papel da nova identidade ("Recibo & Caderno de
+// contas", docs/design-system.md): fundo --landing-paper sólido + um grão
+// sutil (SVG feTurbulence, estático, não um filtro por frame) pra não ficar
+// chapado. Sem gradiente azul nenhum.
 export function AmbientBackground() {
   return (
-    <div className="fixed inset-0 -z-10 overflow-hidden bg-[#0A1628]">
-      <motion.div
-        className="absolute w-[60vw] h-[60vw] max-w-[900px] max-h-[900px] rounded-full"
-        style={{
-          top: "-15%",
-          right: "-10%",
-          background: "radial-gradient(circle, rgba(49,142,241,0.28) 0%, transparent 70%)",
-          filter: "blur(60px)",
-        }}
-        animate={{ x: [0, 40, 0], y: [0, 30, 0] }}
-        transition={{ duration: 22, repeat: Infinity, ease: "easeInOut" }}
-      />
-      <motion.div
-        className="absolute w-[45vw] h-[45vw] max-w-[700px] max-h-[700px] rounded-full"
-        style={{
-          bottom: "-10%",
-          left: "-8%",
-          background: "radial-gradient(circle, rgba(49,142,241,0.16) 0%, transparent 70%)",
-          filter: "blur(60px)",
-        }}
-        animate={{ x: [0, -30, 0], y: [0, -20, 0] }}
-        transition={{ duration: 26, repeat: Infinity, ease: "easeInOut", delay: 2 }}
-      />
-      <motion.div
-        className="absolute w-[35vw] h-[35vw] max-w-[520px] max-h-[520px] rounded-full"
-        style={{
-          top: "38%",
-          left: "50%",
-          background: "radial-gradient(circle, rgba(91,166,245,0.10) 0%, transparent 70%)",
-          filter: "blur(70px)",
-        }}
-        animate={{ x: [0, 25, 0], y: [0, -25, 0] }}
-        transition={{ duration: 30, repeat: Infinity, ease: "easeInOut", delay: 4 }}
-      />
-      {/* Textura fina pra tirar o "chapado" de um gradiente puro */}
+    <div className="fixed inset-0 -z-10 overflow-hidden bg-landing-paper">
       <div
-        className="absolute inset-0 opacity-[0.03]"
+        className="absolute inset-0 opacity-[0.035] mix-blend-multiply"
         style={{
-          backgroundImage: "radial-gradient(circle, white 1px, transparent 1px)",
-          backgroundSize: "3px 3px",
+          backgroundImage:
+            "url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E\")",
+          backgroundSize: "180px 180px",
+        }}
+      />
+      {/* Vinheta suave nas bordas — dá profundidade sem precisar de glow colorido */}
+      <div
+        className="absolute inset-0"
+        style={{
+          background: "radial-gradient(ellipse 90% 70% at 50% 0%, transparent 55%, rgba(28,43,57,0.05) 100%)",
         }}
       />
     </div>

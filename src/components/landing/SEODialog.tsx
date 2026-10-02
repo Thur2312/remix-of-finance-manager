@@ -51,8 +51,8 @@ export function SEODialog({ open, onOpenChange }: { open: boolean; onOpenChange:
           {seoSections.map((section, i) => (
             <div key={section.title}>
               {i > 0 && <Separator className="mb-6" />}
-              <h3 className="text-base font-semibold text-[#0A1628] mb-2">{section.title}</h3>
-              <p className="text-gray-600">{section.text}</p>
+              <h3 className="text-base font-semibold text-landing-ink mb-2">{section.title}</h3>
+              <p className="text-landing-ink-muted">{section.text}</p>
             </div>
           ))}
         </div>

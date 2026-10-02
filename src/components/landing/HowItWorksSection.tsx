@@ -29,44 +29,46 @@ export function HowItWorksSection() {
   const navigate = useNavigate();
 
   return (
-    <section className="relative py-24 md:py-32 text-white">
+    <section className="relative py-24 md:py-32 text-landing-ink">
       <div className="container">
         <Reveal className="mb-6">
           <SectionTag index={2} total={5} label="Como funciona" />
         </Reveal>
         <Reveal className="mb-14">
-          <h2 className="font-display text-3xl md:text-4xl lg:text-5xl font-bold text-white leading-tight tracking-[-0.02em] max-w-3xl">
+          <h2 className="font-display text-3xl md:text-4xl lg:text-5xl font-bold text-landing-ink leading-tight tracking-[-0.02em] max-w-3xl">
             Entenda como o Seller Finance transforma sua gestão financeira
           </h2>
         </Reveal>
 
         {/* Passo 2 (o "lucro real", núcleo emocional do pitch) fica deslocado
            pra baixo e com destaque de cor — em vez dos 3 cards idênticos lado
-           a lado, que era o clichê de grid simétrico "3-step how it works". */}
+           a lado, que era o clichê de grid simétrico "3-step how it works".
+           Destaque no verde-ledger (sinal positivo), não no stamp (que é
+           ação/marca, não "resultado bom") — ver docs/design-system.md. */}
         <RevealGroup className="grid md:grid-cols-3 gap-6 mb-14">
           {steps.map((item, i) => (
             <RevealItem
               key={item.step}
               className={`rounded-2xl p-6 relative ${
                 i === 1
-                  ? "md:mt-10 bg-[#318EF1]/[0.08] border border-[#318EF1]/25 shadow-[0_20px_40px_-16px_rgba(49,142,241,0.35)]"
-                  : "glass-panel"
+                  ? "md:mt-10 bg-landing-ledger/[0.06] border border-landing-ledger/25 shadow-[0_20px_40px_-16px_hsl(var(--landing-ledger)/0.3)]"
+                  : "paper-panel"
               }`}
             >
               <div className="flex items-center gap-3 mb-4">
-                <span className={`font-display text-4xl font-bold leading-none ${i === 1 ? "text-[#318EF1]/50" : "text-white/30"}`}>
+                <span className={`font-display text-4xl font-bold leading-none ${i === 1 ? "text-landing-ledger/50" : "text-landing-ink/25"}`}>
                   {item.step}
                 </span>
                 <div
                   className={`w-10 h-10 rounded-xl flex items-center justify-center ${
-                    i === 1 ? "bg-[#318EF1] text-white" : "bg-[#318EF1]/15 text-[#318EF1]"
+                    i === 1 ? "bg-landing-ledger text-white" : "bg-landing-stamp/10 text-landing-stamp"
                   }`}
                 >
                   <item.icon className="w-5 h-5" />
                 </div>
               </div>
-              <h3 className="text-white font-bold text-lg mb-2">{item.title}</h3>
-              <p className="text-white/60 text-sm leading-relaxed">{item.desc}</p>
+              <h3 className="text-landing-ink font-bold text-lg mb-2">{item.title}</h3>
+              <p className="text-landing-ink-muted text-sm leading-relaxed">{item.desc}</p>
             </RevealItem>
           ))}
         </RevealGroup>
@@ -76,7 +78,7 @@ export function HowItWorksSection() {
             label="Conectar minha loja"
             icon={<ArrowRight size={14} className="text-white" />}
             onClick={() => navigate("/user/auth?redirect=/planos")}
-            className="bg-[#318EF1] hover:bg-[#2678d1] text-white pl-6 pr-2 py-2 mx-auto shadow-[0_10px_30px_-6px_rgba(49,142,241,0.55)] hover:-translate-y-0.5 transition-all"
+            className="bg-landing-stamp hover:bg-landing-stamp-dark text-white pl-6 pr-2 py-2 mx-auto shadow-[0_10px_30px_-6px_hsl(var(--landing-stamp)/0.45)] hover:-translate-y-0.5 transition-all"
             textWrapperClassName="text-[15px] font-semibold"
             circleClassName="w-8 h-8 bg-white/20"
           />

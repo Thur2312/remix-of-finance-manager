@@ -64,18 +64,18 @@ const marginBars = [
 
 function MarginMockup() {
   return (
-    <div className="glass-card rounded-2xl p-6 max-w-md">
-      <p className="text-xs font-semibold uppercase tracking-wider text-gray-400 mb-5">Margem por produto</p>
+    <div className="paper-card rounded-2xl p-6 max-w-md">
+      <p className="text-xs font-semibold uppercase tracking-wider text-landing-ink-muted mb-5">Margem por produto</p>
       <div className="space-y-4">
         {marginBars.map((row) => (
           <div key={row.label}>
             <div className="flex items-center justify-between text-sm mb-1.5">
-              <span className="text-gray-600">{row.label}</span>
-              <span className="font-mono font-semibold text-[#0A1628]">{row.pct}%</span>
+              <span className="text-landing-ink/70">{row.label}</span>
+              <span className="font-mono font-semibold text-landing-ink">{row.pct}%</span>
             </div>
-            <div className="h-2 rounded-full bg-gray-100 overflow-hidden">
+            <div className="h-2 rounded-full bg-landing-ink/[0.07] overflow-hidden">
               <div
-                className="h-full rounded-full bg-gradient-to-r from-[#318EF1] to-[#5BA6F5]"
+                className="h-full rounded-full bg-landing-ledger"
                 style={{ width: `${row.pct}%` }}
               />
             </div>
@@ -88,21 +88,21 @@ function MarginMockup() {
 
 function PricingCalcMockup() {
   return (
-    <div className="glass-card rounded-2xl p-6 max-w-xs mx-auto lg:mx-0">
-      <p className="text-xs font-semibold uppercase tracking-wider text-gray-400 mb-4">Calculadora de preço</p>
+    <div className="paper-card rounded-2xl p-6 max-w-xs mx-auto lg:mx-0">
+      <p className="text-xs font-semibold uppercase tracking-wider text-landing-ink-muted mb-4">Calculadora de preço</p>
       <div className="space-y-3 text-sm">
         {[
           { label: "Custo do produto", value: "R$ 24,10" },
           { label: "Taxa do marketplace", value: "20%" },
           { label: "Margem desejada", value: "35%" },
         ].map((row) => (
-          <div key={row.label} className="flex items-center justify-between py-2 border-b border-gray-100">
-            <span className="text-gray-500">{row.label}</span>
-            <span className="font-mono text-[#0A1628]">{row.value}</span>
+          <div key={row.label} className="flex items-center justify-between py-2 border-b border-landing-ink/10">
+            <span className="text-landing-ink-muted">{row.label}</span>
+            <span className="font-mono text-landing-ink">{row.value}</span>
           </div>
         ))}
       </div>
-      <div className="mt-4 rounded-xl p-4 text-center" style={{ backgroundColor: "#0A1628" }}>
+      <div className="mt-4 rounded-xl p-4 text-center bg-landing-ink">
         <p className="text-white/50 text-[11px] uppercase tracking-wide mb-1">Preço ideal de venda</p>
         <p className="font-display text-white text-2xl font-bold">R$ 46,35</p>
       </div>
@@ -118,22 +118,22 @@ const invoiceFields = [
 
 function InvoiceMockup() {
   return (
-    <div className="glass-card rounded-2xl p-6 max-w-sm mx-auto lg:mx-0">
+    <div className="paper-card rounded-2xl p-6 max-w-sm mx-auto lg:mx-0">
       <div className="flex items-center justify-between mb-5">
-        <p className="text-xs font-semibold uppercase tracking-wider text-gray-400">Dados pra nota fiscal</p>
-        <span className="text-[10px] font-bold uppercase tracking-wider text-[#318EF1] bg-[#318EF1]/10 rounded-full px-2 py-1">
+        <p className="text-xs font-semibold uppercase tracking-wider text-landing-ink-muted">Dados pra nota fiscal</p>
+        <span className="text-[10px] font-bold uppercase tracking-wider text-landing-stamp bg-landing-stamp/10 rounded-full px-2 py-1">
           Mercado Livre
         </span>
       </div>
       <div className="space-y-3">
         {invoiceFields.map((f) => (
-          <div key={f.label} className="flex items-center justify-between gap-3 py-2 border-b border-gray-100 last:border-0">
+          <div key={f.label} className="flex items-center justify-between gap-3 py-2 border-b border-landing-ink/10 last:border-0">
             <div className="min-w-0">
-              <p className="text-[11px] text-gray-400">{f.label}</p>
-              <p className="text-sm font-medium text-[#0A1628] truncate">{f.value}</p>
+              <p className="text-[11px] text-landing-ink-muted">{f.label}</p>
+              <p className="text-sm font-medium text-landing-ink truncate">{f.value}</p>
             </div>
-            <div className="shrink-0 w-6 h-6 rounded-full bg-emerald-50 flex items-center justify-center">
-              <Check className="w-3.5 h-3.5 text-emerald-600" />
+            <div className="shrink-0 w-6 h-6 rounded-full bg-landing-ledger/10 flex items-center justify-center">
+              <Check className="w-3.5 h-3.5 text-landing-ledger" />
             </div>
           </div>
         ))}
@@ -146,39 +146,39 @@ export function FeaturesSection() {
   const [openAccordion, setOpenAccordion] = useState<number | null>(0);
 
   return (
-    <section id="funcionalidades" className="relative py-20 md:py-28 text-white">
+    <section id="funcionalidades" className="relative py-20 md:py-28 text-landing-ink">
       <div className="container">
         <Reveal className="mb-6">
           <SectionTag index={3} total={5} label="Funcionalidades" />
         </Reveal>
         <Reveal className="mb-16 max-w-3xl">
-          <h2 className="font-display text-3xl md:text-4xl lg:text-5xl font-bold text-white leading-tight tracking-[-0.02em]">
+          <h2 className="font-display text-3xl md:text-4xl lg:text-5xl font-bold text-landing-ink leading-tight tracking-[-0.02em]">
             Tenha soluções completas para sua gestão financeira nos marketplaces.{" "}
-            <span className="text-[#318EF1]">Só o Seller Finance entrega:</span>
+            <span className="text-landing-stamp">Só o Seller Finance entrega:</span>
           </h2>
         </Reveal>
 
         {/* Block 1: Analytics */}
         <div className="grid lg:grid-cols-[1.1fr_0.9fr] gap-12 items-center mb-16">
           <Reveal>
-            <p className="text-[#318EF1] font-bold text-lg mb-2">Analytics:</p>
-            <h3 className="text-2xl md:text-3xl font-bold text-white mb-6">
+            <p className="text-landing-stamp font-bold text-lg mb-2">Analytics:</p>
+            <h3 className="text-2xl md:text-3xl font-bold text-landing-ink mb-6">
               Acesse dados financeiros que os marketplaces não entregam
             </h3>
             <div className="space-y-3">
               {analyticsItems.map((item, i) => (
-                <div key={i} className="glass-panel rounded-xl overflow-hidden">
+                <div key={i} className="paper-panel rounded-xl overflow-hidden">
                   <button
-                    className="w-full flex items-center justify-between p-4 text-left hover:bg-white/[0.03] transition-colors"
+                    className="w-full flex items-center justify-between p-4 text-left hover:bg-landing-ink/[0.03] transition-colors"
                     onClick={() => setOpenAccordion(openAccordion === i ? null : i)}
                   >
-                    <span className="font-semibold text-white">{item.title}</span>
-                    <ChevronDown className={`w-5 h-5 text-[#318EF1] transition-transform ${openAccordion === i ? "rotate-180" : ""}`} />
+                    <span className="font-semibold text-landing-ink">{item.title}</span>
+                    <ChevronDown className={`w-5 h-5 text-landing-stamp transition-transform ${openAccordion === i ? "rotate-180" : ""}`} />
                   </button>
                   <AnimatePresence initial={false}>
                     {openAccordion === i && (
                       <AccordionPanel>
-                        <div className="px-4 pb-4 text-white/60 text-sm leading-relaxed">{item.desc}</div>
+                        <div className="px-4 pb-4 text-landing-ink-muted text-sm leading-relaxed">{item.desc}</div>
                       </AccordionPanel>
                     )}
                   </AnimatePresence>
@@ -193,29 +193,29 @@ export function FeaturesSection() {
         </div>
 
         {/* Block 2: Controle */}
-        <div className="glass-panel rounded-3xl p-8 md:p-12 grid lg:grid-cols-[0.85fr_1.15fr] gap-12 items-center">
+        <div className="paper-panel rounded-3xl p-8 md:p-12 grid lg:grid-cols-[0.85fr_1.15fr] gap-12 items-center">
           <Reveal>
             <PricingCalcMockup />
           </Reveal>
           <Reveal delay={0.1}>
-            <p className="text-[#318EF1] font-bold text-lg mb-2">Controle financeiro:</p>
-            <h3 className="text-2xl md:text-3xl font-bold text-white mb-6">
+            <p className="text-landing-stamp font-bold text-lg mb-2">Controle financeiro:</p>
+            <h3 className="text-2xl md:text-3xl font-bold text-landing-ink mb-6">
               Toda a gestão do vendedor em um painel simples e completo
             </h3>
             <div className="space-y-3">
               {controlItems.map((item, i) => (
-                <div key={i} className="bg-white/[0.03] border border-white/10 rounded-xl overflow-hidden">
+                <div key={i} className="bg-landing-ink/[0.03] border border-landing-ink/10 rounded-xl overflow-hidden">
                   <button
-                    className="w-full flex items-center justify-between p-4 text-left hover:bg-white/[0.05] transition-colors"
+                    className="w-full flex items-center justify-between p-4 text-left hover:bg-landing-ink/[0.05] transition-colors"
                     onClick={() => setOpenAccordion(openAccordion === i + 10 ? null : i + 10)}
                   >
-                    <span className="font-semibold text-white">{item.title}</span>
-                    <ChevronDown className={`w-5 h-5 text-white/50 transition-transform ${openAccordion === i + 10 ? "rotate-180" : ""}`} />
+                    <span className="font-semibold text-landing-ink">{item.title}</span>
+                    <ChevronDown className={`w-5 h-5 text-landing-ink-muted transition-transform ${openAccordion === i + 10 ? "rotate-180" : ""}`} />
                   </button>
                   <AnimatePresence initial={false}>
                     {openAccordion === i + 10 && (
                       <AccordionPanel>
-                        <div className="px-4 pb-4 text-white/60 text-sm leading-relaxed">{item.desc}</div>
+                        <div className="px-4 pb-4 text-landing-ink-muted text-sm leading-relaxed">{item.desc}</div>
                       </AccordionPanel>
                     )}
                   </AnimatePresence>
@@ -228,24 +228,24 @@ export function FeaturesSection() {
         {/* Block 3: Nota Fiscal */}
         <div className="grid lg:grid-cols-[1.1fr_0.9fr] gap-12 items-center mt-16">
           <Reveal>
-            <p className="text-[#318EF1] font-bold text-lg mb-2">Nota fiscal:</p>
-            <h3 className="text-2xl md:text-3xl font-bold text-white mb-6">
+            <p className="text-landing-stamp font-bold text-lg mb-2">Nota fiscal:</p>
+            <h3 className="text-2xl md:text-3xl font-bold text-landing-ink mb-6">
               Emita nota sem redigitar nada do comprador
             </h3>
             <div className="space-y-3">
               {invoiceItems.map((item, i) => (
-                <div key={i} className="glass-panel rounded-xl overflow-hidden">
+                <div key={i} className="paper-panel rounded-xl overflow-hidden">
                   <button
-                    className="w-full flex items-center justify-between p-4 text-left hover:bg-white/[0.03] transition-colors"
+                    className="w-full flex items-center justify-between p-4 text-left hover:bg-landing-ink/[0.03] transition-colors"
                     onClick={() => setOpenAccordion(openAccordion === i + 20 ? null : i + 20)}
                   >
-                    <span className="font-semibold text-white">{item.title}</span>
-                    <ChevronDown className={`w-5 h-5 text-[#318EF1] transition-transform ${openAccordion === i + 20 ? "rotate-180" : ""}`} />
+                    <span className="font-semibold text-landing-ink">{item.title}</span>
+                    <ChevronDown className={`w-5 h-5 text-landing-stamp transition-transform ${openAccordion === i + 20 ? "rotate-180" : ""}`} />
                   </button>
                   <AnimatePresence initial={false}>
                     {openAccordion === i + 20 && (
                       <AccordionPanel>
-                        <div className="px-4 pb-4 text-white/60 text-sm leading-relaxed">{item.desc}</div>
+                        <div className="px-4 pb-4 text-landing-ink-muted text-sm leading-relaxed">{item.desc}</div>
                       </AccordionPanel>
                     )}
                   </AnimatePresence>
